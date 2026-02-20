@@ -98,6 +98,39 @@ When working on this project:
 7. **Record learnings** — When the user corrects a mistake or provides context about how something should be done, add it to the "Project Context & Learnings" section below if it's a recurring pattern (not a one-time fix)
 8. **Notify documentation changes** — When updating `README.md` or `AGENTS.md`, explicitly call out the changes to the user at the end of your response so they can review and don't overlook them
 
+## v1 Implementation Checklist
+
+### POC Scope (required now)
+
+### Setup & Runtime
+
+- [ ] Initialize GitHub Copilot runtime in CI (install + start)
+- [ ] Configure Copilot with clank8y MCP server(s)
+- [ ] Add action triggers for PR workflows (open/sync/reopen) and optional manual trigger
+- [ ] Finalize action workflow (permissions, environment variables, execution entrypoint)
+
+### MCP Review Surface
+
+- [x] Implement PR context, file list, diff build/chunk read tools
+- [x] Implement one-shot review submission tool (`create-pull-request-review`)
+
+### Quality Gates
+
+- [ ] Add integration-style validation in a dedicated test repository
+- [ ] Keep lint + typecheck + tests green in CI
+
+### Docs & DX
+
+- [ ] Keep README action setup up-to-date with real workflow examples
+- [ ] Document each MCP tool contract (inputs, outputs, error cases)
+- [ ] Add troubleshooting notes for auth, event context, and invalid diff line mappings
+
+### Future Scope (post-POC)
+
+- [ ] Implement follow-up review tools (`list-pull-request-reviews`, `resolve-review-thread`)
+- [ ] Implement review-thread retrieval tool (`get-review-comments`) for address-feedback mode
+- [ ] Add automation flow for addressing existing feedback (thread read → fix → reply → resolve)
+
 ## Project Context & Learnings
 
 This section captures project-specific knowledge, tool quirks, and lessons learned during development. When the user provides corrections or context about how things should be done in this project, add them here if they are recurring patterns (not a one-time fix).
@@ -106,12 +139,14 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 ### Tools & Dependencies
 
-<!-- Add tool-specific notes, required configurations, or gotchas here -->
+- MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
 
 ### Patterns & Conventions
 
-<!-- Add project-specific patterns, preferred approaches, or conventions here -->
+- For Valibot schemas in MCP tools, keep schemas inline (no extra standalone schema variables when not needed).
+- Add field-level guidance via `v.pipe(..., v.description(...))` so agents get better tool-usage hints.
 
 ### Common Mistakes to Avoid
 
-<!-- Add things that have been done wrong before and should be avoided -->
+- Avoid mixing throw-based control flow with MCP error responses inside tool handlers.
+- Avoid under-described schemas; missing descriptions reduces agent tool-call quality.
