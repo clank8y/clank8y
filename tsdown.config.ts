@@ -7,6 +7,7 @@ export default defineConfig({
   target: ['es2023'],
   format: 'esm',
   clean: true,
-  dts: true,
+  dts: false,
   outDir: './dist',
+
 })

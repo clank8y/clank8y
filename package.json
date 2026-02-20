@@ -47,7 +47,16 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "changelogithub": "catalog:"
+    "@actions/core": "catalog:",
+    "@actions/github": "catalog:",
+    "@tmcp/adapter-valibot": "catalog:",
+    "@tmcp/transport-http": "catalog:",
+    "changelogithub": "catalog:",
+    "get-port-please": "catalog:",
+    "octokit": "catalog:",
+    "srvx": "catalog:",
+    "tmcp": "catalog:",
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@schplitt/eslint-config": "catalog:",
