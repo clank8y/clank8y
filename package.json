@@ -1,0 +1,63 @@
+{
+  "name": "@schplitt/starter",
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "description": "A minimal TypeScript starter template with ESM, Vitest, and ESLint",
+  "keywords": [
+    "typescript",
+    "template",
+    "starter",
+    "esm",
+    "vitest",
+    "eslint"
+  ],
+  "license": "MIT",
+  "author": "schplitt",
+  "homepage": "https://github.com/schplitt/starter#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/schplitt/starter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/schplitt/starter/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "prerelease": "eslint && tsc --noEmit && tsdown",
+    "release": "bumpp",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "changelogithub": "catalog:"
+  },
+  "devDependencies": {
+    "@schplitt/eslint-config": "catalog:",
+    "bumpp": "catalog:",
+    "eslint": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
