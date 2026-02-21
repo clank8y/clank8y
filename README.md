@@ -36,6 +36,16 @@ pnpm typecheck
 
 The bot integrates with GitHub to analyze and review pull requests for Cumulocity IoT projects. Core functionality is in the `src/` directory.
 
+### GitHub Action configuration
+
+The action accepts the following inputs:
+
+- `copilot-token` (required): token for Copilot SDK PR review requests
+- `github-token` (required): token used to create the Octokit client
+- `prompt-context` (optional): extra context inserted into the default review prompt
+
+`prompt-context` is additive and does not replace the built-in base prompt.
+
 ## Roadmap
 
 ### POC (required now)

@@ -1,26 +1,30 @@
 {
-  "name": "@schplitt/starter",
+  "name": "clank8y",
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@10.28.2",
-  "description": "A minimal TypeScript starter template with ESM, Vitest, and ESLint",
+  "description": "A PR review bot for Cumulocity IoT (c8y) with GitHub Action + MCP tooling",
   "keywords": [
     "typescript",
-    "template",
-    "starter",
+    "clank8y",
+    "cumulocity",
+    "c8y",
+    "github-actions",
+    "pull-request",
+    "review-bot",
     "esm",
     "vitest",
     "eslint"
   ],
   "license": "MIT",
   "author": "schplitt",
-  "homepage": "https://github.com/schplitt/starter#readme",
+  "homepage": "https://github.com/schplitt/clank8y#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/schplitt/starter.git"
+    "url": "https://github.com/schplitt/clank8y.git"
   },
   "bugs": {
-    "url": "https://github.com/schplitt/starter/issues"
+    "url": "https://github.com/schplitt/clank8y/issues"
   },
   "exports": {
     ".": {
@@ -52,7 +56,6 @@
     "@tmcp/adapter-valibot": "catalog:",
     "@tmcp/transport-http": "catalog:",
     "changelogithub": "catalog:",
-    "get-port-please": "catalog:",
     "octokit": "catalog:",
     "srvx": "catalog:",
     "tmcp": "catalog:",
@@ -67,6 +70,6 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   }
 }

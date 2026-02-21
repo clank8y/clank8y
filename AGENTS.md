@@ -145,6 +145,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 - For Valibot schemas in MCP tools, keep schemas inline (no extra standalone schema variables when not needed).
 - Add field-level guidance via `v.pipe(..., v.description(...))` so agents get better tool-usage hints.
+- Keep GitHub Action input names kebab-case (`copilot-token`, `github-token`, `prompt-context`) and map them via `core.getInput(...)`.
+- `prompt-context` is additive: insert user context into the base prompt, never replace the entire default prompt.
 
 ### Common Mistakes to Avoid
 

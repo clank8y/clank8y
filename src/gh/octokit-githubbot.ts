@@ -1,13 +1,13 @@
 import * as github from '@actions/github'
-import * as core from '@actions/core'
 import type { Octokit } from 'octokit'
+import { getPullRequestReviewContext } from '../setup'
 
 export function githubBotOctokit(): Octokit | null {
-  const myToken = core.getInput('myToken')
+  const githubToken = getPullRequestReviewContext().githubToken
 
-  if (!myToken) {
+  if (!githubToken) {
     return null
   }
 
-  return github.getOctokit(myToken) as Octokit
+  return github.getOctokit(githubToken) as Octokit
 }

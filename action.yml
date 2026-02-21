@@ -1,0 +1,18 @@
+name: clank8y
+description: Reviews your pull requests for Cumulocity IoT projects 
+author: schplitt
+
+inputs:
+  copilot-token:
+    description: Token used by the Copilot SDK for review requests
+    required: true
+  github-token:
+    description: GitHub token used to create the Octokit client
+    required: true
+  prompt-context:
+    description: Optional additional context inserted into the default review prompt
+    required: false
+
+runs:
+  using: node24
+  main: dist/index.mjs

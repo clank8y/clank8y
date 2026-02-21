@@ -4,7 +4,7 @@ import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
-import { getPullRequestContext } from '../pr'
+import { getPullRequestReviewContext } from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
@@ -22,8 +22,8 @@ let _githubMCP: LocalMCPServer | null = null
 const prDiffCache = new Map<string, CachedDiff>()
 
 function getDiffCacheKey(): string {
-  const context = getPullRequestContext()
-  return `${context.owner}/${context.repo}#${context.number}:${context.headSha}`
+  const pullRequest = getPullRequestReviewContext().pullRequest
+  return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`
 }
 
 function padNum(n: number): string {
@@ -32,16 +32,16 @@ function padNum(n: number): string {
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
   const octokit = getOctokit()
-  const context = getPullRequestContext()
+  const pullRequest = getPullRequestReviewContext().pullRequest
 
   const allFiles: PRFiles = []
   let page = 1
 
   while (true) {
     const { data: files } = await octokit.rest.pulls.listFiles({
-      owner: context.owner,
-      repo: context.repo,
-      pull_number: context.number,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.number,
       page,
       per_page: 100,
     })
@@ -205,12 +205,12 @@ mcp.tool({
 }, async () => {
   try {
     const octokit = getOctokit()
-    const context = getPullRequestContext()
+    const pullRequest = getPullRequestReviewContext().pullRequest
 
     const { data: pr } = await octokit.rest.pulls.get({
-      owner: context.owner,
-      repo: context.repo,
-      pull_number: context.number,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.number,
     })
 
     return tool.structured({
@@ -246,12 +246,12 @@ mcp.tool({
 }, async () => {
   try {
     const octokit = getOctokit()
-    const context = getPullRequestContext()
+    const pullRequest = getPullRequestReviewContext().pullRequest
 
     const { data: files } = await octokit.rest.pulls.listFiles({
-      owner: context.owner,
-      repo: context.repo,
-      pull_number: context.number,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.number,
     })
     // now build markdown with the file names and their status (added, modified, removed) and deletions etc
     const fileList = files.map((file) => `- \`${file.filename}\` (${file.status}, +${file.additions}/-${file.deletions})`).join('\n')
@@ -314,7 +314,7 @@ mcp.tool({
 }, async ({ body, commit_id, comments }) => {
   try {
     const octokit = getOctokit()
-    const context = getPullRequestContext()
+    const pullRequest = getPullRequestReviewContext().pullRequest
     const reviewCommentsInput = comments ?? []
 
     for (const comment of reviewCommentsInput) {
@@ -331,9 +331,9 @@ mcp.tool({
     let commitSha = commit_id
     if (!commitSha) {
       const { data: pr } = await octokit.rest.pulls.get({
-        owner: context.owner,
-        repo: context.repo,
-        pull_number: context.number,
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        pull_number: pullRequest.number,
       })
       commitSha = pr.head.sha
     }
@@ -376,9 +376,9 @@ mcp.tool({
         start_side: 'LEFT' | 'RIGHT'
       }>
     } = {
-      owner: context.owner,
-      repo: context.repo,
-      pull_number: context.number,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.number,
       event: 'COMMENT' as const,
       commit_id: commitSha,
     }
@@ -489,12 +489,12 @@ mcp.tool({
 }, async ({ filename }) => {
   try {
     const octokit = getOctokit()
-    const context = getPullRequestContext()
+    const pullRequest = getPullRequestReviewContext().pullRequest
 
     const { data: files } = await octokit.rest.pulls.listFiles({
-      owner: context.owner,
-      repo: context.repo,
-      pull_number: context.number,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.number,
     })
 
     const file = files.find((f) => f.filename === filename)
@@ -503,10 +503,10 @@ mcp.tool({
     }
 
     const { data: content } = await octokit.rest.repos.getContent({
-      owner: context.owner,
-      repo: context.repo,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
       path: filename,
-      ref: context.headSha,
+      ref: pullRequest.headSha,
     })
 
     if (Array.isArray(content)) {
