@@ -16,6 +16,19 @@ interface CachedDiff {
   toc: string
 }
 
+const GITHUB_MCP_TOOL_NAMES = [
+  'get-pull-request',
+  'get-pull-request-files',
+  'create-pull-request-review',
+  'get-pull-request-diff',
+  'read-pull-request-diff-chunk',
+  'get-pull-request-file-content',
+] as const
+
+export function getGithubMcpToolNames(): string[] {
+  return [...GITHUB_MCP_TOOL_NAMES]
+}
+
 function logMcp(message: string): void {
   core.info(`[clank8y][mcp] ${message}`)
 }
@@ -24,6 +37,10 @@ function toReachableLoopbackUrl(url: string): string {
   return url
     .replace('http://[::]:', 'http://localhost:')
     .replace('http://0.0.0.0:', 'http://localhost:')
+}
+
+function createMcpEndpointUrl(baseUrl: string): string {
+  return new URL('mcp/', baseUrl).toString()
 }
 
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
@@ -172,15 +189,40 @@ function createGitHubMCP(): LocalMCPServer {
     fetch: async (req) => {
       const startedAt = Date.now()
       const url = new URL(req.url)
-      logMcp(`HTTP ${req.method} ${url.pathname}${url.search}`)
+      let rpcMethod = 'unknown'
+
+      if (req.method === 'POST') {
+        try {
+          const bodyText = await req.clone().text()
+          if (bodyText) {
+            const payload = JSON.parse(bodyText) as { method?: string }
+            rpcMethod = payload.method ?? 'unknown'
+          }
+        } catch {
+          rpcMethod = 'unparseable-json'
+        }
+      }
+
+      logMcp(`HTTP ${req.method} ${url.pathname}${url.search} rpc=${rpcMethod}`)
 
       const response = await transport.respond(req)
       if (!response) {
-        logMcp(`HTTP ${req.method} ${url.pathname} -> 404 (${Date.now() - startedAt}ms)`)
+        logMcp(`HTTP ${req.method} ${url.pathname} rpc=${rpcMethod} -> 404 (${Date.now() - startedAt}ms)`)
         return new FastResponse('Not found', { status: 404 })
       }
 
-      logMcp(`HTTP ${req.method} ${url.pathname} -> ${response.status} (${Date.now() - startedAt}ms)`)
+      try {
+        const responseText = await response.clone().text()
+        if (responseText) {
+          const payload = JSON.parse(responseText) as { error?: { code?: number, message?: string } }
+          if (payload.error) {
+            logMcp(`RPC error for method ${rpcMethod}: code=${payload.error.code ?? 'unknown'} message=${payload.error.message ?? 'unknown'}`)
+          }
+        }
+      } catch {
+      }
+
+      logMcp(`HTTP ${req.method} ${url.pathname} rpc=${rpcMethod} -> ${response.status} (${Date.now() - startedAt}ms)`)
       return response
     },
   })
@@ -200,7 +242,7 @@ function createGitHubMCP(): LocalMCPServer {
       }
       const reachableUrl = toReachableLoopbackUrl(url)
       status = { state: 'running', url: reachableUrl }
-      return `${reachableUrl}mcp`
+      return createMcpEndpointUrl(reachableUrl)
     },
     stop: async () => {
       await server.close()

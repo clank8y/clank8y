@@ -6,7 +6,7 @@ import process from 'node:process'
 import { CopilotClient } from '@github/copilot-sdk'
 import { x } from 'tinyexec'
 import { getPullRequestReviewContext } from '../setup'
-import { mcpServers } from '../mcp'
+import { githubMcpToolNames, mcpServers } from '../mcp'
 
 function logInfo(message: string): void {
   const now = new Date().toISOString()
@@ -124,6 +124,68 @@ function resolveCopilotGithubTokenFromEnvironment(): string {
   return token
 }
 
+async function probeMcpServer(mcpUrl: string): Promise<void> {
+  const headers = {
+    'content-type': 'application/json',
+    'accept': 'application/json, text/event-stream',
+  }
+
+  const initializeRequest = {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: {
+        name: 'clank8y-mcp-probe',
+        version: '1.0.0',
+      },
+    },
+  }
+
+  const initializeResponse = await fetch(mcpUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(initializeRequest),
+  })
+
+  const initializeBody = await initializeResponse.text()
+  logInfo(`MCP probe initialize: status=${initializeResponse.status} body=${initializeBody}`)
+
+  if (!initializeResponse.ok) {
+    throw new Error(`MCP initialize probe failed with status ${initializeResponse.status}`)
+  }
+
+  await fetch(mcpUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'notifications/initialized',
+      params: {},
+    }),
+  })
+
+  const toolsListResponse = await fetch(mcpUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/list',
+      params: {},
+    }),
+  })
+
+  const toolsListBody = await toolsListResponse.text()
+  logInfo(`MCP probe tools/list: status=${toolsListResponse.status} body=${toolsListBody}`)
+
+  if (!toolsListResponse.ok) {
+    throw new Error(`MCP tools/list probe failed with status ${toolsListResponse.status}`)
+  }
+}
+
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const configuredModel = 'claude-haiku-4.5'
 
@@ -161,7 +223,17 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     const githubMCPUrl = await github.start()
     logInfo(`GitHub MCP server ready at ${githubMCPUrl}`)
 
+    const expectedMcpTools = githubMcpToolNames()
+    logInfo(`Expected GitHub MCP tools: ${expectedMcpTools.join(', ')}`)
+
     try {
+      try {
+        await probeMcpServer(githubMCPUrl)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        logInfo(`MCP probe failed: ${message}`)
+      }
+
       logInfo('Starting Copilot client connection...')
       await client.start()
       logInfo(`Copilot client state: ${client.getState()}`)
