@@ -125,7 +125,7 @@ function resolveCopilotGithubTokenFromEnvironment(): string {
 }
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
-  const configuredModel = 'gpt-5.3-codex'
+  const configuredModel = 'claude-haiku-4.5'
 
   logInfo('Preparing GitHub Copilot review agent...')
   const cliPath = await ensureCopilotCliInstalled()
@@ -226,7 +226,9 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       })
 
       session.on('tool.execution_start', (event) => {
-        logInfo(`tool.execution_start: ${event.data.toolName}`)
+        const mcpServerName = event.data.mcpServerName ?? 'n/a'
+        const mcpToolName = event.data.mcpToolName ?? 'n/a'
+        logInfo(`tool.execution_start: tool=${event.data.toolName} mcpServer=${mcpServerName} mcpTool=${mcpToolName}`)
       })
 
       session.on('tool.execution_progress', (event) => {
@@ -234,12 +236,18 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       })
 
       session.on('tool.execution_complete', (event) => {
+        const mcpServerName = event.data.toolTelemetry?.mcpServerName
+        const mcpToolName = event.data.toolTelemetry?.mcpToolName
+        const mcpInfo = mcpServerName || mcpToolName
+          ? ` mcpServer=${String(mcpServerName ?? 'n/a')} mcpTool=${String(mcpToolName ?? 'n/a')}`
+          : ''
+
         if (event.data.success) {
-          logInfo('tool.execution_complete: success')
+          logInfo(`tool.execution_complete: success${mcpInfo}`)
           return
         }
 
-        logInfo(`tool.execution_complete: failed ${event.data.error?.message ?? 'unknown error'}`)
+        logInfo(`tool.execution_complete: failed ${event.data.error?.message ?? 'unknown error'}${mcpInfo}`)
       })
 
       session.on('session.info', (event) => {

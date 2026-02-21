@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import { buildReviewPrompt } from './prompt'
 
 export type GitHubActionContext = Pick<typeof github.context, 'repo' | 'payload'>
 
@@ -70,26 +71,7 @@ export interface PullRequestReviewContext {
   prompt: string
 }
 
-const DEFAULT_REVIEW_PROMPT = [
-  'You are reviewing a pull request for Cumulocity IoT (c8y).',
-  'Focus on correctness, security, maintainability, and test impact.',
-  'Prioritize concrete, actionable feedback.',
-].join('\n')
-
 let _config: PullRequestReviewContext | null = null
-
-function buildReviewPrompt(basePrompt: string, promptContext: string): string {
-  if (!promptContext) {
-    return basePrompt
-  }
-
-  return [
-    basePrompt,
-    '',
-    'Additional user context:',
-    promptContext,
-  ].join('\n')
-}
 
 function createPullRequestReviewContext(
 ): PullRequestReviewContext {
@@ -101,7 +83,7 @@ function createPullRequestReviewContext(
     pullRequest,
     githubToken,
     promptContext,
-    prompt: buildReviewPrompt(DEFAULT_REVIEW_PROMPT, promptContext),
+    prompt: buildReviewPrompt(promptContext),
   }
 }
 

@@ -1,5 +1,6 @@
 import type { LocalMCPServer } from '.'
 import { Buffer } from 'node:buffer'
+import * as core from '@actions/core'
 import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
@@ -13,6 +14,10 @@ import { HttpTransport } from '@tmcp/transport-http'
 interface CachedDiff {
   content: string
   toc: string
+}
+
+function logMcp(message: string): void {
+  core.info(`[clank8y][mcp] ${message}`)
 }
 
 function toReachableLoopbackUrl(url: string): string {
@@ -165,10 +170,17 @@ function createGitHubMCP(): LocalMCPServer {
     manual: true,
     port: 0, // Use a random available port
     fetch: async (req) => {
+      const startedAt = Date.now()
+      const url = new URL(req.url)
+      logMcp(`HTTP ${req.method} ${url.pathname}${url.search}`)
+
       const response = await transport.respond(req)
       if (!response) {
+        logMcp(`HTTP ${req.method} ${url.pathname} -> 404 (${Date.now() - startedAt}ms)`)
         return new FastResponse('Not found', { status: 404 })
       }
+
+      logMcp(`HTTP ${req.method} ${url.pathname} -> ${response.status} (${Date.now() - startedAt}ms)`)
       return response
     },
   })
