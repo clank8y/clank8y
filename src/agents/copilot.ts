@@ -110,6 +110,20 @@ function hasCopilotTokenInEnvironment(): boolean {
   )
 }
 
+function resolveCopilotGithubTokenFromEnvironment(): string {
+  const token = process.env.COPILOT_GITHUB_TOKEN
+    || process.env.GH_TOKEN
+    || process.env.GITHUB_TOKEN
+
+  if (!token) {
+    throw new Error(
+      'Copilot authentication token is missing. Set COPILOT_GITHUB_TOKEN (preferred), GH_TOKEN, or GITHUB_TOKEN.',
+    )
+  }
+
+  return token
+}
+
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const configuredModel = 'gpt-5.3-codex'
 
@@ -127,10 +141,14 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   }
   logInfo('Copilot authentication token detected in environment.')
 
+  const githubToken = resolveCopilotGithubTokenFromEnvironment()
+  logInfo('Using explicit GitHub token for Copilot SDK authentication.')
+
   const context = getPullRequestReviewContext()
   logInfo(`Review target: ${context.pullRequest.owner}/${context.pullRequest.repo}#${context.pullRequest.number}`)
   const client = new CopilotClient({
     cliPath,
+    githubToken,
     useLoggedInUser: false,
   })
 
@@ -150,6 +168,10 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
 
       const authStatus = await client.getAuthStatus()
       logInfo(`Copilot auth status: type=${authStatus.authType ?? 'unknown'} authenticated=${authStatus.isAuthenticated}`)
+
+      if (!authStatus.isAuthenticated) {
+        throw new Error('Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.')
+      }
 
       const models = await client.listModels()
       const modelIds = models.map((model) => model.id)
