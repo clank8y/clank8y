@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import type { LocalMCPServer } from '.'
 import { Buffer } from 'node:buffer'
 import * as core from '@actions/core'
@@ -10,6 +11,7 @@ import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
 import { HttpTransport } from '@tmcp/transport-http'
+import { defineTool } from 'tmcp/tool'
 
 interface CachedDiff {
   content: string
@@ -155,7 +157,6 @@ export function githubMCP(): LocalMCPServer {
 }
 
 function createGitHubMCP(): LocalMCPServer {
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
   const transport = new HttpTransport(mcp, {
     path: '/mcp',
   })
@@ -166,40 +167,16 @@ function createGitHubMCP(): LocalMCPServer {
     fetch: async (req) => {
       const startedAt = Date.now()
       const url = new URL(req.url)
-      let rpcMethod = 'unknown'
 
-      if (req.method === 'POST') {
-        try {
-          const bodyText = await req.clone().text()
-          if (bodyText) {
-            const payload = JSON.parse(bodyText) as { method?: string }
-            rpcMethod = payload.method ?? 'unknown'
-          }
-        } catch {
-          rpcMethod = 'unparseable-json'
-        }
-      }
-
-      logMcp(`HTTP ${req.method} ${url.pathname}${url.search} rpc=${rpcMethod}`)
+      logMcp(`HTTP ${req.method} ${url.pathname}${url.search}`)
 
       const response = await transport.respond(req)
       if (!response) {
-        logMcp(`HTTP ${req.method} ${url.pathname} rpc=${rpcMethod} -> 404 (${Date.now() - startedAt}ms)`)
+        logMcp(`HTTP ${req.method} ${url.pathname} -> 404 (${Date.now() - startedAt}ms)`)
         return new FastResponse('Not found', { status: 404 })
       }
 
-      try {
-        const responseText = await response.clone().text()
-        if (responseText) {
-          const payload = JSON.parse(responseText) as { error?: { code?: number, message?: string } }
-          if (payload.error) {
-            logMcp(`RPC error for method ${rpcMethod}: code=${payload.error.code ?? 'unknown'} message=${payload.error.message ?? 'unknown'}`)
-          }
-        }
-      } catch {
-      }
-
-      logMcp(`HTTP ${req.method} ${url.pathname} rpc=${rpcMethod} -> ${response.status} (${Date.now() - startedAt}ms)`)
+      logMcp(`HTTP ${req.method} ${url.pathname} -> ${response.status} (${Date.now() - startedAt}ms)`)
       return response
     },
   })
@@ -218,7 +195,7 @@ function createGitHubMCP(): LocalMCPServer {
         throw new Error('Failed to start GitHub MCP server')
       }
       status = { state: 'running', url }
-      return url
+      return { url, toolNames: githubMcpTools.map((tool) => tool.name) }
     },
     stop: async () => {
       await server.close()
@@ -240,7 +217,7 @@ export const mcp = new McpServer({
   },
 })
 
-mcp.tool({
+const getPullRequestTool = defineTool({
   name: 'get-pull-request',
   description: 'Get metadata for the current pull request',
   title: 'Get Pull Request',
@@ -281,7 +258,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const getPullRequestFilesTool = defineTool({
   name: 'get-pull-request-files',
   description: 'Get the list of files changed in the current pull request',
   title: 'Get Pull Request Files',
@@ -304,7 +281,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const createPullRequestReviewTool = defineTool({
   name: 'create-pull-request-review',
   description: 'Submit a review for the current pull request with optional inline comments',
   title: 'Create Pull Request Review',
@@ -448,7 +425,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const getPullRequestDiffTool = defineTool({
   name: 'get-pull-request-diff',
   description: 'Build and cache a formatted pull request diff with line numbers and a TOC',
   title: 'Get Pull Request Diff',
@@ -471,7 +448,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const readPullRequestDiffChunkTool = defineTool({
   name: 'read-pull-request-diff-chunk',
   description: 'Read a line range from the cached pull request diff',
   title: 'Read Pull Request Diff Chunk',
@@ -515,7 +492,7 @@ mcp.tool({
 })
 
 // now a mcp tool to get each individual file content to review it with the diff
-mcp.tool({
+const getPullRequestFileContentTool = defineTool({
   name: 'get-pull-request-file-content',
   description: 'Get the content of a specific file changed in the current pull request',
   title: 'Get Pull Request File Content',
@@ -568,3 +545,14 @@ mcp.tool({
     return tool.error(`Failed to load PR file content: ${message}`)
   }
 })
+
+export const githubMcpTools = [
+  getPullRequestTool,
+  getPullRequestFilesTool,
+  createPullRequestReviewTool,
+  getPullRequestDiffTool,
+  readPullRequestDiffChunkTool,
+  getPullRequestFileContentTool,
+]
+
+mcp.tools(githubMcpTools)
