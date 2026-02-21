@@ -181,7 +181,7 @@ function createGitHubMCP(): LocalMCPServer {
         throw new Error('Failed to start GitHub MCP server')
       }
       status = { state: 'running', url }
-      return url
+      return `${url}mcp`
     },
     stop: async () => {
       await server.close()

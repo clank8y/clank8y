@@ -8,6 +8,11 @@ import { x } from 'tinyexec'
 import { getPullRequestReviewContext } from '../setup'
 import { mcpServers } from '../mcp'
 
+function logInfo(message: string): void {
+  const now = new Date().toISOString()
+  console.log(`[clank8y][${now}] ${message}`)
+}
+
 function prependPath(entries: string[]): string {
   const current = process.env.PATH ?? ''
   const all = [...entries, current]
@@ -64,11 +69,14 @@ async function resolveCopilotCliPath(): Promise<string | null> {
 }
 
 async function ensureCopilotCliInstalled(): Promise<string> {
+  logInfo('Resolving GitHub Copilot CLI path...')
   let cliPath = await resolveCopilotCliPath()
   if (cliPath) {
+    logInfo(`Using GitHub Copilot CLI at: ${cliPath}`)
     return cliPath
   }
 
+  logInfo('GitHub Copilot CLI not found. Installing @github/copilot globally...')
   if (!await isCopilotCliAvailable()) {
     await x('npm', ['install', '-g', '@github/copilot'], {
       throwOnError: true,
@@ -83,12 +91,14 @@ async function ensureCopilotCliInstalled(): Promise<string> {
 
   const npmGlobalBin = await getNpmGlobalBin()
   process.env.PATH = prependPath([npmGlobalBin])
+  logInfo(`Prepended npm global bin to PATH: ${npmGlobalBin}`)
 
   cliPath = await resolveCopilotCliPath()
   if (!cliPath) {
     throw new Error('GitHub Copilot CLI is required but was not found after installation attempt.')
   }
 
+  logInfo(`GitHub Copilot CLI installed and resolved at: ${cliPath}`)
   return cliPath
 }
 
@@ -101,6 +111,7 @@ function hasCopilotTokenInEnvironment(): boolean {
 }
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
+  logInfo('Preparing GitHub Copilot review agent...')
   const cliPath = await ensureCopilotCliInstalled()
 
   if (!hasCopilotTokenInEnvironment()) {
@@ -112,8 +123,10 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       ].join(' '),
     )
   }
+  logInfo('Copilot authentication token detected in environment.')
 
   const context = getPullRequestReviewContext()
+  logInfo(`Review target: ${context.pullRequest.owner}/${context.pullRequest.repo}#${context.pullRequest.number}`)
   const client = new CopilotClient({
     cliPath,
     useLoggedInUser: false,
@@ -124,11 +137,12 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   } = mcpServers()
 
   return async () => {
-    console.log('Starting GitHub Copilot MCP server...')
+    logInfo('Starting GitHub MCP server...')
     const githubMCPUrl = await github.start()
+    logInfo(`GitHub MCP server ready at ${githubMCPUrl}`)
 
     try {
-      console.log('Starting Copilot client session...')
+      logInfo('Creating Copilot client session...')
       const session = await client.createSession({
         model: 'gpt-5.3-codex',
         mcpServers: {
@@ -140,30 +154,91 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
           },
         },
       })
+      logInfo(`Copilot session created: ${session.sessionId}`)
 
       session.on('assistant.message', (message) => {
-        console.log(`🤖 Clank8y said: ${message.data.content}`)
+        logInfo(`assistant.message: ${message.data.content}`)
       })
 
       session.on('assistant.intent', (intent) => {
-        console.log(`🤖 Clank8y wants to: ${intent.data.intent}`)
+        logInfo(`assistant.intent: ${intent.data.intent}`)
+      })
+
+      session.on('assistant.reasoning', (reasoning) => {
+        logInfo(`assistant.reasoning: ${reasoning.data.content}`)
+      })
+
+      session.on('assistant.turn_start', () => {
+        logInfo('assistant.turn_start')
+      })
+
+      session.on('assistant.turn_end', () => {
+        logInfo('assistant.turn_end')
+      })
+
+      session.on('assistant.usage', (usage) => {
+        const inputTokens = usage.data.inputTokens ?? 0
+        const outputTokens = usage.data.outputTokens ?? 0
+        logInfo(`assistant.usage model=${usage.data.model} input=${inputTokens} output=${outputTokens}`)
       })
 
       session.on('tool.execution_start', (event) => {
-        console.log(`🤖 Clank8y used: ${event.data.toolName}`)
+        logInfo(`tool.execution_start: ${event.data.toolName}`)
+      })
+
+      session.on('tool.execution_progress', (event) => {
+        logInfo(`tool.execution_progress: ${event.data.progressMessage}`)
+      })
+
+      session.on('tool.execution_complete', (event) => {
+        if (event.data.success) {
+          logInfo('tool.execution_complete: success')
+          return
+        }
+
+        logInfo(`tool.execution_complete: failed ${event.data.error?.message ?? 'unknown error'}`)
+      })
+
+      session.on('session.info', (event) => {
+        logInfo(`session.info: ${event.data.message}`)
+      })
+
+      session.on('session.warning', (event) => {
+        logInfo(`session.warning: ${event.data.message}`)
+      })
+
+      session.on('session.error', (event) => {
+        logInfo(`session.error: ${event.data.message}`)
+      })
+
+      session.on('session.model_change', (event) => {
+        logInfo(`session.model_change: ${event.data.previousModel ?? 'unknown'} -> ${event.data.newModel}`)
+      })
+
+      session.on('session.idle', () => {
+        logInfo('session.idle')
       })
 
       try {
-        console.log(`🤖 Clank8y is getting to work...`)
-        await session.sendAndWait({
+        logInfo('Sending prompt to Copilot and waiting for completion...')
+        const response = await session.sendAndWait({
           prompt: context.prompt,
         }, 300_000)
+
+        if (response?.data.content) {
+          logInfo(`Final assistant response received (${response.data.content.length} chars).`)
+        } else {
+          logInfo('Completed without a final assistant.message payload.')
+        }
       } finally {
+        logInfo('Destroying Copilot session...')
         await session.destroy()
       }
     } finally {
+      logInfo('Stopping Copilot client and GitHub MCP server...')
       await client.stop()
       await github.stop()
+      logInfo('Review run finished.')
     }
   }
 }
