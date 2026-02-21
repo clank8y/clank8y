@@ -80,10 +80,17 @@ You can create a fine-grained personal access token in GitHub:
 
 Fine-grained PAT permissions for this token should be minimal:
 
+- Account permissions: **Copilot Requests (required)**
 - Repository permissions: **Contents (read-only)**
 - Pull requests are handled by the separate `github-token` input, not by `COPILOT_GITHUB_TOKEN`
 
 In practice: for `COPILOT_GITHUB_TOKEN` you usually do **not** need extra write permissions. If GitHub requires you to pick a repository permission when creating the token, choose the smallest read-only option.
+
+If you see this error:
+
+`Request models.list failed with message: 401 "unauthorized: Personal Access Token does not have \"Copilot Requests\" permission"`
+
+then regenerate the fine-grained PAT and enable the **Copilot Requests** permission.
 
 #### GitHub API token (`github-token`)
 
