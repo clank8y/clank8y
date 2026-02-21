@@ -54,6 +54,8 @@ For CI/CD, set one of these environment variables (priority order):
 - `GITHUB_TOKEN`
 
 The SDK reads these automatically. clank8y requires one of them to be set and fails fast if none is present.
+The Copilot SDK requires the `copilot` CLI binary to be available on `PATH`.
+clank8y bootstraps this automatically at runtime (install + PATH update), so workflow files do not need a separate CLI installation step.
 
 #### Token type and permissions
 
@@ -126,7 +128,7 @@ This repository includes <.github/workflows/review.yml> to test the local action
 
 1. Add a repository secret named `COPILOT_GITHUB_TOKEN`
 2. Open or update a pull request (or run **Actions → PR Review → Run workflow**)
-3. The workflow builds `dist/` and runs `uses: ./` with Node 24
+3. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
 
 If the run succeeds, clank8y should post a PR review using the MCP GitHub tools.
 
