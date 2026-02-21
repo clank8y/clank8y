@@ -65,7 +65,6 @@ function createPullRequestContext(
 
 export interface PullRequestReviewContext {
   pullRequest: PullRequestContext
-  copilotToken: string
   githubToken: string
   promptContext: string
   prompt: string
@@ -95,13 +94,11 @@ function buildReviewPrompt(basePrompt: string, promptContext: string): string {
 function createPullRequestReviewContext(
 ): PullRequestReviewContext {
   const pullRequest = createPullRequestContext()
-  const copilotToken = core.getInput('copilot-token', { required: true })
   const githubToken = core.getInput('github-token', { required: true })
   const promptContext = core.getInput('prompt-context').trim()
 
   return {
     pullRequest,
-    copilotToken,
     githubToken,
     promptContext,
     prompt: buildReviewPrompt(DEFAULT_REVIEW_PROMPT, promptContext),

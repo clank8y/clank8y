@@ -69,6 +69,6 @@ async function getPullRequestAgent(options: PullRequestAgentOptions): Promise<Pu
 }
 
 export async function reviewPullRequest(options: PullRequestAgentOptions): Promise<void> {
-  const reviewPullrequest = await getPullRequestAgent(options)
-  await reviewPullrequest()
+  const review = await getPullRequestAgent(options)
+  await review()
 }

@@ -27,12 +27,29 @@ async function ensureCopilotCliInstalled(): Promise<void> {
   }
 }
 
+function hasCopilotTokenInEnvironment(): boolean {
+  return Boolean(
+    process.env.COPILOT_GITHUB_TOKEN
+    || process.env.GH_TOKEN
+    || process.env.GITHUB_TOKEN,
+  )
+}
+
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   await ensureCopilotCliInstalled()
 
+  if (!hasCopilotTokenInEnvironment()) {
+    throw new Error(
+      [
+        'Copilot authentication token is missing.',
+        'Set one of COPILOT_GITHUB_TOKEN, GH_TOKEN, or GITHUB_TOKEN in the workflow environment,',
+        'before starting clank8y.',
+      ].join(' '),
+    )
+  }
+
   const context = getPullRequestReviewContext()
   const client = new CopilotClient({
-    githubToken: context.copilotToken,
     useLoggedInUser: false,
   })
 

@@ -1,8 +1,8 @@
 import * as core from '@actions/core'
+import { reviewPullRequest } from './agents'
 
 async function startClank8y(): Promise<void> {
-
-  // TODO: setup copilot and review the pull request
+  await reviewPullRequest({})
 }
 
 startClank8y().catch((error: unknown) => {

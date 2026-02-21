@@ -148,6 +148,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub Action input names kebab-case (`copilot-token`, `github-token`, `prompt-context`) and map them via `core.getInput(...)`.
 - `prompt-context` is additive: insert user context into the base prompt, never replace the entire default prompt.
 - For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
+- Keep GitHub Action input names kebab-case (`github-token`, `prompt-context`) and map them via `core.getInput(...)`.
+- Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 
 ### Common Mistakes to Avoid
 

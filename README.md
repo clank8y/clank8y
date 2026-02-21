@@ -40,13 +40,22 @@ The bot integrates with GitHub to analyze and review pull requests for Cumulocit
 
 The action accepts the following inputs:
 
-- `copilot-token` (required): token for Copilot SDK PR review requests
 - `github-token` (required): token used to create the Octokit client
 - `prompt-context` (optional): extra context inserted into the default review prompt
 
 `prompt-context` is additive and does not replace the built-in base prompt.
 
-#### Copilot token requirements (`copilot-token`)
+#### Copilot authentication (recommended: environment variables)
+
+For CI/CD, set one of these environment variables (priority order):
+
+- `COPILOT_GITHUB_TOKEN` (recommended)
+- `GH_TOKEN`
+- `GITHUB_TOKEN`
+
+The SDK reads these automatically. clank8y requires one of them to be set and fails fast if none is present.
+
+#### Token type and permissions
 
 Use a **user token** that can access Copilot APIs:
 
@@ -55,11 +64,24 @@ Use a **user token** that can access Copilot APIs:
 
 The token owner must have an active GitHub Copilot entitlement.
 
+For clank8y:
+
+- Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN` (or equivalent env var)
+- PR read/write operations are authenticated separately via `github-token` (usually `${{ secrets.GITHUB_TOKEN }}`)
+- Keep `permissions` in workflow at least `contents: read` and `pull-requests: write`
+
 You can create a fine-grained personal access token in GitHub:
 
 1. Go to GitHub **Settings → Developer settings → Personal access tokens → Fine-grained tokens**
 2. Generate a token for the org/repo where the action runs
 3. Save it as a repository or organization secret, for example: `COPILOT_GITHUB_TOKEN`
+
+Fine-grained PAT permissions for this token should be minimal:
+
+- Repository permissions: **Contents (read-only)**
+- Pull requests are handled by the separate `github-token` input, not by `COPILOT_GITHUB_TOKEN`
+
+In practice: for `COPILOT_GITHUB_TOKEN` you usually do **not** need extra write permissions. If GitHub requires you to pick a repository permission when creating the token, choose the smallest read-only option.
 
 #### GitHub API token (`github-token`)
 
@@ -89,13 +111,24 @@ jobs:
 
             - name: Run clank8y
                 uses: schplitt/clank8y@main
+                env:
+                    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
                 with:
-                    copilot-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
                     github-token: ${{ secrets.GITHUB_TOKEN }}
                     prompt-context: |
                         Prioritize breaking API changes and missing tests.
                         Treat security-sensitive changes as high priority.
 ```
+
+### Test in this repository (before publishing)
+
+This repository includes <.github/workflows/review.yml> to test the local action end-to-end:
+
+1. Add a repository secret named `COPILOT_GITHUB_TOKEN`
+2. Open or update a pull request (or run **Actions → PR Review → Run workflow**)
+3. The workflow builds `dist/` and runs `uses: ./` with Node 24
+
+If the run succeeds, clank8y should post a PR review using the MCP GitHub tools.
 
 ## Roadmap
 
