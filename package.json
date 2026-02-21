@@ -53,11 +53,14 @@
   "dependencies": {
     "@actions/core": "catalog:",
     "@actions/github": "catalog:",
+    "@github/copilot-sdk": "catalog:",
     "@tmcp/adapter-valibot": "catalog:",
     "@tmcp/transport-http": "catalog:",
     "changelogithub": "catalog:",
+    "defu": "catalog:",
     "octokit": "catalog:",
     "srvx": "catalog:",
+    "tinyexec": "catalog:",
     "tmcp": "catalog:",
     "valibot": "catalog:"
   },

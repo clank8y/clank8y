@@ -147,6 +147,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Add field-level guidance via `v.pipe(..., v.description(...))` so agents get better tool-usage hints.
 - Keep GitHub Action input names kebab-case (`copilot-token`, `github-token`, `prompt-context`) and map them via `core.getInput(...)`.
 - `prompt-context` is additive: insert user context into the base prompt, never replace the entire default prompt.
+- For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
 
 ### Common Mistakes to Avoid
 

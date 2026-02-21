@@ -46,6 +46,57 @@ The action accepts the following inputs:
 
 `prompt-context` is additive and does not replace the built-in base prompt.
 
+#### Copilot token requirements (`copilot-token`)
+
+Use a **user token** that can access Copilot APIs:
+
+- ✅ Supported: OAuth user tokens (`gho_`, `ghu_`) or fine-grained PAT (`github_pat_`)
+- ❌ Not supported: classic PAT (`ghp_`)
+
+The token owner must have an active GitHub Copilot entitlement.
+
+You can create a fine-grained personal access token in GitHub:
+
+1. Go to GitHub **Settings → Developer settings → Personal access tokens → Fine-grained tokens**
+2. Generate a token for the org/repo where the action runs
+3. Save it as a repository or organization secret, for example: `COPILOT_GITHUB_TOKEN`
+
+#### GitHub API token (`github-token`)
+
+Use the standard GitHub Actions token for repo API calls unless you need broader access:
+
+- Recommended: `${{ secrets.GITHUB_TOKEN }}`
+
+#### Example workflow
+
+```yaml
+name: clank8y-review
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pull-requests: write
+
+jobs:
+    review:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Run clank8y
+                uses: schplitt/clank8y@main
+                with:
+                    copilot-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+                    github-token: ${{ secrets.GITHUB_TOKEN }}
+                    prompt-context: |
+                        Prioritize breaking API changes and missing tests.
+                        Treat security-sensitive changes as high priority.
+```
+
 ## Roadmap
 
 ### POC (required now)
