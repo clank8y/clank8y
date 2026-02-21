@@ -16,31 +16,8 @@ interface CachedDiff {
   toc: string
 }
 
-const GITHUB_MCP_TOOL_NAMES = [
-  'get-pull-request',
-  'get-pull-request-files',
-  'create-pull-request-review',
-  'get-pull-request-diff',
-  'read-pull-request-diff-chunk',
-  'get-pull-request-file-content',
-] as const
-
-export function getGithubMcpToolNames(): string[] {
-  return [...GITHUB_MCP_TOOL_NAMES]
-}
-
 function logMcp(message: string): void {
   core.info(`[clank8y][mcp] ${message}`)
-}
-
-function toReachableLoopbackUrl(url: string): string {
-  return url
-    .replace('http://[::]:', 'http://localhost:')
-    .replace('http://0.0.0.0:', 'http://localhost:')
-}
-
-function createMcpEndpointUrl(baseUrl: string): string {
-  return new URL('mcp/', baseUrl).toString()
 }
 
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
@@ -240,9 +217,8 @@ function createGitHubMCP(): LocalMCPServer {
         await server.close()
         throw new Error('Failed to start GitHub MCP server')
       }
-      const reachableUrl = toReachableLoopbackUrl(url)
-      status = { state: 'running', url: reachableUrl }
-      return createMcpEndpointUrl(reachableUrl)
+      status = { state: 'running', url }
+      return url
     },
     stop: async () => {
       await server.close()
@@ -257,6 +233,11 @@ export const mcp = new McpServer({
   version: '1.0.0',
 }, {
   adapter: new ValibotJsonSchemaAdapter(),
+  capabilities: {
+    tools: {
+      listChanged: true,
+    },
+  },
 })
 
 mcp.tool({
