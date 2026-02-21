@@ -1,4 +1,4 @@
-import { getGithubMcpToolNames, githubMCP } from './github'
+import { githubMCP } from './github'
 
 export interface LocalMCPServer {
   readonly status: {
@@ -22,8 +22,4 @@ export function mcpServers() {
   return {
     github,
   }
-}
-
-export function githubMcpToolNames(): string[] {
-  return getGithubMcpToolNames()
 }

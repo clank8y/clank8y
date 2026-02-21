@@ -6,7 +6,7 @@ import process from 'node:process'
 import { CopilotClient } from '@github/copilot-sdk'
 import { x } from 'tinyexec'
 import { getPullRequestReviewContext } from '../setup'
-import { githubMcpToolNames, mcpServers } from '../mcp'
+import { mcpServers } from '../mcp'
 
 function logInfo(message: string): void {
   const now = new Date().toISOString()
@@ -222,9 +222,6 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     logInfo('Starting GitHub MCP server...')
     const githubMCPUrl = await github.start()
     logInfo(`GitHub MCP server ready at ${githubMCPUrl}`)
-
-    const expectedMcpTools = githubMcpToolNames()
-    logInfo(`Expected GitHub MCP tools: ${expectedMcpTools.join(', ')}`)
 
     try {
       try {
