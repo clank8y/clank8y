@@ -134,17 +134,6 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     useLoggedInUser: false,
   })
 
-  const authStatus = await client.getAuthStatus()
-  logInfo(`Copilot auth status: type=${authStatus.authType ?? 'unknown'} authenticated=${authStatus.isAuthenticated}`)
-
-  const models = await client.listModels()
-  const modelIds = models.map((model) => model.id)
-  logInfo(`Available Copilot models (${modelIds.length}): ${modelIds.join(', ')}`)
-
-  if (!modelIds.includes(configuredModel)) {
-    throw new Error(`Configured model '${configuredModel}' is not available for this token/account.`)
-  }
-
   const {
     github,
   } = mcpServers()
@@ -155,6 +144,21 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     logInfo(`GitHub MCP server ready at ${githubMCPUrl}`)
 
     try {
+      logInfo('Starting Copilot client connection...')
+      await client.start()
+      logInfo(`Copilot client state: ${client.getState()}`)
+
+      const authStatus = await client.getAuthStatus()
+      logInfo(`Copilot auth status: type=${authStatus.authType ?? 'unknown'} authenticated=${authStatus.isAuthenticated}`)
+
+      const models = await client.listModels()
+      const modelIds = models.map((model) => model.id)
+      logInfo(`Available Copilot models (${modelIds.length}): ${modelIds.join(', ')}`)
+
+      if (!modelIds.includes(configuredModel)) {
+        throw new Error(`Configured model '${configuredModel}' is not available for this token/account.`)
+      }
+
       logInfo('Creating Copilot client session...')
       const session = await client.createSession({
         model: configuredModel,
