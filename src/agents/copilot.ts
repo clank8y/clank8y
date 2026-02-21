@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import type { PullReviewAgentFactory } from '.'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -123,9 +124,11 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   } = mcpServers()
 
   return async () => {
+    console.log('Starting GitHub Copilot MCP server...')
     const githubMCPUrl = await github.start()
 
     try {
+      console.log('Starting Copilot client session...')
       const session = await client.createSession({
         model: 'gpt-5.3-codex',
         mcpServers: {
@@ -138,7 +141,20 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
         },
       })
 
+      session.on('assistant.message', (message) => {
+        console.log(`🤖 Clank8y said: ${message.data.content}`)
+      })
+
+      session.on('assistant.intent', (intent) => {
+        console.log(`🤖 Clank8y wants to: ${intent.data.intent}`)
+      })
+
+      session.on('tool.execution_start', (event) => {
+        console.log(`🤖 Clank8y used: ${event.data.toolName}`)
+      })
+
       try {
+        console.log(`🤖 Clank8y is getting to work...`)
         await session.sendAndWait({
           prompt: context.prompt,
         }, 300_000)
