@@ -111,6 +111,8 @@ function hasCopilotTokenInEnvironment(): boolean {
 }
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
+  const configuredModel = 'gpt-5.3-codex'
+
   logInfo('Preparing GitHub Copilot review agent...')
   const cliPath = await ensureCopilotCliInstalled()
 
@@ -132,6 +134,17 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     useLoggedInUser: false,
   })
 
+  const authStatus = await client.getAuthStatus()
+  logInfo(`Copilot auth status: type=${authStatus.authType ?? 'unknown'} authenticated=${authStatus.isAuthenticated}`)
+
+  const models = await client.listModels()
+  const modelIds = models.map((model) => model.id)
+  logInfo(`Available Copilot models (${modelIds.length}): ${modelIds.join(', ')}`)
+
+  if (!modelIds.includes(configuredModel)) {
+    throw new Error(`Configured model '${configuredModel}' is not available for this token/account.`)
+  }
+
   const {
     github,
   } = mcpServers()
@@ -144,7 +157,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     try {
       logInfo('Creating Copilot client session...')
       const session = await client.createSession({
-        model: 'gpt-5.3-codex',
+        model: configuredModel,
         mcpServers: {
           github: {
             type: 'http',
@@ -155,6 +168,10 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
         },
       })
       logInfo(`Copilot session created: ${session.sessionId}`)
+
+      session.on((event) => {
+        logInfo(`session.event: ${event.type}`)
+      })
 
       session.on('assistant.message', (message) => {
         logInfo(`assistant.message: ${message.data.content}`)

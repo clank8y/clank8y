@@ -15,6 +15,12 @@ interface CachedDiff {
   toc: string
 }
 
+function toReachableLoopbackUrl(url: string): string {
+  return url
+    .replace('http://[::]:', 'http://localhost:')
+    .replace('http://0.0.0.0:', 'http://localhost:')
+}
+
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
 const DIFF_CHUNK_MAX_LIMIT = 400
 
@@ -180,8 +186,9 @@ function createGitHubMCP(): LocalMCPServer {
         await server.close()
         throw new Error('Failed to start GitHub MCP server')
       }
-      status = { state: 'running', url }
-      return `${url}mcp`
+      const reachableUrl = toReachableLoopbackUrl(url)
+      status = { state: 'running', url: reachableUrl }
+      return `${reachableUrl}mcp`
     },
     stop: async () => {
       await server.close()
