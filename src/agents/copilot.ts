@@ -125,7 +125,7 @@ function resolveCopilotGithubTokenFromEnvironment(): string {
 }
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
-  const configuredModel = 'claude-haiku-4.5'
+  const configuredModel = options.model ?? 'claude-haiku-4.5'
 
   logInfo('Preparing GitHub Copilot review agent...')
   const cliPath = await ensureCopilotCliInstalled()
@@ -276,7 +276,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
         logInfo('Sending prompt to Copilot and waiting for completion...')
         const response = await session.sendAndWait({
           prompt: context.prompt,
-        }, 300_000)
+        }, options.timeOutMs)
 
         if (response?.data.content) {
           logInfo(`Final assistant response received (${response.data.content.length} chars).`)
