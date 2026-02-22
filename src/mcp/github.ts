@@ -56,12 +56,12 @@ function buildReviewBody(rawBody: string | undefined, workflowRun: WorkflowRunCo
   const cumulocityUrl = 'https://cumulocity.com'
 
   const footerLinks = [
-    `<a href="${clank8yRepoUrl}">clank8y</a>`,
-    `<a href="${cumulocityUrl}">cumulocity</a>`,
+    `<a href="${clank8yRepoUrl}" target="_blank" rel="noopener noreferrer">clank8y</a>`,
+    `<a href="${cumulocityUrl}" target="_blank" rel="noopener noreferrer">cumulocity</a>`,
   ]
 
   if (workflowRun) {
-    footerLinks.push(`<a href="${workflowRun.url}">workflow run</a>`)
+    footerLinks.push(`<a href="${workflowRun.url}" target="_blank" rel="noopener noreferrer">workflow run</a>`)
   }
 
   return [
