@@ -105,7 +105,9 @@ name: clank8y-review
 
 on:
     pull_request:
-        types: [opened, synchronize, reopened]
+        types: [opened, reopened]
+    issue_comment:
+        types: [created]
     workflow_dispatch:
 
 permissions:
@@ -134,8 +136,10 @@ jobs:
 This repository includes <.github/workflows/review.yml> to test the local action end-to-end:
 
 1. Add a repository secret named `COPILOT_GITHUB_TOKEN`
-2. Open or update a pull request (or run **Actions → PR Review → Run workflow**)
-3. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
+2. Open or reopen a pull request for automatic review
+3. To request another review on an existing PR, comment `/clank8y review`
+4. Or run **Actions → PR Review → Run workflow** manually
+5. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
 
 If the run succeeds, clank8y should post a PR review using the MCP GitHub tools.
 

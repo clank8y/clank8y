@@ -47,11 +47,38 @@ function validatePullRequestContext(
   }
 }
 
-function createPullRequestContext(
-): PullRequestContext {
-  validatePullRequestContext(github.context)
+async function createPullRequestContext(
+): Promise<PullRequestContext> {
+  if (github.context.payload.pull_request) {
+    validatePullRequestContext(github.context)
 
-  const pr = github.context.payload.pull_request
+    const pr = github.context.payload.pull_request
+
+    return {
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      number: pr.number,
+      headSha: pr.head.sha,
+      headRef: pr.head.ref,
+      baseSha: pr.base.sha,
+      baseRef: pr.base.ref,
+    }
+  }
+
+  const issueNumber = github.context.payload.issue?.number
+  const hasPullRequestReference = !!github.context.payload.issue?.pull_request
+
+  if (!hasPullRequestReference || typeof issueNumber !== 'number') {
+    throw new Error('This action must run in a pull_request context or issue_comment on a pull request')
+  }
+
+  const githubToken = core.getInput('github-token', { required: true })
+  const octokit = github.getOctokit(githubToken)
+  const { data: pr } = await octokit.rest.pulls.get({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    pull_number: issueNumber,
+  })
 
   return {
     owner: github.context.repo.owner,
@@ -72,10 +99,11 @@ export interface PullRequestReviewContext {
 }
 
 let _config: PullRequestReviewContext | null = null
+let _configPromise: Promise<PullRequestReviewContext> | null = null
 
-function createPullRequestReviewContext(
-): PullRequestReviewContext {
-  const pullRequest = createPullRequestContext()
+async function createPullRequestReviewContext(
+): Promise<PullRequestReviewContext> {
+  const pullRequest = await createPullRequestContext()
   const githubToken = core.getInput('github-token', { required: true })
   const promptContext = core.getInput('prompt-context').trim()
 
@@ -87,11 +115,15 @@ function createPullRequestReviewContext(
   }
 }
 
-export function getPullRequestReviewContext(): PullRequestReviewContext {
+export async function getPullRequestReviewContext(): Promise<PullRequestReviewContext> {
   if (_config) {
     return _config
   }
 
-  _config = createPullRequestReviewContext()
+  if (!_configPromise) {
+    _configPromise = createPullRequestReviewContext()
+  }
+
+  _config = await _configPromise
   return _config
 }

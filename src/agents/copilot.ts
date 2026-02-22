@@ -144,7 +144,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const githubToken = resolveCopilotGithubTokenFromEnvironment()
   logInfo('Using explicit GitHub token for Copilot SDK authentication.')
 
-  const context = getPullRequestReviewContext()
+  const context = await getPullRequestReviewContext()
   logInfo(`Review target: ${context.pullRequest.owner}/${context.pullRequest.repo}#${context.pullRequest.number}`)
   const client = new CopilotClient({
     cliPath,
