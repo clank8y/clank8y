@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import process from 'node:process'
 import { buildReviewPrompt } from './prompt'
 
 export type GitHubActionContext = Pick<typeof github.context, 'repo' | 'payload'>
@@ -28,6 +29,11 @@ export interface PullRequestContext {
   headRef: string
   baseSha: string
   baseRef: string
+}
+
+export interface WorkflowRunContext {
+  id: number
+  url: string
 }
 
 function validatePullRequestContext(
@@ -93,6 +99,7 @@ async function createPullRequestContext(
 
 export interface PullRequestReviewContext {
   pullRequest: PullRequestContext
+  workflowRun: WorkflowRunContext | null
   githubToken: string
   promptContext: string
   prompt: string
@@ -104,14 +111,36 @@ let _configPromise: Promise<PullRequestReviewContext> | null = null
 async function createPullRequestReviewContext(
 ): Promise<PullRequestReviewContext> {
   const pullRequest = await createPullRequestContext()
+  const workflowRun = createWorkflowRunContext()
   const githubToken = core.getInput('github-token', { required: true })
   const promptContext = core.getInput('prompt-context').trim()
 
   return {
     pullRequest,
+    workflowRun,
     githubToken,
     promptContext,
     prompt: buildReviewPrompt(promptContext),
+  }
+}
+
+function createWorkflowRunContext(): WorkflowRunContext | null {
+  const runIdValue = process.env.GITHUB_RUN_ID
+  if (!runIdValue) {
+    return null
+  }
+
+  const runId = Number.parseInt(runIdValue, 10)
+  if (Number.isNaN(runId)) {
+    return null
+  }
+
+  const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com'
+  const { owner, repo } = github.context.repo
+
+  return {
+    id: runId,
+    url: `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`,
   }
 }
 

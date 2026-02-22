@@ -1,4 +1,4 @@
-name: PR Review
+name: Clank8y
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   review:
-    name: Run clank8y review
+    name: Review
     if: >-
       github.event_name != 'issue_comment'
       || github.event.issue.pull_request
@@ -51,6 +51,3 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          prompt-context: |
-            Prioritize breaking API changes and missing tests.
-            Treat security-sensitive changes as high priority.

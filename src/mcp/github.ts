@@ -1,32 +1,40 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import type { LocalMCPServer } from '.'
 import { Buffer } from 'node:buffer'
-import * as core from '@actions/core'
 import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
 import { getPullRequestReviewContext } from '../setup'
+import type { WorkflowRunContext } from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
 import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
+import { encode } from '@toon-format/toon'
+import { consola } from 'consola'
 
 interface CachedDiff {
   content: string
   toc: string
 }
 
-function logMcp(message: string): void {
-  core.info(`[clank8y][mcp] ${message}`)
-}
-
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
 const DIFF_CHUNK_MAX_LIMIT = 400
+const DIFF_CHUNK_MAX_CHARS = 30_000
+const FILE_CHUNK_DEFAULT_LIMIT = 200
+const FILE_CHUNK_MAX_LIMIT = 400
+const FILE_CHUNK_MAX_CHARS = 30_000
+const FILE_FULL_MAX_LINES = 250
+const FILE_FULL_MAX_CHARS = 20_000
 
 let _githubMCP: LocalMCPServer | null = null
 const prDiffCache = new Map<string, CachedDiff>()
+
+function logToolInput(toolName: string, input: unknown): void {
+  consola.info(`${toolName}: ${JSON.stringify(input ?? {})}`)
+}
 
 async function getDiffCacheKey(): Promise<string> {
   const pullRequest = (await getPullRequestReviewContext()).pullRequest
@@ -47,15 +55,24 @@ function normalizeEscapedNewlines(text: string): string {
   })
 }
 
-function buildReviewBody(rawBody: string | undefined): string {
+function buildReviewBody(rawBody: string | undefined, workflowRun: WorkflowRunContext | null): string {
   const normalizedBody = (rawBody ?? '').trim()
   const clank8yRepoUrl = 'https://github.com/schplitt/clank8y'
   const cumulocityUrl = 'https://cumulocity.com'
 
+  const footerLinks = [
+    `<a href="${clank8yRepoUrl}" target="_blank" rel="noopener noreferrer">clank8y</a>`,
+    `<a href="${cumulocityUrl}" target="_blank" rel="noopener noreferrer">cumulocity</a>`,
+  ]
+
+  if (workflowRun) {
+    footerLinks.push(`<a href="${workflowRun.url}" target="_blank" rel="noopener noreferrer">workflow run</a>`)
+  }
+
   return [
     normalizedBody || '_No summary provided._',
     '',
-    `<sub><a href="${clank8yRepoUrl}">clank8y</a> | <a href="${cumulocityUrl}">cumulocity</a></sub>`,
+    `<sub>${footerLinks.join(' | ')}</sub>`,
   ].join('\n')
 }
 
@@ -130,13 +147,13 @@ function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
       const code = line.slice(1)
 
       if (marker === '-') {
-        output.push(`| ${padNum(oldLine)} | ---- | DEL | ${code}`)
+        output.push(`| ${padNum(oldLine)} | ---- | - | ${code}`)
         oldLine += 1
       } else if (marker === '+') {
-        output.push(`| ---- | ${padNum(newLine)} | ADD | ${code}`)
+        output.push(`| ---- | ${padNum(newLine)} | + | ${code}`)
         newLine += 1
       } else {
-        output.push(`| ${padNum(oldLine)} | ${padNum(newLine)} | CTX | ${code}`)
+        output.push(`| ${padNum(oldLine)} | ${padNum(newLine)} |   | ${code}`)
         oldLine += 1
         newLine += 1
       }
@@ -187,18 +204,11 @@ function createGitHubMCP(): LocalMCPServer {
     manual: true,
     port: 0, // Use a random available port
     fetch: async (req) => {
-      const startedAt = Date.now()
-      const url = new URL(req.url)
-
-      logMcp(`HTTP ${req.method} ${url.pathname}${url.search}`)
-
       const response = await transport.respond(req)
       if (!response) {
-        logMcp(`HTTP ${req.method} ${url.pathname} -> 404 (${Date.now() - startedAt}ms)`)
         return new FastResponse('Not found', { status: 404 })
       }
 
-      logMcp(`HTTP ${req.method} ${url.pathname} -> ${response.status} (${Date.now() - startedAt}ms)`)
       return response
     },
   })
@@ -241,60 +251,77 @@ export const mcp = new McpServer({
   },
 })
 
-const getPullRequestTool = defineTool({
-  name: 'get-pull-request',
-  description: 'Get metadata for the current pull request',
-  title: 'Get Pull Request',
+const preparePullRequestReviewTool = defineTool({
+  name: 'prepare-pull-request-review',
+  description: 'Single entrypoint for review setup: PR metadata, file summary, and diff TOC with chunk-read instructions',
+  title: 'Prepare Pull Request Review',
 }, async () => {
   try {
+    logToolInput('prepare-pull-request-review', {})
     const octokit = getOctokit()
     const pullRequest = (await getPullRequestReviewContext()).pullRequest
 
-    const { data: pr } = await octokit.rest.pulls.get({
-      owner: pullRequest.owner,
-      repo: pullRequest.repo,
-      pull_number: pullRequest.number,
-    })
+    const [{ data: pr }, files] = await Promise.all([
+      octokit.rest.pulls.get({
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        pull_number: pullRequest.number,
+      }),
+      fetchAllPullRequestFiles(),
+    ])
+
+    const diff = formatFilesWithLineNumbers(files)
+    const cacheKey = await getDiffCacheKey()
+    prDiffCache.set(cacheKey, diff)
+
+    const totalDiffLines = diff.content.split('\n').length
+    const fileSummaries = files.map((file) => ({
+      path: file.filename,
+      status: file.status,
+      additions: file.additions,
+      deletions: file.deletions,
+      hasPatch: !!file.patch,
+    }))
 
     return tool.structured({
-      number: pr.number,
-      title: pr.title,
-      body: pr.body,
-      state: pr.state,
-      draft: pr.draft,
-      merged: pr.merged,
-      url: pr.html_url,
-      author: pr.user?.login ?? null,
-      base: {
-        ref: pr.base.ref,
-        sha: pr.base.sha,
+      pullRequest: {
+        number: pr.number,
+        title: pr.title,
+        body: pr.body,
+        url: pr.html_url,
+        state: pr.state,
+        draft: pr.draft,
+        merged: pr.merged,
+        author: pr.user?.login ?? null,
+        base: {
+          ref: pr.base.ref,
+          sha: pr.base.sha,
+        },
+        head: {
+          ref: pr.head.ref,
+          sha: pr.head.sha,
+        },
+        labels: pr.labels.map((label) => typeof label === 'string' ? label : label.name),
+        assignees: pr.assignees?.map((assignee) => assignee.login) ?? [],
+        isFork: pr.head.repo?.full_name !== pr.base.repo.full_name,
       },
-      head: {
-        ref: pr.head.ref,
-        sha: pr.head.sha,
+      files: {
+        count: fileSummaries.length,
+        summary: fileSummaries,
       },
-      labels: pr.labels.map((label) => typeof label === 'string' ? label : label.name),
-      assignees: pr.assignees?.map((assignee) => assignee.login) ?? [],
+      diff: {
+        totalLines: totalDiffLines,
+        toc: diff.toc,
+      },
+      nextSteps: [
+        'Use read-pull-request-diff-chunk with small offset/limit windows, guided by TOC line ranges.',
+        'Use get-pull-request-file-content with offset/limit for relevant files only; avoid full=true unless required.',
+        'Submit findings with create-pull-request-review.',
+      ],
     } as any)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return tool.error(`Failed to load pull request metadata: ${message}`)
-  }
-})
-
-const getPullRequestFilesTool = defineTool({
-  name: 'get-pull-request-files',
-  description: 'Get the list of files changed in the current pull request',
-  title: 'Get Pull Request Files',
-}, async () => {
-  try {
-    const files = await fetchAllPullRequestFiles()
-    // now build markdown with the file names and their status (added, modified, removed) and deletions etc
-    const fileList = files.map((file) => `- \`${file.filename}\` (${file.status}, +${file.additions}/-${file.deletions})`).join('\n')
-    return tool.text(`The pull request changes the following files:\n\n${fileList}`)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return tool.error(`Failed to load pull request files: ${message}`)
+    return tool.error(`Failed to prepare pull request review context: ${message}`)
   }
 })
 
@@ -349,10 +376,12 @@ const createPullRequestReviewTool = defineTool({
   ),
 }, async ({ body, commit_id, comments }) => {
   try {
+    logToolInput('create-pull-request-review', { body, commit_id, comments })
     const octokit = getOctokit()
-    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const reviewContext = await getPullRequestReviewContext()
+    const pullRequest = reviewContext.pullRequest
     const reviewCommentsInput = comments ?? []
-    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body))
+    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body), reviewContext.workflowRun)
 
     let commitSha = commit_id
     if (!commitSha) {
@@ -416,40 +445,17 @@ const createPullRequestReviewTool = defineTool({
 
     const result = await octokit.rest.pulls.createReview(params)
 
-    return tool.text(JSON.stringify({
+    return tool.text(encode({
       success: true,
       review_id: result.data.id,
       state: result.data.state,
       url: result.data.html_url,
       submitted_at: result.data.submitted_at,
       comment_count: apiComments.length,
-    }, null, 2))
+    }))
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return tool.error(`Failed to create pull request review: ${message}`)
-  }
-})
-
-const getPullRequestDiffTool = defineTool({
-  name: 'get-pull-request-diff',
-  description: 'Build and cache a formatted pull request diff with line numbers and a TOC',
-  title: 'Get Pull Request Diff',
-}, async () => {
-  try {
-    const diff = await getOrBuildPullRequestDiff()
-    const totalLines = diff.content.split('\n').length
-
-    return tool.text([
-      'Prepared pull request diff.',
-      `Total lines: ${totalLines}`,
-      '',
-      'Use `read-pull-request-diff-chunk` with `offset` + `limit` to read this diff in chunks.',
-      '',
-      diff.toc,
-    ].join('\n'))
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return tool.error(`Failed to prepare pull request diff: ${message}`)
   }
 })
 
@@ -472,6 +478,7 @@ const readPullRequestDiffChunkTool = defineTool({
   ),
 }, async ({ offset, limit }) => {
   try {
+    logToolInput('read-pull-request-diff-chunk', { offset, limit })
     const diff = await getOrBuildPullRequestDiff()
     const lines = diff.content.split('\n')
     const totalLines = lines.length
@@ -482,7 +489,10 @@ const readPullRequestDiffChunkTool = defineTool({
     const normalizedLimit = Math.max(1, Math.min(DIFF_CHUNK_MAX_LIMIT, requestedLimit))
     const endLine = Math.min(totalLines, startLine + normalizedLimit - 1)
 
-    const chunk = lines.slice(startLine - 1, endLine).join('\n')
+    const rawChunk = lines.slice(startLine - 1, endLine).join('\n')
+    const chunk = rawChunk.length > DIFF_CHUNK_MAX_CHARS
+      ? `${rawChunk.slice(0, DIFF_CHUNK_MAX_CHARS)}\n\n[truncated: chunk exceeded ${DIFF_CHUNK_MAX_CHARS} characters]`
+      : rawChunk
 
     return tool.text([
       `Diff chunk ${startLine}-${endLine} of ${totalLines}`,
@@ -496,10 +506,9 @@ const readPullRequestDiffChunkTool = defineTool({
   }
 })
 
-// now a mcp tool to get each individual file content to review it with the diff
 const getPullRequestFileContentTool = defineTool({
   name: 'get-pull-request-file-content',
-  description: 'Get the content of a specific file changed in the current pull request',
+  description: 'Get content for a changed pull request file, with chunked reads by default',
   title: 'Get Pull Request File Content',
   schema: v.pipe(
     v.object({
@@ -507,11 +516,24 @@ const getPullRequestFileContentTool = defineTool({
         v.string(),
         v.description('Path of a file changed in the current pull request.'),
       ),
+      offset: v.optional(v.pipe(
+        v.number(),
+        v.description('1-based starting line number for chunked file reads. Defaults to 1.'),
+      )),
+      limit: v.optional(v.pipe(
+        v.number(),
+        v.description('Maximum number of lines to return for chunked reads. Defaults to 200 and is capped at 400.'),
+      )),
+      full: v.optional(v.pipe(
+        v.boolean(),
+        v.description('Return full file content when true. Allowed only for small files (max 250 lines and 20,000 characters).'),
+      )),
     }),
-    v.description('Arguments for fetching the head-version content of a changed pull request file.'),
+    v.description('Arguments for fetching the head-version content of a changed pull request file with optional chunking.'),
   ),
-}, async ({ filename }) => {
+}, async ({ filename, offset, limit, full }) => {
   try {
+    logToolInput('get-pull-request-file-content', { filename, offset, limit, full })
     const octokit = getOctokit()
     const pullRequest = (await getPullRequestReviewContext()).pullRequest
     const files = await fetchAllPullRequestFiles()
@@ -538,8 +560,38 @@ const getPullRequestFileContentTool = defineTool({
 
     const encoding = content.encoding === 'base64' ? 'base64' : 'utf-8'
     const decodedContent = Buffer.from(content.content, encoding).toString('utf-8')
+    const lines = decodedContent.split('\n')
+    const totalLines = lines.length
 
-    return tool.text(decodedContent)
+    if (full) {
+      if (totalLines > FILE_FULL_MAX_LINES || decodedContent.length > FILE_FULL_MAX_CHARS) {
+        return tool.error([
+          `Refusing full file read for ${filename}.`,
+          `Hard limits: <= ${FILE_FULL_MAX_LINES} lines and <= ${FILE_FULL_MAX_CHARS} characters.`,
+          `Actual: ${totalLines} lines, ${decodedContent.length} characters.`,
+          'Use chunked reads with offset + limit instead.',
+        ].join(' '))
+      }
+
+      return tool.text(decodedContent)
+    }
+
+    const requestedOffset = offset ?? 1
+    const startLine = Math.max(1, requestedOffset)
+    const requestedLimit = limit ?? FILE_CHUNK_DEFAULT_LIMIT
+    const normalizedLimit = Math.max(1, Math.min(FILE_CHUNK_MAX_LIMIT, requestedLimit))
+    const endLine = Math.min(totalLines, startLine + normalizedLimit - 1)
+    const rawChunk = lines.slice(startLine - 1, endLine).join('\n')
+    const chunk = rawChunk.length > FILE_CHUNK_MAX_CHARS
+      ? `${rawChunk.slice(0, FILE_CHUNK_MAX_CHARS)}\n\n[truncated: chunk exceeded ${FILE_CHUNK_MAX_CHARS} characters]`
+      : rawChunk
+
+    return tool.text([
+      `File chunk ${startLine}-${endLine} of ${totalLines} for ${filename}`,
+      `Remaining lines after this chunk: ${Math.max(0, totalLines - endLine)}`,
+      '',
+      chunk,
+    ].join('\n'))
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return tool.error(`Failed to load PR file content: ${message}`)
@@ -547,10 +599,8 @@ const getPullRequestFileContentTool = defineTool({
 })
 
 export const githubMcpTools = [
-  getPullRequestTool,
-  getPullRequestFilesTool,
+  preparePullRequestReviewTool,
   createPullRequestReviewTool,
-  getPullRequestDiffTool,
   readPullRequestDiffChunkTool,
   getPullRequestFileContentTool,
 ]

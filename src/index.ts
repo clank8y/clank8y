@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import { consola } from 'consola'
 import { reviewPullRequest } from './agents'
 import { getOctokit } from './gh'
 
@@ -14,13 +15,13 @@ async function acknowledgeIssueCommentIfNeeded(): Promise<boolean> {
 
   const commentBody = github.context.payload.comment?.body
   if (typeof commentBody !== 'string' || !isClank8yCommand(commentBody)) {
-    core.info('Issue comment event received without /clank8y command. Skipping review run.')
+    consola.info('Issue comment event received without /clank8y command. Skipping review run.')
     return false
   }
 
   const commentId = github.context.payload.comment?.id
   if (typeof commentId !== 'number') {
-    core.warning('Could not acknowledge /clank8y command: missing issue comment id.')
+    consola.warn('Could not acknowledge /clank8y command: missing issue comment id.')
     return true
   }
 
@@ -33,7 +34,6 @@ async function acknowledgeIssueCommentIfNeeded(): Promise<boolean> {
     content: 'eyes',
   })
 
-  core.info('Detected /clank8y command and added 👀 reaction.')
   return true
 }
 
