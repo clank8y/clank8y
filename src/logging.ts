@@ -26,7 +26,7 @@ function formatTable(headers: string[], values: string[]): string {
 }
 
 export function logUsageSummary(totals: UsageTotals): void {
-  consola.log(formatTable(
+  console.log(formatTable(
     ['Cost', 'Input', 'Cache Read', 'Cache Write', 'Output'],
     [
       `$${totals.cost.toFixed(4)}`,
@@ -43,7 +43,8 @@ export function logAgentMessage(info: {
   model: string
 }, lines: string | string[]): void {
   const msg = Array.isArray(lines) ? lines.join('\n') : lines
-  consola.box(msg, {
-    title: `${info.agent} -- ${info.model}`,
+  consola.box({
+    title: ` ${info.agent} - ${info.model} `,
+    message: msg,
   })
 }
