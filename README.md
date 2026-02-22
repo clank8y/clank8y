@@ -70,7 +70,7 @@ For clank8y:
 
 - Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN` (or equivalent env var)
 - PR read/write operations are authenticated separately via `github-token` (usually `${{ secrets.GITHUB_TOKEN }}`)
-- Keep `permissions` in workflow at least `contents: read` and `pull-requests: write`
+- Keep `permissions` in workflow at least `contents: read`, `pull-requests: write`, and `issues: write` (required for command acknowledgment reaction)
 
 You can create a fine-grained personal access token in GitHub:
 
@@ -113,6 +113,7 @@ on:
 permissions:
     contents: read
     pull-requests: write
+    issues: write
 
 jobs:
     review:
@@ -137,7 +138,7 @@ This repository includes <.github/workflows/review.yml> to test the local action
 
 1. Add a repository secret named `COPILOT_GITHUB_TOKEN`
 2. Open or reopen a pull request for automatic review
-3. To request another review on an existing PR, comment `/clank8y review`
+3. To request another review on an existing PR, comment `/clank8y` (clank8y acknowledges with 👀)
 4. Or run **Actions → PR Review → Run workflow** manually
 5. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
 
