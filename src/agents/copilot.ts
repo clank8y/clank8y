@@ -191,7 +191,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       }
 
       const session = await client.createSession({
-        disabledSkills: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash'/* , 'report_intent' */, 'sql', 'stop_bash'/* , 'task' */, 'view', 'web_fetch', 'write_bash'],
+        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash'/* , 'report_intent' */, 'sql', 'stop_bash'/* , 'task' */, 'view', 'web_fetch', 'write_bash'],
         model,
         mcpServers: {
           github: {
@@ -222,10 +222,6 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
         totals.cacheReadTokens += usage.data.cacheReadTokens ?? 0
         totals.cacheWriteTokens += usage.data.cacheWriteTokens ?? 0
         totals.cost += usage.data.cost ?? 0
-      })
-
-      session.on('tool.execution_start', (event) => {
-        consola.info(`tool: ${event.data.mcpToolName ?? event.data.toolName}`)
       })
 
       try {

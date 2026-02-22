@@ -13,6 +13,7 @@ import * as v from 'valibot'
 import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
 import { encode } from '@toon-format/toon'
+import { consola } from 'consola'
 
 interface CachedDiff {
   content: string
@@ -30,6 +31,10 @@ const FILE_FULL_MAX_CHARS = 20_000
 
 let _githubMCP: LocalMCPServer | null = null
 const prDiffCache = new Map<string, CachedDiff>()
+
+function logToolInput(toolName: string, input: unknown): void {
+  consola.info(`${toolName}: ${JSON.stringify(input ?? {})}`)
+}
 
 async function getDiffCacheKey(): Promise<string> {
   const pullRequest = (await getPullRequestReviewContext()).pullRequest
@@ -252,6 +257,7 @@ const preparePullRequestReviewTool = defineTool({
   title: 'Prepare Pull Request Review',
 }, async () => {
   try {
+    logToolInput('prepare-pull-request-review', {})
     const octokit = getOctokit()
     const pullRequest = (await getPullRequestReviewContext()).pullRequest
 
@@ -370,6 +376,7 @@ const createPullRequestReviewTool = defineTool({
   ),
 }, async ({ body, commit_id, comments }) => {
   try {
+    logToolInput('create-pull-request-review', { body, commit_id, comments })
     const octokit = getOctokit()
     const reviewContext = await getPullRequestReviewContext()
     const pullRequest = reviewContext.pullRequest
@@ -471,6 +478,7 @@ const readPullRequestDiffChunkTool = defineTool({
   ),
 }, async ({ offset, limit }) => {
   try {
+    logToolInput('read-pull-request-diff-chunk', { offset, limit })
     const diff = await getOrBuildPullRequestDiff()
     const lines = diff.content.split('\n')
     const totalLines = lines.length
@@ -525,6 +533,7 @@ const getPullRequestFileContentTool = defineTool({
   ),
 }, async ({ filename, offset, limit, full }) => {
   try {
+    logToolInput('get-pull-request-file-content', { filename, offset, limit, full })
     const octokit = getOctokit()
     const pullRequest = (await getPullRequestReviewContext()).pullRequest
     const files = await fetchAllPullRequestFiles()
