@@ -1,4 +1,4 @@
-import { consola } from 'consola'
+import { box } from 'consola/utils'
 
 export interface RunLoggerContext {
   repository: string
@@ -43,8 +43,10 @@ export function logAgentMessage(info: {
   model: string
 }, lines: string | string[]): void {
   const msg = Array.isArray(lines) ? lines.join('\n') : lines
-  consola.box({
+  console.log(box(msg, {
     title: ` ${info.agent} - ${info.model} `,
-    message: msg,
-  })
+    style: {
+      borderStyle: 'double',
+    },
+  }))
 }
