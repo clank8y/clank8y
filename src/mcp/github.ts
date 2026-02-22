@@ -194,8 +194,10 @@ function createGitHubMCP(): LocalMCPServer {
         await server.close()
         throw new Error('Failed to start GitHub MCP server')
       }
-      status = { state: 'running', url }
-      return { url, toolNames: githubMcpTools.map((tool) => tool.name) }
+      const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
+
+      status = { state: 'running', url: actualUrl }
+      return { url: actualUrl, toolNames: githubMcpTools.map((tool) => tool.name) }
     },
     stop: async () => {
       await server.close()

@@ -159,7 +159,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
 
   return async () => {
     logInfo('Starting GitHub MCP server...')
-    const { url: githubMCPUrl, toolNames: githubToolNames } = await github.start()
+    const { url: githubMCPUrl } = await github.start()
     logInfo(`GitHub MCP server ready at ${githubMCPUrl}`)
 
     try {
@@ -184,7 +184,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
 
       logInfo('Creating Copilot client session...')
       const session = await client.createSession({
-        availableTools: githubToolNames,
+        disabledSkills: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash'/* , 'report_intent' */, 'sql', 'stop_bash'/* , 'task' */, 'view', 'web_fetch', 'write_bash'],
         model: configuredModel,
         mcpServers: {
           github: {
