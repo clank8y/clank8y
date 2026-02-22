@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import { buildReviewPrompt } from './prompt'
 
 export type GitHubActionContext = Pick<typeof github.context, 'repo' | 'payload'>
 
@@ -46,11 +47,38 @@ function validatePullRequestContext(
   }
 }
 
-function createPullRequestContext(
-): PullRequestContext {
-  validatePullRequestContext(github.context)
+async function createPullRequestContext(
+): Promise<PullRequestContext> {
+  if (github.context.payload.pull_request) {
+    validatePullRequestContext(github.context)
 
-  const pr = github.context.payload.pull_request
+    const pr = github.context.payload.pull_request
+
+    return {
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      number: pr.number,
+      headSha: pr.head.sha,
+      headRef: pr.head.ref,
+      baseSha: pr.base.sha,
+      baseRef: pr.base.ref,
+    }
+  }
+
+  const issueNumber = github.context.payload.issue?.number
+  const hasPullRequestReference = !!github.context.payload.issue?.pull_request
+
+  if (!hasPullRequestReference || typeof issueNumber !== 'number') {
+    throw new Error('This action must run in a pull_request context or issue_comment on a pull request')
+  }
+
+  const githubToken = core.getInput('github-token', { required: true })
+  const octokit = github.getOctokit(githubToken)
+  const { data: pr } = await octokit.rest.pulls.get({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    pull_number: issueNumber,
+  })
 
   return {
     owner: github.context.repo.owner,
@@ -65,54 +93,37 @@ function createPullRequestContext(
 
 export interface PullRequestReviewContext {
   pullRequest: PullRequestContext
-  copilotToken: string
   githubToken: string
   promptContext: string
   prompt: string
 }
 
-const DEFAULT_REVIEW_PROMPT = [
-  'You are reviewing a pull request for Cumulocity IoT (c8y).',
-  'Focus on correctness, security, maintainability, and test impact.',
-  'Prioritize concrete, actionable feedback.',
-].join('\n')
-
 let _config: PullRequestReviewContext | null = null
+let _configPromise: Promise<PullRequestReviewContext> | null = null
 
-function buildReviewPrompt(basePrompt: string, promptContext: string): string {
-  if (!promptContext) {
-    return basePrompt
-  }
-
-  return [
-    basePrompt,
-    '',
-    'Additional user context:',
-    promptContext,
-  ].join('\n')
-}
-
-function createPullRequestReviewContext(
-): PullRequestReviewContext {
-  const pullRequest = createPullRequestContext()
-  const copilotToken = core.getInput('copilot-token', { required: true })
+async function createPullRequestReviewContext(
+): Promise<PullRequestReviewContext> {
+  const pullRequest = await createPullRequestContext()
   const githubToken = core.getInput('github-token', { required: true })
   const promptContext = core.getInput('prompt-context').trim()
 
   return {
     pullRequest,
-    copilotToken,
     githubToken,
     promptContext,
-    prompt: buildReviewPrompt(DEFAULT_REVIEW_PROMPT, promptContext),
+    prompt: buildReviewPrompt(promptContext),
   }
 }
 
-export function getPullRequestReviewContext(): PullRequestReviewContext {
+export async function getPullRequestReviewContext(): Promise<PullRequestReviewContext> {
   if (_config) {
     return _config
   }
 
-  _config = createPullRequestReviewContext()
+  if (!_configPromise) {
+    _configPromise = createPullRequestReviewContext()
+  }
+
+  _config = await _configPromise
   return _config
 }

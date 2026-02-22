@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import type { LocalMCPServer } from '.'
 import { Buffer } from 'node:buffer'
+import * as core from '@actions/core'
 import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
@@ -9,10 +11,15 @@ import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
 import { HttpTransport } from '@tmcp/transport-http'
+import { defineTool } from 'tmcp/tool'
 
 interface CachedDiff {
   content: string
   toc: string
+}
+
+function logMcp(message: string): void {
+  core.info(`[clank8y][mcp] ${message}`)
 }
 
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
@@ -21,8 +28,8 @@ const DIFF_CHUNK_MAX_LIMIT = 400
 let _githubMCP: LocalMCPServer | null = null
 const prDiffCache = new Map<string, CachedDiff>()
 
-function getDiffCacheKey(): string {
-  const pullRequest = getPullRequestReviewContext().pullRequest
+async function getDiffCacheKey(): Promise<string> {
+  const pullRequest = (await getPullRequestReviewContext()).pullRequest
   return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`
 }
 
@@ -30,9 +37,31 @@ function padNum(n: number): string {
   return n.toString().padStart(4, ' ')
 }
 
+function normalizeEscapedNewlines(text: string): string {
+  return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
+    if (match === '\\r\\n') {
+      return '\r\n'
+    }
+
+    return '\n'
+  })
+}
+
+function buildReviewBody(rawBody: string | undefined): string {
+  const normalizedBody = (rawBody ?? '').trim()
+  const clank8yRepoUrl = 'https://github.com/schplitt/clank8y'
+  const cumulocityUrl = 'https://cumulocity.com'
+
+  return [
+    normalizedBody || '_No summary provided._',
+    '',
+    `<sub><a href="${clank8yRepoUrl}">clank8y</a> | <a href="${cumulocityUrl}">cumulocity</a></sub>`,
+  ].join('\n')
+}
+
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
   const octokit = getOctokit()
-  const pullRequest = getPullRequestReviewContext().pullRequest
+  const pullRequest = (await getPullRequestReviewContext()).pullRequest
 
   const allFiles: PRFiles = []
   let page = 1
@@ -130,7 +159,7 @@ function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
 }
 
 async function getOrBuildPullRequestDiff(): Promise<CachedDiff> {
-  const cacheKey = getDiffCacheKey()
+  const cacheKey = await getDiffCacheKey()
   const cachedDiff = prDiffCache.get(cacheKey)
   if (cachedDiff) {
     return cachedDiff
@@ -150,7 +179,6 @@ export function githubMCP(): LocalMCPServer {
 }
 
 function createGitHubMCP(): LocalMCPServer {
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
   const transport = new HttpTransport(mcp, {
     path: '/mcp',
   })
@@ -159,10 +187,18 @@ function createGitHubMCP(): LocalMCPServer {
     manual: true,
     port: 0, // Use a random available port
     fetch: async (req) => {
+      const startedAt = Date.now()
+      const url = new URL(req.url)
+
+      logMcp(`HTTP ${req.method} ${url.pathname}${url.search}`)
+
       const response = await transport.respond(req)
       if (!response) {
+        logMcp(`HTTP ${req.method} ${url.pathname} -> 404 (${Date.now() - startedAt}ms)`)
         return new FastResponse('Not found', { status: 404 })
       }
+
+      logMcp(`HTTP ${req.method} ${url.pathname} -> ${response.status} (${Date.now() - startedAt}ms)`)
       return response
     },
   })
@@ -180,8 +216,10 @@ function createGitHubMCP(): LocalMCPServer {
         await server.close()
         throw new Error('Failed to start GitHub MCP server')
       }
-      status = { state: 'running', url }
-      return url
+      const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
+
+      status = { state: 'running', url: actualUrl }
+      return { url: actualUrl, toolNames: githubMcpTools.map((tool) => tool.name) }
     },
     stop: async () => {
       await server.close()
@@ -196,16 +234,21 @@ export const mcp = new McpServer({
   version: '1.0.0',
 }, {
   adapter: new ValibotJsonSchemaAdapter(),
+  capabilities: {
+    tools: {
+      listChanged: true,
+    },
+  },
 })
 
-mcp.tool({
+const getPullRequestTool = defineTool({
   name: 'get-pull-request',
   description: 'Get metadata for the current pull request',
   title: 'Get Pull Request',
 }, async () => {
   try {
     const octokit = getOctokit()
-    const pullRequest = getPullRequestReviewContext().pullRequest
+    const pullRequest = (await getPullRequestReviewContext()).pullRequest
 
     const { data: pr } = await octokit.rest.pulls.get({
       owner: pullRequest.owner,
@@ -239,20 +282,13 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const getPullRequestFilesTool = defineTool({
   name: 'get-pull-request-files',
   description: 'Get the list of files changed in the current pull request',
   title: 'Get Pull Request Files',
 }, async () => {
   try {
-    const octokit = getOctokit()
-    const pullRequest = getPullRequestReviewContext().pullRequest
-
-    const { data: files } = await octokit.rest.pulls.listFiles({
-      owner: pullRequest.owner,
-      repo: pullRequest.repo,
-      pull_number: pullRequest.number,
-    })
+    const files = await fetchAllPullRequestFiles()
     // now build markdown with the file names and their status (added, modified, removed) and deletions etc
     const fileList = files.map((file) => `- \`${file.filename}\` (${file.status}, +${file.additions}/-${file.deletions})`).join('\n')
     return tool.text(`The pull request changes the following files:\n\n${fileList}`)
@@ -262,7 +298,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const createPullRequestReviewTool = defineTool({
   name: 'create-pull-request-review',
   description: 'Submit a review for the current pull request with optional inline comments',
   title: 'Create Pull Request Review',
@@ -314,19 +350,9 @@ mcp.tool({
 }, async ({ body, commit_id, comments }) => {
   try {
     const octokit = getOctokit()
-    const pullRequest = getPullRequestReviewContext().pullRequest
+    const pullRequest = (await getPullRequestReviewContext()).pullRequest
     const reviewCommentsInput = comments ?? []
-
-    for (const comment of reviewCommentsInput) {
-      const startLine = comment.start_line ?? comment.line
-      if (startLine > comment.line) {
-        return tool.error(`Invalid comment range for ${comment.path}: start_line must be <= line`)
-      }
-
-      if (!comment.body && !comment.suggestion) {
-        return tool.error(`Invalid comment for ${comment.path}:${comment.line}: either body or suggestion is required`)
-      }
-    }
+    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body))
 
     let commitSha = commit_id
     if (!commitSha) {
@@ -342,9 +368,9 @@ mcp.tool({
       const side = comment.side ?? 'RIGHT'
       const startLine = comment.start_line ?? comment.line
 
-      let commentBody = comment.body ?? ''
+      let commentBody = normalizeEscapedNewlines(comment.body ?? '')
       if (comment.suggestion !== undefined) {
-        const suggestionBlock = `\`\`\`suggestion\n${comment.suggestion}\n\`\`\``
+        const suggestionBlock = `\`\`\`suggestion\n${normalizeEscapedNewlines(comment.suggestion)}\n\`\`\``
         commentBody = commentBody
           ? `${commentBody}\n\n${suggestionBlock}`
           : suggestionBlock
@@ -383,9 +409,7 @@ mcp.tool({
       commit_id: commitSha,
     }
 
-    if (body !== undefined) {
-      params.body = body
-    }
+    params.body = reviewBody
     if (apiComments.length > 0) {
       params.comments = apiComments
     }
@@ -406,7 +430,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const getPullRequestDiffTool = defineTool({
   name: 'get-pull-request-diff',
   description: 'Build and cache a formatted pull request diff with line numbers and a TOC',
   title: 'Get Pull Request Diff',
@@ -429,7 +453,7 @@ mcp.tool({
   }
 })
 
-mcp.tool({
+const readPullRequestDiffChunkTool = defineTool({
   name: 'read-pull-request-diff-chunk',
   description: 'Read a line range from the cached pull request diff',
   title: 'Read Pull Request Diff Chunk',
@@ -473,7 +497,7 @@ mcp.tool({
 })
 
 // now a mcp tool to get each individual file content to review it with the diff
-mcp.tool({
+const getPullRequestFileContentTool = defineTool({
   name: 'get-pull-request-file-content',
   description: 'Get the content of a specific file changed in the current pull request',
   title: 'Get Pull Request File Content',
@@ -489,13 +513,8 @@ mcp.tool({
 }, async ({ filename }) => {
   try {
     const octokit = getOctokit()
-    const pullRequest = getPullRequestReviewContext().pullRequest
-
-    const { data: files } = await octokit.rest.pulls.listFiles({
-      owner: pullRequest.owner,
-      repo: pullRequest.repo,
-      pull_number: pullRequest.number,
-    })
+    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const files = await fetchAllPullRequestFiles()
 
     const file = files.find((f) => f.filename === filename)
     if (!file) {
@@ -526,3 +545,14 @@ mcp.tool({
     return tool.error(`Failed to load PR file content: ${message}`)
   }
 })
+
+export const githubMcpTools = [
+  getPullRequestTool,
+  getPullRequestFilesTool,
+  createPullRequestReviewTool,
+  getPullRequestDiffTool,
+  readPullRequestDiffChunkTool,
+  getPullRequestFileContentTool,
+]
+
+mcp.tools(githubMcpTools)

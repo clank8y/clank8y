@@ -15,9 +15,8 @@ interface PullRequestAgentConfiguration {
    */
   model?: string
   /**
-   * Time limit for output generation.
-   * When work is detected, the timeout is reset.
-   * @default 120_000 (2 minutes)
+   * Time limit for the entire pull request review process.
+   * @default 240_000 (4 minutes)
    */
   timeOutMs: number
   tools: {
@@ -42,7 +41,7 @@ interface PullRequestAgentConfiguration {
 
 const DEFAULT_CONFIGURATION = {
   effort: 'medium',
-  timeOutMs: 120_000,
+  timeOutMs: 240_000,
   tools: {
     maxCalls: 30,
     maxRuntimeMs: 60_000,
@@ -69,6 +68,6 @@ async function getPullRequestAgent(options: PullRequestAgentOptions): Promise<Pu
 }
 
 export async function reviewPullRequest(options: PullRequestAgentOptions): Promise<void> {
-  const reviewPullrequest = await getPullRequestAgent(options)
-  await reviewPullrequest()
+  const review = await getPullRequestAgent(options)
+  await review()
 }

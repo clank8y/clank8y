@@ -8,7 +8,11 @@
 
 ```
 src/
-└── index.ts            # Main entry point with exports
+├── index.ts            # Main action entrypoint
+├── setup.ts            # Action inputs + PR context assembly
+├── prompt.ts           # Base PR review prompt + prompt-context composition
+├── agents/             # Review agent runtime (Copilot SDK)
+└── mcp/                # Local GitHub MCP server and tools
 tests/
 └── greet.test.ts       # Tests using Vitest
 ```
@@ -148,6 +152,10 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub Action input names kebab-case (`copilot-token`, `github-token`, `prompt-context`) and map them via `core.getInput(...)`.
 - `prompt-context` is additive: insert user context into the base prompt, never replace the entire default prompt.
 - For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
+- Keep GitHub Action input names kebab-case (`github-token`, `prompt-context`) and map them via `core.getInput(...)`.
+- Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
+- Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
+- Keep the PR review base prompt in `src/prompt.ts` and make `prompt-context` strictly additive.
 
 ### Common Mistakes to Avoid
 

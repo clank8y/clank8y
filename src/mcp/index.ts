@@ -12,7 +12,10 @@ export interface LocalMCPServer {
    * Already returns the exact URL where the MCP server can be reached, including protocol and port.
    * The URL should be stable across multiple calls to `start` as long as `stop` is not called.
    */
-  start: () => Promise<string>
+  start: () => Promise<{
+    url: string
+    toolNames: string[]
+  }>
   stop: () => Promise<void>
 }
 

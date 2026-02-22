@@ -1,0 +1,56 @@
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened, reopened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    name: Run clank8y review
+    if: >-
+      github.event_name != 'issue_comment'
+      || github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: >-
+            ${{
+              (github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number))
+              || (github.event_name == 'pull_request' && github.event.pull_request.head.sha)
+              || github.ref
+            }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build action
+        run: pnpm build
+
+      - name: Run local clank8y action
+        uses: ./
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          prompt-context: |
+            Prioritize breaking API changes and missing tests.
+            Treat security-sensitive changes as high priority.

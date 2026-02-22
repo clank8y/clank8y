@@ -3,9 +3,6 @@ description: Reviews your pull requests for Cumulocity IoT projects
 author: schplitt
 
 inputs:
-  copilot-token:
-    description: Token used by the Copilot SDK for review requests
-    required: true
   github-token:
     description: GitHub token used to create the Octokit client
     required: true
