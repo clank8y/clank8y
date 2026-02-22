@@ -51,6 +51,3 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          prompt-context: |
-            Prioritize breaking API changes and missing tests.
-            Treat security-sensitive changes as high priority.

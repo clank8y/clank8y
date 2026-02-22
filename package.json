@@ -57,6 +57,7 @@
     "@tmcp/adapter-valibot": "catalog:",
     "@tmcp/transport-http": "catalog:",
     "changelogithub": "catalog:",
+    "consola": "catalog:",
     "defu": "catalog:",
     "octokit": "catalog:",
     "srvx": "catalog:",

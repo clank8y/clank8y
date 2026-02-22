@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import type { LocalMCPServer } from '.'
 import { Buffer } from 'node:buffer'
-import * as core from '@actions/core'
 import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
@@ -16,10 +15,6 @@ import { defineTool } from 'tmcp/tool'
 interface CachedDiff {
   content: string
   toc: string
-}
-
-function logMcp(message: string): void {
-  core.info(`[clank8y][mcp] ${message}`)
 }
 
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
@@ -187,18 +182,11 @@ function createGitHubMCP(): LocalMCPServer {
     manual: true,
     port: 0, // Use a random available port
     fetch: async (req) => {
-      const startedAt = Date.now()
-      const url = new URL(req.url)
-
-      logMcp(`HTTP ${req.method} ${url.pathname}${url.search}`)
-
       const response = await transport.respond(req)
       if (!response) {
-        logMcp(`HTTP ${req.method} ${url.pathname} -> 404 (${Date.now() - startedAt}ms)`)
         return new FastResponse('Not found', { status: 404 })
       }
 
-      logMcp(`HTTP ${req.method} ${url.pathname} -> ${response.status} (${Date.now() - startedAt}ms)`)
       return response
     },
   })
