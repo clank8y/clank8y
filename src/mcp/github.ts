@@ -6,6 +6,7 @@ import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
 import { getPullRequestReviewContext } from '../setup'
+import type { WorkflowRunContext } from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
@@ -42,15 +43,24 @@ function normalizeEscapedNewlines(text: string): string {
   })
 }
 
-function buildReviewBody(rawBody: string | undefined): string {
+function buildReviewBody(rawBody: string | undefined, workflowRun: WorkflowRunContext | null): string {
   const normalizedBody = (rawBody ?? '').trim()
   const clank8yRepoUrl = 'https://github.com/schplitt/clank8y'
   const cumulocityUrl = 'https://cumulocity.com'
 
+  const footerLinks = [
+    `<a href="${clank8yRepoUrl}">clank8y</a>`,
+    `<a href="${cumulocityUrl}">cumulocity</a>`,
+  ]
+
+  if (workflowRun) {
+    footerLinks.push(`<a href="${workflowRun.url}">workflow run</a>`)
+  }
+
   return [
     normalizedBody || '_No summary provided._',
     '',
-    `<sub><a href="${clank8yRepoUrl}">clank8y</a> | <a href="${cumulocityUrl}">cumulocity</a></sub>`,
+    `<sub>${footerLinks.join(' | ')}</sub>`,
   ].join('\n')
 }
 
@@ -338,9 +348,10 @@ const createPullRequestReviewTool = defineTool({
 }, async ({ body, commit_id, comments }) => {
   try {
     const octokit = getOctokit()
-    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const reviewContext = await getPullRequestReviewContext()
+    const pullRequest = reviewContext.pullRequest
     const reviewCommentsInput = comments ?? []
-    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body))
+    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body), reviewContext.workflowRun)
 
     let commitSha = commit_id
     if (!commitSha) {
