@@ -156,6 +156,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
 - Keep the PR review base prompt in `src/prompt.ts` and make `prompt-context` strictly additive.
+- Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.
+- If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
 
 ### Common Mistakes to Avoid
 
