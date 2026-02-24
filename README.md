@@ -70,7 +70,7 @@ For clank8y:
 
 - Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN` (or equivalent env var)
 - PR read/write operations are authenticated separately via `github-token` (usually `${{ secrets.GITHUB_TOKEN }}`)
-- Keep `permissions` in workflow at least `contents: read`, `pull-requests: write`, and `issues: write` (required for command acknowledgment reaction)
+- Keep `permissions` in workflow at least `contents: read` and `pull-requests: write`
 
 You can create a fine-grained personal access token in GitHub:
 
@@ -104,16 +104,11 @@ Use the standard GitHub Actions token for repo API calls unless you need broader
 name: clank8y-review
 
 on:
-    pull_request:
-        types: [opened, reopened]
-    issue_comment:
-        types: [created]
     workflow_dispatch:
 
 permissions:
     contents: read
     pull-requests: write
-    issues: write
 
 jobs:
     review:
@@ -130,6 +125,19 @@ jobs:
                     prompt-context: |
                         Prioritize breaking API changes and missing tests.
                         Treat security-sensitive changes as high priority.
+
+#### Why not Pullfrog-level permissions?
+
+clank8y can run with fewer permissions because it does less repository mutation than a general-purpose coding agent.
+
+- `pull-requests: write` — required to submit PR reviews
+- `contents: read` — required to read repository files/diffs
+
+Compared with Pullfrog templates, these are intentionally **not** required for clank8y:
+
+- `contents: write` — needed only if the agent edits/pushes code
+- `id-token: write` — needed only for OIDC federation to external services
+- `actions: read` / `checks: read` — needed only when reading workflow/check state as part of agent logic
 
 #### Required workflow file for webhook dispatch mode
 
@@ -166,7 +174,6 @@ on:
 permissions:
     contents: read
     pull-requests: write
-    issues: write
 
 jobs:
     review:
@@ -189,10 +196,9 @@ Without this file (or with missing `workflow_dispatch` / missing permissions), w
 This repository includes <.github/workflows/review.yml> to test the local action end-to-end:
 
 1. Add a repository secret named `COPILOT_GITHUB_TOKEN`
-2. Open or reopen a pull request for automatic review
-3. To request another review on an existing PR, comment `/clank8y` (clank8y acknowledges with 👀)
-4. Or run **Actions → PR Review → Run workflow** manually
-5. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
+2. Run **Actions → clank8y → Run workflow** (or trigger it from the webhook server)
+3. Ensure the dispatched run is associated with the intended pull request context
+4. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
 
 If the run succeeds, clank8y should post a PR review using the MCP GitHub tools.
 
