@@ -5,7 +5,10 @@ import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
-import { getPullRequestReviewContext } from '../setup'
+import {
+  getActivePullRequestContext,
+  getPullRequestReviewContext,
+} from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
@@ -37,7 +40,7 @@ function logToolInput(toolName: string, input: unknown): void {
 }
 
 async function getDiffCacheKey(): Promise<string> {
-  const pullRequest = (await getPullRequestReviewContext()).pullRequest
+  const pullRequest = getActivePullRequestContext()
   return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`
 }
 
@@ -56,8 +59,8 @@ function normalizeEscapedNewlines(text: string): string {
 }
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
-  const octokit = getOctokit()
-  const pullRequest = (await getPullRequestReviewContext()).pullRequest
+  const octokit = await getOctokit()
+  const pullRequest = getActivePullRequestContext()
 
   const allFiles: PRFiles = []
   let page = 1
@@ -237,8 +240,8 @@ const preparePullRequestReviewTool = defineTool({
 }, async () => {
   try {
     logToolInput('prepare-pull-request-review', {})
-    const octokit = getOctokit()
-    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const octokit = await getOctokit()
+    const pullRequest = getActivePullRequestContext()
 
     const [{ data: pr }, files] = await Promise.all([
       octokit.rest.pulls.get({
@@ -356,9 +359,9 @@ const createPullRequestReviewTool = defineTool({
 }, async ({ body, commit_id, comments }) => {
   try {
     logToolInput('create-pull-request-review', { body, commit_id, comments })
-    const octokit = getOctokit()
+    const octokit = await getOctokit()
     const reviewContext = await getPullRequestReviewContext()
-    const pullRequest = reviewContext.pullRequest
+    const pullRequest = getActivePullRequestContext()
     const reviewCommentsInput = comments ?? []
     const reviewBody = buildClank8yCommentBody(
       body === undefined ? undefined : normalizeEscapedNewlines(body),
@@ -516,8 +519,8 @@ const getPullRequestFileContentTool = defineTool({
 }, async ({ filename, offset, limit, full }) => {
   try {
     logToolInput('get-pull-request-file-content', { filename, offset, limit, full })
-    const octokit = getOctokit()
-    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const octokit = await getOctokit()
+    const pullRequest = getActivePullRequestContext()
     const files = await fetchAllPullRequestFiles()
 
     const file = files.find((f) => f.filename === filename)
