@@ -3,11 +3,8 @@ description: Reviews your pull requests for Cumulocity IoT projects
 author: schplitt
 
 inputs:
-  github-token:
-    description: GitHub token used to create the Octokit client
-    required: true
-  prompt-context:
-    description: Optional additional context inserted into the default review prompt
+  prompt:
+    description: Optional event instruction block appended to the base review prompt
     required: false
 
 runs:
