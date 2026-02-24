@@ -225,7 +225,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       })
 
       try {
-        consola.info('Clank8y getting to work...')
+        consola.info('clank8y getting to work...')
         const response = await session.sendAndWait({
           prompt: context.prompt,
         }, options.timeOutMs)

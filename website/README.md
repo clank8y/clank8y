@@ -4,14 +4,14 @@ Create your API and deploy it anywhere with this Nitro starter.
 
 ## Getting started
 
-```bash
+```sh
 npm install
 npm run dev
 ```
 
 ## Deploying
 
-```bash
+```sh
 npm run build
 ```
 

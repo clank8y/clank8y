@@ -6,7 +6,6 @@ import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
 import { getPullRequestReviewContext } from '../setup'
-import type { WorkflowRunContext } from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
@@ -14,6 +13,7 @@ import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
 import { encode } from '@toon-format/toon'
 import { consola } from 'consola'
+import { buildClank8yCommentBody } from '../../shared/comment'
 
 interface CachedDiff {
   content: string
@@ -53,27 +53,6 @@ function normalizeEscapedNewlines(text: string): string {
 
     return '\n'
   })
-}
-
-function buildReviewBody(rawBody: string | undefined, workflowRun: WorkflowRunContext | null): string {
-  const normalizedBody = (rawBody ?? '').trim()
-  const clank8yRepoUrl = 'https://github.com/schplitt/clank8y'
-  const cumulocityUrl = 'https://cumulocity.com'
-
-  const footerLinks = [
-    `<a href="${clank8yRepoUrl}" target="_blank" rel="noopener noreferrer">clank8y</a>`,
-    `<a href="${cumulocityUrl}" target="_blank" rel="noopener noreferrer">cumulocity</a>`,
-  ]
-
-  if (workflowRun) {
-    footerLinks.push(`<a href="${workflowRun.url}" target="_blank" rel="noopener noreferrer">workflow run</a>`)
-  }
-
-  return [
-    normalizedBody || '_No summary provided._',
-    '',
-    `<sub>${footerLinks.join(' | ')}</sub>`,
-  ].join('\n')
 }
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
@@ -381,7 +360,10 @@ const createPullRequestReviewTool = defineTool({
     const reviewContext = await getPullRequestReviewContext()
     const pullRequest = reviewContext.pullRequest
     const reviewCommentsInput = comments ?? []
-    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body), reviewContext.workflowRun)
+    const reviewBody = buildClank8yCommentBody(
+      body === undefined ? undefined : normalizeEscapedNewlines(body),
+      { workflowRunUrl: reviewContext.workflowRun?.url ?? null },
+    )
 
     let commitSha = commit_id
     if (!commitSha) {

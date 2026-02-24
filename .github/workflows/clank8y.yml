@@ -1,4 +1,4 @@
-name: Clank8y
+name: clank8y
 
 on:
   pull_request:

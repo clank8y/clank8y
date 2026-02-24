@@ -5,11 +5,11 @@
     "dev": "nitro dev",
     "preview": "npx srvx --prod .output/"
   },
-  "devDependencies": {
-    "nitro": "latest",
-    "rolldown": "latest"
-  },
   "dependencies": {
-    "@octokit/webhooks": "catalog:"
+    "@octokit/auth-app": "catalog:",
+    "@octokit/webhooks": "catalog:",
+    "nitro": "catalog:",
+    "octokit": "catalog:",
+    "rolldown": "catalog:"
   }
 }

@@ -130,7 +130,59 @@ jobs:
                     prompt-context: |
                         Prioritize breaking API changes and missing tests.
                         Treat security-sensitive changes as high priority.
+
+#### Required workflow file for webhook dispatch mode
+
+If you use the webhook server to trigger reviews, each target repository must include:
+
+- `.github/workflows/clank8y.yml` (or set `GITHUB_WORKFLOW_ID` in the webhook server)
+- `on.workflow_dispatch` enabled
+- inputs that match the dispatched payload (`trigger`, `pr_number`, `actor`, `is_maintainer`, `instruction`)
+
+Minimal example:
+
+```yaml
+name: clank8y
+
+on:
+    workflow_dispatch:
+        inputs:
+            trigger:
+                type: string
+                required: true
+            pr_number:
+                type: string
+                required: true
+            actor:
+                type: string
+                required: true
+            is_maintainer:
+                type: string
+                required: true
+            instruction:
+                type: string
+                required: false
+
+permissions:
+    contents: read
+    pull-requests: write
+    issues: write
+
+jobs:
+    review:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Run clank8y
+                uses: schplitt/clank8y@main
+                env:
+                    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+                with:
+                    github-token: ${{ secrets.GITHUB_TOKEN }}
+                    prompt-context: ${{ inputs.instruction }}
 ```
+
+Without this file (or with missing `workflow_dispatch` / missing permissions), webhook-triggered runs cannot be dispatched.
 
 ### Test in this repository (before publishing)
 
@@ -186,3 +238,5 @@ If the run succeeds, clank8y should post a PR review using the MCP GitHub tools.
 ## License
 
 MIT
+
+```
