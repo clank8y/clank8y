@@ -8,6 +8,7 @@
   "dependencies": {
     "@octokit/auth-app": "catalog:",
     "@octokit/webhooks": "catalog:",
+    "jose": "catalog:",
     "nitro": "catalog:",
     "octokit": "catalog:",
     "rolldown": "catalog:"

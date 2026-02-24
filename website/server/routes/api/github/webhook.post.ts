@@ -5,8 +5,6 @@ import { Octokit } from 'octokit'
 import process from 'node:process'
 import { buildWebhookSetupHintBody } from '../../../utils/github'
 
-const MAINTAINER_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR'])
-
 type DispatchFailureReason = 'missing_workflow' | 'missing_permissions' | 'unknown'
 
 function getRequiredEnv(name: string): string {
@@ -55,6 +53,44 @@ function hasBotMention(commentBody: string): boolean {
   return commentBody.toLowerCase().includes('@clank8y')
 }
 
+function isOnlyBotMention(commentBody: string): boolean {
+  return commentBody.trim().toLowerCase() === '@clank8y'
+}
+
+function buildDispatchPromptContext(params: {
+  trigger: 'pull_request_opened' | 'issue_comment'
+  prNumber: number
+  actor: string
+  instruction?: string
+}): string {
+  const baseInstruction = params.trigger === 'issue_comment'
+    ? 'You have been mentioned in a PR review. Address the feedback in the comments that mention you.'
+    : 'Review this pull request and provide actionable, high-signal feedback.'
+
+  const lines = [
+    'EVENT-LEVEL INSTRUCTIONS:',
+    baseInstruction,
+    '',
+    '---',
+    '',
+    `trigger: ${params.trigger}`,
+    `pr_number: ${params.prNumber}`,
+    `actor: ${params.actor}`,
+    `report_back_to: @${params.actor}`,
+  ]
+
+  const normalizedInstruction = params.instruction?.trim()
+  if (normalizedInstruction && !isOnlyBotMention(normalizedInstruction)) {
+    lines.push(
+      '',
+      'ADDITIONAL USER INSTRUCTION (quoted from mention comment):',
+      normalizedInstruction,
+    )
+  }
+
+  return lines.join('\n')
+}
+
 async function dispatchWorkflow(params: {
   owner: string
   repo: string
@@ -62,7 +98,6 @@ async function dispatchWorkflow(params: {
   trigger: 'pull_request_opened' | 'issue_comment'
   prNumber: number
   actor: string
-  isMaintainer: boolean
   instruction?: string
 }): Promise<void> {
   const workflowId = process.env.GITHUB_WORKFLOW_ID || 'clank8y.yml'
@@ -74,11 +109,12 @@ async function dispatchWorkflow(params: {
     workflow_id: workflowId,
     ref: params.ref,
     inputs: {
-      trigger: params.trigger,
-      pr_number: String(params.prNumber),
-      actor: params.actor,
-      is_maintainer: String(params.isMaintainer),
-      instruction: params.instruction || '',
+      prompt: buildDispatchPromptContext({
+        trigger: params.trigger,
+        prNumber: params.prNumber,
+        actor: params.actor,
+        ...(params.instruction ? { instruction: params.instruction } : {}),
+      }),
     },
   })
 }
@@ -170,7 +206,6 @@ export default defineHandler(async (event) => {
         trigger: 'pull_request_opened',
         prNumber: payload.pull_request.number,
         actor: payload.sender.login,
-        isMaintainer: MAINTAINER_ASSOCIATIONS.has(payload.pull_request.author_association),
       })
 
       console.log(
@@ -219,7 +254,6 @@ export default defineHandler(async (event) => {
         trigger: 'issue_comment',
         prNumber: payload.issue.number,
         actor: payload.sender.login,
-        isMaintainer: MAINTAINER_ASSOCIATIONS.has(payload.comment.author_association),
         instruction: commentBody,
       })
 
