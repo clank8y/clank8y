@@ -40,20 +40,18 @@ The bot integrates with GitHub to analyze and review pull requests for Cumulocit
 
 The action accepts the following inputs:
 
-- `github-token` (required): token used to create the Octokit client
-- `prompt-context` (optional): extra context inserted into the default review prompt
+- `prompt` (optional): event-level instruction block appended to the default review prompt
 
-`prompt-context` is additive and does not replace the built-in base prompt.
+`prompt` is additive and does not replace the built-in base prompt.
+For webhook-triggered runs, clank8y expects this block to include metadata such as `pr_number`, `trigger`, and `actor` so the agent can call `set-pull-request-context` first.
 
 #### Copilot authentication (recommended: environment variables)
 
-For CI/CD, set one of these environment variables (priority order):
+For CI/CD, set this environment variable:
 
-- `COPILOT_GITHUB_TOKEN` (recommended)
-- `GH_TOKEN`
-- `GITHUB_TOKEN`
+- `COPILOT_GITHUB_TOKEN` (required)
 
-The SDK reads these automatically. clank8y requires one of them to be set and fails fast if none is present.
+clank8y requires this token and fails fast if it is missing.
 The Copilot SDK requires the `copilot` CLI binary to be available on `PATH`.
 clank8y bootstraps this automatically at runtime (install + PATH update), so workflow files do not need a separate CLI installation step.
 
@@ -69,8 +67,8 @@ The token owner must have an active GitHub Copilot entitlement.
 For clank8y:
 
 - Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN` (or equivalent env var)
-- PR read/write operations are authenticated separately via `github-token` (usually `${{ secrets.GITHUB_TOKEN }}`)
-- Keep `permissions` in workflow at least `contents: read` and `pull-requests: write`
+- PR read/write operations are authenticated via short-lived `CLANK8Y_GITHUB_TOKEN` (GitHub App installation token)
+- Keep `permissions` in workflow at least `id-token: write`, `contents: read`, and `pull-requests: write`
 
 You can create a fine-grained personal access token in GitHub:
 
@@ -82,7 +80,7 @@ Fine-grained PAT permissions for this token should be minimal:
 
 - Account permissions: **Copilot Requests (required)**
 - Repository permissions: **Contents (read-only)**
-- Pull requests are handled by the separate `github-token` input, not by `COPILOT_GITHUB_TOKEN`
+- Pull requests are handled by `CLANK8Y_GITHUB_TOKEN`, not by `COPILOT_GITHUB_TOKEN`
 
 In practice: for `COPILOT_GITHUB_TOKEN` you usually do **not** need extra write permissions. If GitHub requires you to pick a repository permission when creating the token, choose the smallest read-only option.
 
@@ -92,11 +90,14 @@ If you see this error:
 
 then regenerate the fine-grained PAT and enable the **Copilot Requests** permission.
 
-#### GitHub API token (`github-token`)
+#### clank8y GitHub API token (OIDC exchange)
 
-Use the standard GitHub Actions token for repo API calls unless you need broader access:
+clank8y uses a short-lived GitHub App installation token for PR operations (read diff context + submit review).
 
-- Recommended: `${{ secrets.GITHUB_TOKEN }}`
+- The action requests an OIDC ID token (`id-token: write`) and exchanges it at your clank8y token endpoint.
+- The token endpoint validates OIDC claims (issuer, audience, repository, workflow identity) before minting.
+- Minted token is scoped to the target repository with minimal permissions.
+- Local/dev fallback can use `GH_TOKEN` or `GITHUB_TOKEN` when OIDC runtime is unavailable.
 
 #### Example workflow
 
@@ -107,6 +108,7 @@ on:
     workflow_dispatch:
 
 permissions:
+    id-token: write
     contents: read
     pull-requests: write
 
@@ -121,10 +123,16 @@ jobs:
                 env:
                     COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
                 with:
-                    github-token: ${{ secrets.GITHUB_TOKEN }}
-                    prompt-context: |
-                        Prioritize breaking API changes and missing tests.
-                        Treat security-sensitive changes as high priority.
+                    prompt: |
+                        EVENT-LEVEL INSTRUCTIONS:
+                        You have been mentioned in a PR review.
+
+                        ---
+
+                        trigger: issue_comment
+                        pr_number: 123
+                        actor: octocat
+                        report_back_to: @octocat
 
 #### Why not Pullfrog-level permissions?
 
@@ -136,7 +144,6 @@ clank8y can run with fewer permissions because it does less repository mutation 
 Compared with Pullfrog templates, these are intentionally **not** required for clank8y:
 
 - `contents: write` — needed only if the agent edits/pushes code
-- `id-token: write` — needed only for OIDC federation to external services
 - `actions: read` / `checks: read` — needed only when reading workflow/check state as part of agent logic
 
 #### Required workflow file for webhook dispatch mode
@@ -145,7 +152,7 @@ If you use the webhook server to trigger reviews, each target repository must in
 
 - `.github/workflows/clank8y.yml` (or set `GITHUB_WORKFLOW_ID` in the webhook server)
 - `on.workflow_dispatch` enabled
-- inputs that match the dispatched payload (`trigger`, `pr_number`, `actor`, `is_maintainer`, `instruction`)
+- optional `prompt` input (webhook injects event metadata into this block)
 
 Minimal example:
 
@@ -155,23 +162,12 @@ name: clank8y
 on:
     workflow_dispatch:
         inputs:
-            trigger:
-                type: string
-                required: true
-            pr_number:
-                type: string
-                required: true
-            actor:
-                type: string
-                required: true
-            is_maintainer:
-                type: string
-                required: true
-            instruction:
+            prompt:
                 type: string
                 required: false
 
 permissions:
+    id-token: write
     contents: read
     pull-requests: write
 
@@ -185,8 +181,7 @@ jobs:
                 env:
                     COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
                 with:
-                    github-token: ${{ secrets.GITHUB_TOKEN }}
-                    prompt-context: ${{ inputs.instruction }}
+                    prompt: ${{ inputs.prompt }}
 ```
 
 Without this file (or with missing `workflow_dispatch` / missing permissions), webhook-triggered runs cannot be dispatched.

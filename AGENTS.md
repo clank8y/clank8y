@@ -10,7 +10,7 @@
 src/
 ├── index.ts            # Main action entrypoint
 ├── setup.ts            # Action inputs + PR context assembly
-├── prompt.ts           # Base PR review prompt + prompt-context composition
+├── prompt.ts           # Base PR review prompt + prompt composition
 ├── agents/             # Review agent runtime (Copilot SDK)
 └── mcp/                # Local GitHub MCP server and tools
 tests/
@@ -149,13 +149,15 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 - For Valibot schemas in MCP tools, keep schemas inline (no extra standalone schema variables when not needed).
 - Add field-level guidance via `v.pipe(..., v.description(...))` so agents get better tool-usage hints.
-- Keep GitHub Action input names kebab-case (`copilot-token`, `github-token`, `prompt-context`) and map them via `core.getInput(...)`.
-- `prompt-context` is additive: insert user context into the base prompt, never replace the entire default prompt.
+- Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
+- `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
+- Keep action-entry prompt handling in `src/index.ts`: read optional `prompt` input and only override `process.env.PROMPT` when provided.
 - For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
-- Keep GitHub Action input names kebab-case (`github-token`, `prompt-context`) and map them via `core.getInput(...)`.
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
-- Keep the PR review base prompt in `src/prompt.ts` and make `prompt-context` strictly additive.
+- Keep the PR review base prompt in `src/prompt.ts` and make `prompt` strictly additive.
+- Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
+- Require the agent to set PR context via `set-pull-request-context` before any PR MCP tool calls.
 - Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.
 - If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
 
