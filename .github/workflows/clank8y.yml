@@ -2,8 +2,14 @@ name: clank8y
 
 on:
   workflow_dispatch:
+    inputs:
+      prompt:
+        description: Optional event-level instruction block appended to clank8y base prompt
+        required: false
+        type: string
 
 permissions:
+  id-token: write
   contents: read
   pull-requests: write
 
@@ -37,4 +43,4 @@ jobs:
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: ${{ inputs.prompt }}
