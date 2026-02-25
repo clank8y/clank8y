@@ -66,9 +66,10 @@ The token owner must have an active GitHub Copilot entitlement.
 
 For clank8y:
 
-- Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN` (or equivalent env var)
-- PR read/write operations are authenticated via short-lived `CLANK8Y_GITHUB_TOKEN` (GitHub App installation token)
-- Keep `permissions` in workflow at least `id-token: write`, `contents: read`, and `pull-requests: write`
+- The workflow executes the AI review run.
+- Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN`.
+- PR read/write operations are authenticated via a short-lived bot token minted via OIDC exchange at your website token endpoint.
+- Keep `permissions` in workflow at least `id-token: write`, `contents: read`, and `pull-requests: write`.
 
 You can create a fine-grained personal access token in GitHub:
 
@@ -76,13 +77,12 @@ You can create a fine-grained personal access token in GitHub:
 2. Generate a token for the org/repo where the action runs
 3. Save it as a repository or organization secret, for example: `COPILOT_GITHUB_TOKEN`
 
-Fine-grained PAT permissions for this token should be minimal:
+Fine-grained PAT permissions for `COPILOT_GITHUB_TOKEN`:
 
 - Account permissions: **Copilot Requests (required)**
-- Repository permissions: **Contents (read-only)**
-- Pull requests are handled by `CLANK8Y_GITHUB_TOKEN`, not by `COPILOT_GITHUB_TOKEN`
+- No additional GitHub write permissions are required on this token for clank8y workflow usage.
 
-In practice: for `COPILOT_GITHUB_TOKEN` you usually do **not** need extra write permissions. If GitHub requires you to pick a repository permission when creating the token, choose the smallest read-only option.
+Local testing token combinations are documented in `localtest.ts` comments.
 
 If you see this error:
 
@@ -97,7 +97,6 @@ clank8y uses a short-lived GitHub App installation token for PR operations (read
 - The action requests an OIDC ID token (`id-token: write`) and exchanges it at your clank8y token endpoint.
 - The token endpoint validates OIDC claims (issuer, audience, repository, workflow identity) before minting.
 - Minted token is scoped to the target repository with minimal permissions.
-- Local/dev fallback can use `GH_TOKEN` or `GITHUB_TOKEN` when OIDC runtime is unavailable.
 
 #### Example workflow
 

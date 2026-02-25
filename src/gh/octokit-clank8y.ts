@@ -119,7 +119,9 @@ export async function clank8yOctokit(): Promise<Octokit> {
   }
 
   const clank8yBotToken = await getClank8yBotToken()
-  core.setSecret(clank8yBotToken)
+  if (process.env.GITHUB_ACTIONS) {
+    core.setSecret(clank8yBotToken)
+  }
 
   _octokit = new Octokit({
     auth: clank8yBotToken,

@@ -19,9 +19,27 @@ import { reviewPullRequest } from './src/agents'
  *
  * - GH_TOKEN or GITHUB_TOKEN
  *   - Why: local/dev fallback token for Clank8yBotToken (Octokit PR API operations) when OIDC runtime is unavailable.
+ *   - Fine-grained PAT permissions:
+ *     - Repository: Contents (read)
+ *     - Repository: Pull requests (write)
+ *     - Repository: Issues (write)
  *
- * > Note: GH_TOKEN/GITHUB_TOKEN and COPILOT_GITHUB_TOKEN can be the same token if it has all required permissions.
- * > They are separated by role: CopilotAgentToken (model auth) vs Clank8yBotToken (GitHub PR API auth).
+ * > Single-token option:
+ * > - You can use one token value for both `COPILOT_GITHUB_TOKEN` and `GH_TOKEN`/`GITHUB_TOKEN`.
+ * > - That token must include: Copilot Requests + Contents (read) + Pull requests (write)
+ * >   (+ Issues (write) only if needed).
+ * >
+ * > Split-token option:
+ * > - `COPILOT_GITHUB_TOKEN`: Copilot Requests only (plus minimal read if GitHub requires selecting repo scope).
+ * > - `GH_TOKEN`/`GITHUB_TOKEN`: Contents (read) + Pull requests (write)
+ * >   (+ Issues (write) only if needed).
+ * >
+ * > Roles are still separate even if token values are identical:
+ * > CopilotAgentToken (model auth) vs Clank8yBotToken (GitHub PR API auth).
+ * >
+ * > Local identity note:
+ * > - In local test mode, when using `GH_TOKEN`/`GITHUB_TOKEN` fallback,
+ * >   the responding GitHub account is the owner of that token (typically your own account).
  */
 
 function setupActionLikeEnvironment(): void {
