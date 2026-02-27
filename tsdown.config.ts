@@ -9,5 +9,7 @@ export default defineConfig({
   clean: true,
   dts: false,
   outDir: './dist',
-
+  noExternal: [/.*/],
+  treeshake: true,
+  inlineOnly: false,
 })
