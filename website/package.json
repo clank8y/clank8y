@@ -11,6 +11,7 @@
     "jose": "catalog:",
     "nitro": "catalog:",
     "octokit": "catalog:",
-    "rolldown": "catalog:"
+    "rolldown": "catalog:",
+    "wrangler": "catalog:"
   }
 }
