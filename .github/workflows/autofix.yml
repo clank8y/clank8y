@@ -3,12 +3,13 @@ name: autofix.ci
 on:
   push:
     branches: [main]
+  pull_request:
 
 jobs:
   autofix:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -26,6 +27,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
 
       - name: Fix
         run: pnpm lint:fix
