@@ -3,7 +3,7 @@ import { defineConfig } from 'nitro'
 export default defineConfig({
   serverDir: './server',
   compatibilityDate: '2026-01-01',
-
+  preset: 'cloudflare-module',
   cloudflare: {
     deployConfig: true,
     nodeCompat: true,

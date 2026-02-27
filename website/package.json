@@ -1,4 +1,5 @@
 {
+  "name": "clank8y-website",
   "type": "module",
   "scripts": {
     "build": "nitro build",
