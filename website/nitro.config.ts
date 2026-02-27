@@ -15,14 +15,7 @@ export default defineConfig({
         logs: {
           enabled: true,
           head_sampling_rate: 1,
-          // @ts-expect-error - is valid
-          persist: true,
           invocation_logs: true,
-        },
-        traces: {
-          enabled: true,
-          persist: true,
-          head_sampling_rate: 1,
         },
       },
     },
