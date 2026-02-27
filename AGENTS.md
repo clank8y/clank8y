@@ -40,6 +40,13 @@ pnpm lint:fix   # Lint and auto-fix
 pnpm typecheck  # TypeScript type checking
 ```
 
+## CI/CD Workflows
+
+- `ci.yml`: PR validation (build/test/lint/typecheck)
+- `autofix.yml`: starter-style autofix on `main` pushes (`pnpm lint:fix` + autofix commit)
+- `release.yml`: tag-triggered workflow (`v*`) that validates and creates GitHub release
+- `website-preview-deploy.yml`: Wrangler deploy for `preview` branch and manual runs
+
 ## Code Style
 
 - ESM only (`"type": "module"`)
@@ -160,6 +167,9 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Require the agent to set PR context via `set-pull-request-context` before any PR MCP tool calls.
 - Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.
 - If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
+- Use a starter-style `autofix.yml` (main-branch push trigger + `autofix-ci/action`) for lint auto-fixes.
+- Keep release publishing tag-driven (`on.push.tags: v*`) instead of manual version bumping inside CI.
+- Keep website deploy automation Wrangler-only (preview branch/manual), not main-branch auto-deploy.
 
 ### Common Mistakes to Avoid
 

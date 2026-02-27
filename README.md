@@ -118,31 +118,12 @@ jobs:
             - uses: actions/checkout@v4
 
             - name: Run clank8y
-                uses: schplitt/clank8y@main
+                uses: clank8y/clank8y@v0.1.0  # pin to a release tag
                 env:
                     COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-                with:
-                    prompt: |
-                        EVENT-LEVEL INSTRUCTIONS:
-                        You have been mentioned in a PR review.
 
-                        ---
+```
 
-                        trigger: issue_comment
-                        pr_number: 123
-                        actor: octocat
-                        report_back_to: @octocat
-
-#### Why not Pullfrog-level permissions?
-
-clank8y can run with fewer permissions because it does less repository mutation than a general-purpose coding agent.
-
-- `pull-requests: write` — required to submit PR reviews
-- `contents: read` — required to read repository files/diffs
-
-Compared with Pullfrog templates, these are intentionally **not** required for clank8y:
-
-- `contents: write` — needed only if the agent edits/pushes code
 - `actions: read` / `checks: read` — needed only when reading workflow/check state as part of agent logic
 
 #### Required workflow file for webhook dispatch mode
@@ -153,48 +134,100 @@ If you use the webhook server to trigger reviews, each target repository must in
 - `on.workflow_dispatch` enabled
 - optional `prompt` input (webhook injects event metadata into this block)
 
-Minimal example:
+Without this file (or with missing `workflow_dispatch` / missing permissions), webhook-triggered runs cannot be dispatched.
+
+### Repository automation workflows
+
+CI/release/deploy automation lives in `.github/workflows`:
+
+| Workflow      | Trigger       | Purpose                                                                                                           |
+| ------------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `autofix.yml` | push `main`   | `pnpm lint:fix` + auto-commit via `autofix-ci/action`                                                             |
+| `ci.yml`      | pull request  | build · test · lint · typecheck; then deploys website preview to CF Workers via `versions upload --preview-alias` |
+| `release.yml` | push `v*` tag | validates, builds action artifacts + website, deploys website to production CF Worker, publishes changelog        |
+
+#### Secrets required for website deploy
+
+| Secret                  | Where                     |
+| ----------------------- | ------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Repo → Settings → Secrets |
+| `CLOUDFLARE_ACCOUNT_ID` | Repo → Settings → Secrets |
+
+Wrangler project name is `clank8y-website` (configured in `website/nitro.config.ts`).
+
+The Worker must be created with a manual first deploy before CI can deploy:
+
+```sh
+cd website && pnpm exec nitro build && pnpm exec wrangler deploy
+```
+
+### Setting up clank8y in a target repository
+
+This section covers how to add clank8y to any repo you want it to review.
+
+#### 1. How `uses:` references work
+
+GitHub resolves the `uses:` field directly from the published git tree — no build step runs in the consumer repo. This means the built `dist/index.mjs` artifact **must be committed** to the ref you target:
+
+| Reference                        | When to Use                                                          |
+| -------------------------------- | -------------------------------------------------------------------- |
+| `clank8y/clank8y@v0.1.0`         | ✅ Recommended for production — pinned, stable                       |
+| `clank8y/clank8y@main`           | Latest from `main` branch                                            |
+| `clank8y/clank8y@feat/my-branch` | Testing an unreleased branch (dist must be committed to that branch) |
+
+Releases are published automatically when a `v*` tag is pushed to this repo.
+
+#### 2. Required secret
+
+Add one secret to the target repository (**Settings → Secrets → Actions**):
+
+| Secret                 | Description                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `COPILOT_GITHUB_TOKEN` | Fine-grained PAT or OAuth token with **Copilot Requests** account permission and an active Copilot entitlement |
+
+#### 3. Workflow template
+
+Create `.github/workflows/clank8y.yml` in the target repo:
 
 ```yaml
 name: clank8y
 
 on:
-    workflow_dispatch:
-        inputs:
-            prompt:
-                type: string
-                required: false
+  workflow_dispatch:
+    inputs:
+      prompt:
+        type: string
+        required: false
 
 permissions:
-    id-token: write
-    contents: read
-    pull-requests: write
+  id-token: write
+  contents: read
+  pull-requests: write
 
 jobs:
-    review:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Run clank8y
-                uses: schplitt/clank8y@main
-                env:
-                    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-                with:
-                    prompt: ${{ inputs.prompt }}
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run clank8y
+        uses: clank8y/clank8y@v0.1.0
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        with:
+          prompt: ${{ inputs.prompt }}
 ```
 
-Without this file (or with missing `workflow_dispatch` / missing permissions), webhook-triggered runs cannot be dispatched.
+`id-token: write` is required so clank8y can obtain a short-lived token for PR read/write operations via OIDC exchange.
 
-### Test in this repository (before publishing)
+#### 4. Testing the self-hosted action (this repo)
 
-This repository includes <.github/workflows/review.yml> to test the local action end-to-end:
+This repo includes `.github/workflows/clank8y.yml` to test the local action end-to-end using `uses: ./`:
 
-1. Add a repository secret named `COPILOT_GITHUB_TOKEN`
-2. Run **Actions → clank8y → Run workflow** (or trigger it from the webhook server)
-3. Ensure the dispatched run is associated with the intended pull request context
-4. The workflow builds `dist/` and runs `uses: ./` with Node 24 (clank8y handles Copilot CLI bootstrap internally)
+1. Add a `COPILOT_GITHUB_TOKEN` secret to this repo
+2. Run **Actions → clank8y → Run workflow**
+3. The workflow runs `uses: ./` with Node 24 (`dist/index.mjs` must be present)
 
-If the run succeeds, clank8y should post a PR review using the MCP GitHub tools.
+clank8y bootstraps the Copilot CLI at runtime — no separate CLI install step needed.
 
 ## Roadmap
 
