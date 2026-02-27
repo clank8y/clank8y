@@ -4,8 +4,8 @@ author: schplitt
 
 inputs:
   prompt:
-    description: Optional event instruction block appended to the base review prompt
-    required: false
+    description: Event-level instruction block injected by the clank8y webhook server. Contains pr_number, trigger, actor, and optional user instruction. Do not set this manually.
+    required: true
 
 runs:
   using: node24

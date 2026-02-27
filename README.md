@@ -1,193 +1,10 @@
 # clank8y
 
-A PR review bot for Cumulocity IoT (c8y). Automated code review and analysis for pull requests.
-
-## Features
-
-- 🚀 TypeScript with strict configuration
-- 📦 ESM module format
-- ✅ Vitest for testing
-- 🎨 ESLint for code quality
-- 🔧 tsdown for building
-- 🤖 Automated PR reviews for Cumulocity projects
+AI-powered PR review bot for Cumulocity IoT (c8y) projects. Bring your own key — currently supports GitHub Copilot, but the architecture can be extended to other providers.
 
 ## Getting Started
 
-### Development
-
-```sh
-# Install dependencies
-pnpm install
-
-# Run tests
-pnpm test
-
-# Build
-pnpm build
-
-# Lint
-pnpm lint
-
-# Type check
-pnpm typecheck
-```
-
-## Usage
-
-The bot integrates with GitHub to analyze and review pull requests for Cumulocity IoT projects. Core functionality is in the `src/` directory.
-
-### GitHub Action configuration
-
-The action accepts the following inputs:
-
-- `prompt` (optional): event-level instruction block appended to the default review prompt
-
-`prompt` is additive and does not replace the built-in base prompt.
-For webhook-triggered runs, clank8y expects this block to include metadata such as `pr_number`, `trigger`, and `actor` so the agent can call `set-pull-request-context` first.
-
-#### Copilot authentication (recommended: environment variables)
-
-For CI/CD, set this environment variable:
-
-- `COPILOT_GITHUB_TOKEN` (required)
-
-clank8y requires this token and fails fast if it is missing.
-The Copilot SDK requires the `copilot` CLI binary to be available on `PATH`.
-clank8y bootstraps this automatically at runtime (install + PATH update), so workflow files do not need a separate CLI installation step.
-
-#### Token type and permissions
-
-Use a **user token** that can access Copilot APIs:
-
-- ✅ Supported: OAuth user tokens (`gho_`, `ghu_`) or fine-grained PAT (`github_pat_`)
-- ❌ Not supported: classic PAT (`ghp_`)
-
-The token owner must have an active GitHub Copilot entitlement.
-
-For clank8y:
-
-- The workflow executes the AI review run.
-- Copilot model access is authenticated via `COPILOT_GITHUB_TOKEN`.
-- PR read/write operations are authenticated via a short-lived bot token minted via OIDC exchange at your website token endpoint.
-- Keep `permissions` in workflow at least `id-token: write`, `contents: read`, and `pull-requests: write`.
-
-You can create a fine-grained personal access token in GitHub:
-
-1. Go to GitHub **Settings → Developer settings → Personal access tokens → Fine-grained tokens**
-2. Generate a token for the org/repo where the action runs
-3. Save it as a repository or organization secret, for example: `COPILOT_GITHUB_TOKEN`
-
-Fine-grained PAT permissions for `COPILOT_GITHUB_TOKEN`:
-
-- Account permissions: **Copilot Requests (required)**
-- No additional GitHub write permissions are required on this token for clank8y workflow usage.
-
-Local testing token combinations are documented in `localtest.ts` comments.
-
-If you see this error:
-
-`Request models.list failed with message: 401 "unauthorized: Personal Access Token does not have \"Copilot Requests\" permission"`
-
-then regenerate the fine-grained PAT and enable the **Copilot Requests** permission.
-
-#### clank8y GitHub API token (OIDC exchange)
-
-clank8y uses a short-lived GitHub App installation token for PR operations (read diff context + submit review).
-
-- The action requests an OIDC ID token (`id-token: write`) and exchanges it at your clank8y token endpoint.
-- The token endpoint validates OIDC claims (issuer, audience, repository, workflow identity) before minting.
-- Minted token is scoped to the target repository with minimal permissions.
-
-#### Example workflow
-
-```yaml
-name: clank8y-review
-
-on:
-    workflow_dispatch:
-
-permissions:
-    id-token: write
-    contents: read
-    pull-requests: write
-
-jobs:
-    review:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Run clank8y
-                uses: clank8y/clank8y@v0.1.0  # pin to a release tag
-                env:
-                    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-
-```
-
-- `actions: read` / `checks: read` — needed only when reading workflow/check state as part of agent logic
-
-#### Required workflow file for webhook dispatch mode
-
-If you use the webhook server to trigger reviews, each target repository must include:
-
-- `.github/workflows/clank8y.yml` (or set `GITHUB_WORKFLOW_ID` in the webhook server)
-- `on.workflow_dispatch` enabled
-- optional `prompt` input (webhook injects event metadata into this block)
-
-Without this file (or with missing `workflow_dispatch` / missing permissions), webhook-triggered runs cannot be dispatched.
-
-### Repository automation workflows
-
-CI/release/deploy automation lives in `.github/workflows`:
-
-| Workflow      | Trigger       | Purpose                                                                                                           |
-| ------------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `autofix.yml` | push `main`   | `pnpm lint:fix` + auto-commit via `autofix-ci/action`                                                             |
-| `ci.yml`      | pull request  | build · test · lint · typecheck; then deploys website preview to CF Workers via `versions upload --preview-alias` |
-| `release.yml` | push `v*` tag | validates, builds action artifacts + website, deploys website to production CF Worker, publishes changelog        |
-
-#### Secrets required for website deploy
-
-| Secret                  | Where                     |
-| ----------------------- | ------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Repo → Settings → Secrets |
-| `CLOUDFLARE_ACCOUNT_ID` | Repo → Settings → Secrets |
-
-Wrangler project name is `clank8y-website` (configured in `website/nitro.config.ts`).
-
-The Worker must be created with a manual first deploy before CI can deploy:
-
-```sh
-cd website && pnpm exec nitro build && pnpm exec wrangler deploy
-```
-
-### Setting up clank8y in a target repository
-
-This section covers how to add clank8y to any repo you want it to review.
-
-#### 1. How `uses:` references work
-
-GitHub resolves the `uses:` field directly from the published git tree — no build step runs in the consumer repo. This means the built `dist/index.mjs` artifact **must be committed** to the ref you target:
-
-| Reference                        | When to Use                                                          |
-| -------------------------------- | -------------------------------------------------------------------- |
-| `clank8y/clank8y@v0.1.0`         | ✅ Recommended for production — pinned, stable                       |
-| `clank8y/clank8y@main`           | Latest from `main` branch                                            |
-| `clank8y/clank8y@feat/my-branch` | Testing an unreleased branch (dist must be committed to that branch) |
-
-Releases are published automatically when a `v*` tag is pushed to this repo.
-
-#### 2. Required secret
-
-Add one secret to the target repository (**Settings → Secrets → Actions**):
-
-| Secret                 | Description                                                                                                    |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `COPILOT_GITHUB_TOKEN` | Fine-grained PAT or OAuth token with **Copilot Requests** account permission and an active Copilot entitlement |
-
-#### 3. Workflow template
-
-Create `.github/workflows/clank8y.yml` in the target repo:
+Add `.github/workflows/clank8y.yml` to any repo you want clank8y to review:
 
 ```yaml
 name: clank8y
@@ -195,81 +12,109 @@ name: clank8y
 on:
   workflow_dispatch:
     inputs:
-      prompt:
+      prompt: # internal — filled automatically by the webhook server
         type: string
         required: false
 
 permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
+  id-token: write       # required — OIDC token exchange for PR API access
+  contents: read         # required — read repository files and diffs
+  pull-requests: write   # required — submit PR reviews
 
 jobs:
   review:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run clank8y
-        uses: clank8y/clank8y@v0.1.0
+      - uses: clank8y/clank8y@v0.1.0
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         with:
-          prompt: ${{ inputs.prompt }}
+          prompt: ${{ inputs.prompt }} # do not set manually
 ```
 
-`id-token: write` is required so clank8y can obtain a short-lived token for PR read/write operations via OIDC exchange.
+> **Note:** Do not fill in the `prompt` input manually. It is populated automatically by the clank8y webhook server with PR context (number, trigger, actor). Manually dispatching this workflow without that context will cause the agent to fail.
 
-#### 4. Testing the self-hosted action (this repo)
+## Copilot Token
 
-This repo includes `.github/workflows/clank8y.yml` to test the local action end-to-end using `uses: ./`:
+clank8y needs a token with access to GitHub Copilot APIs. Add it as a repository secret named `COPILOT_GITHUB_TOKEN`.
 
-1. Add a `COPILOT_GITHUB_TOKEN` secret to this repo
-2. Run **Actions → clank8y → Run workflow**
-3. The workflow runs `uses: ./` with Node 24 (`dist/index.mjs` must be present)
+### Supported token types
 
-clank8y bootstraps the Copilot CLI at runtime — no separate CLI install step needed.
+- ✅ Fine-grained PAT (`github_pat_...`)
+- ✅ OAuth user tokens (`gho_...`, `ghu_...`)
+- ❌ Classic PATs (`ghp_...`) — not supported
 
-## Roadmap
+### Required permissions
 
-### POC (required now)
+- **Copilot Requests** (account permission) — this is the only permission needed on this token
 
-#### Setup
+The token owner must have an active GitHub Copilot entitlement.
 
-- [ ] Initialize GitHub Copilot runtime in CI (install + start)
-- [ ] Configure Copilot to use the clank8y MCP server(s)
-- [ ] Add GitHub Action triggers (PR opened/synchronize/reopened, optional manual trigger)
-- [ ] Finalize GitHub Action workflow (inputs, permissions, environment, run command)
+### How to create
 
-#### Core Review Flow
+1. Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**
+2. Create a token for the org/repo where the action runs
+3. Enable the **Copilot Requests** account permission
+4. Save it as `COPILOT_GITHUB_TOKEN` in repo **Settings → Secrets and variables → Actions**
 
-- [x] PR metadata + file list + diff build/chunk tools
-- [x] One-shot `create-pull-request-review` MCP tool
+If you see `401 "unauthorized: Personal Access Token does not have \"Copilot Requests\" permission"`, regenerate the token with Copilot Requests enabled.
 
-#### Testing (pragmatic POC)
+## How It Works
 
-- [ ] Create a dedicated test repository for end-to-end validation
-- [ ] Add repeatable manual acceptance scenarios (obvious bug PR, clean PR, large diff PR)
-- [ ] Keep lint/typecheck/test checks green in CI
+clank8y reviews PRs when someone mentions `@clank8y` in a comment.
 
-### Testing
+```
+@clank8y <optional instruction>
+  │
+  ▼
+Webhook server receives GitHub event
+  │
+  ▼
+Dispatches clank8y.yml workflow in target repo
+  │  (injects PR number, trigger, actor into prompt)
+  │
+  ▼
+Action runs with GitHub Copilot agent
+  │
+  ├─ Reads PR diff + files via MCP tools
+  ├─ Generates review using Copilot
+  │
+  ▼
+Submits GitHub PR review with inline comments
+```
 
-- [ ] Unit tests for schema validation and review request mapping (as available)
-- [ ] Integration test for review submission on a test PR repo
+### What it does
 
-### Documentation
+- ✅ On-demand PR code review triggered by `@clank8y` mention
+- ✅ Reviews diffs, files, and PR context
+- ✅ Submits structured GitHub PR reviews with inline comments
 
-- [ ] Document full action setup in README with example workflows
-- [ ] Document MCP tools and expected request/response shapes
-- [ ] Add troubleshooting section (missing token, invalid PR context, invalid review line)
+### What it doesn't do (yet)
 
-### Future Scope (post-POC)
+- ❌ Push code or apply fixes
+- ❌ Resolve review threads
+- ❌ Run on push or schedule — only on explicit mention
 
-- [ ] Add follow-up review tools (`list-pull-request-reviews`, `resolve-review-thread`)
-- [ ] Add review-comment retrieval tool for address-feedback mode (`get-review-comments`)
-- [ ] Add autonomous fix/address-feedback mode (apply fixes, reply in threads, resolve whollow-up when feedback remains open and should be handled by a dedicated future mode.
+### Token flow
+
+| Token                  | Purpose                      | Who Sets It                            |
+| ---------------------- | ---------------------------- | -------------------------------------- |
+| `COPILOT_GITHUB_TOKEN` | Copilot model access         | You (repo secret)                      |
+| clank8y bot token      | PR read/write via GitHub API | Auto-minted via OIDC — not set by user |
+
+The `id-token: write` permission allows clank8y to exchange an OIDC token for a short-lived bot token scoped to the target repository.
+
+## Development
+
+```sh
+pnpm install    # install dependencies
+pnpm test:run   # run tests
+pnpm build      # build action artifact (dist/index.mjs)
+pnpm lint       # lint
+pnpm typecheck  # type check
+```
 
 ## License
 
 MIT
-
-```
