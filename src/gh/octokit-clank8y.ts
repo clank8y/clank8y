@@ -8,6 +8,10 @@ const OIDC_RETRY_ATTEMPTS = 3
 const OIDC_RETRY_DELAYS_MS = [250, 750]
 
 function resolveTokenExchangeUrl(): string {
+  if (process.env.GITHUB_ACTIONS) {
+    return CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL
+  }
+
   const envValue = (process.env.CLANK8Y_TOKEN_URL ?? '').trim()
   return envValue || CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL
 }
@@ -79,6 +83,10 @@ function delay(ms: number): Promise<void> {
 
 async function acquireClank8yBotToken(): Promise<string> {
   if (!isOIDCAvailable()) {
+    if (process.env.GITHUB_ACTIONS) {
+      throw new Error('OIDC is required in GitHub Actions. Ensure id-token: write permission is configured and OIDC runtime env vars are available.')
+    }
+
     return acquireClank8yBotTokenViaLocalFallback()
   }
 

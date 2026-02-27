@@ -40,6 +40,8 @@ async function verifyWorkflowOidcToken(params: {
   oidcToken: string
   owner: string
   repo: string
+  defaultBranch: string
+  runId: string | null
 }): Promise<void> {
   const { payload } = await jwtVerify(params.oidcToken, GITHUB_OIDC_JWKS, {
     issuer: GITHUB_OIDC_ISSUER,
@@ -61,16 +63,29 @@ async function verifyWorkflowOidcToken(params: {
     throw new Error(`OIDC event_name claim mismatch. Expected workflow_dispatch, got ${String(eventNameClaim)}`)
   }
 
+  const trustedRef = `refs/heads/${params.defaultBranch}`
+  const refClaim = payload.ref
+  if (refClaim !== trustedRef) {
+    throw new Error(`OIDC ref claim mismatch. Expected ${trustedRef}, got ${String(refClaim)}`)
+  }
+
   const jobWorkflowRefClaim = payload.job_workflow_ref
   if (typeof jobWorkflowRefClaim !== 'string') {
     throw new Error('OIDC token is missing job_workflow_ref claim')
   }
 
-  const expectedWorkflowPrefix = `${expectedRepository}/${CLANK8Y_WORKFLOW_FILE}@`
-  if (!jobWorkflowRefClaim.startsWith(expectedWorkflowPrefix)) {
+  const expectedWorkflowRef = `${expectedRepository}/${CLANK8Y_WORKFLOW_FILE}@${trustedRef}`
+  if (jobWorkflowRefClaim !== expectedWorkflowRef) {
     throw new Error(
-      `OIDC job_workflow_ref claim mismatch. Expected prefix ${expectedWorkflowPrefix}, got ${jobWorkflowRefClaim}`,
+      `OIDC job_workflow_ref claim mismatch. Expected ${expectedWorkflowRef}, got ${jobWorkflowRefClaim}`,
     )
+  }
+
+  if (params.runId !== null) {
+    const runIdClaim = payload.run_id
+    if ((typeof runIdClaim !== 'number' && typeof runIdClaim !== 'string') || String(runIdClaim) !== params.runId) {
+      throw new Error(`OIDC run_id claim mismatch. Expected ${params.runId}, got ${String(runIdClaim)}`)
+    }
   }
 }
 
@@ -89,6 +104,7 @@ export default defineHandler(async (event) => {
   const payload = await event.req.json().catch(() => null) as {
     owner?: unknown
     repo?: unknown
+    run_id?: unknown
   } | null
 
   if (!payload || typeof payload.owner !== 'string' || typeof payload.repo !== 'string') {
@@ -101,14 +117,31 @@ export default defineHandler(async (event) => {
     throw HTTPError.status(400, 'Invalid request body. Expected non-empty owner and repo.')
   }
 
+  let runId: string | null = null
+  if (typeof payload.run_id === 'string' || typeof payload.run_id === 'number') {
+    runId = String(payload.run_id)
+  } else if (payload.run_id !== undefined && payload.run_id !== null) {
+    throw HTTPError.status(400, 'Invalid request body. run_id must be a string or number when provided.')
+  }
+
+  const appOctokit = createAppOctokit()
+
+  const { data: repository } = await appOctokit.request('GET /repos/{owner}/{repo}', {
+    owner,
+    repo,
+  })
+  const defaultBranch = repository.default_branch
+  if (!defaultBranch) {
+    console.error('Repository has no default branch configured')
+    throw HTTPError.status(500, 'Failed to resolve repository default branch')
+  }
+
   try {
-    await verifyWorkflowOidcToken({ oidcToken, owner, repo })
+    await verifyWorkflowOidcToken({ oidcToken, owner, repo, defaultBranch, runId })
   } catch (error) {
     console.error('OIDC token verification failed', error)
     throw HTTPError.status(401, 'Unauthorized')
   }
-
-  const appOctokit = createAppOctokit()
 
   try {
     const installation = await appOctokit.request('GET /repos/{owner}/{repo}/installation', {
