@@ -26006,7 +26006,7 @@ const BASE_REVIEW_PROMPT = [
 	"- Do not finish without calling `create-pull-request-review`.",
 	"- If there are issues, include inline comments with concrete fixes where possible.",
 	"- If there are no significant issues, still submit a concise review body stating that.",
-	"- End the review body with a direct mention to the actor from EVENT-LEVEL INSTRUCTIONS. ",
+	"- End the review body with a direct mention to the actor from EVENT-LEVEL INSTRUCTIONS.",
 	"",
 	"Tooling constraints:",
 	"- Prefer GitHub MCP tools for this task.",
@@ -37179,9 +37179,9 @@ function resolveCopilotAgentTokenFromEnvironment() {
 }
 const setPRContextTool = defineTool$1("set-pull-request-context", {
 	description: "Set the pull request context for the current review session. Call this before any other tools to initialize the PR context.",
-	parameters: toJsonSchema(object({ prNumber: pipe(number(), description("The pull request number to set the context for")) })),
-	handler: async ({ prNumber }) => {
-		const pullRequest = await setPullRequestContext(prNumber);
+	parameters: toJsonSchema(object({ pr_number: pipe(number(), description("The pull request number to set the context for")) })),
+	handler: async ({ pr_number }) => {
+		const pullRequest = await setPullRequestContext(pr_number);
 		return {
 			success: true,
 			pullRequest: {
