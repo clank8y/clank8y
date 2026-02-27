@@ -9,7 +9,22 @@ export default defineConfig({
     nodeCompat: true,
     wrangler: {
       name: 'clank8y-website',
-
+      observability: {
+        enabled: true,
+        head_sampling_rate: 1,
+        logs: {
+          enabled: true,
+          head_sampling_rate: 1,
+          // @ts-expect-error - is valid
+          persist: true,
+          invocation_logs: true,
+        },
+        traces: {
+          enabled: true,
+          persist: true,
+          head_sampling_rate: 1,
+        },
+      },
     },
   },
 })
