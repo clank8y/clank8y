@@ -23,7 +23,7 @@ const BASE_REVIEW_PROMPT = [
   '- Do not finish without calling `create-pull-request-review`.',
   '- If there are issues, include inline comments with concrete fixes where possible.',
   '- If there are no significant issues, still submit a concise review body stating that.',
-  '- End the review body with a direct mention to the actor from EVENT-LEVEL INSTRUCTIONS. ',
+  '- End the review body with a direct mention to the actor from EVENT-LEVEL INSTRUCTIONS.',
   '',
   'Tooling constraints:',
   '- Prefer GitHub MCP tools for this task.',
