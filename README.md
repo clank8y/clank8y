@@ -2,9 +2,11 @@
 
 AI-powered PR review bot for Cumulocity IoT (c8y) projects. Bring your own key — currently supports GitHub Copilot, but the architecture can be extended to other providers.
 
+**[Install the GitHub App →](https://github.com/apps/clank8y)**
+
 ## Getting Started
 
-Add `.github/workflows/clank8y.yml` to any repo you want clank8y to review:
+Add `.github/workflows/clank8y.yml` to any repo you want clank8y to review and **commit it to the default branch** — the workflow must exist on the default branch before the bot can dispatch it:
 
 ```yaml
 name: clank8y
