@@ -1,18 +1,12 @@
-# Nitro starter
+# clank8y website
 
-Create your API and deploy it anywhere with this Nitro starter.
+The clank8y webhook server and landing page, built with [Nitro](https://v3.nitro.build) and deployed to Cloudflare Workers.
 
-## Getting started
-
-```sh
-npm install
-npm run dev
-```
-
-## Deploying
+## Development
 
 ```sh
-npm run build
+pnpm install
+pnpm dev
 ```
 
-Then checkout the [Nitro documentation](https://v3.nitro.build/deploy) to learn more about the different deployment presets.
+```
