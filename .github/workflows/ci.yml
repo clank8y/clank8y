@@ -61,13 +61,21 @@ jobs:
       - name: Build website
         run: pnpm --filter ./website build
 
+      - name: Compute preview alias
+        id: alias
+        run: |
+          slug="${{ github.head_ref }}"
+          slug="${slug//[^a-zA-Z0-9]/-}"  # replace anything not alphanumeric with -
+          slug="${slug,,}"                 # lowercase
+          echo "value=$slug" >> "$GITHUB_OUTPUT"
+
       - name: Upload version with preview alias
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.69.0'
-          command: versions upload --preview-alias "${{ github.head_ref }}"
+          command: versions upload --preview-alias "${{ steps.alias.outputs.value }}"
           workingDirectory: website
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
