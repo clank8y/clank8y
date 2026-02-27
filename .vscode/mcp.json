@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"cf-docs": {
+			"url": "https://docs.mcp.cloudflare.com/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}
