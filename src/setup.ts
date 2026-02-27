@@ -33,8 +33,9 @@ function parseRepositoryFromEnvironment(): RepositoryContext {
     throw new Error('GITHUB_REPOSITORY is required (format: owner/repo).')
   }
 
-  const [owner, repo] = repository.split('/')
-  if (!owner || !repo) {
+  const segments = repository.split('/')
+  const [owner, repo] = segments
+  if (segments.length !== 2 || !owner || !repo) {
     throw new Error(`Invalid GITHUB_REPOSITORY value '${repository}'. Expected format: owner/repo.`)
   }
 
