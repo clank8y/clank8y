@@ -36,3 +36,6 @@ jobs:
 
       - name: Commit
         uses: autofix-ci/action@v1
+        with:
+          commit-message: "fix: apply lint fixes and update action script [skip ci]"
+        
