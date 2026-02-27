@@ -158,7 +158,6 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Add field-level guidance via `v.pipe(..., v.description(...))` so agents get better tool-usage hints.
 - Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
 - `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
-- Keep action-entry prompt handling in `src/index.ts`: read optional `prompt` input and only override `process.env.PROMPT` when provided.
 - For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
