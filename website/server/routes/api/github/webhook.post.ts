@@ -257,6 +257,13 @@ export default defineHandler(async (event) => {
         instruction: commentBody,
       })
 
+      await installationOctokit.request('POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions', {
+        owner,
+        repo,
+        comment_id: payload.comment.id,
+        content: 'eyes',
+      })
+
       console.log(
         `[webhook] dispatched workflow for issue_comment.created repo=${payload.repository.full_name} pr=#${payload.issue.number} actor=${payload.sender.login}`,
       )
