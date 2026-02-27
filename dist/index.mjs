@@ -29799,8 +29799,9 @@ async function getOctokit() {
 function parseRepositoryFromEnvironment() {
 	const repository = process$1.env.GITHUB_REPOSITORY?.trim();
 	if (!repository) throw new Error("GITHUB_REPOSITORY is required (format: owner/repo).");
-	const [owner, repo] = repository.split("/");
-	if (!owner || !repo) throw new Error(`Invalid GITHUB_REPOSITORY value '${repository}'. Expected format: owner/repo.`);
+	const segments = repository.split("/");
+	const [owner, repo] = segments;
+	if (segments.length !== 2 || !owner || !repo) throw new Error(`Invalid GITHUB_REPOSITORY value '${repository}'. Expected format: owner/repo.`);
 	return {
 		owner,
 		repo
