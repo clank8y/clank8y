@@ -22,7 +22,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -35,6 +35,50 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+  deploy-preview:
+    name: Preview Deploy
+    runs-on: ubuntu-latest
+    needs: ci
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build website
+        run: pnpm --filter ./website build
+
+      - name: Compute preview alias
+        id: alias
+        run: |
+          slug="${{ github.head_ref }}"
+          slug="${slug//[^a-zA-Z0-9]/-}"  # replace anything not alphanumeric with -
+          slug="${slug,,}"                 # lowercase
+          echo "value=$slug" >> "$GITHUB_OUTPUT"
+
+      - name: Upload version with preview alias
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.69.0'
+          command: versions upload --preview-alias "${{ steps.alias.outputs.value }}" --message "preview ${{ steps.alias.outputs.value }} (${{ github.sha }})"
+          workingDirectory: website
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
 
 

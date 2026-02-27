@@ -2,13 +2,16 @@ import type { PullReviewAgentFactory } from '.'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { CopilotClient } from '@github/copilot-sdk'
+import { CopilotClient, defineTool } from '@github/copilot-sdk'
 import { x } from 'tinyexec'
 import { consola } from 'consola'
 import type { UsageTotals } from '../logging'
 import { logAgentMessage, logUsageSummary } from '../logging'
-import { getPullRequestReviewContext } from '../setup'
+import { getPullRequestReviewContext, setPullRequestContext } from '../setup'
 import { mcpServers } from '../mcp'
+import { toJsonSchema } from '@valibot/to-json-schema'
+
+import * as v from 'valibot'
 
 function prependPath(entries: string[]): string {
   const current = process.env.PATH ?? ''
@@ -99,27 +102,53 @@ async function ensureCopilotCliInstalled(): Promise<string> {
   return cliPath
 }
 
-function hasCopilotTokenInEnvironment(): boolean {
-  return Boolean(
-    process.env.COPILOT_GITHUB_TOKEN
-    || process.env.GH_TOKEN
-    || process.env.GITHUB_TOKEN,
-  )
+function hasCopilotAgentTokenInEnvironment(): boolean {
+  return !!process.env.COPILOT_GITHUB_TOKEN
 }
 
-function resolveCopilotGithubTokenFromEnvironment(): string {
-  const token = process.env.COPILOT_GITHUB_TOKEN
-    || process.env.GH_TOKEN
-    || process.env.GITHUB_TOKEN
+function resolveCopilotAgentTokenFromEnvironment(): string {
+  const copilotAgentToken = process.env.COPILOT_GITHUB_TOKEN
 
-  if (!token) {
+  if (!copilotAgentToken) {
     throw new Error(
-      'Copilot authentication token is missing. Set COPILOT_GITHUB_TOKEN (preferred), GH_TOKEN, or GITHUB_TOKEN.',
+      'Copilot authentication token is missing. Set COPILOT_GITHUB_TOKEN.',
     )
   }
 
-  return token
+  return copilotAgentToken
 }
+
+const setPRContextTool = defineTool<{
+  pr_number: number
+}>('set-pull-request-context', {
+  description: 'Set the pull request context for the current review session. Call this before any other tools to initialize the PR context.',
+  parameters: toJsonSchema(
+    v.object({
+      pr_number: v.pipe(v.number(), v.description('The pull request number to set the context for')),
+    }),
+  ) as any,
+  handler: async ({ pr_number }) => {
+    const pullRequest = await setPullRequestContext(pr_number)
+
+    return {
+      success: true,
+      pullRequest: {
+        number: pullRequest.number,
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        headRef: pullRequest.headRef,
+        headSha: pullRequest.headSha,
+        baseRef: pullRequest.baseRef,
+        baseSha: pullRequest.baseSha,
+      },
+      nextSteps: [
+        'Call prepare-pull-request-review.',
+        'Read only relevant diff/file chunks.',
+        'Submit findings with create-pull-request-review.',
+      ],
+    }
+  },
+})
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const agent = 'github-copilot'
@@ -128,35 +157,34 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   consola.info('Preparing GitHub Copilot review agent')
   const cliPath = await ensureCopilotCliInstalled()
 
-  if (!hasCopilotTokenInEnvironment()) {
+  if (!hasCopilotAgentTokenInEnvironment()) {
     throw new Error(
       [
         'Copilot authentication token is missing.',
-        'Set one of COPILOT_GITHUB_TOKEN, GH_TOKEN, or GITHUB_TOKEN in the workflow environment,',
+        'Set COPILOT_GITHUB_TOKEN in the workflow environment,',
         'before starting clank8y.',
       ].join(' '),
     )
   }
   consola.info('Copilot authentication token detected in environment')
 
-  const githubToken = resolveCopilotGithubTokenFromEnvironment()
+  const copilotAgentToken = resolveCopilotAgentTokenFromEnvironment()
   consola.info('Using explicit GitHub token for Copilot SDK authentication')
 
   const context = await getPullRequestReviewContext()
-  logAgentMessage({
+
+  // TODO: post input context prompt
+  /*   logAgentMessage({
     agent,
     model,
   }, [
-    `repository: ${context.pullRequest.owner}/${context.pullRequest.repo}`,
-    `pullrequest #: ${context.pullRequest.number}`,
-    `branch: ${context.pullRequest.headRef}`,
-  ])
+    `repository: ${context.repository.owner}/${context.repository.repo}`,
+  ]) */
 
   const client = new CopilotClient({
     cliPath,
-    githubToken,
+    githubToken: copilotAgentToken,
     useLoggedInUser: false,
-
   })
 
   const {
@@ -193,6 +221,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       const session = await client.createSession({
         excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash'/* , 'report_intent' */, 'sql', 'stop_bash'/* , 'task' */, 'view', 'web_fetch', 'write_bash'],
         model,
+        tools: [setPRContextTool],
         mcpServers: {
           github: {
             type: 'http',
@@ -225,7 +254,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       })
 
       try {
-        consola.info('Clank8y getting to work...')
+        consola.info('clank8y getting to work...')
         const response = await session.sendAndWait({
           prompt: context.prompt,
         }, options.timeOutMs)

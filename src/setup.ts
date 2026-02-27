@@ -1,24 +1,15 @@
-import * as core from '@actions/core'
 import * as github from '@actions/github'
 import process from 'node:process'
 import { buildReviewPrompt } from './prompt'
+import { getOctokit } from './gh'
+
+import * as core from '@actions/core'
 
 export type GitHubActionContext = Pick<typeof github.context, 'repo' | 'payload'>
 
-export interface PullRequestActionContext extends GitHubActionContext {
-  payload: GitHubActionContext['payload'] & {
-    pull_request: {
-      number: number
-      head: {
-        sha: string
-        ref: string
-      }
-      base: {
-        sha: string
-        ref: string
-      }
-    }
-  }
+export interface RepositoryContext {
+  owner: string
+  repo: string
 }
 
 export interface PullRequestContext {
@@ -36,96 +27,57 @@ export interface WorkflowRunContext {
   url: string
 }
 
-function validatePullRequestContext(
-  context: GitHubActionContext = github.context,
-): asserts context is PullRequestActionContext {
-  const pr = context.payload.pull_request
-
-  if (
-    !pr
-    || typeof pr.number !== 'number'
-    || typeof pr.head?.sha !== 'string'
-    || typeof pr.head?.ref !== 'string'
-    || typeof pr.base?.sha !== 'string'
-    || typeof pr.base?.ref !== 'string'
-  ) {
-    throw new Error('This action must run in a pull_request context')
+function parseRepositoryFromEnvironment(): RepositoryContext {
+  const repository = process.env.GITHUB_REPOSITORY?.trim()
+  if (!repository) {
+    throw new Error('GITHUB_REPOSITORY is required (format: owner/repo).')
   }
+
+  const segments = repository.split('/')
+  const [owner, repo] = segments
+  if (segments.length !== 2 || !owner || !repo) {
+    throw new Error(`Invalid GITHUB_REPOSITORY value '${repository}'. Expected format: owner/repo.`)
+  }
+
+  return { owner, repo }
 }
 
-async function createPullRequestContext(
-): Promise<PullRequestContext> {
-  if (github.context.payload.pull_request) {
-    validatePullRequestContext(github.context)
-
-    const pr = github.context.payload.pull_request
-
+function createRepositoryContext(): RepositoryContext {
+  // Prefer GitHub Actions runtime context when available.
+  if (github?.context?.repo?.owner && github?.context?.repo?.repo) {
     return {
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      number: pr.number,
-      headSha: pr.head.sha,
-      headRef: pr.head.ref,
-      baseSha: pr.base.sha,
-      baseRef: pr.base.ref,
     }
   }
 
-  const issueNumber = github.context.payload.issue?.number
-  const hasPullRequestReference = !!github.context.payload.issue?.pull_request
-
-  if (!hasPullRequestReference || typeof issueNumber !== 'number') {
-    throw new Error('This action must run in a pull_request context or issue_comment on a pull request')
-  }
-
-  const githubToken = core.getInput('github-token', { required: true })
-  const octokit = github.getOctokit(githubToken)
-  const { data: pr } = await octokit.rest.pulls.get({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    pull_number: issueNumber,
-  })
-
-  return {
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    number: pr.number,
-    headSha: pr.head.sha,
-    headRef: pr.head.ref,
-    baseSha: pr.base.sha,
-    baseRef: pr.base.ref,
-  }
+  // Local development fallback (e.g. localtest.ts).
+  return parseRepositoryFromEnvironment()
 }
 
-export interface PullRequestReviewContext {
-  pullRequest: PullRequestContext
-  workflowRun: WorkflowRunContext | null
-  githubToken: string
-  promptContext: string
-  prompt: string
-}
-
-let _config: PullRequestReviewContext | null = null
-let _configPromise: Promise<PullRequestReviewContext> | null = null
-
-async function createPullRequestReviewContext(
-): Promise<PullRequestReviewContext> {
-  const pullRequest = await createPullRequestContext()
-  const workflowRun = createWorkflowRunContext()
-  const githubToken = core.getInput('github-token', { required: true })
-  const promptContext = core.getInput('prompt-context').trim()
-
-  return {
-    pullRequest,
-    workflowRun,
-    githubToken,
-    promptContext,
-    prompt: buildReviewPrompt(promptContext),
+function resolvePromptContext(): string {
+  // Prefer action input in workflow runs.
+  const inputPrompt = core.getInput('prompt').trim()
+  if (inputPrompt) {
+    return inputPrompt
   }
+
+  // Local development fallback.
+  return (process.env.PROMPT ?? '').trim()
 }
 
-function createWorkflowRunContext(): WorkflowRunContext | null {
-  const runIdValue = process.env.GITHUB_RUN_ID
+function resolveRunIdValue(): string | null {
+  // Prefer GitHub Actions context value when present.
+  if (typeof github?.context?.runId === 'number') {
+    return String(github.context.runId)
+  }
+
+  // Outside GitHub Actions there is no workflow run id.
+  return null
+}
+
+function createWorkflowRunContext(repository: RepositoryContext): WorkflowRunContext | null {
+  const runIdValue = resolveRunIdValue()
   if (!runIdValue) {
     return null
   }
@@ -135,12 +87,70 @@ function createWorkflowRunContext(): WorkflowRunContext | null {
     return null
   }
 
-  const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com'
-  const { owner, repo } = github.context.repo
-
   return {
     id: runId,
-    url: `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`,
+    url: `https://github.com/${repository.owner}/${repository.repo}/actions/runs/${runId}`,
+  }
+}
+
+let _activePullRequestContext: PullRequestContext | null = null
+
+export async function setPullRequestContext(prNumber: number): Promise<PullRequestContext> {
+  if (!Number.isFinite(prNumber) || prNumber < 1) {
+    throw new Error(`Invalid pull request number '${String(prNumber)}'.`)
+  }
+
+  const reviewContext = await getPullRequestReviewContext()
+  const repository = reviewContext.repository
+  const octokit = await getOctokit()
+  const { data: pr } = await octokit.rest.pulls.get({
+    owner: repository.owner,
+    repo: repository.repo,
+    pull_number: prNumber,
+  })
+
+  _activePullRequestContext = {
+    owner: repository.owner,
+    repo: repository.repo,
+    number: pr.number,
+    headSha: pr.head.sha,
+    headRef: pr.head.ref,
+    baseSha: pr.base.sha,
+    baseRef: pr.base.ref,
+  }
+
+  return _activePullRequestContext
+}
+
+export function getActivePullRequestContext(): PullRequestContext {
+  if (!_activePullRequestContext) {
+    throw new Error('Pull request context is not initialized. Call set-pull-request-context first.')
+  }
+
+  return _activePullRequestContext
+}
+
+export interface PullRequestReviewContext {
+  repository: RepositoryContext
+  workflowRun: WorkflowRunContext | null
+  promptContext: string
+  prompt: string
+}
+
+let _config: PullRequestReviewContext | null = null
+let _configPromise: Promise<PullRequestReviewContext> | null = null
+
+async function createPullRequestReviewContext(
+): Promise<PullRequestReviewContext> {
+  const repository = createRepositoryContext()
+  const workflowRun = createWorkflowRunContext(repository)
+  const promptContext = resolvePromptContext()
+
+  return {
+    repository,
+    workflowRun,
+    promptContext,
+    prompt: buildReviewPrompt(promptContext),
   }
 }
 

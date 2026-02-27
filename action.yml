@@ -3,12 +3,9 @@ description: Reviews your pull requests for Cumulocity IoT projects
 author: schplitt
 
 inputs:
-  github-token:
-    description: GitHub token used to create the Octokit client
+  prompt:
+    description: Event-level instruction block injected by the clank8y webhook server. Contains pr_number, trigger, actor, and optional user instruction. Do not set this manually.
     required: true
-  prompt-context:
-    description: Optional additional context inserted into the default review prompt
-    required: false
 
 runs:
   using: node24

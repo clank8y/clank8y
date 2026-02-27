@@ -1,20 +1,14 @@
 import type { Octokit } from 'octokit'
 import { clank8yOctokit } from './octokit-clank8y'
-import { githubBotOctokit } from './octokit-githubbot'
 
-let _oktokit: Octokit | null = null
+let _oktokitPromise: Promise<Octokit> | null = null
 
-export function getOctokit(): Octokit {
-  if (_oktokit) {
-    return _oktokit
-  }
-  _oktokit = clank8yOctokit()
-  if (!_oktokit) {
-    _oktokit = githubBotOctokit()
-  }
-  if (!_oktokit) {
-    throw new Error('No Octokit instance available')
+export async function getOctokit(): Promise<Octokit> {
+  if (_oktokitPromise) {
+    return _oktokitPromise
   }
 
-  return _oktokit
+  _oktokitPromise = clank8yOctokit()
+
+  return _oktokitPromise
 }

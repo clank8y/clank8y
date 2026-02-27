@@ -5,8 +5,10 @@ import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
-import { getPullRequestReviewContext } from '../setup'
-import type { WorkflowRunContext } from '../setup'
+import {
+  getActivePullRequestContext,
+  getPullRequestReviewContext,
+} from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
 import * as v from 'valibot'
@@ -14,6 +16,7 @@ import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
 import { encode } from '@toon-format/toon'
 import { consola } from 'consola'
+import { buildClank8yCommentBody } from '../../shared/comment'
 
 interface CachedDiff {
   content: string
@@ -37,7 +40,7 @@ function logToolInput(toolName: string, input: unknown): void {
 }
 
 async function getDiffCacheKey(): Promise<string> {
-  const pullRequest = (await getPullRequestReviewContext()).pullRequest
+  const pullRequest = getActivePullRequestContext()
   return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`
 }
 
@@ -55,30 +58,22 @@ function normalizeEscapedNewlines(text: string): string {
   })
 }
 
-function buildReviewBody(rawBody: string | undefined, workflowRun: WorkflowRunContext | null): string {
-  const normalizedBody = (rawBody ?? '').trim()
-  const clank8yRepoUrl = 'https://github.com/schplitt/clank8y'
-  const cumulocityUrl = 'https://cumulocity.com'
+function stripSurroundingQuotes(text: string): string {
+  let result = text
+  if (result.startsWith('"'))
+    result = result.slice(1)
+  if (result.endsWith('"'))
+    result = result.slice(0, -1)
+  return result
+}
 
-  const footerLinks = [
-    `<a href="${clank8yRepoUrl}" target="_blank" rel="noopener noreferrer">clank8y</a>`,
-    `<a href="${cumulocityUrl}" target="_blank" rel="noopener noreferrer">cumulocity</a>`,
-  ]
-
-  if (workflowRun) {
-    footerLinks.push(`<a href="${workflowRun.url}" target="_blank" rel="noopener noreferrer">workflow run</a>`)
-  }
-
-  return [
-    normalizedBody || '_No summary provided._',
-    '',
-    `<sub>${footerLinks.join(' | ')}</sub>`,
-  ].join('\n')
+function normalizeToolString(text: string): string {
+  return normalizeEscapedNewlines(stripSurroundingQuotes(text))
 }
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
-  const octokit = getOctokit()
-  const pullRequest = (await getPullRequestReviewContext()).pullRequest
+  const octokit = await getOctokit()
+  const pullRequest = getActivePullRequestContext()
 
   const allFiles: PRFiles = []
   let page = 1
@@ -258,8 +253,8 @@ const preparePullRequestReviewTool = defineTool({
 }, async () => {
   try {
     logToolInput('prepare-pull-request-review', {})
-    const octokit = getOctokit()
-    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const octokit = await getOctokit()
+    const pullRequest = getActivePullRequestContext()
 
     const [{ data: pr }, files] = await Promise.all([
       octokit.rest.pulls.get({
@@ -333,7 +328,7 @@ const createPullRequestReviewTool = defineTool({
     v.object({
       body: v.optional(v.pipe(
         v.string(),
-        v.description('1-2 sentence summary for the review. Put most actionable feedback in inline comments.'),
+        v.description('1-2 sentence summary for the review. Put most actionable feedback in inline comments. Do not wrap the value in quotation marks.'),
       )),
       commit_id: v.optional(v.pipe(
         v.string(),
@@ -377,11 +372,14 @@ const createPullRequestReviewTool = defineTool({
 }, async ({ body, commit_id, comments }) => {
   try {
     logToolInput('create-pull-request-review', { body, commit_id, comments })
-    const octokit = getOctokit()
+    const octokit = await getOctokit()
     const reviewContext = await getPullRequestReviewContext()
-    const pullRequest = reviewContext.pullRequest
+    const pullRequest = getActivePullRequestContext()
     const reviewCommentsInput = comments ?? []
-    const reviewBody = buildReviewBody(body === undefined ? undefined : normalizeEscapedNewlines(body), reviewContext.workflowRun)
+    const reviewBody = buildClank8yCommentBody(
+      body === undefined ? undefined : normalizeToolString(body),
+      { workflowRunUrl: reviewContext.workflowRun?.url ?? null },
+    )
 
     let commitSha = commit_id
     if (!commitSha) {
@@ -397,9 +395,9 @@ const createPullRequestReviewTool = defineTool({
       const side = comment.side ?? 'RIGHT'
       const startLine = comment.start_line ?? comment.line
 
-      let commentBody = normalizeEscapedNewlines(comment.body ?? '')
+      let commentBody = normalizeToolString(comment.body ?? '')
       if (comment.suggestion !== undefined) {
-        const suggestionBlock = `\`\`\`suggestion\n${normalizeEscapedNewlines(comment.suggestion)}\n\`\`\``
+        const suggestionBlock = `\`\`\`suggestion\n${normalizeToolString(comment.suggestion)}\n\`\`\``
         commentBody = commentBody
           ? `${commentBody}\n\n${suggestionBlock}`
           : suggestionBlock
@@ -534,8 +532,8 @@ const getPullRequestFileContentTool = defineTool({
 }, async ({ filename, offset, limit, full }) => {
   try {
     logToolInput('get-pull-request-file-content', { filename, offset, limit, full })
-    const octokit = getOctokit()
-    const pullRequest = (await getPullRequestReviewContext()).pullRequest
+    const octokit = await getOctokit()
+    const pullRequest = getActivePullRequestContext()
     const files = await fetchAllPullRequestFiles()
 
     const file = files.find((f) => f.filename === filename)
