@@ -119,16 +119,16 @@ function resolveCopilotAgentTokenFromEnvironment(): string {
 }
 
 const setPRContextTool = defineTool<{
-  prNumber: number
+  pr_number: number
 }>('set-pull-request-context', {
   description: 'Set the pull request context for the current review session. Call this before any other tools to initialize the PR context.',
   parameters: toJsonSchema(
     v.object({
-      prNumber: v.pipe(v.number(), v.description('The pull request number to set the context for')),
+      pr_number: v.pipe(v.number(), v.description('The pull request number to set the context for')),
     }),
   ) as any,
-  handler: async ({ prNumber }) => {
-    const pullRequest = await setPullRequestContext(prNumber)
+  handler: async ({ pr_number }) => {
+    const pullRequest = await setPullRequestContext(pr_number)
 
     return {
       success: true,
@@ -173,7 +173,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
 
   const context = await getPullRequestReviewContext()
 
-  // TODO: post imput context prompt
+  // TODO: post input context prompt
   /*   logAgentMessage({
     agent,
     model,
