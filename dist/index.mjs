@@ -36721,6 +36721,13 @@ function normalizeEscapedNewlines(text) {
 		return "\n";
 	});
 }
+function stripSurroundingQuotes(text) {
+	if (text.startsWith("\"") && text.endsWith("\"") && text.length >= 2) return text.slice(1, -1);
+	return text;
+}
+function normalizeToolString(text) {
+	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
+}
 async function fetchAllPullRequestFiles() {
 	const octokit = await getOctokit();
 	const pullRequest = getActivePullRequestContext();
@@ -36952,7 +36959,7 @@ const createPullRequestReviewTool = defineTool({
 		const reviewContext = await getPullRequestReviewContext();
 		const pullRequest = getActivePullRequestContext();
 		const reviewCommentsInput = comments ?? [];
-		const reviewBody = buildClank8yCommentBody(body === void 0 ? void 0 : normalizeEscapedNewlines(body), { workflowRunUrl: reviewContext.workflowRun?.url ?? null });
+		const reviewBody = buildClank8yCommentBody(body === void 0 ? void 0 : normalizeToolString(body), { workflowRunUrl: reviewContext.workflowRun?.url ?? null });
 		let commitSha = commit_id;
 		if (!commitSha) {
 			const { data: pr } = await octokit.rest.pulls.get({
@@ -36965,9 +36972,9 @@ const createPullRequestReviewTool = defineTool({
 		const apiComments = reviewCommentsInput.map((comment) => {
 			const side = comment.side ?? "RIGHT";
 			const startLine = comment.start_line ?? comment.line;
-			let commentBody = normalizeEscapedNewlines(comment.body ?? "");
+			let commentBody = normalizeToolString(comment.body ?? "");
 			if (comment.suggestion !== void 0) {
-				const suggestionBlock = `\`\`\`suggestion\n${normalizeEscapedNewlines(comment.suggestion)}\n\`\`\``;
+				const suggestionBlock = `\`\`\`suggestion\n${normalizeToolString(comment.suggestion)}\n\`\`\``;
 				commentBody = commentBody ? `${commentBody}\n\n${suggestionBlock}` : suggestionBlock;
 			}
 			return {
