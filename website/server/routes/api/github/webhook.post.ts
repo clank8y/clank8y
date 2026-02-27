@@ -65,7 +65,7 @@ function buildDispatchPromptContext(params: {
 }): string {
   const baseInstruction = params.trigger === 'issue_comment'
     ? 'You have been mentioned in a PR review. Address the feedback in the comments that mention you.'
-    : 'Review this pull request and provide actionable, high-signal feedback.'
+    : 'A new PR has just been opened. Review this pull request and provide actionable, high-signal feedback.'
 
   const lines = [
     'EVENT-LEVEL INSTRUCTIONS:',
