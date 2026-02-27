@@ -59,11 +59,12 @@ function normalizeEscapedNewlines(text: string): string {
 }
 
 function stripSurroundingQuotes(text: string): string {
-  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
-    return text.slice(1, -1)
-  }
-
-  return text
+  let result = text
+  if (result.startsWith('"'))
+    result = result.slice(1)
+  if (result.endsWith('"'))
+    result = result.slice(0, -1)
+  return result
 }
 
 function normalizeToolString(text: string): string {
@@ -327,7 +328,7 @@ const createPullRequestReviewTool = defineTool({
     v.object({
       body: v.optional(v.pipe(
         v.string(),
-        v.description('1-2 sentence summary for the review. Put most actionable feedback in inline comments.'),
+        v.description('1-2 sentence summary for the review. Put most actionable feedback in inline comments. Do not wrap the value in quotation marks.'),
       )),
       commit_id: v.optional(v.pipe(
         v.string(),
