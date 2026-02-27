@@ -134,6 +134,8 @@ export default defineHandler(async (event) => {
       },
     })
 
+    console.log('Minted installation token successfully')
+
     return {
       token: tokenResponse.data.token,
       expires_at: tokenResponse.data.expires_at,
