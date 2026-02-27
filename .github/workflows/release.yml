@@ -1,14 +1,15 @@
-name: CI
-
-permissions:
-  contents: read
+name: release
 
 on:
-  pull_request:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  ci:
-    name: Build & Validate
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,11 +28,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build
-
       - name: Test
         run: pnpm test:run
+
+      - name: Build action
+        run: pnpm build
 
       - name: Lint
         run: pnpm lint
@@ -39,40 +40,19 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-  deploy-preview:
-    name: Preview Deploy
-    runs-on: ubuntu-latest
-    needs: ci
-    permissions:
-      contents: read
-      deployments: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Build website
         run: pnpm --filter ./website build
 
-      - name: Upload version with preview alias
+      - name: Deploy website with Wrangler
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.69.0'
-          command: versions upload --preview-alias "${{ github.head_ref }}"
+          command: deploy
           workingDirectory: website
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-
-
+      - name: Create GitHub Release
+        run: pnpm changelogithub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
