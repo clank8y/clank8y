@@ -58,6 +58,18 @@ function normalizeEscapedNewlines(text: string): string {
   })
 }
 
+function stripSurroundingQuotes(text: string): string {
+  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
+    return text.slice(1, -1)
+  }
+
+  return text
+}
+
+function normalizeToolString(text: string): string {
+  return normalizeEscapedNewlines(stripSurroundingQuotes(text))
+}
+
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
   const octokit = await getOctokit()
   const pullRequest = getActivePullRequestContext()
@@ -364,7 +376,7 @@ const createPullRequestReviewTool = defineTool({
     const pullRequest = getActivePullRequestContext()
     const reviewCommentsInput = comments ?? []
     const reviewBody = buildClank8yCommentBody(
-      body === undefined ? undefined : normalizeEscapedNewlines(body),
+      body === undefined ? undefined : normalizeToolString(body),
       { workflowRunUrl: reviewContext.workflowRun?.url ?? null },
     )
 
@@ -382,9 +394,9 @@ const createPullRequestReviewTool = defineTool({
       const side = comment.side ?? 'RIGHT'
       const startLine = comment.start_line ?? comment.line
 
-      let commentBody = normalizeEscapedNewlines(comment.body ?? '')
+      let commentBody = normalizeToolString(comment.body ?? '')
       if (comment.suggestion !== undefined) {
-        const suggestionBlock = `\`\`\`suggestion\n${normalizeEscapedNewlines(comment.suggestion)}\n\`\`\``
+        const suggestionBlock = `\`\`\`suggestion\n${normalizeToolString(comment.suggestion)}\n\`\`\``
         commentBody = commentBody
           ? `${commentBody}\n\n${suggestionBlock}`
           : suggestionBlock
