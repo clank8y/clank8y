@@ -26006,7 +26006,7 @@ const BASE_REVIEW_PROMPT = [
 	"- Do not finish without calling `create-pull-request-review`.",
 	"- If there are issues, include inline comments with concrete fixes where possible.",
 	"- If there are no significant issues, still submit a concise review body stating that.",
-	"- End the review body with a direct mention to the actor from EVENT-LEVEL INSTRUCTIONS.",
+	"- Mention the user from EVENT-LEVEL INSTRUCTIONS so that they are notified of the review.",
 	"",
 	"Tooling constraints:",
 	"- Prefer GitHub MCP tools for this task.",
@@ -36722,8 +36722,10 @@ function normalizeEscapedNewlines(text) {
 	});
 }
 function stripSurroundingQuotes(text) {
-	if (text.startsWith("\"") && text.endsWith("\"") && text.length >= 2) return text.slice(1, -1);
-	return text;
+	let result = text;
+	if (result.startsWith("\"")) result = result.slice(1);
+	if (result.endsWith("\"")) result = result.slice(0, -1);
+	return result;
 }
 function normalizeToolString(text) {
 	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
@@ -36937,7 +36939,7 @@ const createPullRequestReviewTool = defineTool({
 	description: "Submit a review for the current pull request with optional inline comments",
 	title: "Create Pull Request Review",
 	schema: pipe(object({
-		body: optional(pipe(string(), description("1-2 sentence summary for the review. Put most actionable feedback in inline comments."))),
+		body: optional(pipe(string(), description("1-2 sentence summary for the review. Put most actionable feedback in inline comments. Do not wrap the value in quotation marks."))),
 		commit_id: optional(pipe(string(), description("Optional commit SHA for the review. Defaults to current PR head SHA."))),
 		comments: optional(pipe(array(pipe(object({
 			path: pipe(string(), description("Path of the file to comment on, relative to repository root.")),
