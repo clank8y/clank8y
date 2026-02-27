@@ -4,21 +4,15 @@ import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from 'octokit'
 import process from 'node:process'
 import { buildWebhookSetupHintBody } from '../../../utils/github'
+import { getAppId, getAppPrivateKey, getWebhookSecret } from '../../../utils/env'
+
+const WORKFLOW_ID = 'clank8y.yml'
 
 type DispatchFailureReason = 'missing_workflow' | 'missing_permissions' | 'unknown'
 
-function getRequiredEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is required.`)
-  }
-
-  return value
-}
-
 function createAppOctokit(): Octokit {
-  const appId = getRequiredEnv('GITHUB_APP_ID')
-  const privateKey = getRequiredEnv('GITHUB_APP_PRIVATE_KEY').replace(/\\n/g, '\n')
+  const appId = getAppId()
+  const privateKey = getAppPrivateKey()
 
   return new Octokit({
     authStrategy: createAppAuth,
@@ -30,8 +24,6 @@ function createAppOctokit(): Octokit {
 }
 
 async function createInstallationOctokit(owner: string, repo: string): Promise<Octokit> {
-  const appId = getRequiredEnv('GITHUB_APP_ID')
-  const privateKey = getRequiredEnv('GITHUB_APP_PRIVATE_KEY').replace(/\\n/g, '\n')
   const appOctokit = createAppOctokit()
 
   const installation = await appOctokit.request('GET /repos/{owner}/{repo}/installation', {
@@ -42,8 +34,8 @@ async function createInstallationOctokit(owner: string, repo: string): Promise<O
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
-      appId,
-      privateKey,
+      appId: getAppId(),
+      privateKey: getAppPrivateKey(),
       installationId: installation.data.id,
     },
   })
@@ -100,13 +92,12 @@ async function dispatchWorkflow(params: {
   actor: string
   instruction?: string
 }): Promise<void> {
-  const workflowId = process.env.GITHUB_WORKFLOW_ID || 'clank8y.yml'
   const octokit = await createInstallationOctokit(params.owner, params.repo)
 
   await octokit.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches', {
     owner: params.owner,
     repo: params.repo,
-    workflow_id: workflowId,
+    workflow_id: WORKFLOW_ID,
     ref: params.ref,
     inputs: {
       prompt: buildDispatchPromptContext({
@@ -148,19 +139,18 @@ async function commentSetupHint(params: {
   username: string
   reason: DispatchFailureReason
 }): Promise<void> {
-  const workflowId = process.env.GITHUB_WORKFLOW_ID || 'clank8y.yml'
   const octokit = await createInstallationOctokit(params.owner, params.repo)
 
   const reasonLine
     = params.reason === 'missing_workflow'
-      ? `I could not find \`.github/workflows/${workflowId}\` with a \`workflow_dispatch\` trigger.`
+      ? `I could not find \`.github/workflows/${WORKFLOW_ID}\` with a \`workflow_dispatch\` trigger.`
       : params.reason === 'missing_permissions'
         ? 'The app installation does not currently have permission to dispatch workflows (Actions write is required).'
         : 'I could not dispatch the workflow because repository setup is incomplete.'
 
   const body = buildWebhookSetupHintBody({
     username: params.username,
-    workflowId,
+    workflowId: WORKFLOW_ID,
     reasonLine,
   })
 
@@ -195,7 +185,7 @@ export default defineHandler(async (event) => {
 
   console.log(`Processing GitHub webhook event: ${eventName} with delivery ID: ${deliveryId}`)
 
-  const webhooks = new Webhooks({ secret: process.env.GITHUB_WEBHOOK_SECRET })
+  const webhooks = new Webhooks({ secret: getWebhookSecret() })
 
   webhooks.on('pull_request.opened', async ({ payload }) => {
     try {

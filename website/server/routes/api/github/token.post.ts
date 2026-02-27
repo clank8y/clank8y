@@ -4,23 +4,15 @@ import { Octokit } from 'octokit'
 import process from 'node:process'
 import { defineHandler, HTTPError } from 'nitro/h3'
 import { CLANK8Y_OIDC_AUDIENCE } from '../../../../../shared/oidc'
+import { getAppId, getAppPrivateKey } from '../../../utils/env'
 
 const GITHUB_OIDC_ISSUER = 'https://token.actions.githubusercontent.com'
 const GITHUB_OIDC_JWKS = createRemoteJWKSet(new URL('https://token.actions.githubusercontent.com/.well-known/jwks'))
 const CLANK8Y_WORKFLOW_FILE = '.github/workflows/clank8y.yml'
 
-function getRequiredEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is required.`)
-  }
-
-  return value
-}
-
 function createAppOctokit(): Octokit {
-  const appId = getRequiredEnv('GITHUB_APP_ID')
-  const privateKey = getRequiredEnv('GITHUB_APP_PRIVATE_KEY')
+  const appId = getAppId()
+  const privateKey = getAppPrivateKey()
 
   return new Octokit({
     authStrategy: createAppAuth,
