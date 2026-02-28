@@ -13,6 +13,7 @@
     "nitro": "catalog:",
     "octokit": "catalog:",
     "rolldown": "catalog:",
+    "valibot": "catalog:",
     "wrangler": "catalog:"
   }
 }

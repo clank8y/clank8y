@@ -27,6 +27,11 @@ function isOIDCAvailable(): boolean {
 async function acquireClank8yBotTokenViaOIDC(): Promise<string> {
   const tokenExchangeUrl = resolveTokenExchangeUrl()
 
+  const runId = process.env.GITHUB_RUN_ID
+  if (!runId) {
+    throw new Error('GITHUB_RUN_ID is not set. Cannot perform OIDC token exchange without run_id.')
+  }
+
   const idToken = await core.getIDToken(CLANK8Y_OIDC_AUDIENCE)
   const response = await fetch(tokenExchangeUrl, {
     method: 'POST',
@@ -37,7 +42,7 @@ async function acquireClank8yBotTokenViaOIDC(): Promise<string> {
     body: JSON.stringify({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      run_id: process.env.GITHUB_RUN_ID ?? null,
+      run_id: runId,
     }),
   })
 
