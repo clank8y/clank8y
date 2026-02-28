@@ -12,7 +12,12 @@ src/
 ├── setup.ts            # Action inputs + PR context assembly
 ├── prompt.ts           # Base PR review prompt + prompt composition
 ├── agents/             # Review agent runtime (Copilot SDK)
-└── mcp/                # Local GitHub MCP server and tools
+└── mcp/                # MCP servers + protocol adapters
+    ├── index.ts        # Interfaces (MCPServer, LocalMCPServer, LocalStdioMCPServer), startAll/stopAll, mcpServers()
+    ├── github.ts       # In-process HTTP MCP server (tmcp + srvx)
+    ├── angular.ts      # Stdio MCP server (Angular CLI via npx)
+    └── adapters/
+        └── copilot.ts  # Translates MCPServerMap → Copilot SDK mcpServers session config
 tests/
 └── greet.test.ts       # Tests using Vitest
 ```
@@ -151,6 +156,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 ### Tools & Dependencies
 
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
+- The `@github/copilot-sdk` type declarations reference generated files (`./generated/rpc.js` etc.) that don't exist as `.d.ts`, causing spurious TS language server errors (e.g. "onPermissionRequest is required"). These are pre-existing and do not appear in `pnpm typecheck`. Do not add workarounds for them.
 
 ### Patterns & Conventions
 
@@ -169,6 +175,10 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Use a starter-style `autofix.yml` (main-branch push trigger + `autofix-ci/action`) for lint auto-fixes.
 - Keep release publishing tag-driven (`on.push.tags: v*`) instead of manual version bumping inside CI.
 - Keep website deploy automation Wrangler-only (preview branch/manual), not main-branch auto-deploy.
+- MCP server interfaces: `LocalMCPServer` = HTTP (in-process, srvx), `LocalStdioMCPServer` = stdio (SDK spawns external process). Both extend `MCPServer` base with `serverType`, `allowedTools`, `status`, and `stop`. Use `startAll(mcpServers())` / `stopAll(servers)` as the only lifecycle entry points in agents.
+- Each MCP server declares its own `allowedTools` (exact tool name allowlist, or `['*']` for all). The per-agent adapter (`src/mcp/adapters/copilot.ts`) reads `allowedTools` and maps it to the SDK's per-server `tools` field.
+- Stdio MCP servers (e.g. Angular) are spawned by the Copilot SDK CLI process; `start()` is a state change + returns `{ command, args }` only — no spawning in clank8y code.
+- Add new agent adapters in `src/mcp/adapters/<agent>.ts`, not in `src/agents/`. MCP-to-SDK translation belongs to the MCP layer.
 
 ### Common Mistakes to Avoid
 

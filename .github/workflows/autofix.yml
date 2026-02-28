@@ -9,7 +9,7 @@ jobs:
   autofix:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -24,6 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -35,7 +36,7 @@ jobs:
         run: pnpm lint:fix
 
       - name: Commit
-        uses: autofix-ci/action@v1
+        uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8
         with:
-          commit-message: "fix: apply lint fixes and update action script [skip ci]"
+          commit-message: "fix: apply lint fixes and update action script"
         

@@ -8,7 +8,8 @@ import { consola } from 'consola'
 import type { UsageTotals } from '../logging'
 import { logAgentMessage, logUsageSummary } from '../logging'
 import { getPullRequestReviewContext, setPullRequestContext } from '../setup'
-import { mcpServers } from '../mcp'
+import { mcpServers, startAll, stopAll } from '../mcp'
+import { toCopilotMCPServersConfig } from '../mcp/adapters/copilot'
 import { toJsonSchema } from '@valibot/to-json-schema'
 
 import * as v from 'valibot'
@@ -187,9 +188,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     useLoggedInUser: false,
   })
 
-  const {
-    github,
-  } = mcpServers()
+  const servers = mcpServers()
 
   return async () => {
     const thoughtStarts = new Map<string, number>()
@@ -200,7 +199,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       cacheWriteTokens: 0,
       cost: 0,
     }
-    const { url: githubMCPUrl } = await github.start()
+    const startResults = await startAll(servers)
 
     try {
       await client.start()
@@ -214,22 +213,43 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       const models = await client.listModels()
       const modelIds = models.map((model) => model.id)
 
+      if (!process.env.GITHUB_ACTIONS) {
+        consola.debug(`Available models:\n${modelIds.map((m) => `  • ${m}`).join('\n')}`)
+      }
+
       if (!modelIds.includes(model)) {
         throw new Error(`Configured model '${model}' is not available for this token/account.`)
       }
 
+      const availableTools = [
+        // Built-in Copilot agent tools kept from the original excluded list
+        'report_intent',
+        'task',
+        // Custom in-process tool
+        setPRContextTool.name,
+        // All tools exposed by registered MCP servers (filtered per-server via allowedTools)
+        ...Object.values(startResults).flatMap((r) => r.toolNames),
+      ]
+
+      if (!process.env.GITHUB_ACTIONS) {
+        consola.debug(`Available tools for this session:\n${availableTools.map((t) => `  • ${t}`).join('\n')}`)
+      }
+
       const session = await client.createSession({
-        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash'/* , 'report_intent' */, 'sql', 'stop_bash'/* , 'task' */, 'view', 'web_fetch', 'write_bash'],
+        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'sql', 'stop_bash', 'view', 'web_fetch', 'write_bash'],
         model,
         tools: [setPRContextTool],
-        mcpServers: {
-          github: {
-            type: 'http',
-            url: githubMCPUrl,
-            tools: ['*'],
-            timeout: options.tools.maxRuntimeMs,
-          },
+        onPermissionRequest: async (request) => {
+          if (request.kind === 'mcp' || request.kind === 'custom-tool' || request.kind === 'read') {
+            return {
+              kind: 'approved',
+            }
+          }
+          return {
+            kind: 'denied-by-rules',
+          }
         },
+        mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: options.tools.maxRuntimeMs }),
       })
 
       session.on('assistant.turn_start', (event) => {
@@ -273,7 +293,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
     } finally {
       logUsageSummary(totals)
       await client.stop()
-      await github.stop()
+      await stopAll(servers)
       consola.success('Review run finished')
     }
   }
