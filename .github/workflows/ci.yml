@@ -3,12 +3,16 @@ name: CI
 on:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,8 +34,8 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Lint + Fix
-        run: pnpm lint:fix
+      - name: Lint
+        run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
@@ -39,11 +43,6 @@ jobs:
       # No tests yet
       #- name: Test
       #  run: pnpm test
-
-      - name: Commit
-        uses: autofix-ci/action@v1
-        with:
-          commit-message: "fix: apply lint fixes and update action script [skip ci]"
 
   deploy-preview:
     name: Preview Deploy
