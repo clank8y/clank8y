@@ -211,6 +211,8 @@ function createGitHubMCP(): LocalMCPServer {
   let status: LocalMCPServer['status'] = { state: 'stopped' }
 
   return {
+    serverType: 'http' as const,
+    allowedTools: ['*'],
     get status() {
       return status
     },
