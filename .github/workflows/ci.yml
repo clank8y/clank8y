@@ -36,8 +36,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test:run
+      # No tests yet
+      #- name: Test
+      #  run: pnpm test
 
       - name: Commit
         uses: autofix-ci/action@v1
