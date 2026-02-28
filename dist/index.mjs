@@ -20047,7 +20047,7 @@ var require_node = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 }));
 
 //#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.25/node_modules/@github/copilot-sdk/dist/generated/rpc.js
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.29/node_modules/@github/copilot-sdk/dist/generated/rpc.js
 var import_node = require_node();
 function createServerRpc(connection) {
 	return {
@@ -20095,19 +20095,29 @@ function createSessionRpc(connection, sessionId) {
 		fleet: { start: async (params) => connection.sendRequest("session.fleet.start", {
 			sessionId,
 			...params
-		}) }
+		}) },
+		agent: {
+			list: async () => connection.sendRequest("session.agent.list", { sessionId }),
+			getCurrent: async () => connection.sendRequest("session.agent.getCurrent", { sessionId }),
+			select: async (params) => connection.sendRequest("session.agent.select", {
+				sessionId,
+				...params
+			}),
+			deselect: async () => connection.sendRequest("session.agent.deselect", { sessionId })
+		},
+		compaction: { compact: async () => connection.sendRequest("session.compaction.compact", { sessionId }) }
 	};
 }
 
 //#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.25/node_modules/@github/copilot-sdk/dist/sdkProtocolVersion.js
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.29/node_modules/@github/copilot-sdk/dist/sdkProtocolVersion.js
 const SDK_PROTOCOL_VERSION = 2;
 function getSdkProtocolVersion() {
 	return SDK_PROTOCOL_VERSION;
 }
 
 //#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.25/node_modules/@github/copilot-sdk/dist/session.js
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.29/node_modules/@github/copilot-sdk/dist/session.js
 var CopilotSession = class {
 	/**
 	* Creates a new CopilotSession instance.
@@ -20442,7 +20452,7 @@ var CopilotSession = class {
 };
 
 //#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.25/node_modules/@github/copilot-sdk/dist/client.js
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.29/node_modules/@github/copilot-sdk/dist/client.js
 function isZodSchema(value) {
 	return value != null && typeof value === "object" && "toJSONSchema" in value && typeof value.toJSONSchema === "function";
 }
@@ -20450,6 +20460,10 @@ function toJsonSchema$1(parameters) {
 	if (!parameters) return void 0;
 	if (isZodSchema(parameters)) return parameters.toJSONSchema();
 	return parameters;
+}
+function getNodeExecPath() {
+	if (process.versions.bun) return "node";
+	return process.execPath;
 }
 function getBundledCliPath() {
 	return join(dirname(dirname(fileURLToPath(import.meta.resolve("@github/copilot/sdk")))), "index.js");
@@ -20714,10 +20728,11 @@ var CopilotClient = class {
 	* @example
 	* ```typescript
 	* // Basic session
-	* const session = await client.createSession();
+	* const session = await client.createSession({ onPermissionRequest: approveAll });
 	*
 	* // Session with model and tools
 	* const session = await client.createSession({
+	*   onPermissionRequest: approveAll,
 	*   model: "gpt-4",
 	*   tools: [{
 	*     name: "get_weather",
@@ -20728,12 +20743,14 @@ var CopilotClient = class {
 	* });
 	* ```
 	*/
-	async createSession(config = {}) {
+	async createSession(config) {
+		if (!config?.onPermissionRequest) throw new Error("An onPermissionRequest handler is required when creating a session. For example, to allow all permissions, use { onPermissionRequest: approveAll }.");
 		if (!this.connection) if (this.options.autoStart) await this.start();
 		else throw new Error("Client not connected. Call start() first.");
 		const { sessionId, workspacePath } = await this.connection.sendRequest("session.create", {
 			model: config.model,
 			sessionId: config.sessionId,
+			clientName: config.clientName,
 			reasoningEffort: config.reasoningEffort,
 			tools: config.tools?.map((tool) => ({
 				name: tool.name,
@@ -20744,7 +20761,7 @@ var CopilotClient = class {
 			availableTools: config.availableTools,
 			excludedTools: config.excludedTools,
 			provider: config.provider,
-			requestPermission: !!config.onPermissionRequest,
+			requestPermission: true,
 			requestUserInput: !!config.onUserInputRequest,
 			hooks: !!(config.hooks && Object.values(config.hooks).some(Boolean)),
 			workingDirectory: config.workingDirectory,
@@ -20759,7 +20776,7 @@ var CopilotClient = class {
 		});
 		const session = new CopilotSession(sessionId, this.connection, workspacePath);
 		session.registerTools(config.tools);
-		if (config.onPermissionRequest) session.registerPermissionHandler(config.onPermissionRequest);
+		session.registerPermissionHandler(config.onPermissionRequest);
 		if (config.onUserInputRequest) session.registerUserInputHandler(config.onUserInputRequest);
 		if (config.hooks) session.registerHooks(config.hooks);
 		this.sessions.set(sessionId, session);
@@ -20780,19 +20797,22 @@ var CopilotClient = class {
 	* @example
 	* ```typescript
 	* // Resume a previous session
-	* const session = await client.resumeSession("session-123");
+	* const session = await client.resumeSession("session-123", { onPermissionRequest: approveAll });
 	*
 	* // Resume with new tools
 	* const session = await client.resumeSession("session-123", {
+	*   onPermissionRequest: approveAll,
 	*   tools: [myNewTool]
 	* });
 	* ```
 	*/
-	async resumeSession(sessionId, config = {}) {
+	async resumeSession(sessionId, config) {
+		if (!config?.onPermissionRequest) throw new Error("An onPermissionRequest handler is required when resuming a session. For example, to allow all permissions, use { onPermissionRequest: approveAll }.");
 		if (!this.connection) if (this.options.autoStart) await this.start();
 		else throw new Error("Client not connected. Call start() first.");
 		const { sessionId: resumedSessionId, workspacePath } = await this.connection.sendRequest("session.resume", {
 			sessionId,
+			clientName: config.clientName,
 			model: config.model,
 			reasoningEffort: config.reasoningEffort,
 			systemMessage: config.systemMessage,
@@ -20804,7 +20824,7 @@ var CopilotClient = class {
 				parameters: toJsonSchema$1(tool.parameters)
 			})),
 			provider: config.provider,
-			requestPermission: !!config.onPermissionRequest,
+			requestPermission: true,
 			requestUserInput: !!config.onUserInputRequest,
 			hooks: !!(config.hooks && Object.values(config.hooks).some(Boolean)),
 			workingDirectory: config.workingDirectory,
@@ -20820,7 +20840,7 @@ var CopilotClient = class {
 		});
 		const session = new CopilotSession(resumedSessionId, this.connection, workspacePath);
 		session.registerTools(config.tools);
-		if (config.onPermissionRequest) session.registerPermissionHandler(config.onPermissionRequest);
+		session.registerPermissionHandler(config.onPermissionRequest);
 		if (config.onUserInputRequest) session.registerUserInputHandler(config.onUserInputRequest);
 		if (config.hooks) session.registerHooks(config.hooks);
 		this.sessions.set(resumedSessionId, session);
@@ -20834,7 +20854,7 @@ var CopilotClient = class {
 	* @example
 	* ```typescript
 	* if (client.getState() === "connected") {
-	*   const session = await client.createSession();
+	*   const session = await client.createSession({ onPermissionRequest: approveAll });
 	* }
 	* ```
 	*/
@@ -20921,7 +20941,7 @@ var CopilotClient = class {
 	* ```typescript
 	* const lastId = await client.getLastSessionId();
 	* if (lastId) {
-	*   const session = await client.resumeSession(lastId);
+	*   const session = await client.resumeSession(lastId, { onPermissionRequest: approveAll });
 	* }
 	* ```
 	*/
@@ -21064,7 +21084,7 @@ var CopilotClient = class {
 				"pipe",
 				"pipe"
 			];
-			if (this.options.cliPath.endsWith(".js")) this.cliProcess = spawn(process.execPath, [this.options.cliPath, ...args], {
+			if (this.options.cliPath.endsWith(".js")) this.cliProcess = spawn(getNodeExecPath(), [this.options.cliPath, ...args], {
 				stdio: stdioConfig,
 				cwd: this.options.cwd,
 				env: envWithoutNodeDebug,
@@ -21294,7 +21314,7 @@ stderr: ${stderrOutput}`));
 };
 
 //#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.25/node_modules/@github/copilot-sdk/dist/types.js
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.29/node_modules/@github/copilot-sdk/dist/types.js
 function defineTool$1(name, config) {
 	return {
 		name,
@@ -29878,7 +29898,88 @@ async function getPullRequestReviewContext() {
 }
 
 //#endregion
-//#region node_modules/.pnpm/srvx@0.11.7/node_modules/srvx/dist/_chunks/_url.mjs
+//#region src/mcp/angular.ts
+const ANGULAR_MCP_COMMAND = "npx";
+const ANGULAR_MCP_ARGS = [
+	"-y",
+	"@angular/cli",
+	"mcp"
+];
+/**
+* Tools exposed from the Angular CLI MCP server.
+* - `find_examples`       — authoritative Angular code examples (local)
+* - `get_best_practices`  — Angular best practices guide (local)
+* - `search_documentation`— searches angular.dev (remote)
+*/
+const ANGULAR_ALLOWED_TOOLS = [
+	"find_examples",
+	"get_best_practices",
+	"search_documentation"
+];
+let _angularMCP = null;
+function angularMCP() {
+	if (!_angularMCP) _angularMCP = createAngularMCP();
+	return _angularMCP;
+}
+function createAngularMCP() {
+	let status = { state: "stopped" };
+	return {
+		serverType: "stdio",
+		allowedTools: ANGULAR_ALLOWED_TOOLS,
+		get status() {
+			return status;
+		},
+		start: async () => {
+			status = { state: "running" };
+			return {
+				command: ANGULAR_MCP_COMMAND,
+				args: ANGULAR_MCP_ARGS,
+				toolNames: ANGULAR_ALLOWED_TOOLS
+			};
+		},
+		stop: async () => {
+			status = { state: "stopped" };
+		}
+	};
+}
+
+//#endregion
+//#region src/mcp/codex.ts
+const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
+let _codexMCP = null;
+function codexMCP() {
+	if (!_codexMCP) _codexMCP = createCodexMCP();
+	return _codexMCP;
+}
+function createCodexMCP() {
+	return {
+		serverType: "http",
+		allowedTools: ["*"],
+		get status() {
+			return { state: "running" };
+		},
+		start: async () => ({
+			url: CODEX_MCP_URL,
+			toolNames: []
+		}),
+		stop: async () => {}
+	};
+}
+
+//#endregion
+//#region node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_utils.mjs
+const noColor = /* @__PURE__ */ (() => {
+	const env = globalThis.process?.env ?? {};
+	return env.NO_COLOR === "1" || env.TERM === "dumb";
+})();
+const _c = (c, r = 39) => (t) => noColor ? t : `\u001B[${c}m${t}\u001B[${r}m`;
+const bold = /* @__PURE__ */ _c(1, 22);
+const red = /* @__PURE__ */ _c(31);
+const green = /* @__PURE__ */ _c(32);
+const gray = /* @__PURE__ */ _c(90);
+
+//#endregion
+//#region node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_url.mjs
 function lazyInherit(target, source, sourceKey) {
 	for (const key of [...Object.getOwnPropertyNames(source), ...Object.getOwnPropertySymbols(source)]) {
 		if (key === "constructor") continue;
@@ -29906,6 +30007,20 @@ function lazyInherit(target, source, sourceKey) {
 		if (modified) Object.defineProperty(target, key, desc);
 	}
 }
+/**
+* URL wrapper with fast paths to access to the following props:
+*
+*  - `url.pathname`
+*  - `url.search`
+*  - `url.searchParams`
+*  - `url.protocol`
+*
+* **NOTES:**
+*
+* - It is assumed that the input URL is **already encoded** and formatted from an HTTP request and contains no hash.
+* - Triggering the setters or getters on other props will deoptimize to full URL parsing.
+* - Changes to `searchParams` will be discarded as we don't track them.
+*/
 const FastURL = /* @__PURE__ */ (() => {
 	const NativeURL = globalThis.URL;
 	const FastURL = class URL {
@@ -30006,7 +30121,7 @@ const FastURL = /* @__PURE__ */ (() => {
 })();
 
 //#endregion
-//#region node_modules/.pnpm/srvx@0.11.7/node_modules/srvx/dist/_chunks/_utils2.mjs
+//#region node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_utils2.mjs
 function resolvePortAndHost(opts) {
 	const _port = opts.port ?? globalThis.process?.env.PORT ?? 3e3;
 	const port = typeof _port === "number" ? _port : Number.parseInt(_port, 10);
@@ -30078,19 +30193,7 @@ function createWaitUntil() {
 }
 
 //#endregion
-//#region node_modules/.pnpm/srvx@0.11.7/node_modules/srvx/dist/_chunks/_utils.mjs
-const noColor = /* @__PURE__ */ (() => {
-	const env = globalThis.process?.env ?? {};
-	return env.NO_COLOR === "1" || env.TERM === "dumb";
-})();
-const _c = (c, r = 39) => (t) => noColor ? t : `\u001B[${c}m${t}\u001B[${r}m`;
-const bold = /* @__PURE__ */ _c(1, 22);
-const red = /* @__PURE__ */ _c(31);
-const green = /* @__PURE__ */ _c(32);
-const gray = /* @__PURE__ */ _c(90);
-
-//#endregion
-//#region node_modules/.pnpm/srvx@0.11.7/node_modules/srvx/dist/_chunks/_plugins.mjs
+//#region node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_plugins.mjs
 function wrapFetch(server) {
 	const fetchHandler = server.options.fetch;
 	const middleware = server.options.middleware || [];
@@ -30147,7 +30250,7 @@ const gracefulShutdownPlugin = (server) => {
 };
 
 //#endregion
-//#region node_modules/.pnpm/srvx@0.11.7/node_modules/srvx/dist/adapters/node.mjs
+//#region node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/adapters/node.mjs
 async function sendNodeResponse(nodeRes, webRes) {
 	if (!webRes) {
 		nodeRes.statusCode = 500;
@@ -30205,6 +30308,11 @@ function streamBody(stream, nodeRes) {
 		nodeRes.off("error", streamCancel);
 	});
 }
+/**
+* Validates an HTTP Host header value (domain, IPv4, or bracketed IPv6) with optional port.
+* Intended for preliminary filtering invalid values like "localhost:3000/foobar?"
+*/
+const HOST_RE = /^(\[(?:[A-Fa-f0-9:.]+)\]|(?:[A-Za-z0-9_-]+\.)*[A-Za-z0-9_-]+|(?:\d{1,3}\.){3}\d{1,3})(:\d{1,5})?$/;
 var NodeRequestURL = class extends FastURL {
 	#req;
 	constructor({ req }) {
@@ -30213,7 +30321,11 @@ var NodeRequestURL = class extends FastURL {
 			const qIndex = path.indexOf("?");
 			const pathname = qIndex === -1 ? path : path?.slice(0, qIndex) || "/";
 			const search = qIndex === -1 ? "" : path?.slice(qIndex) || "";
-			const host = req.headers.host || req.headers[":authority"] || `${req.socket.localFamily === "IPv6" ? "[" + req.socket.localAddress + "]" : req.socket.localAddress}:${req.socket?.localPort || "80"}`;
+			let host = req.headers.host || req.headers[":authority"];
+			if (host) {
+				if (!HOST_RE.test(host)) throw new TypeError(`Invalid host header: ${host}`);
+			} else if (req.socket) host = `${req.socket.localFamily === "IPv6" ? "[" + req.socket.localAddress + "]" : req.socket.localAddress}:${req.socket?.localPort || "80"}`;
+			else host = "localhost";
 			const protocol = req.socket?.encrypted || req.headers["x-forwarded-proto"] === "https" || req.headers[":scheme"] === "https" ? "https:" : "http:";
 			super({
 				protocol,
@@ -30409,6 +30521,11 @@ function readBody(req) {
 		req.on("data", onData).once("end", onEnd).once("error", onError);
 	});
 }
+/**
+* Fast Response for Node.js runtime
+*
+* It is faster because in most cases it doesn't create a full Response instance.
+*/
 const NodeResponse = /* @__PURE__ */ (() => {
 	const NativeResponse = globalThis.Response;
 	const STATUS_CODES = globalThis.process?.getBuiltinModule?.("node:http")?.STATUS_CODES || {};
@@ -36834,6 +36951,8 @@ function createGitHubMCP() {
 	});
 	let status = { state: "stopped" };
 	return {
+		serverType: "http",
+		allowedTools: ["*"],
 		get status() {
 			return status;
 		},
@@ -37115,8 +37234,84 @@ mcp.tools(githubMcpTools);
 
 //#endregion
 //#region src/mcp/index.ts
+async function startAll(servers) {
+	const results = {};
+	for (const [name, server] of Object.entries(servers)) if (server.serverType === "http") {
+		const { url, toolNames } = await server.start();
+		results[name] = {
+			type: "http",
+			url,
+			toolNames
+		};
+	} else {
+		const { command, args, toolNames } = await server.start();
+		results[name] = {
+			type: "stdio",
+			command,
+			args,
+			toolNames
+		};
+	}
+	return results;
+}
+async function stopAll(servers) {
+	await Promise.all(Object.values(servers).map((s) => s.stop()));
+}
 function mcpServers() {
-	return { github: githubMCP() };
+	return {
+		github: githubMCP(),
+		codex: codexMCP(),
+		angular: angularMCP()
+	};
+}
+
+//#endregion
+//#region src/mcp/adapters/copilot.ts
+/**
+* Translates a map of started MCP servers into the session config format
+* expected by the Copilot SDK's `createSession({ mcpServers })`.
+*
+* - HTTP servers  → `{ type: 'http', url, tools, timeout }`
+* - Stdio servers → `{ type: 'stdio', command, args, tools, timeout }`
+*
+* Servers with an empty `allowedTools` list are skipped with a warning.
+* Each server's `allowedTools` is forwarded directly as the SDK-level tool allowlist.
+*
+* @param servers - Map of MCP server instances (for allowedTools access)
+* @param startResults - Start results returned by `startAll(servers)`
+* @param options - Adapter options (e.g. per-tool timeout)
+*/
+function toCopilotMCPServersConfig(servers, startResults, options) {
+	const config = {};
+	for (const [name, server] of Object.entries(servers)) {
+		const { allowedTools } = server;
+		if (allowedTools.length === 0) {
+			consola.warn(`MCP server "${name}" has an empty allowedTools list — skipping.`);
+			continue;
+		}
+		if (allowedTools[0] !== "*") consola.info(`MCP server "${name}" restricted to tools: [${allowedTools.join(", ")}]`);
+		const result = startResults[name];
+		if (!result) continue;
+		if (result.type === "http") {
+			const { url } = result;
+			config[name] = {
+				type: "http",
+				url,
+				tools: allowedTools,
+				timeout: options.timeout
+			};
+		} else {
+			const { command, args } = result;
+			config[name] = {
+				type: "stdio",
+				command,
+				args,
+				tools: allowedTools,
+				timeout: options.timeout
+			};
+		}
+	}
+	return config;
 }
 
 //#endregion
@@ -37229,7 +37424,7 @@ const githubCopilotAgent = async (options) => {
 		githubToken: copilotAgentToken,
 		useLoggedInUser: false
 	});
-	const { github } = mcpServers();
+	const servers = mcpServers();
 	return async () => {
 		const thoughtStarts = /* @__PURE__ */ new Map();
 		const totals = {
@@ -37239,11 +37434,20 @@ const githubCopilotAgent = async (options) => {
 			cacheWriteTokens: 0,
 			cost: 0
 		};
-		const { url: githubMCPUrl } = await github.start();
+		const startResults = await startAll(servers);
 		try {
 			await client.start();
 			if (!(await client.getAuthStatus()).isAuthenticated) throw new Error("Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.");
-			if (!(await client.listModels()).map((model) => model.id).includes(model)) throw new Error(`Configured model '${model}' is not available for this token/account.`);
+			const modelIds = (await client.listModels()).map((model) => model.id);
+			if (!process$1.env.GITHUB_ACTIONS) consola.debug(`Available models:\n${modelIds.map((m) => `  • ${m}`).join("\n")}`);
+			if (!modelIds.includes(model)) throw new Error(`Configured model '${model}' is not available for this token/account.`);
+			const availableTools = [
+				"report_intent",
+				"task",
+				setPRContextTool.name,
+				...Object.values(startResults).flatMap((r) => r.toolNames)
+			];
+			if (!process$1.env.GITHUB_ACTIONS) consola.debug(`Available tools for this session:\n${availableTools.map((t) => `  • ${t}`).join("\n")}`);
 			const session = await client.createSession({
 				excludedTools: [
 					"bash",
@@ -37264,12 +37468,11 @@ const githubCopilotAgent = async (options) => {
 				],
 				model,
 				tools: [setPRContextTool],
-				mcpServers: { github: {
-					type: "http",
-					url: githubMCPUrl,
-					tools: ["*"],
-					timeout: options.tools.maxRuntimeMs
-				} }
+				onPermissionRequest: async (request) => {
+					if (request.kind === "mcp" || request.kind === "custom-tool" || request.kind === "read") return { kind: "approved" };
+					return { kind: "denied-by-rules" };
+				},
+				mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: options.tools.maxRuntimeMs })
 			});
 			session.on("assistant.turn_start", (event) => {
 				thoughtStarts.set(event.data.turnId, Date.now());
@@ -37300,7 +37503,7 @@ const githubCopilotAgent = async (options) => {
 		} finally {
 			logUsageSummary(totals);
 			await client.stop();
-			await github.stop();
+			await stopAll(servers);
 			consola.success("Review run finished");
 		}
 	};
