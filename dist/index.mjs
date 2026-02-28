@@ -29736,6 +29736,7 @@ const CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL = "https://clank8y-website.schplitt.wor
 const OIDC_RETRY_ATTEMPTS = 3;
 const OIDC_RETRY_DELAYS_MS = [250, 750];
 function resolveTokenExchangeUrl() {
+	if (process$1.env.GITHUB_ACTIONS) return CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL;
 	return (process$1.env.CLANK8Y_TOKEN_URL ?? "").trim() || CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL;
 }
 function isOIDCAvailable() {
@@ -29779,7 +29780,10 @@ function delay(ms) {
 	});
 }
 async function acquireClank8yBotToken() {
-	if (!isOIDCAvailable()) return acquireClank8yBotTokenViaLocalFallback();
+	if (!isOIDCAvailable()) {
+		if (process$1.env.GITHUB_ACTIONS) throw new Error("OIDC is required in GitHub Actions. Ensure id-token: write permission is configured and OIDC runtime env vars are available.");
+		return acquireClank8yBotTokenViaLocalFallback();
+	}
 	let lastError = null;
 	for (let attempt = 1; attempt <= OIDC_RETRY_ATTEMPTS; attempt += 1) try {
 		return await acquireClank8yBotTokenViaOIDC();
