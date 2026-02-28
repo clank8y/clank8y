@@ -1,4 +1,5 @@
 import { angularMCP } from './angular'
+import { codexMCP } from './codex'
 import { githubMCP } from './github'
 
 // ─── Base interface ────────────────────────────────────────────────────────────
@@ -27,7 +28,17 @@ export interface LocalMCPServer extends MCPServer {
    */
   start: () => Promise<{ url: string, toolNames: string[] }>
 }
+// ─── Remote HTTP MCP server ─────────────────────────────────────────────────────
 
+/**
+ * Always-running external HTTP MCP server. `start()` returns the static URL;
+ * `stop()` is a no-op. `status` is always `running`.
+ */
+export interface RemoteMCPServer extends MCPServer {
+  readonly serverType: 'http'
+  readonly status: { readonly state: 'running' }
+  start: () => Promise<{ url: string, toolNames: string[] }>
+}
 // ─── Stdio MCP server ─────────────────────────────────────────────────────────
 
 export interface LocalStdioMCPServer extends MCPServer {
@@ -58,9 +69,9 @@ export type MCPStartResult = HTTPStartResult | StdioStartResult
 
 // ─── Lifecycle helpers ────────────────────────────────────────────────────────
 
-export type MCPServerMap = Record<string, LocalMCPServer | LocalStdioMCPServer>
+export type MCPServerMap = Record<string, LocalMCPServer | RemoteMCPServer | LocalStdioMCPServer>
 export type MCPStartResultMap<T extends MCPServerMap> = {
-  [K in keyof T]: T[K] extends LocalMCPServer ? HTTPStartResult : StdioStartResult
+  [K in keyof T]: T[K] extends LocalStdioMCPServer ? StdioStartResult : HTTPStartResult
 }
 
 export async function startAll<T extends MCPServerMap>(servers: T): Promise<MCPStartResultMap<T>> {
@@ -88,6 +99,7 @@ export async function stopAll(servers: MCPServerMap): Promise<void> {
 export function mcpServers() {
   return {
     github: githubMCP(),
+    codex: codexMCP(),
     angular: angularMCP(),
   }
 }
