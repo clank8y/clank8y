@@ -40,9 +40,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # No tests yet
-      #- name: Test
-      #  run: pnpm test
+      - name: Test
+        run: pnpm test
 
   deploy-preview:
     name: Preview Deploy
