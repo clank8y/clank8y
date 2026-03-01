@@ -29894,7 +29894,7 @@ var OAuthApp = OAuthApp$1.defaults({ Octokit });
 //#endregion
 //#region shared/oidc.ts
 const CLANK8Y_OIDC_AUDIENCE = "clank8y";
-const CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL = "https://clank8y-website.schplitt.workers.dev/api/github/token";
+const CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL = "https://clank8y.com/api/github/token";
 
 //#endregion
 //#region src/gh/octokit-clank8y.ts
@@ -29908,6 +29908,7 @@ function isOIDCAvailable() {
 }
 async function acquireClank8yBotTokenViaOIDC() {
 	const tokenExchangeUrl = resolveTokenExchangeUrl();
+	consola.info(`Exchanging OIDC token for Clank8y bot token via ${tokenExchangeUrl}`);
 	const runId = process$1.env.GITHUB_RUN_ID;
 	if (!runId) throw new Error("GITHUB_RUN_ID is not set. Cannot perform OIDC token exchange without run_id.");
 	const idToken = await getIDToken(CLANK8Y_OIDC_AUDIENCE);
