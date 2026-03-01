@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import process from 'node:process'
 import { reviewPullRequest } from './src/agents'
+import { resolveModelInput } from './src/setup'
 
 /**
  * Local test runner setup (dotenv-based)
@@ -52,7 +53,9 @@ function setupActionLikeEnvironment(): void {
 async function main(): Promise<void> {
   setupActionLikeEnvironment()
 
+  const model = resolveModelInput()
   await reviewPullRequest({
+    ...(model !== undefined && { model }),
   })
 }
 

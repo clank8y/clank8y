@@ -66,6 +66,17 @@ function resolvePromptContext(): string {
   return (process.env.PROMPT ?? '').trim()
 }
 
+export function resolveModelInput(): string | undefined {
+  // Prefer action input in workflow runs.
+  const inputModel = core.getInput('model').trim()
+  if (inputModel) {
+    return inputModel
+  }
+
+  // Local development fallback.
+  return process.env.MODEL?.trim() || undefined
+}
+
 function resolveRunIdValue(): string | null {
   // Prefer GitHub Actions context value when present.
   if (typeof github?.context?.runId === 'number') {

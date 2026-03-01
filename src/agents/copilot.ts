@@ -153,7 +153,7 @@ const setPRContextTool = defineTool<{
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const agent = 'github-copilot'
-  const model = options.model ?? 'claude-haiku-4.5'
+  const model = options.model ?? 'claude-sonnet-4.6'
 
   consola.info('Preparing GitHub Copilot review agent')
   const cliPath = await ensureCopilotCliInstalled()
@@ -214,25 +214,25 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       const modelIds = models.map((model) => model.id)
 
       if (!process.env.GITHUB_ACTIONS) {
-        consola.debug(`Available models:\n${modelIds.map((m) => `  • ${m}`).join('\n')}`)
+        consola.log(`Available models:\n${modelIds.map((m) => `  • ${m}`).join('\n')}`)
       }
 
       if (!modelIds.includes(model)) {
         throw new Error(`Configured model '${model}' is not available for this token/account.`)
       }
 
-      const availableTools = [
-        // Built-in Copilot agent tools kept from the original excluded list
-        'report_intent',
-        'task',
-        // Custom in-process tool
-        setPRContextTool.name,
-        // All tools exposed by registered MCP servers (filtered per-server via allowedTools)
-        ...Object.values(startResults).flatMap((r) => r.toolNames),
-      ]
-
       if (!process.env.GITHUB_ACTIONS) {
-        consola.debug(`Available tools for this session:\n${availableTools.map((t) => `  • ${t}`).join('\n')}`)
+        const availableTools = [
+        // Built-in Copilot agent tools kept from the original excluded list
+          'report_intent',
+          'task',
+          // Custom in-process tool
+          setPRContextTool.name,
+          // All tools exposed by registered MCP servers (filtered per-server via allowedTools)
+          ...Object.values(startResults).flatMap((r) => r.toolNames),
+        ]
+
+        consola.log(`Available tools for this session:\n${availableTools.map((t) => `  • ${t}`).join('\n')}`)
       }
 
       const session = await client.createSession({

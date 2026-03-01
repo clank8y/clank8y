@@ -4,6 +4,17 @@ import { githubCopilotAgent } from './copilot'
 
 export type AgentEffort = 'low' | 'medium' | 'high'
 
+export type Models
+  = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
+    | 'claude-haiku-4.5' | 'claude-opus-4.6'
+    | 'claude-opus-4.6-fast' | 'claude-opus-4.5'
+    | 'claude-sonnet-4' | 'gemini-3-pro-preview'
+    | 'gpt-5.3-codex' | 'gpt-5.2-codex'
+    | 'gpt-5.2' | 'gpt-5.1-codex-max'
+    | 'gpt-5.1-codex' | 'gpt-5.1'
+    | 'gpt-5.1-codex-mini' | 'gpt-5-mini'
+    | 'gpt-4.1'
+
 interface PullRequestAgentConfiguration {
   /**
    * Effort level determines what model to use unless model is explicitly specified.
@@ -13,7 +24,7 @@ interface PullRequestAgentConfiguration {
   /**
    * Model to use for the review. If not specified, a model will be chosen based on the effort level.
    */
-  model?: string
+  model?: Models | (string & {})
   /**
    * Time limit for the entire pull request review process.
    * @default 240_000 (4 minutes)
@@ -55,7 +66,7 @@ export type PullRequestReviewFn = () => Promise<void>
 export type PullReviewAgentFactory = (options: PullRequestAgentConfiguration) => PullRequestReviewFn | Promise<PullRequestReviewFn>
 
 async function getPullRequestAgent(options: PullRequestAgentOptions): Promise<PullRequestReviewFn> {
-  const config: PullRequestAgentConfiguration = defu(options, DEFAULT_CONFIGURATION)
+  const config = defu<PullRequestAgentConfiguration, [PullRequestAgentConfiguration]>(options, DEFAULT_CONFIGURATION)
 
   const { agent, ...profile } = config
 
