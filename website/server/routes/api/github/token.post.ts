@@ -25,6 +25,20 @@ function createAppOctokit(): Octokit {
   })
 }
 
+function createInstallationOctokit(installationId: number): Octokit {
+  const appId = getAppId()
+  const privateKey = getAppPrivateKey()
+
+  return new Octokit({
+    authStrategy: createAppAuth,
+    auth: {
+      appId,
+      privateKey,
+      installationId,
+    },
+  })
+}
+
 function getBearerToken(header: string | null): string | null {
   if (!header) {
     return null
@@ -115,10 +129,6 @@ function verifyOidcTokenRefClaims(params: {
     )
   }
 
-  if (claims.workflow !== CLANK8Y_WORKFLOW_FILE) {
-    throw new Error(`OIDC workflow claim mismatch. Expected ${CLANK8Y_WORKFLOW_FILE}, got ${claims.workflow}`)
-  }
-
   if (String(claims.run_id) !== params.runId) {
     throw new Error(`OIDC run_id claim mismatch. Expected ${params.runId}, got ${String(claims.run_id)}`)
   }
@@ -133,6 +143,7 @@ export default defineHandler(async (event) => {
   const authorization = event.req.headers.get('authorization')
   const oidcToken = getBearerToken(authorization)
   if (!oidcToken) {
+    console.error('Missing or invalid Authorization header')
     throw HTTPError.status(401, 'Unauthorized')
   }
 
@@ -155,13 +166,41 @@ export default defineHandler(async (event) => {
   }
 
   // Only now, with a verified caller, do we make API calls.
+  // App-level JWT is only valid for app-management endpoints (get installation).
+  // All repository operations require an installation token — createInstallationOctokit
+  // handles that automatically once we have the installation ID.
   const appOctokit = createAppOctokit()
 
-  const { data: repository } = await appOctokit.request('GET /repos/{owner}/{repo}', {
-    owner,
-    repo,
-  })
-  const defaultBranch = repository.default_branch
+  let installationId: number
+  try {
+    const installation = await appOctokit.request('GET /repos/{owner}/{repo}/installation', {
+      owner,
+      repo,
+    })
+    installationId = installation.data.id
+  } catch (error) {
+    console.error('Failed to find app installation for repository', error)
+    throw HTTPError.status(500, 'Failed to find app installation for repository')
+  }
+
+  // All subsequent requests use the installation-scoped Octokit, which activates
+  // the app's installed permissions (Contents: read, Pull requests: write, etc.).
+  const installationOctokit = createInstallationOctokit(installationId)
+
+  let defaultBranch: string | undefined
+  try {
+    const { data: repository } = await installationOctokit.request('GET /repos/{owner}/{repo}', {
+      owner,
+      repo,
+    })
+    if (repository.default_branch) {
+      defaultBranch = repository.default_branch
+    }
+  } catch (error) {
+    console.error('Failed to fetch repository metadata', error)
+    throw HTTPError.status(500, 'Failed to resolve repository default branch')
+  }
+
   if (!defaultBranch) {
     console.error('Repository has no default branch configured')
     throw HTTPError.status(500, 'Failed to resolve repository default branch')
@@ -176,20 +215,18 @@ export default defineHandler(async (event) => {
   }
 
   try {
-    const installation = await appOctokit.request('GET /repos/{owner}/{repo}/installation', {
-      owner,
-      repo,
-    })
-
-    const tokenResponse = await appOctokit.request('POST /app/installations/{installation_id}/access_tokens', {
-      installation_id: installation.data.id,
-      repositories: [repo],
-      permissions: {
-        contents: 'read',
-        pull_requests: 'write',
-        issues: 'write',
+    const tokenResponse = await installationOctokit.request(
+      'POST /app/installations/{installation_id}/access_tokens',
+      {
+        installation_id: installationId,
+        repositories: [repo],
+        permissions: {
+          contents: 'read',
+          pull_requests: 'write',
+          issues: 'write',
+        },
       },
-    })
+    )
 
     console.log('Minted installation token successfully')
 

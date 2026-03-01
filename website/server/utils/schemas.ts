@@ -41,7 +41,6 @@ export type OidcBasicClaims = v.InferOutput<typeof OidcBasicClaimsSchema>
 export const OidcRefClaimsSchema = v.object({
   ref: v.string('OIDC token is missing ref claim'),
   job_workflow_ref: v.string('OIDC token is missing job_workflow_ref claim'),
-  workflow: v.string('OIDC token is missing workflow claim'),
   run_id: runIdSchema,
 })
 
