@@ -271,6 +271,13 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
         consola.info(`→ tool: ${label}${args !== undefined ? ` ${JSON.stringify(args)}` : ''}`)
       })
 
+      session.on('assistant.message', (event) => {
+        logAgentMessage({
+          agent,
+          model,
+        }, event.data.content)
+      })
+
       session.on('assistant.usage', (usage) => {
         totals.inputTokens += usage.data.inputTokens ?? 0
         totals.outputTokens += usage.data.outputTokens ?? 0
