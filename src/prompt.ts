@@ -26,10 +26,11 @@ const REVIEW_SCOPE = [
   '',
   'Primary focus (Cumulocity + Angular):',
   '- Correct usage of `@c8y/ngx-components` components, services, pipes, directives, and hooks.',
-  '- Angular best practices: modern control flow (`@if`, `@for`, `@switch`), signals, standalone components, proper dependency injection.',
+  '- Angular best practices: modern control flow (`@if`, `@for`, `@switch`), signals, standalone components, proper dependency injection, `input()`, `output()`, `model()`.',
+  '- **Signals over RxJS** — this is a high-priority review axis (see dedicated section below).',
   '- Cumulocity design system compliance: CSS utility classes, design tokens, color tokens — flag hardcoded colors/spacing when platform tokens exist.',
   '- Use of platform-provided services over custom implementations (e.g. `AlertService`, `AppStateService`, `RealtimeService`, `UserPreferencesService`).',
-  '- Proper usage of extension points and hooks (`HOOK_*` providers, widget hooks, navigator hooks, action bar hooks).',
+  '- Proper usage of extension points and hooks (function `hook*` providers, widget hooks, navigator hooks, action bar hooks).',
   '- Internationalization: `translate` pipe/directive usage, missing translation keys.',
   '- Widget development patterns: `HOOK_COMPONENTS`, widget config, `OnBeforeSave` lifecycle.',
   '- Microfrontend patterns and module federation considerations.',
@@ -38,6 +39,7 @@ const REVIEW_SCOPE = [
   '- Critical security issues (XSS, injection, credential leaks, unsafe `innerHTML`).',
   '- Obvious performance anti-patterns (subscriptions never unsubscribed, missing `trackBy`, heavy computation in templates).',
   '- Dead code, unused imports, or copy-paste errors that clearly slipped through.',
+  '- **Lodash usage** that can be replaced with native JS/TS or `es-toolkit` (see dedicated section below).',
 ].join('\n')
 
 // ─── Knowledge verification ────────────────────────────────────────────────────
@@ -69,6 +71,71 @@ const KNOWLEDGE_VERIFICATION = [
   '- Developer injects `HttpClient` to fetch managed objects → check Codex for `InventoryService` from `@c8y/client`.',
   '',
   'DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly.',
+].join('\n')
+
+// ─── Signals over RxJS ─────────────────────────────────────────────────────────
+
+const SIGNALS_OVER_RXJS = [
+  '## Signals over RxJS — high priority',
+  '',
+  'Angular signals (`signal`, `computed`, `effect`, `input`, `output`, `model`, `linkedSignal`) are the modern reactive primitive.',
+  'Review RxJS usage with extra scrutiny — many patterns that previously required RxJS are now cleaner with signals.',
+  '',
+  '### What to flag:',
+  '- **Decorator-based `@Input()` and `@Output()`** → replace with signal-based `input()`, `input.required()`, `output()`, and `model()` functions.',
+  '- Overly complex RxJS chains (`.pipe(switchMap, map, tap, catchError, ...)`) that could be a simple `computed()` or `effect()`.',
+  '- `BehaviorSubject` used as local component state → replace with `signal()`.',
+  '- `combineLatest` + `map` just to derive a value from other observables → replace with `computed()` when inputs are signals.',
+  '- Manual `.subscribe()` for side effects that could be an `effect()`.',
+  '- `@Input() set ...` + manual change tracking → replace with `input()` signal + `computed()`.',
+  '- `@Output() event = new EventEmitter()` → replace with `output()` or `output<Type>()`.',
+  '- `async` pipe in templates chaining multiple observables → consider signal-based approach with `toSignal()`.',
+  '- `takeUntil(destroy$)` / `takeUntilDestroyed()` patterns that exist only because of manual subscriptions — signals eliminate the need.',
+  '',
+  '### What NOT to flag:',
+  '- RxJS for genuinely stream-based scenarios (WebSocket, real-time event streams, complex debounce/throttle/retry/backoff).',
+  '- `HttpClient` calls — these return observables and that is fine; no need to wrap in `toSignal()` unless it simplifies the component.',
+  '- Cumulocity services that return observables by design (e.g. `RealtimeService`) — these are stream-native.',
+  '',
+  '### How to suggest replacements:',
+  '- Show a concrete before/after: the RxJS version and the equivalent signals version.',
+  '- Reference Angular\'s interop utilities: `toSignal()`, `toObservable()`, `outputToObservable()`, `outputFromObservable()`.',
+  '- Point the developer to the **Angular MCP** docs: "Check `search_documentation` or `get_best_practices` on Angular signals and RxJS interop for migration guidance."',
+  '- When in doubt, verify via Angular MCP that the signal utility you are recommending actually exists before suggesting it.',
+  '',
+  '### Severity:',
+  '- **Medium** for unnecessarily complex RxJS that has a straightforward signal equivalent.',
+  '- **Low** for cases where RxJS works but signals would be marginally cleaner.',
+  '- Do NOT flag as **High** — working RxJS is not a bug, just a modernization opportunity.',
+].join('\n')
+
+// ─── Lodash & utility libraries ────────────────────────────────────────────────
+
+const LODASH_AND_UTILITIES = [
+  '## Lodash & utility libraries',
+  '',
+  'Lodash (`lodash`) is widely used in the Cumulocity ecosystem but is often unnecessary in modern TypeScript.',
+  '',
+  '### Review strategy:',
+  '- For each lodash import, ask: does native JS/TS cover this?',
+  '- Many lodash functions have direct native equivalents: `_.map` → `Array.map`, `_.filter` → `Array.filter`, `_.find` → `Array.find`, `_.includes` → `Array.includes` / `Set.has`, `_.keys` → `Object.keys`, `_.values` → `Object.values`, `_.assign` → spread / `Object.assign`, `_.isNil` → `== null`, `_.isEmpty` on arrays → `.length === 0`.',
+  '- `_.get(obj, "a.b.c")` → optional chaining `obj?.a?.b?.c`.',
+  '- `_.cloneDeep` → `structuredClone()` (available in all modern runtimes).',
+  '- `_.uniq` → `[...new Set(arr)]`. `_.uniqBy` → slightly more involved but still doable natively.',
+  '',
+  '### When lodash IS justified:',
+  '- Complex deep operations with no clean native equivalent (e.g. `_.merge` with deep recursive merge, `_.debounce` with specific options — though Angular has `rxjs/debounceTime` or signal-based alternatives).',
+  '- Performance-critical hot paths where lodash\'s optimized implementation matters (rare in UI code).',
+  '',
+  '### When suggesting removal:',
+  '- If the import is for a trivially replaceable function, suggest the native equivalent inline.',
+  '- If the project uses many lodash utilities and native replacement is clean, recommend [`es-toolkit`](https://es-toolkit.dev/) as a modern, tree-shakeable, zero-dependency alternative.',
+  '- `es-toolkit` provides lodash-compatible APIs with smaller bundle size and better TypeScript types.',
+  '',
+  '### Severity:',
+  '- **Medium** for lodash usage that has a trivial native equivalent (unnecessary dependency weight).',
+  '- **Low** for lodash usage that works but could be replaced with `es-toolkit` or a slightly more verbose native approach.',
+  '- Do not flag lodash usage that genuinely has no clean native/es-toolkit equivalent.',
 ].join('\n')
 
 // ─── Review workflow ───────────────────────────────────────────────────────────
@@ -128,6 +195,10 @@ const BASE_REVIEW_PROMPT = [
   REVIEW_SCOPE,
   '',
   KNOWLEDGE_VERIFICATION,
+  '',
+  SIGNALS_OVER_RXJS,
+  '',
+  LODASH_AND_UTILITIES,
   '',
   REVIEW_WORKFLOW,
 ].join('\n')
