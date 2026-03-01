@@ -37546,6 +37546,7 @@ const githubCopilotAgent = async (options) => {
 					"read_bash",
 					"sql",
 					"stop_bash",
+					"task",
 					"view",
 					"web_fetch",
 					"write_bash"
@@ -37572,10 +37573,10 @@ const githubCopilotAgent = async (options) => {
 				consola.info(`→ tool: ${label}${args !== void 0 ? ` ${JSON.stringify(args)}` : ""}`);
 			});
 			session.on("assistant.message", (event) => {
-				logAgentMessage({
+				if (event.data.reasoningText) logAgentMessage({
 					agent,
 					model
-				}, event.data.content);
+				}, event.data.reasoningText);
 			});
 			session.on("assistant.usage", (usage) => {
 				totals.inputTokens += usage.data.inputTokens ?? 0;
