@@ -20,7 +20,23 @@ import { buildClank8yCommentBody } from '../../shared/comment'
 interface CachedDiff {
   content: string
   toc: string
+  lines: string[]
 }
+
+// ─── Staged review state ──────────────────────────────────────────────────────
+
+interface StagedComment {
+  path: string
+  line: number
+  start_line?: number
+  side: 'LEFT' | 'RIGHT'
+  body: string
+  suggestion?: string
+  severity: 'high' | 'medium' | 'low'
+}
+
+const stagedComments: StagedComment[] = []
+const reviewedFiles = new Set<string>()
 
 const DIFF_CHUNK_DEFAULT_LIMIT = 200
 const DIFF_CHUNK_MAX_LIMIT = 400
@@ -33,6 +49,8 @@ const FILE_FULL_MAX_CHARS = 20_000
 
 let _githubMCP: LocalMCPServer | null = null
 const prDiffCache = new Map<string, CachedDiff>()
+const prFilesCache = new Map<string, PRFiles>()
+const fileContentCache = new Map<string, string>()
 
 async function getDiffCacheKey(): Promise<string> {
   const pullRequest = getActivePullRequestContext()
@@ -67,6 +85,11 @@ function normalizeToolString(text: string): string {
 }
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
+  const cacheKey = await getDiffCacheKey()
+  const cached = prFilesCache.get(cacheKey)
+  if (cached)
+    return cached
+
   const octokit = await getOctokit()
   const pullRequest = getActivePullRequestContext()
 
@@ -90,6 +113,7 @@ async function fetchAllPullRequestFiles(): Promise<PRFiles> {
     page += 1
   }
 
+  prFilesCache.set(cacheKey, allFiles)
   return allFiles
 }
 
@@ -162,6 +186,7 @@ function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
   return {
     content,
     toc,
+    lines: content.split('\n'),
   }
 }
 
@@ -265,7 +290,7 @@ const preparePullRequestReviewTool = defineTool({
     const cacheKey = await getDiffCacheKey()
     prDiffCache.set(cacheKey, diff)
 
-    const totalDiffLines = diff.content.split('\n').length
+    const totalDiffLines = diff.lines.length
     const fileSummaries = files.map((file) => ({
       path: file.filename,
       status: file.status,
@@ -305,9 +330,12 @@ const preparePullRequestReviewTool = defineTool({
         toc: diff.toc,
       },
       nextSteps: [
+        'Use search-pull-request-diff to find patterns across the entire diff (e.g. lodash imports, @Input() decorators).',
         'Use read-pull-request-diff-chunk with small offset/limit windows, guided by TOC line ranges.',
         'Use get-pull-request-file-content with offset/limit for relevant files only; avoid full=true unless required.',
-        'Submit findings with create-pull-request-review.',
+        'Stage findings with stage-review-comment as you go — do not hold findings in memory.',
+        'Use get-review-progress to track which files you have reviewed and what is pending.',
+        'When done, call submit-staged-review to push all staged findings as a single review.',
       ],
     } as any)
   } catch (error) {
@@ -316,83 +344,284 @@ const preparePullRequestReviewTool = defineTool({
   }
 })
 
-const createPullRequestReviewTool = defineTool({
-  name: 'create-pull-request-review',
-  description: 'Submit a review for the current pull request with optional inline comments',
-  title: 'Create Pull Request Review',
+const SEARCH_MAX_RESULTS = 50
+const SEARCH_CONTEXT_LINES = 2
+
+const searchPullRequestDiffTool = defineTool({
+  name: 'search-pull-request-diff',
+  description: 'Search the full cached pull request diff for a regex or text pattern. Returns matching lines with file context. Use this to find recurring patterns across all files (e.g. lodash imports, @Input() decorators, BehaviorSubject usage).',
+  title: 'Search Pull Request Diff',
+  schema: v.pipe(
+    v.object({
+      pattern: v.pipe(
+        v.string(),
+        v.description('Regex pattern to search for (case-insensitive). Example: "@Input\\\\(\\\\)", "_.get", "BehaviorSubject".'),
+      ),
+      max_results: v.optional(v.pipe(
+        v.number(),
+        v.description(`Maximum matches to return. Defaults to ${SEARCH_MAX_RESULTS}.`),
+      )),
+    }),
+    v.description('Search arguments for querying the cached pull request diff.'),
+  ),
+}, async ({ pattern, max_results }) => {
+  try {
+    const diff = await getOrBuildPullRequestDiff()
+    const lines = diff.lines
+    const limit = Math.max(1, Math.min(max_results ?? SEARCH_MAX_RESULTS, 200))
+
+    let regex: RegExp
+    try {
+      regex = new RegExp(pattern, 'i')
+    } catch {
+      return tool.error(`Invalid regex pattern: ${pattern}`)
+    }
+
+    interface SearchMatch {
+      diffLine: number
+      file: string
+      text: string
+      context: string[]
+    }
+
+    const results: SearchMatch[] = []
+    let currentFile = '(unknown)'
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!
+      const fileHeader = line.match(/^## (.+)$/)
+      if (fileHeader?.[1]) {
+        currentFile = fileHeader[1]
+        continue
+      }
+
+      if (regex.test(line)) {
+        const contextStart = Math.max(0, i - SEARCH_CONTEXT_LINES)
+        const contextEnd = Math.min(lines.length - 1, i + SEARCH_CONTEXT_LINES)
+        const context = lines.slice(contextStart, contextEnd + 1)
+
+        results.push({
+          diffLine: i + 1,
+          file: currentFile,
+          text: line,
+          context,
+        })
+
+        if (results.length >= limit)
+          break
+      }
+    }
+
+    if (results.length === 0) {
+      return tool.text(`No matches for pattern: ${pattern}`)
+    }
+
+    const formatted = results.map((r) => [
+      `### ${r.file} (diff line ${r.diffLine})`,
+      '```',
+      ...r.context,
+      '```',
+    ].join('\n')).join('\n\n')
+
+    return tool.text([
+      `Found ${results.length} match${results.length === 1 ? '' : 'es'} for: ${pattern}`,
+      '',
+      formatted,
+    ].join('\n'))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return tool.error(`Failed to search pull request diff: ${message}`)
+  }
+})
+
+const stageReviewCommentTool = defineTool({
+  name: 'stage-review-comment',
+  description: 'Stage a review finding for later submission. Findings are stored server-side — call this as you review each file so findings do not consume your context window. Call submit-staged-review when done.',
+  title: 'Stage Review Comment',
+  schema: v.pipe(
+    v.object({
+      path: v.pipe(
+        v.string(),
+        v.description('Path of the file to comment on, relative to repository root.'),
+      ),
+      line: v.pipe(
+        v.number(),
+        v.description('End line of the comment range in the diff (new file line numbering).'),
+      ),
+      start_line: v.optional(v.pipe(
+        v.number(),
+        v.description('Start line of the comment range. For single-line comments, omit or set equal to line.'),
+      )),
+      side: v.optional(v.pipe(
+        v.picklist(['LEFT', 'RIGHT']),
+        v.description('Diff side: LEFT for old/deleted lines, RIGHT for new/unchanged lines. Defaults to RIGHT.'),
+      )),
+      body: v.pipe(
+        v.string(),
+        v.description('Explanatory comment text with actionable feedback.'),
+      ),
+      suggestion: v.optional(v.pipe(
+        v.string(),
+        v.description('Replacement code for [start_line, line]. Must preserve indentation.'),
+      )),
+      severity: v.pipe(
+        v.picklist(['high', 'medium', 'low']),
+        v.description('Severity of the finding: high (security/runtime errors), medium (non-idiomatic/missing platform utility), low (style/minor improvement).'),
+      ),
+      mark_file_reviewed: v.optional(v.pipe(
+        v.boolean(),
+        v.description('Mark this file as reviewed after staging this comment. Defaults to false. Set to true when this is the last finding for the file.'),
+      )),
+    }),
+    v.description('Payload for staging a single review finding.'),
+  ),
+}, async ({ path, line, start_line, side, body, suggestion, severity, mark_file_reviewed }) => {
+  try {
+    const comment: StagedComment = {
+      path,
+      line,
+      side: side ?? 'RIGHT',
+      body: normalizeToolString(body),
+      severity,
+    }
+    if (start_line !== undefined)
+      comment.start_line = start_line
+    if (suggestion !== undefined)
+      comment.suggestion = normalizeToolString(suggestion)
+    stagedComments.push(comment)
+
+    if (mark_file_reviewed) {
+      reviewedFiles.add(path)
+    }
+
+    return tool.text(encode({
+      success: true,
+      staged_count: stagedComments.length,
+      file: path,
+      severity,
+      reviewed_files: reviewedFiles.size,
+    }))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return tool.error(`Failed to stage review comment: ${message}`)
+  }
+})
+
+const markFileReviewedTool = defineTool({
+  name: 'mark-file-reviewed',
+  description: 'Mark one or more files as reviewed (no findings). Use this for files you inspected but found no issues in.',
+  title: 'Mark File Reviewed',
+  schema: v.pipe(
+    v.object({
+      paths: v.pipe(
+        v.array(v.string()),
+        v.description('File paths to mark as reviewed.'),
+      ),
+    }),
+    v.description('Mark files as reviewed with no findings.'),
+  ),
+}, async ({ paths }) => {
+  for (const p of paths) {
+    reviewedFiles.add(p)
+  }
+
+  return tool.text(encode({
+    success: true,
+    marked: paths,
+    reviewed_files: reviewedFiles.size,
+  }))
+})
+
+const getReviewProgressTool = defineTool({
+  name: 'get-review-progress',
+  description: 'Get current review progress: which files are reviewed, which are pending, and a summary of all staged findings. Use this to track progress and spot patterns across files.',
+  title: 'Get Review Progress',
+}, async () => {
+  try {
+    const diff = await getOrBuildPullRequestDiff()
+    const tocLines = diff.toc.split('\n')
+    const allFiles = tocLines
+      .filter((line) => line.startsWith('- '))
+      .map((line) => {
+        const match = line.match(/^- (.+?) -> lines/)
+        return match?.[1] ?? null
+      })
+      .filter((f): f is string => f !== null)
+
+    const pending = allFiles.filter((f) => !reviewedFiles.has(f))
+
+    const findingsByFile = new Map<string, Array<{ severity: string, line: number, bodyPreview: string }>>()
+    for (const comment of stagedComments) {
+      const existing = findingsByFile.get(comment.path) ?? []
+      existing.push({
+        severity: comment.severity,
+        line: comment.line,
+        bodyPreview: comment.body.slice(0, 120),
+      })
+      findingsByFile.set(comment.path, existing)
+    }
+
+    const severityCounts = { high: 0, medium: 0, low: 0 }
+    for (const comment of stagedComments) {
+      severityCounts[comment.severity]++
+    }
+
+    return tool.structured({
+      progress: {
+        total_files: allFiles.length,
+        reviewed: reviewedFiles.size,
+        pending: pending.length,
+      },
+      staged_findings: {
+        total: stagedComments.length,
+        by_severity: severityCounts,
+        by_file: Object.fromEntries(findingsByFile),
+      },
+      pending_files: pending,
+      reviewed_files: [...reviewedFiles],
+    } as any)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return tool.error(`Failed to get review progress: ${message}`)
+  }
+})
+
+const submitStagedReviewTool = defineTool({
+  name: 'submit-staged-review',
+  description: 'Submit all staged findings as a single pull request review. This compiles every staged comment into one API call. Call this once at the end of your review.',
+  title: 'Submit Staged Review',
   schema: v.pipe(
     v.object({
       body: v.optional(v.pipe(
         v.string(),
-        v.description('1-2 sentence summary for the review. Put most actionable feedback in inline comments. Do not wrap the value in quotation marks.'),
-      )),
-      commit_id: v.optional(v.pipe(
-        v.string(),
-        v.description('Optional commit SHA for the review. Defaults to current PR head SHA.'),
-      )),
-      comments: v.optional(v.pipe(
-        v.array(v.pipe(
-          v.object({
-            path: v.pipe(
-              v.string(),
-              v.description('Path of the file to comment on, relative to repository root.'),
-            ),
-            line: v.pipe(
-              v.number(),
-              v.description('End line of the comment range in the diff (new file line numbering).'),
-            ),
-            start_line: v.optional(v.pipe(
-              v.number(),
-              v.description('Start line of the comment range. For single-line comments, set equal to line.'),
-            )),
-            side: v.optional(v.pipe(
-              v.picklist(['LEFT', 'RIGHT']),
-              v.description('Diff side: LEFT for old/deleted lines, RIGHT for new/unchanged lines. Defaults to RIGHT.'),
-            )),
-            body: v.optional(v.pipe(
-              v.string(),
-              v.description('Explanatory comment text. Optional if suggestion is provided.'),
-            )),
-            suggestion: v.optional(v.pipe(
-              v.string(),
-              v.description('Replacement code for [start_line, line]. Must preserve indentation.'),
-            )),
-          }),
-          v.description('Single inline review comment payload.'),
-        )),
-        v.description('Inline review comments. Use these for line-level feedback in the diff.'),
+        v.description('1-2 sentence summary for the review. Staged findings become inline comments automatically. Do not wrap the value in quotation marks.'),
       )),
     }),
-    v.description('Payload for submitting a pull request review in one API call.'),
+    v.description('Payload for submitting the staged review.'),
   ),
-}, async ({ body, commit_id, comments }) => {
+}, async ({ body }) => {
   try {
     const octokit = await getOctokit()
     const reviewContext = await getPullRequestReviewContext()
     const pullRequest = getActivePullRequestContext()
-    const reviewCommentsInput = comments ?? []
     const reviewBody = buildClank8yCommentBody(
       body === undefined ? undefined : normalizeToolString(body),
       { workflowRunUrl: reviewContext.workflowRun?.url ?? null },
     )
 
-    let commitSha = commit_id
-    if (!commitSha) {
-      const { data: pr } = await octokit.rest.pulls.get({
-        owner: pullRequest.owner,
-        repo: pullRequest.repo,
-        pull_number: pullRequest.number,
-      })
-      commitSha = pr.head.sha
-    }
+    const { data: pr } = await octokit.rest.pulls.get({
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.number,
+    })
+    const commitSha = pr.head.sha
 
-    const apiComments = reviewCommentsInput.map((comment) => {
-      const side = comment.side ?? 'RIGHT'
+    const apiComments = stagedComments.map((comment) => {
       const startLine = comment.start_line ?? comment.line
 
-      let commentBody = normalizeToolString(comment.body ?? '')
+      let commentBody = comment.body
       if (comment.suggestion !== undefined) {
-        const suggestionBlock = `\`\`\`suggestion\n${normalizeToolString(comment.suggestion)}\n\`\`\``
+        const suggestionBlock = `\`\`\`suggestion\n${comment.suggestion}\n\`\`\``
         commentBody = commentBody
           ? `${commentBody}\n\n${suggestionBlock}`
           : suggestionBlock
@@ -401,10 +630,10 @@ const createPullRequestReviewTool = defineTool({
       return {
         path: comment.path,
         line: comment.line,
-        side,
+        side: comment.side,
         body: commentBody,
         start_line: startLine,
-        start_side: side,
+        start_side: comment.side,
       }
     })
 
@@ -438,17 +667,22 @@ const createPullRequestReviewTool = defineTool({
 
     const result = await octokit.rest.pulls.createReview(params)
 
+    // Clear staged state after successful submission
+    const submittedCount = stagedComments.length
+    stagedComments.length = 0
+    reviewedFiles.clear()
+
     return tool.text(encode({
       success: true,
       review_id: result.data.id,
       state: result.data.state,
       url: result.data.html_url,
       submitted_at: result.data.submitted_at,
-      comment_count: apiComments.length,
+      comment_count: submittedCount,
     }))
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return tool.error(`Failed to create pull request review: ${message}`)
+    return tool.error(`Failed to submit staged review: ${message}`)
   }
 })
 
@@ -472,7 +706,7 @@ const readPullRequestDiffChunkTool = defineTool({
 }, async ({ offset, limit }) => {
   try {
     const diff = await getOrBuildPullRequestDiff()
-    const lines = diff.content.split('\n')
+    const lines = diff.lines
     const totalLines = lines.length
 
     const requestedOffset = offset ?? 1
@@ -525,7 +759,6 @@ const getPullRequestFileContentTool = defineTool({
   ),
 }, async ({ filename, offset, limit, full }) => {
   try {
-    const octokit = await getOctokit()
     const pullRequest = getActivePullRequestContext()
     const files = await fetchAllPullRequestFiles()
 
@@ -534,23 +767,30 @@ const getPullRequestFileContentTool = defineTool({
       return tool.error(`File ${filename} not found in pull request`)
     }
 
-    const { data: content } = await octokit.rest.repos.getContent({
-      owner: pullRequest.owner,
-      repo: pullRequest.repo,
-      path: filename,
-      ref: pullRequest.headSha,
-    })
+    const contentCacheKey = `${pullRequest.owner}/${pullRequest.repo}@${pullRequest.headSha}:${filename}`
+    let decodedContent = fileContentCache.get(contentCacheKey)
 
-    if (Array.isArray(content)) {
-      return tool.error(`Path ${filename} resolved to a directory, expected a file`)
+    if (decodedContent === undefined) {
+      const octokit = await getOctokit()
+      const { data: content } = await octokit.rest.repos.getContent({
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        path: filename,
+        ref: pullRequest.headSha,
+      })
+
+      if (Array.isArray(content)) {
+        return tool.error(`Path ${filename} resolved to a directory, expected a file`)
+      }
+
+      if (!('content' in content) || !content.content) {
+        return tool.error(`No textual content available for ${filename}`)
+      }
+
+      const encoding = content.encoding === 'base64' ? 'base64' : 'utf-8'
+      decodedContent = Buffer.from(content.content, encoding).toString('utf-8')
+      fileContentCache.set(contentCacheKey, decodedContent)
     }
-
-    if (!('content' in content) || !content.content) {
-      return tool.error(`No textual content available for ${filename}`)
-    }
-
-    const encoding = content.encoding === 'base64' ? 'base64' : 'utf-8'
-    const decodedContent = Buffer.from(content.content, encoding).toString('utf-8')
     const lines = decodedContent.split('\n')
     const totalLines = lines.length
 
@@ -591,7 +831,11 @@ const getPullRequestFileContentTool = defineTool({
 
 export const githubMcpTools = [
   preparePullRequestReviewTool,
-  createPullRequestReviewTool,
+  searchPullRequestDiffTool,
+  stageReviewCommentTool,
+  markFileReviewedTool,
+  getReviewProgressTool,
+  submitStagedReviewTool,
   readPullRequestDiffChunkTool,
   getPullRequestFileContentTool,
 ]
