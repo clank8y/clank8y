@@ -29894,7 +29894,7 @@ var OAuthApp = OAuthApp$1.defaults({ Octokit });
 //#endregion
 //#region shared/oidc.ts
 const CLANK8Y_OIDC_AUDIENCE = "clank8y";
-const CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL = "https://clank8y-website.schplitt.workers.dev/api/github/token";
+const CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL = "https://clank8y.com/api/github/token";
 
 //#endregion
 //#region src/gh/octokit-clank8y.ts
