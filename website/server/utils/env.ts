@@ -1,9 +1,11 @@
+import { HTTPError } from 'nitro/h3'
 import process from 'node:process'
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
-    throw new Error(`Environment variable ${name} is required but not set.`)
+    console.error(`Environment variable ${name} is required but not set`)
+    throw HTTPError.status(500, `Internal server error`)
   }
 
   return value
