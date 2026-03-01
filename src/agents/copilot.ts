@@ -236,7 +236,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       }
 
       const session = await client.createSession({
-        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'sql', 'stop_bash', 'view', 'web_fetch', 'write_bash'],
+        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'sql', 'stop_bash', 'task', 'view', 'web_fetch', 'write_bash'],
         model,
         tools: [setPRContextTool],
         onPermissionRequest: async (request) => {
@@ -272,10 +272,13 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       })
 
       session.on('assistant.message', (event) => {
-        logAgentMessage({
-          agent,
-          model,
-        }, event.data.content)
+        // only log if the model outputs something
+        if (event.data.reasoningText) {
+          logAgentMessage({
+            agent,
+            model,
+          }, event.data.reasoningText)
+        }
       })
 
       session.on('assistant.usage', (usage) => {
