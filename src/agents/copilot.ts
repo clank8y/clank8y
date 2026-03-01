@@ -153,7 +153,7 @@ const setPRContextTool = defineTool<{
 
 export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const agent = 'github-copilot'
-  const model = options.model ?? 'claude-haiku-4.5'
+  const model = options.model ?? 'claude-sonnet-4.6'
 
   consola.info('Preparing GitHub Copilot review agent')
   const cliPath = await ensureCopilotCliInstalled()
@@ -214,29 +214,29 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
       const modelIds = models.map((model) => model.id)
 
       if (!process.env.GITHUB_ACTIONS) {
-        consola.debug(`Available models:\n${modelIds.map((m) => `  • ${m}`).join('\n')}`)
+        consola.log(`Available models:\n${modelIds.map((m) => `  • ${m}`).join('\n')}`)
       }
 
       if (!modelIds.includes(model)) {
         throw new Error(`Configured model '${model}' is not available for this token/account.`)
       }
 
-      const availableTools = [
-        // Built-in Copilot agent tools kept from the original excluded list
-        'report_intent',
-        'task',
-        // Custom in-process tool
-        setPRContextTool.name,
-        // All tools exposed by registered MCP servers (filtered per-server via allowedTools)
-        ...Object.values(startResults).flatMap((r) => r.toolNames),
-      ]
-
       if (!process.env.GITHUB_ACTIONS) {
-        consola.debug(`Available tools for this session:\n${availableTools.map((t) => `  • ${t}`).join('\n')}`)
+        const availableTools = [
+        // Built-in Copilot agent tools kept from the original excluded list
+          'report_intent',
+          'task',
+          // Custom in-process tool
+          setPRContextTool.name,
+          // All tools exposed by registered MCP servers (filtered per-server via allowedTools)
+          ...Object.values(startResults).flatMap((r) => r.toolNames),
+        ]
+
+        consola.log(`Available tools for this session:\n${availableTools.map((t) => `  • ${t}`).join('\n')}`)
       }
 
       const session = await client.createSession({
-        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'sql', 'stop_bash', 'view', 'web_fetch', 'write_bash'],
+        excludedTools: ['bash', 'create', 'edit', 'github-say-hello', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'sql', 'stop_bash', 'task', 'view', 'web_fetch', 'write_bash'],
         model,
         tools: [setPRContextTool],
         onPermissionRequest: async (request) => {
@@ -262,6 +262,22 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
 
         if (thoughtStart) {
           consola.info(`thought for ${((Date.now() - thoughtStart) / 1000).toFixed(1)}s`)
+        }
+      })
+
+      session.on('tool.execution_start', (event) => {
+        const { toolName, mcpServerName, mcpToolName, arguments: args } = event.data
+        const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName
+        consola.info(`→ tool: ${label}${args !== undefined ? ` ${JSON.stringify(args)}` : ''}`)
+      })
+
+      session.on('assistant.message', (event) => {
+        // only log if the model outputs something
+        if (event.data.reasoningText) {
+          logAgentMessage({
+            agent,
+            model,
+          }, event.data.reasoningText)
         }
       })
 

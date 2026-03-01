@@ -6,6 +6,12 @@ inputs:
   prompt:
     description: Event-level instruction block injected by the clank8y webhook server. Contains pr_number, trigger, actor, and optional user instruction. Do not set this manually.
     required: true
+  model:
+    description: Model to use for the review agent. Optional — defaults to claude-sonnet-4.6.
+    required: false
+  timeout-ms:
+    description: Maximum time in milliseconds for the entire PR review process. Optional — defaults to 1200000 (20 minutes).
+    required: false
 
 runs:
   using: node24

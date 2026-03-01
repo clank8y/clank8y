@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import process from 'node:process'
 import { reviewPullRequest } from './src/agents'
+import { resolveModelInput, resolveTimeoutInput } from './src/setup'
 
 /**
  * Local test runner setup (dotenv-based)
@@ -16,6 +17,9 @@ import { reviewPullRequest } from './src/agents'
  * - COPILOT_GITHUB_TOKEN
  *   - Why: Copilot SDK authentication for running the review agent.
  *   - Get from: GitHub user token with Copilot entitlement and Copilot Requests permission.
+ *
+ * - TIMEOUT_MS
+ *   - Why: maximum time in milliseconds for the entire PR review process. Optional — defaults to 1200000 (20 minutes).
  *
  * - GH_TOKEN or GITHUB_TOKEN
  *   - Why: local/dev fallback token for Clank8yBotToken (Octokit PR API operations) when OIDC runtime is unavailable.
@@ -52,7 +56,11 @@ function setupActionLikeEnvironment(): void {
 async function main(): Promise<void> {
   setupActionLikeEnvironment()
 
+  const model = resolveModelInput()
+  const timeOutMs = resolveTimeoutInput()
   await reviewPullRequest({
+    ...(model !== undefined && { model }),
+    ...(timeOutMs !== undefined && { timeOutMs }),
   })
 }
 

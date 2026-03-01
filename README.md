@@ -27,12 +27,27 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: clank8y/clank8y@abcde123 # pin to a specific commit SHA instead of a tag
+      - uses: clank8y/clank8y@<sha> # pin to a specific commit SHA instead of a tag
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         with:
           prompt: ${{ inputs.prompt }} # do not set manually
+          # model: claude-sonnet-4.6  # optional — defaults to claude-sonnet-4.6
+          # timeout-ms: 1200000      # optional — defaults to 1200000 (20 minutes)
+          #
+          # Known models (as of 2026-03):
+          #   claude-sonnet-4.6      (default) — best balance of quality and speed
+          #   claude-sonnet-4.5
+          #   claude-haiku-4.5       — fastest, lowest cost
+          #   claude-opus-4.6        — highest quality
+          #   claude-opus-4.6-fast
+          #   claude-opus-4.5
+          #   claude-sonnet-4
+          #   gpt-5.1
+          #   gpt-5.1-codex
+          #   gpt-5.1-codex-mini
+          #   gpt-5-mini
+          #   gpt-4.1
 ```
 
 > **Note:** Do not fill in the `prompt` input manually. It is populated automatically by the clank8y webhook server with PR context (number, trigger, actor). Manually dispatching this workflow without that context will cause the agent to fail.

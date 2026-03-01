@@ -66,6 +66,33 @@ function resolvePromptContext(): string {
   return (process.env.PROMPT ?? '').trim()
 }
 
+export function resolveModelInput(): string | undefined {
+  // Prefer action input in workflow runs.
+  const inputModel = core.getInput('model').trim()
+  if (inputModel) {
+    return inputModel
+  }
+
+  // Local development fallback.
+  return process.env.MODEL?.trim() || undefined
+}
+
+export function resolveTimeoutInput(): number | undefined {
+  // Prefer action input in workflow runs.
+  const inputTimeout = core.getInput('timeout-ms').trim()
+  const raw = inputTimeout || process.env.TIMEOUT_MS?.trim()
+  if (!raw) {
+    return undefined
+  }
+
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    throw new Error(`Invalid timeout-ms value '${raw}'. Expected a positive integer (milliseconds).`)
+  }
+
+  return parsed
+}
+
 function resolveRunIdValue(): string | null {
   // Prefer GitHub Actions context value when present.
   if (typeof github?.context?.runId === 'number') {
