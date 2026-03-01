@@ -29743,6 +29743,8 @@ function isOIDCAvailable() {
 }
 async function acquireClank8yBotTokenViaOIDC() {
 	const tokenExchangeUrl = resolveTokenExchangeUrl();
+	const runId = process$1.env.GITHUB_RUN_ID;
+	if (!runId) throw new Error("GITHUB_RUN_ID is not set. Cannot perform OIDC token exchange without run_id.");
 	const idToken = await getIDToken(CLANK8Y_OIDC_AUDIENCE);
 	const response = await fetch(tokenExchangeUrl, {
 		method: "POST",
@@ -29753,7 +29755,7 @@ async function acquireClank8yBotTokenViaOIDC() {
 		body: JSON.stringify({
 			owner: context.repo.owner,
 			repo: context.repo.repo,
-			run_id: process$1.env.GITHUB_RUN_ID ?? null
+			run_id: runId
 		})
 	});
 	if (!response.ok) {
@@ -29779,7 +29781,10 @@ function delay(ms) {
 	});
 }
 async function acquireClank8yBotToken() {
-	if (!isOIDCAvailable()) return acquireClank8yBotTokenViaLocalFallback();
+	if (!isOIDCAvailable()) {
+		if (process$1.env.GITHUB_ACTIONS) throw new Error("OIDC is required in GitHub Actions. Ensure id-token: write permission is configured and OIDC runtime env vars are available.");
+		return acquireClank8yBotTokenViaLocalFallback();
+	}
 	let lastError = null;
 	for (let attempt = 1; attempt <= OIDC_RETRY_ATTEMPTS; attempt += 1) try {
 		return await acquireClank8yBotTokenViaOIDC();

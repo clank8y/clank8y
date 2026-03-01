@@ -86,7 +86,7 @@ function buildDispatchPromptContext(params: {
 async function dispatchWorkflow(params: {
   owner: string
   repo: string
-  ref: string
+  defaultBranch: string
   trigger: 'pull_request_opened' | 'issue_comment'
   prNumber: number
   actor: string
@@ -98,7 +98,7 @@ async function dispatchWorkflow(params: {
     owner: params.owner,
     repo: params.repo,
     workflow_id: WORKFLOW_ID,
-    ref: params.ref,
+    ref: params.defaultBranch,
     inputs: {
       prompt: buildDispatchPromptContext({
         trigger: params.trigger,
@@ -192,7 +192,7 @@ export default defineHandler(async (event) => {
       await dispatchWorkflow({
         owner: payload.repository.owner.login,
         repo: payload.repository.name,
-        ref: payload.pull_request.head.ref,
+        defaultBranch: payload.repository.default_branch,
         trigger: 'pull_request_opened',
         prNumber: payload.pull_request.number,
         actor: payload.sender.login,
@@ -230,17 +230,12 @@ export default defineHandler(async (event) => {
     const owner = payload.repository.owner.login
     const repo = payload.repository.name
     const installationOctokit = await createInstallationOctokit(owner, repo)
-    const pr = await installationOctokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
-      owner,
-      repo,
-      pull_number: payload.issue.number,
-    })
 
     try {
       await dispatchWorkflow({
         owner,
         repo,
-        ref: pr.data.head.ref,
+        defaultBranch: payload.repository.default_branch,
         trigger: 'issue_comment',
         prNumber: payload.issue.number,
         actor: payload.sender.login,

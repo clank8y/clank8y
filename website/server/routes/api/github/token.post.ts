@@ -2,9 +2,11 @@ import { createAppAuth } from '@octokit/auth-app'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { Octokit } from 'octokit'
 import process from 'node:process'
+import * as v from 'valibot'
 import { defineHandler, HTTPError } from 'nitro/h3'
 import { CLANK8Y_OIDC_AUDIENCE } from '../../../../../shared/oidc'
 import { getAppId, getAppPrivateKey } from '../../../utils/env'
+import { OidcBasicClaimsSchema, OidcRefClaimsSchema, TokenRequestSchema } from '../../../utils/schemas'
 
 const GITHUB_OIDC_ISSUER = 'https://token.actions.githubusercontent.com'
 const GITHUB_OIDC_JWKS = createRemoteJWKSet(new URL('https://token.actions.githubusercontent.com/.well-known/jwks'))
@@ -36,41 +38,89 @@ function getBearerToken(header: string | null): string | null {
   return match[1]?.trim() ?? null
 }
 
-async function verifyWorkflowOidcToken(params: {
+/**
+ * Phase 1: Verify OIDC signature and claims that do NOT require an API call.
+ * This runs before any GitHub API requests to avoid burning app rate limits on
+ * unauthenticated or malicious callers.
+ *
+ * Returns the verified JWT payload for use in phase 2.
+ * @param params - OIDC token and expected repository identity
+ * @param params.oidcToken - raw Bearer token from the request
+ * @param params.owner - expected repository owner
+ * @param params.repo - expected repository name
+ */
+async function verifyOidcTokenBasicClaims(params: {
   oidcToken: string
   owner: string
   repo: string
-}): Promise<void> {
+}): Promise<Record<string, unknown>> {
   const { payload } = await jwtVerify(params.oidcToken, GITHUB_OIDC_JWKS, {
     issuer: GITHUB_OIDC_ISSUER,
     audience: CLANK8Y_OIDC_AUDIENCE,
   })
 
-  const repositoryClaim = payload.repository
-  if (typeof repositoryClaim !== 'string') {
-    throw new Error('OIDC token is missing repository claim')
-  }
+  const claims = v.parse(OidcBasicClaimsSchema, payload)
 
   const expectedRepository = `${params.owner}/${params.repo}`
-  if (repositoryClaim !== expectedRepository) {
-    throw new Error(`OIDC repository claim mismatch. Expected ${expectedRepository}, got ${repositoryClaim}`)
+  if (claims.repository !== expectedRepository) {
+    throw new Error(`OIDC repository claim mismatch. Expected ${expectedRepository}, got ${claims.repository}`)
   }
 
-  const eventNameClaim = payload.event_name
-  if (eventNameClaim !== 'workflow_dispatch') {
-    throw new Error(`OIDC event_name claim mismatch. Expected workflow_dispatch, got ${String(eventNameClaim)}`)
+  if (claims.repository_owner !== params.owner) {
+    throw new Error(`OIDC repository_owner claim mismatch. Expected ${params.owner}, got ${claims.repository_owner}`)
   }
 
-  const jobWorkflowRefClaim = payload.job_workflow_ref
-  if (typeof jobWorkflowRefClaim !== 'string') {
-    throw new Error('OIDC token is missing job_workflow_ref claim')
+  if (claims.event_name !== 'workflow_dispatch') {
+    throw new Error(`OIDC event_name claim mismatch. Expected workflow_dispatch, got ${claims.event_name}`)
   }
 
-  const expectedWorkflowPrefix = `${expectedRepository}/${CLANK8Y_WORKFLOW_FILE}@`
-  if (!jobWorkflowRefClaim.startsWith(expectedWorkflowPrefix)) {
+  if (claims.runner_environment !== 'github-hosted') {
+    throw new Error(`OIDC runner_environment claim mismatch. Expected github-hosted, got ${claims.runner_environment}`)
+  }
+
+  return payload as Record<string, unknown>
+}
+
+/**
+ * Phase 2: Verify ref-pinning and run-binding claims that depend on data
+ * fetched from the GitHub API (defaultBranch). Only called after phase 1
+ * has already authenticated the caller.
+ * @param params - verified payload and ref-binding context
+ * @param params.payload - JWT payload from phase 1
+ * @param params.owner - repository owner
+ * @param params.repo - repository name
+ * @param params.defaultBranch - canonical default branch from the GitHub API
+ * @param params.runId - workflow run ID from the request body
+ */
+function verifyOidcTokenRefClaims(params: {
+  payload: Record<string, unknown>
+  owner: string
+  repo: string
+  defaultBranch: string
+  runId: string
+}): void {
+  const claims = v.parse(OidcRefClaimsSchema, params.payload)
+
+  const expectedRepository = `${params.owner}/${params.repo}`
+  const trustedRef = `refs/heads/${params.defaultBranch}`
+
+  if (claims.ref !== trustedRef) {
+    throw new Error(`OIDC ref claim mismatch. Expected ${trustedRef}, got ${claims.ref}`)
+  }
+
+  const expectedWorkflowRef = `${expectedRepository}/${CLANK8Y_WORKFLOW_FILE}@${trustedRef}`
+  if (claims.job_workflow_ref !== expectedWorkflowRef) {
     throw new Error(
-      `OIDC job_workflow_ref claim mismatch. Expected prefix ${expectedWorkflowPrefix}, got ${jobWorkflowRefClaim}`,
+      `OIDC job_workflow_ref claim mismatch. Expected ${expectedWorkflowRef}, got ${claims.job_workflow_ref}`,
     )
+  }
+
+  if (claims.workflow !== CLANK8Y_WORKFLOW_FILE) {
+    throw new Error(`OIDC workflow claim mismatch. Expected ${CLANK8Y_WORKFLOW_FILE}, got ${claims.workflow}`)
+  }
+
+  if (String(claims.run_id) !== params.runId) {
+    throw new Error(`OIDC run_id claim mismatch. Expected ${params.runId}, got ${String(claims.run_id)}`)
   }
 }
 
@@ -86,29 +136,44 @@ export default defineHandler(async (event) => {
     throw HTTPError.status(401, 'Unauthorized')
   }
 
-  const payload = await event.req.json().catch(() => null) as {
-    owner?: unknown
-    repo?: unknown
-  } | null
-
-  if (!payload || typeof payload.owner !== 'string' || typeof payload.repo !== 'string') {
-    throw HTTPError.status(400, 'Invalid request body. Expected owner and repo.')
+  const rawPayload = await event.req.json().catch(() => null)
+  const result = v.safeParse(TokenRequestSchema, rawPayload)
+  if (!result.success) {
+    throw HTTPError.status(400, `Invalid request body: ${v.summarize(result.issues)}`)
   }
 
-  const owner = payload.owner.trim()
-  const repo = payload.repo.trim()
-  if (!owner || !repo) {
-    throw HTTPError.status(400, 'Invalid request body. Expected non-empty owner and repo.')
-  }
+  const { owner, repo, run_id: runId } = result.output
 
+  // Phase 1: verify OIDC signature + basic claims BEFORE any GitHub API calls.
+  // This prevents unauthenticated callers from burning app rate limits.
+  let oidcPayload: Record<string, unknown>
   try {
-    await verifyWorkflowOidcToken({ oidcToken, owner, repo })
+    oidcPayload = await verifyOidcTokenBasicClaims({ oidcToken, owner, repo })
   } catch (error) {
-    console.error('OIDC token verification failed', error)
+    console.error('OIDC token verification failed (basic claims)', error)
     throw HTTPError.status(401, 'Unauthorized')
   }
 
+  // Only now, with a verified caller, do we make API calls.
   const appOctokit = createAppOctokit()
+
+  const { data: repository } = await appOctokit.request('GET /repos/{owner}/{repo}', {
+    owner,
+    repo,
+  })
+  const defaultBranch = repository.default_branch
+  if (!defaultBranch) {
+    console.error('Repository has no default branch configured')
+    throw HTTPError.status(500, 'Failed to resolve repository default branch')
+  }
+
+  // Phase 2: verify ref-pinning and run-binding claims that need defaultBranch.
+  try {
+    verifyOidcTokenRefClaims({ payload: oidcPayload, owner, repo, defaultBranch, runId })
+  } catch (error) {
+    console.error('OIDC token verification failed (ref claims)', error)
+    throw HTTPError.status(401, 'Unauthorized')
+  }
 
   try {
     const installation = await appOctokit.request('GET /repos/{owner}/{repo}/installation', {
