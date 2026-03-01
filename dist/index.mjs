@@ -29933,6 +29933,13 @@ function resolveModelInput() {
 	if (inputModel) return inputModel;
 	return process$1.env.MODEL?.trim() || void 0;
 }
+function resolveTimeoutInput() {
+	const raw = getInput("timeout-ms").trim() || process$1.env.TIMEOUT_MS?.trim();
+	if (!raw) return;
+	const parsed = Number.parseInt(raw, 10);
+	if (!Number.isFinite(parsed) || parsed < 1) throw new Error(`Invalid timeout-ms value '${raw}'. Expected a positive integer (milliseconds).`);
+	return parsed;
+}
 function resolveRunIdValue() {
 	if (typeof context.runId === "number") return String(context.runId);
 	return null;
@@ -37609,9 +37616,9 @@ const githubCopilotAgent = async (options) => {
 //#region src/agents/index.ts
 const DEFAULT_CONFIGURATION = {
 	effort: "medium",
-	timeOutMs: 24e4,
+	timeOutMs: 12e5,
 	tools: {
-		maxCalls: 30,
+		maxCalls: 60,
 		maxRuntimeMs: 6e4
 	},
 	agent: "github-copilot"
@@ -37631,7 +37638,11 @@ async function reviewPullRequest(options) {
 //#region src/index.ts
 async function startClank8y() {
 	const model = resolveModelInput();
-	await reviewPullRequest({ ...model !== void 0 && { model } });
+	const timeOutMs = resolveTimeoutInput();
+	await reviewPullRequest({
+		...model !== void 0 && { model },
+		...timeOutMs !== void 0 && { timeOutMs }
+	});
 }
 startClank8y().catch((error) => {
 	const message = error instanceof Error ? error.message : String(error);
