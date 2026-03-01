@@ -3,6 +3,7 @@ import * as github from '@actions/github'
 import { Octokit } from 'octokit'
 import process from 'node:process'
 import { CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL, CLANK8Y_OIDC_AUDIENCE } from '../../shared/oidc'
+import consola from 'consola'
 
 const OIDC_RETRY_ATTEMPTS = 3
 const OIDC_RETRY_DELAYS_MS = [250, 750]
@@ -22,6 +23,8 @@ function isOIDCAvailable(): boolean {
 
 async function acquireClank8yBotTokenViaOIDC(): Promise<string> {
   const tokenExchangeUrl = resolveTokenExchangeUrl()
+
+  consola.info(`Exchanging OIDC token for Clank8y bot token via ${tokenExchangeUrl}`)
 
   const runId = process.env.GITHUB_RUN_ID
   if (!runId) {

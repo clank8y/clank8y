@@ -129,10 +129,6 @@ function verifyOidcTokenRefClaims(params: {
     )
   }
 
-  if (claims.workflow !== CLANK8Y_WORKFLOW_FILE) {
-    throw new Error(`OIDC workflow claim mismatch. Expected ${CLANK8Y_WORKFLOW_FILE}, got ${claims.workflow}`)
-  }
-
   if (String(claims.run_id) !== params.runId) {
     throw new Error(`OIDC run_id claim mismatch. Expected ${params.runId}, got ${String(claims.run_id)}`)
   }
