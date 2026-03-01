@@ -8,10 +8,6 @@ const OIDC_RETRY_ATTEMPTS = 3
 const OIDC_RETRY_DELAYS_MS = [250, 750]
 
 function resolveTokenExchangeUrl(): string {
-  if (process.env.GITHUB_ACTIONS) {
-    return CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL
-  }
-
   const envValue = (process.env.CLANK8Y_TOKEN_URL ?? '').trim()
   return envValue || CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL
 }
