@@ -27,14 +27,14 @@ interface PullRequestAgentConfiguration {
   model?: Models | (string & {})
   /**
    * Time limit for the entire pull request review process.
-   * @default 240_000 (4 minutes)
+   * @default 1_200_000 (20 minutes)
    */
   timeOutMs: number
   tools: {
     /**
      * Maximum number of tool calls allowed during the review process.
      * When the limit is reached, the agent will stop making tool calls and proceed with the review based on the information it has.
-     * @default 30
+     * @default 60
      */
     maxCalls: number
     /**
@@ -52,9 +52,9 @@ interface PullRequestAgentConfiguration {
 
 const DEFAULT_CONFIGURATION = {
   effort: 'medium',
-  timeOutMs: 240_000,
+  timeOutMs: 1_200_000,
   tools: {
-    maxCalls: 30,
+    maxCalls: 60,
     maxRuntimeMs: 60_000,
   },
   agent: 'github-copilot',

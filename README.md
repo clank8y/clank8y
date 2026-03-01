@@ -33,6 +33,7 @@ jobs:
         with:
           prompt: ${{ inputs.prompt }} # do not set manually
           # model: claude-sonnet-4.6  # optional — defaults to claude-sonnet-4.6
+          # timeout-ms: 1200000      # optional — defaults to 1200000 (20 minutes)
           #
           # Known models (as of 2026-03):
           #   claude-sonnet-4.6      (default) — best balance of quality and speed
