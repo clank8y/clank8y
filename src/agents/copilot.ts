@@ -265,6 +265,12 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
         }
       })
 
+      session.on('tool.execution_start', (event) => {
+        const { toolName, mcpServerName, mcpToolName, arguments: args } = event.data
+        const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName
+        consola.info(`→ tool: ${label}${args !== undefined ? ` ${JSON.stringify(args)}` : ''}`)
+      })
+
       session.on('assistant.usage', (usage) => {
         totals.inputTokens += usage.data.inputTokens ?? 0
         totals.outputTokens += usage.data.outputTokens ?? 0
