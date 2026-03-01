@@ -37571,6 +37571,12 @@ const githubCopilotAgent = async (options) => {
 				const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName;
 				consola.info(`→ tool: ${label}${args !== void 0 ? ` ${JSON.stringify(args)}` : ""}`);
 			});
+			session.on("assistant.message", (event) => {
+				logAgentMessage({
+					agent,
+					model
+				}, event.data.content);
+			});
 			session.on("assistant.usage", (usage) => {
 				totals.inputTokens += usage.data.inputTokens ?? 0;
 				totals.outputTokens += usage.data.outputTokens ?? 0;
