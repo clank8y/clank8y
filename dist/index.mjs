@@ -36923,9 +36923,6 @@ const FILE_FULL_MAX_LINES = 250;
 const FILE_FULL_MAX_CHARS = 2e4;
 let _githubMCP = null;
 const prDiffCache = /* @__PURE__ */ new Map();
-function logToolInput(toolName, input) {
-	consola.info(`${toolName}: ${JSON.stringify(input ?? {})}`);
-}
 async function getDiffCacheKey() {
 	const pullRequest = getActivePullRequestContext();
 	return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`;
@@ -37094,7 +37091,6 @@ const preparePullRequestReviewTool = defineTool({
 	title: "Prepare Pull Request Review"
 }, async () => {
 	try {
-		logToolInput("prepare-pull-request-review", {});
 		const octokit = await getOctokit();
 		const pullRequest = getActivePullRequestContext();
 		const [{ data: pr }, files] = await Promise.all([octokit.rest.pulls.get({
@@ -37172,11 +37168,6 @@ const createPullRequestReviewTool = defineTool({
 	}), description("Payload for submitting a pull request review in one API call."))
 }, async ({ body, commit_id, comments }) => {
 	try {
-		logToolInput("create-pull-request-review", {
-			body,
-			commit_id,
-			comments
-		});
 		const octokit = await getOctokit();
 		const reviewContext = await getPullRequestReviewContext();
 		const pullRequest = getActivePullRequestContext();
@@ -37241,10 +37232,6 @@ const readPullRequestDiffChunkTool = defineTool({
 	}), description("Chunk selection arguments for reading the cached pull request diff."))
 }, async ({ offset, limit }) => {
 	try {
-		logToolInput("read-pull-request-diff-chunk", {
-			offset,
-			limit
-		});
 		const lines = (await getOrBuildPullRequestDiff()).content.split("\n");
 		const totalLines = lines.length;
 		const requestedOffset = offset ?? 1;
@@ -37277,12 +37264,6 @@ const getPullRequestFileContentTool = defineTool({
 	}), description("Arguments for fetching the head-version content of a changed pull request file with optional chunking."))
 }, async ({ filename, offset, limit, full }) => {
 	try {
-		logToolInput("get-pull-request-file-content", {
-			filename,
-			offset,
-			limit,
-			full
-		});
 		const octokit = await getOctokit();
 		const pullRequest = getActivePullRequestContext();
 		if (!(await fetchAllPullRequestFiles()).find((f) => f.filename === filename)) return tool.error(`File ${filename} not found in pull request`);
@@ -37584,6 +37565,11 @@ const githubCopilotAgent = async (options) => {
 				const thoughtStart = thoughtStarts.get(event.data.turnId);
 				thoughtStarts.delete(event.data.turnId);
 				if (thoughtStart) consola.info(`thought for ${((Date.now() - thoughtStart) / 1e3).toFixed(1)}s`);
+			});
+			session.on("tool.execution_start", (event) => {
+				const { toolName, mcpServerName, mcpToolName, arguments: args } = event.data;
+				const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName;
+				consola.info(`→ tool: ${label}${args !== void 0 ? ` ${JSON.stringify(args)}` : ""}`);
 			});
 			session.on("assistant.usage", (usage) => {
 				totals.inputTokens += usage.data.inputTokens ?? 0;
