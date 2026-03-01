@@ -147,6 +147,7 @@ export default defineHandler(async (event) => {
   const authorization = event.req.headers.get('authorization')
   const oidcToken = getBearerToken(authorization)
   if (!oidcToken) {
+    console.error('Missing or invalid Authorization header')
     throw HTTPError.status(401, 'Unauthorized')
   }
 
