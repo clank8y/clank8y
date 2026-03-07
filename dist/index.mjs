@@ -37495,15 +37495,15 @@ function getSDKRootPath() {
 	const sdkEntryPath = fileURLToPath(import.meta.resolve("@github/copilot-sdk"));
 	return path.dirname(path.dirname(sdkEntryPath));
 }
-function extractVersionFromSemverRange(range) {
-	const version = range.match(/\d+\.\d+\.\d+/)?.[0];
-	if (!version) throw new Error(`Could not determine a Copilot CLI version from SDK dependency range '${range}'.`);
+function extractVersion(value) {
+	const version = value.match(/\d+\.\d+\.\d+/)?.[0];
+	if (!version) throw new Error(`Could not determine a Copilot CLI version from '${value}'.`);
 	return version;
 }
 function getPinnedCopilotCliVersion(sdkPackageJson) {
 	const versionRange = sdkPackageJson.dependencies?.["@github/copilot"];
 	if (!versionRange) throw new Error("Could not determine the bundled @github/copilot dependency from @github/copilot-sdk.");
-	return extractVersionFromSemverRange(versionRange);
+	return extractVersion(versionRange);
 }
 function getPinnedCopilotCliPackageSpec() {
 	return `@github/copilot@${getPinnedCopilotCliVersion(JSON.parse(readFileSync$1(path.join(getSDKRootPath(), "package.json"), "utf8")))}`;
@@ -37512,7 +37512,7 @@ async function getCopilotCliVersion(command) {
 	try {
 		const result = await K(command, ["--version"], { throwOnError: false });
 		if (result.exitCode !== 0) return null;
-		return extractVersionFromSemverRange(`${result.stdout}\n${result.stderr}`);
+		return extractVersion(result.stdout);
 	} catch {
 		return null;
 	}
@@ -37522,7 +37522,7 @@ async function ensurePinnedGlobalCopilotCliInstalled() {
 	const npmGlobalBin = await getNpmGlobalBin();
 	const cliPath = path.join(npmGlobalBin, getCopilotExecutableName());
 	const packageSpec = getPinnedCopilotCliPackageSpec();
-	const expectedVersion = extractVersionFromSemverRange(packageSpec);
+	const expectedVersion = extractVersion(packageSpec);
 	if (existsSync$1(cliPath) && await getCopilotCliVersion(cliPath) === expectedVersion) {
 		process$1.env.PATH = prependPath([npmGlobalBin]);
 		consola.info(`Using GitHub Copilot CLI at: ${cliPath}`);
@@ -37533,13 +37533,7 @@ async function ensurePinnedGlobalCopilotCliInstalled() {
 		"install",
 		"-g",
 		packageSpec
-	], {
-		throwOnError: true,
-		nodeOptions: { env: {
-			...process$1.env,
-			npm_config_ignore_scripts: "false"
-		} }
-	});
+	], { throwOnError: true });
 	process$1.env.PATH = prependPath([npmGlobalBin]);
 	consola.info(`Prepended npm global bin to PATH: ${npmGlobalBin}`);
 	if (!existsSync$1(cliPath) || await getCopilotCliVersion(cliPath) !== expectedVersion) throw new Error(`GitHub Copilot CLI ${expectedVersion} was not found after installing ${packageSpec}.`);

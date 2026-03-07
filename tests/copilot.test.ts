@@ -9,6 +9,20 @@ describe('getPinnedCopilotCliVersion', () => {
       },
     })).toBe('0.0.420')
   })
+
+  test('throws when the sdk package does not declare @github/copilot', () => {
+    expect(() => getPinnedCopilotCliVersion({
+      dependencies: {},
+    })).toThrowError('Could not determine the bundled @github/copilot dependency from @github/copilot-sdk.')
+  })
+
+  test('throws when the sdk package declares an invalid version string', () => {
+    expect(() => getPinnedCopilotCliVersion({
+      dependencies: {
+        '@github/copilot': 'latest',
+      },
+    })).toThrowError('Could not determine a Copilot CLI version from \'latest\'.')
+  })
 })
 
 describe('getCopilotClientOptions', () => {
