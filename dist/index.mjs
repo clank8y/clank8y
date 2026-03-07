@@ -37496,7 +37496,7 @@ function getSDKRootPath() {
 	return path.dirname(path.dirname(sdkEntryPath));
 }
 function extractVersion(value) {
-	const version = value.match(/\d+\.\d+\.\d+/)?.[0];
+	const version = value.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/)?.[0];
 	if (!version) throw new Error(`Could not determine a Copilot CLI version from '${value}'.`);
 	return version;
 }
@@ -37523,10 +37523,12 @@ async function ensurePinnedGlobalCopilotCliInstalled() {
 	const cliPath = path.join(npmGlobalBin, getCopilotExecutableName());
 	const packageSpec = getPinnedCopilotCliPackageSpec();
 	const expectedVersion = extractVersion(packageSpec);
-	if (existsSync$1(cliPath) && await getCopilotCliVersion(cliPath) === expectedVersion) {
-		process$1.env.PATH = prependPath([npmGlobalBin]);
-		consola.info(`Using GitHub Copilot CLI at: ${cliPath}`);
-		return cliPath;
+	if (existsSync$1(cliPath)) {
+		if (await getCopilotCliVersion(cliPath) === expectedVersion) {
+			process$1.env.PATH = prependPath([npmGlobalBin]);
+			consola.info(`Using GitHub Copilot CLI at: ${cliPath}`);
+			return cliPath;
+		}
 	}
 	consola.info(`Installing ${packageSpec} globally...`);
 	await K("npm", [
@@ -37536,7 +37538,9 @@ async function ensurePinnedGlobalCopilotCliInstalled() {
 	], { throwOnError: true });
 	process$1.env.PATH = prependPath([npmGlobalBin]);
 	consola.info(`Prepended npm global bin to PATH: ${npmGlobalBin}`);
-	if (!existsSync$1(cliPath) || await getCopilotCliVersion(cliPath) !== expectedVersion) throw new Error(`GitHub Copilot CLI ${expectedVersion} was not found after installing ${packageSpec}.`);
+	if (!existsSync$1(cliPath)) throw new Error(`GitHub Copilot CLI ${expectedVersion} was not found after installing ${packageSpec}.`);
+	const installedVersion = await getCopilotCliVersion(cliPath);
+	if (installedVersion !== expectedVersion) throw new Error(`GitHub Copilot CLI ${expectedVersion} failed to install correctly after installing ${packageSpec}; found ${installedVersion ?? "no version"}.`);
 	consola.info(`GitHub Copilot CLI installed and resolved at: ${cliPath}`);
 	return cliPath;
 }
