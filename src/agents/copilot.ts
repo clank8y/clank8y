@@ -1,8 +1,12 @@
 import type { PullReviewAgentFactory } from '.'
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { CopilotClient, defineTool } from '@github/copilot-sdk'
 import type { CopilotClientOptions } from '@github/copilot-sdk'
 import { consola } from 'consola'
+import { x } from 'tinyexec'
 import type { UsageTotals } from '../logging'
 import { logAgentMessage, logUsageSummary } from '../logging'
 import { getPullRequestReviewContext, setPullRequestContext } from '../setup'
@@ -11,6 +15,111 @@ import { toCopilotMCPServersConfig } from '../mcp/adapters/copilot'
 import { toJsonSchema } from '@valibot/to-json-schema'
 
 import * as v from 'valibot'
+
+function prependPath(entries: string[]): string {
+  const current = process.env.PATH ?? ''
+  const all = [...entries, current]
+  return all.filter(Boolean).join(path.delimiter)
+}
+
+async function getNpmGlobalBin(): Promise<string> {
+  const result = await x('npm', ['prefix', '-g'], {
+    throwOnError: true,
+  })
+
+  return path.join(result.stdout.trim(), 'bin')
+}
+
+function getCopilotExecutableName(): string {
+  return process.platform === 'win32' ? 'copilot.cmd' : 'copilot'
+}
+
+function getSDKRootPath(): string {
+  const sdkUrl = import.meta.resolve('@github/copilot-sdk')
+  const sdkEntryPath = fileURLToPath(sdkUrl)
+  return path.dirname(path.dirname(sdkEntryPath))
+}
+
+function extractVersionFromSemverRange(range: string): string {
+  const version = range.match(/\d+\.\d+\.\d+/)?.[0]
+
+  if (!version) {
+    throw new Error(`Could not determine a Copilot CLI version from SDK dependency range '${range}'.`)
+  }
+
+  return version
+}
+
+export function getPinnedCopilotCliVersion(sdkPackageJson: {
+  dependencies?: Record<string, string>
+}): string {
+  const versionRange = sdkPackageJson.dependencies?.['@github/copilot']
+
+  if (!versionRange) {
+    throw new Error('Could not determine the bundled @github/copilot dependency from @github/copilot-sdk.')
+  }
+
+  return extractVersionFromSemverRange(versionRange)
+}
+
+function getPinnedCopilotCliPackageSpec(): string {
+  const sdkPackageJson = JSON.parse(readFileSync(path.join(getSDKRootPath(), 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>
+  }
+
+  return `@github/copilot@${getPinnedCopilotCliVersion(sdkPackageJson)}`
+}
+
+async function getCopilotCliVersion(command: string): Promise<string | null> {
+  try {
+    const result = await x(command, ['--version'], {
+      throwOnError: false,
+    })
+
+    if (result.exitCode !== 0) {
+      return null
+    }
+
+    return extractVersionFromSemverRange(`${result.stdout}\n${result.stderr}`)
+  } catch {
+    return null
+  }
+}
+
+async function ensurePinnedGlobalCopilotCliInstalled(): Promise<string> {
+  consola.info('Resolving GitHub Copilot CLI path...')
+  const npmGlobalBin = await getNpmGlobalBin()
+  const cliPath = path.join(npmGlobalBin, getCopilotExecutableName())
+  const packageSpec = getPinnedCopilotCliPackageSpec()
+  const expectedVersion = extractVersionFromSemverRange(packageSpec)
+
+  if (existsSync(cliPath) && await getCopilotCliVersion(cliPath) === expectedVersion) {
+    process.env.PATH = prependPath([npmGlobalBin])
+    consola.info(`Using GitHub Copilot CLI at: ${cliPath}`)
+    return cliPath
+  }
+
+  consola.info(`Installing ${packageSpec} globally...`)
+  await x('npm', ['install', '-g', packageSpec], {
+    throwOnError: true,
+    nodeOptions: {
+      env: {
+        ...process.env,
+        npm_config_ignore_scripts: 'false',
+      },
+    },
+  })
+
+  process.env.PATH = prependPath([npmGlobalBin])
+  consola.info(`Prepended npm global bin to PATH: ${npmGlobalBin}`)
+
+  if (!existsSync(cliPath) || await getCopilotCliVersion(cliPath) !== expectedVersion) {
+    throw new Error(`GitHub Copilot CLI ${expectedVersion} was not found after installing ${packageSpec}.`)
+  }
+
+  consola.info(`GitHub Copilot CLI installed and resolved at: ${cliPath}`)
+  return cliPath
+}
 
 function hasCopilotAgentTokenInEnvironment(): boolean {
   return !!process.env.COPILOT_GITHUB_TOKEN
@@ -28,8 +137,9 @@ function resolveCopilotAgentTokenFromEnvironment(): string {
   return copilotAgentToken
 }
 
-export function getCopilotClientOptions(githubToken: string): CopilotClientOptions {
+export function getCopilotClientOptions(githubToken: string, cliPath: string): CopilotClientOptions {
   return {
+    cliPath,
     githubToken,
     useLoggedInUser: false,
   }
@@ -72,7 +182,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const model = options.model ?? 'claude-sonnet-4.6'
 
   consola.info('Preparing GitHub Copilot review agent')
-  consola.info('Using the Copilot SDK bundled CLI to keep SDK and CLI protocol versions aligned')
+  const cliPath = await ensurePinnedGlobalCopilotCliInstalled()
 
   if (!hasCopilotAgentTokenInEnvironment()) {
     throw new Error(
@@ -99,7 +209,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   ]) */
 
   const client = new CopilotClient({
-    ...getCopilotClientOptions(copilotAgentToken),
+    ...getCopilotClientOptions(copilotAgentToken, cliPath),
   })
 
   const servers = mcpServers()
