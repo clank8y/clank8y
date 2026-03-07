@@ -157,6 +157,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
 - The `@github/copilot-sdk` type declarations reference generated files (`./generated/rpc.js` etc.) that don't exist as `.d.ts`, causing spurious TS language server errors (e.g. "onPermissionRequest is required"). These are pre-existing and do not appear in `pnpm typecheck`. Do not add workarounds for them.
+- When using `@github/copilot-sdk`, prefer its bundled `@github/copilot` CLI instead of installing a separate global CLI; this keeps the SDK and CLI protocol versions aligned.
 
 ### Patterns & Conventions
 

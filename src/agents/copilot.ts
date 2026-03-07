@@ -1,9 +1,7 @@
 import type { PullReviewAgentFactory } from '.'
-import { existsSync } from 'node:fs'
-import path from 'node:path'
 import process from 'node:process'
 import { CopilotClient, defineTool } from '@github/copilot-sdk'
-import { x } from 'tinyexec'
+import type { CopilotClientOptions } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import type { UsageTotals } from '../logging'
 import { logAgentMessage, logUsageSummary } from '../logging'
@@ -13,95 +11,6 @@ import { toCopilotMCPServersConfig } from '../mcp/adapters/copilot'
 import { toJsonSchema } from '@valibot/to-json-schema'
 
 import * as v from 'valibot'
-
-function prependPath(entries: string[]): string {
-  const current = process.env.PATH ?? ''
-  const all = [...entries, current]
-  return all.filter(Boolean).join(path.delimiter)
-}
-
-async function getNpmGlobalBin(): Promise<string> {
-  const result = await x('npm', ['prefix', '-g'], {
-    throwOnError: true,
-  })
-
-  return path.join(result.stdout.trim(), 'bin')
-}
-
-function getCopilotExecutableName(): string {
-  return process.platform === 'win32' ? 'copilot.cmd' : 'copilot'
-}
-
-async function isCopilotCliAvailable(command = 'copilot'): Promise<boolean> {
-  try {
-    const result = await x(command, ['--version'], {
-      throwOnError: false,
-    })
-    return result.exitCode === 0
-  } catch {
-    return false
-  }
-}
-
-async function resolveCopilotCliPath(): Promise<string | null> {
-  const npmGlobalBin = await getNpmGlobalBin()
-  const npmInstalledCliPath = path.join(npmGlobalBin, getCopilotExecutableName())
-
-  if (existsSync(npmInstalledCliPath) && await isCopilotCliAvailable(npmInstalledCliPath)) {
-    return npmInstalledCliPath
-  }
-
-  const whichResult = await x('which', ['copilot'], {
-    throwOnError: false,
-  })
-
-  if (whichResult.exitCode === 0) {
-    const resolvedPath = whichResult.stdout.trim()
-    if (resolvedPath && await isCopilotCliAvailable(resolvedPath)) {
-      return resolvedPath
-    }
-  }
-
-  if (await isCopilotCliAvailable('copilot')) {
-    return 'copilot'
-  }
-
-  return null
-}
-
-async function ensureCopilotCliInstalled(): Promise<string> {
-  consola.info('Resolving GitHub Copilot CLI path...')
-  let cliPath = await resolveCopilotCliPath()
-  if (cliPath) {
-    consola.info(`Using GitHub Copilot CLI at: ${cliPath}`)
-    return cliPath
-  }
-
-  consola.info('GitHub Copilot CLI not found. Installing @github/copilot globally...')
-  if (!await isCopilotCliAvailable()) {
-    await x('npm', ['install', '-g', '@github/copilot'], {
-      throwOnError: true,
-      nodeOptions: {
-        env: {
-          ...process.env,
-          npm_config_ignore_scripts: 'false',
-        },
-      },
-    })
-  }
-
-  const npmGlobalBin = await getNpmGlobalBin()
-  process.env.PATH = prependPath([npmGlobalBin])
-  consola.info(`Prepended npm global bin to PATH: ${npmGlobalBin}`)
-
-  cliPath = await resolveCopilotCliPath()
-  if (!cliPath) {
-    throw new Error('GitHub Copilot CLI is required but was not found after installation attempt.')
-  }
-
-  consola.info(`GitHub Copilot CLI installed and resolved at: ${cliPath}`)
-  return cliPath
-}
 
 function hasCopilotAgentTokenInEnvironment(): boolean {
   return !!process.env.COPILOT_GITHUB_TOKEN
@@ -117,6 +26,13 @@ function resolveCopilotAgentTokenFromEnvironment(): string {
   }
 
   return copilotAgentToken
+}
+
+export function getCopilotClientOptions(githubToken: string): CopilotClientOptions {
+  return {
+    githubToken,
+    useLoggedInUser: false,
+  }
 }
 
 const setPRContextTool = defineTool<{
@@ -156,7 +72,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   const model = options.model ?? 'claude-sonnet-4.6'
 
   consola.info('Preparing GitHub Copilot review agent')
-  const cliPath = await ensureCopilotCliInstalled()
+  consola.info('Using the Copilot SDK bundled CLI to keep SDK and CLI protocol versions aligned')
 
   if (!hasCopilotAgentTokenInEnvironment()) {
     throw new Error(
@@ -183,9 +99,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
   ]) */
 
   const client = new CopilotClient({
-    cliPath,
-    githubToken: copilotAgentToken,
-    useLoggedInUser: false,
+    ...getCopilotClientOptions(copilotAgentToken),
   })
 
   const servers = mcpServers()
