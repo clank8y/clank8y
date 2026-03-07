@@ -40,11 +40,11 @@ function getSDKRootPath(): string {
   return path.dirname(path.dirname(sdkEntryPath))
 }
 
-function extractVersionFromSemverRange(range: string): string {
-  const version = range.match(/\d+\.\d+\.\d+/)?.[0]
+function extractVersion(value: string): string {
+  const version = value.match(/\d+\.\d+\.\d+/)?.[0]
 
   if (!version) {
-    throw new Error(`Could not determine a Copilot CLI version from SDK dependency range '${range}'.`)
+    throw new Error(`Could not determine a Copilot CLI version from '${value}'.`)
   }
 
   return version
@@ -59,7 +59,7 @@ export function getPinnedCopilotCliVersion(sdkPackageJson: {
     throw new Error('Could not determine the bundled @github/copilot dependency from @github/copilot-sdk.')
   }
 
-  return extractVersionFromSemverRange(versionRange)
+  return extractVersion(versionRange)
 }
 
 function getPinnedCopilotCliPackageSpec(): string {
@@ -80,7 +80,7 @@ async function getCopilotCliVersion(command: string): Promise<string | null> {
       return null
     }
 
-    return extractVersionFromSemverRange(`${result.stdout}\n${result.stderr}`)
+    return extractVersion(result.stdout)
   } catch {
     return null
   }
@@ -91,7 +91,7 @@ async function ensurePinnedGlobalCopilotCliInstalled(): Promise<string> {
   const npmGlobalBin = await getNpmGlobalBin()
   const cliPath = path.join(npmGlobalBin, getCopilotExecutableName())
   const packageSpec = getPinnedCopilotCliPackageSpec()
-  const expectedVersion = extractVersionFromSemverRange(packageSpec)
+  const expectedVersion = extractVersion(packageSpec)
 
   if (existsSync(cliPath) && await getCopilotCliVersion(cliPath) === expectedVersion) {
     process.env.PATH = prependPath([npmGlobalBin])
@@ -102,12 +102,6 @@ async function ensurePinnedGlobalCopilotCliInstalled(): Promise<string> {
   consola.info(`Installing ${packageSpec} globally...`)
   await x('npm', ['install', '-g', packageSpec], {
     throwOnError: true,
-    nodeOptions: {
-      env: {
-        ...process.env,
-        npm_config_ignore_scripts: 'false',
-      },
-    },
   })
 
   process.env.PATH = prependPath([npmGlobalBin])
