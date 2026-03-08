@@ -14,6 +14,9 @@ import { toJsonSchema } from '@valibot/to-json-schema'
 
 import * as v from 'valibot'
 
+const COPILOT_CLI_PACKAGE = '@github/copilot'
+const COPILOT_CLI_VERSION = '1.0.2'
+
 function prependPath(entries: string[]): string {
   const current = process.env.PATH ?? ''
   const all = [...entries, current]
@@ -77,18 +80,16 @@ async function ensureCopilotCliInstalled(): Promise<string> {
     return cliPath
   }
 
-  consola.info('GitHub Copilot CLI not found. Installing @github/copilot globally...')
-  if (!await isCopilotCliAvailable()) {
-    await x('npm', ['install', '-g', '@github/copilot'], {
-      throwOnError: true,
-      nodeOptions: {
-        env: {
-          ...process.env,
-          npm_config_ignore_scripts: 'false',
-        },
+  consola.info(`GitHub Copilot CLI ${COPILOT_CLI_VERSION} not found. Installing ${COPILOT_CLI_PACKAGE}@${COPILOT_CLI_VERSION} globally...`)
+  await x('npm', ['install', '-g', `${COPILOT_CLI_PACKAGE}@${COPILOT_CLI_VERSION}`], {
+    throwOnError: true,
+    nodeOptions: {
+      env: {
+        ...process.env,
+        npm_config_ignore_scripts: 'false',
       },
-    })
-  }
+    },
+  })
 
   const npmGlobalBin = await getNpmGlobalBin()
   process.env.PATH = prependPath([npmGlobalBin])
@@ -96,7 +97,7 @@ async function ensureCopilotCliInstalled(): Promise<string> {
 
   cliPath = await resolveCopilotCliPath()
   if (!cliPath) {
-    throw new Error('GitHub Copilot CLI is required but was not found after installation attempt.')
+    throw new Error(`GitHub Copilot CLI ${COPILOT_CLI_VERSION} is required but was not found after installation attempt.`)
   }
 
   consola.info(`GitHub Copilot CLI installed and resolved at: ${cliPath}`)
@@ -247,6 +248,7 @@ export const githubCopilotAgent: PullReviewAgentFactory = async (options) => {
           }
           return {
             kind: 'denied-by-rules',
+            rules: ['Only MCP, custom-tool, and read tool permissions are allowed.'],
           }
         },
         mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: options.tools.maxRuntimeMs }),
