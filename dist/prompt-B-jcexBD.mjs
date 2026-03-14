@@ -1,5 +1,5 @@
-import { WriteStream } from "node:tty";
 import process$1, { stdin, stdout } from "node:process";
+import { WriteStream } from "node:tty";
 import c from "node:readline";
 
 //#region node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/chunks/prompt.mjs
