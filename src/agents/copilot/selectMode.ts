@@ -10,9 +10,16 @@ import {
   MODE_SELECTION_TOOL_TITLE,
 } from '../../modeSelection'
 import {
-  COPILOT_EXCLUDED_TOOLS,
-  createCopilotPermissionHandler,
+  COPILOT_REVIEW_EXCLUDED_TOOLS,
 } from './client'
+
+export const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
+  ...COPILOT_REVIEW_EXCLUDED_TOOLS,
+  'rg',
+  'create',
+  'edit',
+  'view',
+]
 
 export async function selectCopilotMode(options: {
   client: CopilotClient
@@ -23,8 +30,18 @@ export async function selectCopilotMode(options: {
 
   const session = await options.client.createSession({
     model: options.model,
-    excludedTools: COPILOT_EXCLUDED_TOOLS,
-    onPermissionRequest: createCopilotPermissionHandler(),
+    excludedTools: COPILOT_SELECT_MODE_EXCLUDED_TOOLS,
+    onPermissionRequest: (request) => {
+      if (request.kind === 'custom-tool' || request.kind === 'mcp') {
+        return {
+          kind: 'approved' as const,
+        }
+      }
+      return {
+        kind: 'denied-by-rules',
+        rules: ['Only the mode selection tool may be used during mode selection.'],
+      }
+    },
     tools: [
       defineTool<Clank8yModeSelection>(MODE_SELECTION_TOOL_NAME, {
         description: MODE_SELECTION_TOOL_DESCRIPTION,
