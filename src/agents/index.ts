@@ -1,7 +1,6 @@
 import { defu } from 'defu'
 import { logAgentMessage } from '../logging'
 import { buildReviewPrompt } from '../prompt'
-import { getPullRequestReviewContext } from '../setup'
 import type { DeepOptional } from '../types'
 import { githubCopilotAgent } from './copilot'
 import type { Clank8yMode, Clank8yModeSelection } from './modes'
@@ -97,11 +96,10 @@ function buildClank8yPrompt(mode: Clank8yMode, promptContext: string): string {
   }
 }
 
-export async function runClank8y(options: Clank8yAgentOptions): Promise<void> {
+export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
   const agent = await getClank8yAgent(options)
-  const context = await getPullRequestReviewContext()
-  const selection = await agent.selectMode(context.promptContext)
-  const prompt = buildClank8yPrompt(selection.mode, context.promptContext)
+  const selection = await agent.selectMode(options.promptContext)
+  const prompt = buildClank8yPrompt(selection.mode, options.promptContext)
 
   logAgentMessage({
     agent: agent.provider,
@@ -112,14 +110,15 @@ export async function runClank8y(options: Clank8yAgentOptions): Promise<void> {
     agent: agent.provider,
     model: agent.model,
   }, [
-    `repository: ${context.repository.owner}/${context.repository.repo}`,
     `mode: ${selection.mode}`,
     '',
-    context.promptContext,
+    options.promptContext,
   ])
 
   await agent.run({
     mode: selection.mode,
     prompt,
   })
+
+  return selection
 }

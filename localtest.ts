@@ -1,7 +1,6 @@
 import 'dotenv/config'
 import process from 'node:process'
-import { runClank8y } from './src/agents'
-import { resolveModelInput, resolveTimeoutInput } from './src/setup'
+import { runClank8y } from './src/clank8y'
 
 /**
  * Local test runner setup (dotenv-based)
@@ -53,14 +52,84 @@ function setupActionLikeEnvironment(): void {
   }
 }
 
+function parseRepositoryFromEnvironment() {
+  const repository = process.env.GITHUB_REPOSITORY?.trim()
+  if (!repository) {
+    throw new Error('GITHUB_REPOSITORY is required for local test (format: owner/repo)')
+  }
+
+  const segments = repository.split('/')
+  const [owner, repo] = segments
+  if (segments.length !== 2 || !owner || !repo) {
+    throw new Error(`Invalid GITHUB_REPOSITORY value '${repository}'. Expected format: owner/repo.`)
+  }
+
+  return { owner, repo }
+}
+
+function buildPromptContext(promptContext: string): string {
+  const repository = parseRepositoryFromEnvironment()
+
+  return [
+    promptContext,
+    '',
+    '---',
+    '',
+    'LOCAL EXECUTION CONTEXT:',
+    `repository: ${repository.owner}/${repository.repo}`,
+    'execution_environment: localtest',
+  ].join('\n')
+}
+
+function resolveModelInput(): string | undefined {
+  return process.env.MODEL?.trim() || undefined
+}
+
+function resolveTimeoutInput(): number | undefined {
+  const raw = process.env.TIMEOUT_MS?.trim()
+  if (!raw) {
+    return undefined
+  }
+
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    throw new Error(`Invalid TIMEOUT_MS value '${raw}'. Expected a positive integer (milliseconds).`)
+  }
+
+  return parsed
+}
+
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) {
+    throw new Error(`${name} is required for local test.`)
+  }
+
+  return value
+}
+
+function resolveGithubToken(): string {
+  const token = process.env.GH_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim()
+  if (!token) {
+    throw new Error('GH_TOKEN or GITHUB_TOKEN is required for local test.')
+  }
+
+  return token
+}
+
 async function main(): Promise<void> {
   setupActionLikeEnvironment()
 
   const model = resolveModelInput()
   const timeOutMs = resolveTimeoutInput()
   await runClank8y({
-    ...(model !== undefined && { model }),
-    ...(timeOutMs !== undefined && { timeOutMs }),
+    promptContext: buildPromptContext(requireEnv('PROMPT')),
+    auth: {
+      githubToken: resolveGithubToken(),
+      copilotToken: requireEnv('COPILOT_GITHUB_TOKEN'),
+    },
+    model: model ?? 'claude-haiku-4.5',
+    timeOutMs,
   })
 }
 

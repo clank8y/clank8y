@@ -51,13 +51,19 @@ function isOnlyBotMention(commentBody: string): boolean {
 
 function buildDispatchPromptContext(params: {
   trigger: 'pull_request_opened' | 'issue_comment'
+  owner: string
+  repo: string
+  defaultBranch: string
   prNumber: number
+  prBaseBranch: string
+  prHeadBranch: string
   actor: string
   instruction?: string
 }): string {
+  const reviewTarget = `pull request #${params.prNumber} in ${params.owner}/${params.repo} for branch ${params.prHeadBranch}`
   const baseInstruction = params.trigger === 'issue_comment'
-    ? 'You have been mentioned in a PR review. Address the feedback in the comments that mention you.'
-    : 'A new PR has just been opened. Review this pull request and provide actionable, high-signal feedback.'
+    ? `You have been mentioned in ${reviewTarget}. Address the feedback in the comments that mention you.`
+    : `A new PR has just been opened. Review ${reviewTarget} and provide actionable, high-signal feedback.`
 
   const lines = [
     'EVENT-LEVEL INSTRUCTIONS:',
@@ -66,7 +72,10 @@ function buildDispatchPromptContext(params: {
     '---',
     '',
     `trigger: ${params.trigger}`,
+    `owner: ${params.owner}`,
+    `repo: ${params.repo}`,
     `pr_number: ${params.prNumber}`,
+    `branch: ${params.prHeadBranch}`,
     `actor: ${params.actor}`,
     `report_back_to: @${params.actor}`,
   ]
@@ -89,6 +98,8 @@ async function dispatchWorkflow(params: {
   defaultBranch: string
   trigger: 'pull_request_opened' | 'issue_comment'
   prNumber: number
+  prBaseBranch: string
+  prHeadBranch: string
   actor: string
   instruction?: string
 }): Promise<void> {
@@ -101,10 +112,15 @@ async function dispatchWorkflow(params: {
     ref: params.defaultBranch,
     inputs: {
       prompt: buildDispatchPromptContext({
+        owner: params.owner,
+        repo: params.repo,
+        defaultBranch: params.defaultBranch,
         trigger: params.trigger,
         prNumber: params.prNumber,
+        prBaseBranch: params.prBaseBranch,
+        prHeadBranch: params.prHeadBranch,
         actor: params.actor,
-        ...(params.instruction ? { instruction: params.instruction } : {}),
+        instruction: params.instruction,
       }),
     },
   })
@@ -195,6 +211,8 @@ export default defineHandler(async (event) => {
         defaultBranch: payload.repository.default_branch,
         trigger: 'pull_request_opened',
         prNumber: payload.pull_request.number,
+        prBaseBranch: payload.pull_request.base.ref,
+        prHeadBranch: payload.pull_request.head.ref,
         actor: payload.sender.login,
       })
 
@@ -230,6 +248,11 @@ export default defineHandler(async (event) => {
     const owner = payload.repository.owner.login
     const repo = payload.repository.name
     const installationOctokit = await createInstallationOctokit(owner, repo)
+    const { data: pullRequest } = await installationOctokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+      owner,
+      repo,
+      pull_number: payload.issue.number,
+    })
 
     try {
       await dispatchWorkflow({
@@ -238,6 +261,8 @@ export default defineHandler(async (event) => {
         defaultBranch: payload.repository.default_branch,
         trigger: 'issue_comment',
         prNumber: payload.issue.number,
+        prBaseBranch: pullRequest.base.ref,
+        prHeadBranch: pullRequest.head.ref,
         actor: payload.sender.login,
         instruction: commentBody,
       })

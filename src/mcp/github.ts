@@ -7,7 +7,7 @@ import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { getOctokit } from '../gh'
 import {
   getActivePullRequestContext,
-  getPullRequestReviewContext,
+  getClank8yRuntimeContext,
 } from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
@@ -368,12 +368,12 @@ const createPullRequestReviewTool = defineTool({
 }, async ({ body, commit_id, comments }) => {
   try {
     const octokit = await getOctokit()
-    const reviewContext = await getPullRequestReviewContext()
+    const runtimeContext = getClank8yRuntimeContext()
     const pullRequest = getActivePullRequestContext()
     const reviewCommentsInput = comments ?? []
     const reviewBody = buildClank8yCommentBody(
       body === undefined ? undefined : normalizeToolString(body),
-      { workflowRunUrl: reviewContext.workflowRun?.url ?? null },
+      { workflowRunUrl: runtimeContext.runInfo?.url ?? null },
     )
 
     let commitSha = commit_id

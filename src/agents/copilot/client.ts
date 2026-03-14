@@ -4,6 +4,7 @@ import process from 'node:process'
 import { CopilotClient } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import { x } from 'tinyexec'
+import { getClank8yRuntimeContext } from '../../setup'
 
 const COPILOT_CLI_PACKAGE = '@github/copilot'
 const COPILOT_CLI_VERSION = '1.0.2'
@@ -116,14 +117,8 @@ async function ensureCopilotCliInstalled(): Promise<string> {
   return cliPath
 }
 
-function resolveCopilotAgentTokenFromEnvironment(): string {
-  const copilotAgentToken = process.env.COPILOT_GITHUB_TOKEN
-
-  if (!copilotAgentToken) {
-    throw new Error('Copilot authentication token is missing. Set COPILOT_GITHUB_TOKEN.')
-  }
-
-  return copilotAgentToken
+function resolveCopilotAgentToken(): string {
+  return getClank8yRuntimeContext().auth.copilotToken
 }
 
 export function createCopilotPermissionHandler() {
@@ -144,7 +139,7 @@ export function createCopilotPermissionHandler() {
 export async function getCopilotClient(): Promise<CopilotClient> {
   consola.info('Preparing GitHub Copilot review agent')
   const cliPath = await ensureCopilotCliInstalled()
-  const copilotAgentToken = resolveCopilotAgentTokenFromEnvironment()
+  const copilotAgentToken = resolveCopilotAgentToken()
   consola.info('Using explicit GitHub token for Copilot SDK authentication')
 
   const client = new CopilotClient({
@@ -167,7 +162,7 @@ export async function getCopilotModelIds(client: CopilotClient): Promise<string[
   const models = await client.listModels()
   const modelIds = models.map((model) => model.id)
 
-  if (!process.env.GITHUB_ACTIONS) {
+  if (!getClank8yRuntimeContext().options?.suppressModelListing) {
     consola.log(`Available models:\n${modelIds.map((modelId) => `  • ${modelId}`).join('\n')}`)
   }
 
