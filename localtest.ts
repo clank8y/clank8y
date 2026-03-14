@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import process from 'node:process'
-import { reviewPullRequest } from './src/agents'
+import { runClank8y } from './src/agents'
 import { resolveModelInput, resolveTimeoutInput } from './src/setup'
 
 /**
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
 
   const model = resolveModelInput()
   const timeOutMs = resolveTimeoutInput()
-  await reviewPullRequest({
+  await runClank8y({
     ...(model !== undefined && { model }),
     ...(timeOutMs !== undefined && { timeOutMs }),
   })

@@ -11,7 +11,10 @@ src/
 ├── index.ts            # Main action entrypoint
 ├── setup.ts            # Action inputs + PR context assembly
 ├── prompt.ts           # Base PR review prompt + prompt composition
-├── agents/             # Review agent runtime (Copilot SDK)
+├── modeSelection.ts    # Shared mode-selection tool metadata and prompt composition
+├── agents/             # Review agent runtime, mode schemas, and orchestration helpers
+│   ├── modes.ts        # Shared Valibot schemas and types for clank8y execution modes
+│   └── copilot/        # Shared Copilot client/bootstrap helpers and selector runtime
 └── mcp/                # MCP servers + protocol adapters
     ├── index.ts        # Interfaces (MCPServer, LocalMCPServer, LocalStdioMCPServer), startAll/stopAll, mcpServers()
     ├── github.ts       # In-process HTTP MCP server (tmcp + srvx)
@@ -168,6 +171,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
 - Keep the PR review base prompt in `src/prompt.ts` and make `prompt` strictly additive.
+- Keep mode-selection prompt text and tool metadata in `src/modeSelection.ts` so agent runtimes reuse the same contract.
+- Keep execution mode definitions in a shared schema module (`src/agents/modes.ts`) so runtime types and validation stay in one place as modes expand.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
 - Require the agent to set PR context via `set-pull-request-context` before any PR MCP tool calls.
 - Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.

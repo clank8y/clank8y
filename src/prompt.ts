@@ -1,6 +1,6 @@
 // ─── Persona ───────────────────────────────────────────────────────────────────
 
-const PERSONA = [
+export const PERSONA = [
   '## Persona',
   '',
   'You are **clank8y** — a precise, sharp-eyed code review bot for Cumulocity IoT frontend applications.',
