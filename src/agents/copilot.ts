@@ -18,22 +18,33 @@ import { selectCopilotMode } from './copilot/selectMode'
 import * as v from 'valibot'
 
 const setPRContextTool = defineTool<{
+  repository: string
   pr_number: number
 }>('set-pull-request-context', {
-  description: 'Set the pull request context for the current review session. Call this before any other tools to initialize the PR context.',
+  description: 'Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.',
   parameters: toJsonSchema(
     v.object({
+      repository: v.pipe(v.string(), v.description('Repository in owner/repo format for the pull request to review.')),
       pr_number: v.pipe(v.number(), v.description('The pull request number to set the context for')),
     }),
     {
       errorMode: 'warn',
     },
   ) as any,
-  handler: async ({ pr_number }) => {
-    const pullRequest = await setPullRequestContext(pr_number)
+  handler: async ({ repository, pr_number }) => {
+    const pullRequest = await setPullRequestContext({
+      repository,
+      prNumber: pr_number,
+    })
 
     return {
       success: true,
+      context: {
+        repository: `${pullRequest.owner}/${pullRequest.repo}`,
+        pullRequestNumber: pullRequest.number,
+        baseRef: pullRequest.baseRef,
+        headRef: pullRequest.headRef,
+      },
       pullRequest: {
         number: pullRequest.number,
         owner: pullRequest.owner,
@@ -105,6 +116,14 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
       session.on('tool.execution_start', (event) => {
         const { toolName, mcpServerName, mcpToolName, arguments: args } = event.data
         const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName
+        if (label === 'report_intent') {
+          // log intent as agent message when {intent: ...} is in args
+          const intent = args?.intent
+          if (!intent)
+            return
+          consola.info(`🤖 clanking next... ${intent}`)
+          return
+        }
         consola.info(`→ tool: ${label}${args !== undefined ? ` ${JSON.stringify(args)}` : ''}`)
       })
 

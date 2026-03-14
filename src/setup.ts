@@ -1,10 +1,4 @@
-import * as github from '@actions/github'
-import process from 'node:process'
 import { getOctokit } from './gh'
-
-import * as core from '@actions/core'
-
-export type GitHubActionContext = Pick<typeof github.context, 'repo' | 'payload'>
 
 export interface RepositoryContext {
   owner: string
@@ -21,124 +15,99 @@ export interface PullRequestContext {
   baseRef: string
 }
 
-export interface WorkflowRunContext {
+export interface RunInfo {
+  runner: 'github-action'
   id: number
   url: string
 }
 
-function parseRepositoryFromEnvironment(): RepositoryContext {
-  const repository = process.env.GITHUB_REPOSITORY?.trim()
-  if (!repository) {
-    throw new Error('GITHUB_REPOSITORY is required (format: owner/repo).')
+export interface Clank8yRuntimeContext {
+  promptContext: string
+  auth: {
+    githubToken: string
+    copilotToken: string
+  }
+  // Added by the GitHub Actions wrapper when the current execution has a workflow run URL.
+  runInfo?: RunInfo
+  options?: {
+    suppressModelListing?: boolean
+  }
+}
+
+let _runtimeContext: Clank8yRuntimeContext | null = null
+let _activePullRequestContext: PullRequestContext | null = null
+
+function requireRuntimeContext(): Clank8yRuntimeContext {
+  if (!_runtimeContext) {
+    throw new Error('Clank8y runtime context is not initialized. Call setClank8yRuntimeContext first.')
   }
 
-  const segments = repository.split('/')
+  return _runtimeContext
+}
+
+function parseRepository(repository: string): RepositoryContext {
+  const normalizedRepository = repository.trim()
+  if (!normalizedRepository) {
+    throw new Error('Repository is required (format: owner/repo).')
+  }
+
+  const segments = normalizedRepository.split('/')
   const [owner, repo] = segments
   if (segments.length !== 2 || !owner || !repo) {
-    throw new Error(`Invalid GITHUB_REPOSITORY value '${repository}'. Expected format: owner/repo.`)
+    throw new Error(`Invalid repository value '${normalizedRepository}'. Expected format: owner/repo.`)
   }
 
   return { owner, repo }
 }
 
-function createRepositoryContext(): RepositoryContext {
-  // Prefer GitHub Actions runtime context when available.
-  if (github?.context?.repo?.owner && github?.context?.repo?.repo) {
-    return {
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-    }
+function normalizeRuntimeContext(context: Clank8yRuntimeContext): Clank8yRuntimeContext {
+  if (!context.promptContext.trim()) {
+    throw new Error('Clank8y runtime context requires a non-empty promptContext.')
   }
 
-  // Local development fallback (e.g. localtest.ts).
-  return parseRepositoryFromEnvironment()
-}
-
-function resolvePromptContext(): string {
-  // Prefer action input in workflow runs.
-  const inputPrompt = core.getInput('prompt').trim()
-  if (inputPrompt) {
-    return inputPrompt
+  if (!context.auth.githubToken.trim()) {
+    throw new Error('Clank8y runtime context requires a non-empty auth.githubToken.')
   }
 
-  // Local development fallback.
-  const localPrompt = process.env.PROMPT?.trim()
-
-  if (!localPrompt) {
-    throw new Error('PROMPT is required for local test when action input is not provided.')
-  }
-
-  return localPrompt
-}
-
-export function resolveModelInput(): string | undefined {
-  // Prefer action input in workflow runs.
-  const inputModel = core.getInput('model').trim()
-  if (inputModel) {
-    return inputModel
-  }
-
-  // Local development fallback.
-  return process.env.MODEL?.trim() || undefined
-}
-
-export function resolveTimeoutInput(): number | undefined {
-  // Prefer action input in workflow runs.
-  const inputTimeout = core.getInput('timeout-ms').trim()
-  const raw = inputTimeout || process.env.TIMEOUT_MS?.trim()
-  if (!raw) {
-    return undefined
-  }
-
-  const parsed = Number.parseInt(raw, 10)
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    throw new Error(`Invalid timeout-ms value '${raw}'. Expected a positive integer (milliseconds).`)
-  }
-
-  return parsed
-}
-
-function resolveRunIdValue(): string | null {
-  // Prefer GitHub Actions context value when present.
-  if (typeof github?.context?.runId === 'number') {
-    return String(github.context.runId)
-  }
-
-  // Outside GitHub Actions there is no workflow run id.
-  return null
-}
-
-function createWorkflowRunContext(repository: RepositoryContext): WorkflowRunContext | null {
-  const runIdValue = resolveRunIdValue()
-  if (!runIdValue) {
-    return null
-  }
-
-  const runId = Number.parseInt(runIdValue, 10)
-  if (Number.isNaN(runId)) {
-    return null
+  if (!context.auth.copilotToken.trim()) {
+    throw new Error('Clank8y runtime context requires a non-empty auth.copilotToken.')
   }
 
   return {
-    id: runId,
-    url: `https://github.com/${repository.owner}/${repository.repo}/actions/runs/${runId}`,
+    ...context,
+    promptContext: context.promptContext.trim(),
+    auth: {
+      githubToken: context.auth.githubToken.trim(),
+      copilotToken: context.auth.copilotToken.trim(),
+    },
   }
 }
 
-let _activePullRequestContext: PullRequestContext | null = null
+export function setClank8yRuntimeContext(context: Clank8yRuntimeContext): void {
+  _runtimeContext = normalizeRuntimeContext(context)
+  _activePullRequestContext = null
+}
 
-export async function setPullRequestContext(prNumber: number): Promise<PullRequestContext> {
-  if (!Number.isFinite(prNumber) || prNumber < 1) {
-    throw new Error(`Invalid pull request number '${String(prNumber)}'.`)
+export function getClank8yRuntimeContext(): Clank8yRuntimeContext {
+  return requireRuntimeContext()
+}
+
+export function resetClank8yRuntimeContextForTests(): void {
+  _runtimeContext = null
+  _activePullRequestContext = null
+}
+
+export async function setPullRequestContext(params: { repository: string, prNumber: number }): Promise<PullRequestContext> {
+  if (!Number.isFinite(params.prNumber) || params.prNumber < 1) {
+    throw new Error(`Invalid pull request number '${String(params.prNumber)}'.`)
   }
 
-  const reviewContext = await getPullRequestReviewContext()
-  const repository = reviewContext.repository
+  const repository = parseRepository(params.repository)
   const octokit = await getOctokit()
   const { data: pr } = await octokit.rest.pulls.get({
     owner: repository.owner,
     repo: repository.repo,
-    pull_number: prNumber,
+    pull_number: params.prNumber,
   })
 
   _activePullRequestContext = {
@@ -160,39 +129,4 @@ export function getActivePullRequestContext(): PullRequestContext {
   }
 
   return _activePullRequestContext
-}
-
-export interface PullRequestReviewContext {
-  repository: RepositoryContext
-  workflowRun: WorkflowRunContext | null
-  promptContext: string
-}
-
-let _config: PullRequestReviewContext | null = null
-let _configPromise: Promise<PullRequestReviewContext> | null = null
-
-async function createPullRequestReviewContext(
-): Promise<PullRequestReviewContext> {
-  const repository = createRepositoryContext()
-  const workflowRun = createWorkflowRunContext(repository)
-  const promptContext = resolvePromptContext()
-
-  return {
-    repository,
-    workflowRun,
-    promptContext,
-  }
-}
-
-export async function getPullRequestReviewContext(): Promise<PullRequestReviewContext> {
-  if (_config) {
-    return _config
-  }
-
-  if (!_configPromise) {
-    _configPromise = createPullRequestReviewContext()
-  }
-
-  _config = await _configPromise
-  return _config
 }
