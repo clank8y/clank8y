@@ -1,67 +1,16 @@
 import type { Clank8yAgent, Clank8yAgentFactory } from '.'
-import { defineTool } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import type { UsageTotals } from '../logging'
 import { logAgentMessage, logUsageSummary } from '../logging'
 import { mcpServers, startAll, stopAll } from '../mcp'
-import { setPullRequestContext } from '../setup'
 import { toCopilotMCPServersConfig } from '../mcp/adapters/copilot'
-import { toJsonSchema } from '@valibot/to-json-schema'
 import {
-  COPILOT_EXCLUDED_TOOLS,
-  createCopilotPermissionHandler,
+  COPILOT_REVIEW_EXCLUDED_TOOLS,
+  copilotPermissionHandler,
   ensureCopilotModelAvailable,
   getCopilotClient,
 } from './copilot/client'
 import { selectCopilotMode } from './copilot/selectMode'
-
-import * as v from 'valibot'
-
-const setPRContextTool = defineTool<{
-  repository: string
-  pr_number: number
-}>('set-pull-request-context', {
-  description: 'Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.',
-  parameters: toJsonSchema(
-    v.object({
-      repository: v.pipe(v.string(), v.description('Repository in owner/repo format for the pull request to review.')),
-      pr_number: v.pipe(v.number(), v.description('The pull request number to set the context for')),
-    }),
-    {
-      errorMode: 'warn',
-    },
-  ) as any,
-  handler: async ({ repository, pr_number }) => {
-    const pullRequest = await setPullRequestContext({
-      repository,
-      prNumber: pr_number,
-    })
-
-    return {
-      success: true,
-      context: {
-        repository: `${pullRequest.owner}/${pullRequest.repo}`,
-        pullRequestNumber: pullRequest.number,
-        baseRef: pullRequest.baseRef,
-        headRef: pullRequest.headRef,
-      },
-      pullRequest: {
-        number: pullRequest.number,
-        owner: pullRequest.owner,
-        repo: pullRequest.repo,
-        headRef: pullRequest.headRef,
-        headSha: pullRequest.headSha,
-        baseRef: pullRequest.baseRef,
-        baseSha: pullRequest.baseSha,
-      },
-      nextSteps: [
-        'Call prepare-pull-request-review.',
-        'Read only relevant diff/file chunks.',
-        'Submit findings with create-pull-request-review.',
-      ],
-    }
-  },
-})
 
 export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
   const agentName = 'github-copilot'
@@ -93,10 +42,9 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
 
     try {
       const session = await client.createSession({
-        excludedTools: COPILOT_EXCLUDED_TOOLS,
+        excludedTools: COPILOT_REVIEW_EXCLUDED_TOOLS,
         model,
-        tools: [setPRContextTool],
-        onPermissionRequest: createCopilotPermissionHandler(),
+        onPermissionRequest: copilotPermissionHandler,
         mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: options.tools.maxRuntimeMs }),
       })
 
