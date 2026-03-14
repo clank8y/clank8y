@@ -21,7 +21,7 @@ import { existsSync as existsSync$1 } from "node:fs";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
 import nodeHTTPS from "node:https";
 import { createRequire as createRequire$1 } from "module";
-import c from "node:readline";
+import f from "node:readline";
 
 //#region \0rolldown/runtime.js
 var __create = Object.create;
@@ -25445,7 +25445,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		const e = i(true);
 		return Object.keys(e);
 	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
 	["APPVEYOR"],
 	[
 		"AWS_AMPLIFY",
@@ -25537,7 +25537,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 	]
 ];
 function b$1() {
-	if (globalThis.process?.env) for (const e of f$1) {
+	if (globalThis.process?.env) for (const e of f$2) {
 		const s = e[1] || e[0];
 		if (globalThis.process?.env[s]) return {
 			name: e[0].toLowerCase(),
@@ -25569,14 +25569,14 @@ new Proxy(y$1, { get(e, s) {
 	if (s in e) return e[s];
 	if (s in _$1) return _$1[s];
 } });
-const c$1 = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
+const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
 	[S$1, "netlify"],
 	[u$1, "edge-light"],
 	[N$1, "workerd"],
 	[L, "fastly"],
 	[D$1, "deno"],
 	[O$1, "bun"],
-	[c$1, "node"]
+	[c, "node"]
 ];
 function G$1() {
 	const e = F$1.find((s) => s[0]);
@@ -25727,7 +25727,7 @@ function createConsola(options = {}) {
 		defaults: { level },
 		stdout: process.stdout,
 		stderr: process.stderr,
-		prompt: (...args) => import("./prompt-B-jcexBD.mjs").then((m) => m.prompt(...args)),
+		prompt: (...args) => import("./prompt-REWw2lXa.mjs").then((m) => m.prompt(...args)),
 		reporters: options.reporters || [options.fancy ?? !(T$1 || R$1) ? new FancyReporter() : new BasicReporter()],
 		...options
 	});
@@ -36935,12 +36935,12 @@ function toCopilotMCPServersConfig(servers, startResults, options) {
 var l = Object.create;
 var u = Object.defineProperty;
 var d = Object.getOwnPropertyDescriptor;
-var f = Object.getOwnPropertyNames;
+var f$1 = Object.getOwnPropertyNames;
 var p = Object.getPrototypeOf;
 var m = Object.prototype.hasOwnProperty;
 var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
 var g = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f(t), a = 0, o = i.length, s; a < o; a++) {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
 		s = i[a];
 		if (!m.call(e, s) && s !== n) u(e, s, {
 			get: ((e) => t[e]).bind(null, s),
@@ -37469,7 +37469,7 @@ var G = class {
 		if (this._streamErr) t.push(this._streamErr);
 		if (this._streamOut) t.push(this._streamOut);
 		const n = w(t);
-		const r = c.createInterface({ input: n });
+		const r = f.createInterface({ input: n });
 		for await (const e of r) yield e.toString();
 		await this._processClosed;
 		e.removeAllListeners();
