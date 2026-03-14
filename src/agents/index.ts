@@ -1,8 +1,10 @@
 import { defu } from 'defu'
+import { logAgentMessage } from '../logging'
+import { buildReviewPrompt } from '../prompt'
+import { getPullRequestReviewContext } from '../setup'
 import type { DeepOptional } from '../types'
 import { githubCopilotAgent } from './copilot'
-
-export type AgentEffort = 'low' | 'medium' | 'high'
+import type { Clank8yMode, Clank8yModeSelection } from './modes'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -15,18 +17,14 @@ export type Models
     | 'gpt-5.1-codex-mini' | 'gpt-5-mini'
     | 'gpt-4.1'
 
-interface PullRequestAgentConfiguration {
+interface Clank8yAgentConfiguration {
   /**
-   * Effort level determines what model to use unless model is explicitly specified.
-   * @default 'medium'
+   * Model to use for the run.
+   * @default 'claude-sonnet-4.6'
    */
-  effort: AgentEffort
+  model: Models | (string & {})
   /**
-   * Model to use for the review. If not specified, a model will be chosen based on the effort level.
-   */
-  model?: Models | (string & {})
-  /**
-   * Time limit for the entire pull request review process.
+   * Time limit for the entire clank8y run.
    * @default 1_200_000 (20 minutes)
    */
   timeOutMs: number
@@ -47,26 +45,38 @@ interface PullRequestAgentConfiguration {
    * Agent to use for pull request review.
    * @default 'github-copilot'
    */
-  agent?: 'github-copilot'
+  agent: 'github-copilot'
 }
 
 const DEFAULT_CONFIGURATION = {
-  effort: 'medium',
+  model: 'claude-sonnet-4.6',
   timeOutMs: 1_200_000,
   tools: {
     maxCalls: 60,
     maxRuntimeMs: 60_000,
   },
   agent: 'github-copilot',
-} as const satisfies PullRequestAgentConfiguration
+} as const satisfies Clank8yAgentConfiguration
 
-export type PullRequestAgentOptions = DeepOptional<Omit<PullRequestAgentConfiguration, 'agent'>>
+export type Clank8yAgentOptions = DeepOptional<Omit<Clank8yAgentConfiguration, 'agent'>>
 
-export type PullRequestReviewFn = () => Promise<void>
-export type PullReviewAgentFactory = (options: PullRequestAgentConfiguration) => PullRequestReviewFn | Promise<PullRequestReviewFn>
+export interface Clank8yRunInput {
+  mode: Clank8yMode
+  prompt: string
+}
 
-async function getPullRequestAgent(options: PullRequestAgentOptions): Promise<PullRequestReviewFn> {
-  const config = defu<PullRequestAgentConfiguration, [PullRequestAgentConfiguration]>(options, DEFAULT_CONFIGURATION)
+export interface Clank8yAgent {
+  name: string
+  provider: string
+  model: string
+  selectMode: (prompt: string) => Promise<Clank8yModeSelection>
+  run: (input: Clank8yRunInput) => Promise<void>
+}
+
+export type Clank8yAgentFactory = (options: Omit<Clank8yAgentConfiguration, 'agent'>) => Clank8yAgent | Promise<Clank8yAgent>
+
+async function getClank8yAgent(options: Clank8yAgentOptions): Promise<Clank8yAgent> {
+  const config = defu<Clank8yAgentConfiguration, [Clank8yAgentOptions]>(options, DEFAULT_CONFIGURATION) as Clank8yAgentConfiguration
 
   const { agent, ...profile } = config
 
@@ -78,7 +88,38 @@ async function getPullRequestAgent(options: PullRequestAgentOptions): Promise<Pu
   }
 }
 
-export async function reviewPullRequest(options: PullRequestAgentOptions): Promise<void> {
-  const review = await getPullRequestAgent(options)
-  await review()
+function buildClank8yPrompt(mode: Clank8yMode, promptContext: string): string {
+  switch (mode) {
+    case 'Review':
+      return buildReviewPrompt(promptContext)
+    default:
+      throw new Error(`Unsupported clank8y mode: ${mode satisfies never}`)
+  }
+}
+
+export async function runClank8y(options: Clank8yAgentOptions): Promise<void> {
+  const agent = await getClank8yAgent(options)
+  const context = await getPullRequestReviewContext()
+  const selection = await agent.selectMode(context.promptContext)
+  const prompt = buildClank8yPrompt(selection.mode, context.promptContext)
+
+  logAgentMessage({
+    agent: agent.provider,
+    model: agent.model,
+  }, `Selected mode: ${selection.mode}\nMode selection reason: ${selection.reason}`)
+
+  logAgentMessage({
+    agent: agent.provider,
+    model: agent.model,
+  }, [
+    `repository: ${context.repository.owner}/${context.repository.repo}`,
+    `mode: ${selection.mode}`,
+    '',
+    context.promptContext,
+  ])
+
+  await agent.run({
+    mode: selection.mode,
+    prompt,
+  })
 }

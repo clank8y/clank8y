@@ -1,6 +1,5 @@
 import * as github from '@actions/github'
 import process from 'node:process'
-import { buildReviewPrompt } from './prompt'
 import { getOctokit } from './gh'
 
 import * as core from '@actions/core'
@@ -63,7 +62,13 @@ function resolvePromptContext(): string {
   }
 
   // Local development fallback.
-  return (process.env.PROMPT ?? '').trim()
+  const localPrompt = process.env.PROMPT?.trim()
+
+  if (!localPrompt) {
+    throw new Error('PROMPT is required for local test when action input is not provided.')
+  }
+
+  return localPrompt
 }
 
 export function resolveModelInput(): string | undefined {
@@ -161,7 +166,6 @@ export interface PullRequestReviewContext {
   repository: RepositoryContext
   workflowRun: WorkflowRunContext | null
   promptContext: string
-  prompt: string
 }
 
 let _config: PullRequestReviewContext | null = null
@@ -177,7 +181,6 @@ async function createPullRequestReviewContext(
     repository,
     workflowRun,
     promptContext,
-    prompt: buildReviewPrompt(promptContext),
   }
 }
 

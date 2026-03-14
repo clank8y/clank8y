@@ -1,17 +1,17 @@
 import * as core from '@actions/core'
-import { reviewPullRequest } from './agents'
+import { runClank8y } from './agents'
 import { resolveModelInput, resolveTimeoutInput } from './setup'
 
-async function startClank8y(): Promise<void> {
+export async function runClank8yEntry(): Promise<void> {
   const model = resolveModelInput()
   const timeOutMs = resolveTimeoutInput()
-  await reviewPullRequest({
+  await runClank8y({
     ...(model !== undefined && { model }),
     ...(timeOutMs !== undefined && { timeOutMs }),
   })
 }
 
-startClank8y().catch((error: unknown) => {
+runClank8yEntry().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
   core.setFailed(`clank8y failed to review the pull request: ${message}`)
 })

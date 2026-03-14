@@ -1,6 +1,6 @@
+import { WriteStream } from "node:tty";
 import process$1, { stdin, stdout } from "node:process";
 import c from "node:readline";
-import { WriteStream } from "node:tty";
 
 //#region node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/chunks/prompt.mjs
 function getDefaultExportFromCjs(x) {
