@@ -28,6 +28,7 @@ export const COPILOT_EXCLUDED_TOOLS = [
   'view',
   'web_fetch',
   'write_bash',
+  'rg',
 ]
 
 function prependPath(entries: string[]): string {

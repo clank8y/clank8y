@@ -81,10 +81,6 @@ function buildPromptContext(promptContext: string): string {
   ].join('\n')
 }
 
-function resolveModelInput(): string | undefined {
-  return process.env.MODEL?.trim() || undefined
-}
-
 function resolveTimeoutInput(): number | undefined {
   const raw = process.env.TIMEOUT_MS?.trim()
   if (!raw) {
@@ -120,7 +116,6 @@ function resolveGithubToken(): string {
 async function main(): Promise<void> {
   setupActionLikeEnvironment()
 
-  const model = resolveModelInput()
   const timeOutMs = resolveTimeoutInput()
   await runClank8y({
     promptContext: buildPromptContext(requireEnv('PROMPT')),
@@ -128,7 +123,7 @@ async function main(): Promise<void> {
       githubToken: resolveGithubToken(),
       copilotToken: requireEnv('COPILOT_GITHUB_TOKEN'),
     },
-    model: model ?? 'claude-haiku-4.5',
+    model: 'claude-sonnet-4.6',
     timeOutMs,
   })
 }
