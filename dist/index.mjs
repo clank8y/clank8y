@@ -16,10 +16,11 @@ import { fileURLToPath } from "node:url";
 import { AsyncLocalStorage } from "node:async_hooks";
 import process$1, { cwd } from "node:process";
 import * as tty from "node:tty";
-import { spawn } from "node:child_process";
-import { existsSync as existsSync$1 } from "node:fs";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
 import nodeHTTPS from "node:https";
+import { existsSync as existsSync$1 } from "node:fs";
+import { spawn } from "node:child_process";
 import { createRequire as createRequire$1 } from "module";
 import f from "node:readline";
 
@@ -16398,7 +16399,7 @@ var __awaiter$7 = void 0 && (void 0).__awaiter || function(thisArg, _arguments, 
 		step((generator = generator.apply(thisArg, _arguments || [])).next());
 	});
 };
-const { access, appendFile, writeFile } = promises;
+const { access, appendFile, writeFile: writeFile$1 } = promises;
 const SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
 var Summary = class {
 	constructor() {
@@ -16449,7 +16450,7 @@ var Summary = class {
 		return __awaiter$7(this, void 0, void 0, function* () {
 			const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
 			const filePath = yield this.filePath();
-			yield (overwrite ? writeFile : appendFile)(filePath, this._buffer, { encoding: "utf8" });
+			yield (overwrite ? writeFile$1 : appendFile)(filePath, this._buffer, { encoding: "utf8" });
 			return this.emptyBuffer();
 		});
 	}
@@ -16682,7 +16683,7 @@ var __awaiter$6 = void 0 && (void 0).__awaiter || function(thisArg, _arguments, 
 		step((generator = generator.apply(thisArg, _arguments || [])).next());
 	});
 };
-const { chmod, copyFile, lstat, mkdir, open, readdir, rename, rm, rmdir, stat, symlink, unlink } = fs.promises;
+const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat, symlink, unlink } = fs.promises;
 const IS_WINDOWS$1 = process.platform === "win32";
 const READONLY = fs.constants.O_RDONLY;
 
@@ -20321,30 +20322,30 @@ const BASE_REVIEW_PROMPT = [
 		"Angular evolves rapidly. Your training data may be stale.",
 		"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
 		"",
-		"**You must do proactive research BEFORE scanning the diff — not only when you spot something suspicious.**",
-		"Skipping the research phase and jumping straight to the diff will produce low-quality reviews.",
+		"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
+		"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
+		"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
+		"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
 		"",
-		"### Angular MCP — proactive research (required before reviewing)",
-		"- Call `get_best_practices` for the patterns you expect to encounter (components, signals, DI, control flow).",
-		"- Call `find_examples` for patterns the PR touches — read actual code examples, not just summaries.",
-		"- Call `search_documentation` for any specific API or syntax you are uncertain about.",
-		"- Do this BEFORE forming opinions, not after. Understanding current Angular best practices upfront lets you flag real issues and ignore valid patterns.",
+		"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
+		"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
+		"- Use `get_best_practices` to verify the pattern you are evaluating.",
+		"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
+		"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
+		"- Record the verification result in the scratchpad under `Learned / Verified Context` before moving on.",
 		"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
 		"",
-		"### Codex MCP — proactive research (required before reviewing)",
-		"- Call `get-codex-structure` first to orient yourself — understand the documentation surface available.",
-		"- Call `query-codex` for every service, component, hook, pipe, or concept referenced in the changed files.",
-		"- Call `get-codex-document-enriched` to read the FULL documentation (with code examples) for any result that is relevant to the PR.",
-		"- Do not stop at search result titles — read the actual documentation pages.",
-		"- Specifically check: does the platform already provide what the developer is building or importing?",
-		"- Verify CSS classes, color values, and design tokens against the Codex design system documentation.",
-		"",
-		"Examples of what to research upfront:",
-		"- PR touches managed objects → query Codex for `InventoryService`, read the full page including code examples.",
-		"- PR has a styled component → query Codex for CSS utilities and color tokens, read the design system docs.",
-		"- PR uses a loading indicator → query Codex for existing spinner/loading components before accepting or flagging a custom one.",
-		"- PR uses `@if` / `@for` control flow → call Angular MCP `find_examples` for Angular control flow blocks to confirm correct syntax.",
-		"- PR uses `signal()` / `input()` → call Angular MCP `get_best_practices` for signals to verify the usage pattern.",
+		"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
+		"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
+		"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
+		"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
+		"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
+		"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
+		"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
+		"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
+		"- Specifically check whether the platform already provides what the developer is building or importing.",
+		"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
+		"- Record the verification result in the scratchpad under `Learned / Verified Context` before moving on.",
 		"",
 		"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
 	].join("\n"),
@@ -20420,54 +20421,86 @@ const BASE_REVIEW_PROMPT = [
 		"",
 		"### Step-by-step:",
 		"",
-		"1) **Set PR context** via `set-pull-request-context` using the `pr_number` from EVENT-LEVEL INSTRUCTIONS.",
+		"1) **Set PR context** via the GitHub MCP tool `set-pull-request-context` using the `owner`, `repository` and `pr_number` from EVENT-LEVEL INSTRUCTIONS.",
 		"   - Do not call any other GitHub MCP tool before this.",
 		"",
 		"2) **Prepare review** via `prepare-pull-request-review` (single entrypoint).",
 		"   - This preloads PR metadata, file summary, and diff TOC in one call.",
+		"   - It also writes the formatted diff to `.clank8y/diff.txt` and returns `diff.path`.",
+		"   - It also creates `.clank8y/scratchpad.txt` and returns `scratchpad.path`.",
 		"   - Read the file list to understand what areas of the codebase are touched.",
+		"   - After this, use native file read/edit tools on `.clank8y/diff.txt` and `.clank8y/scratchpad.txt` only.",
+		"   - For large PRs, review the diff in batches. Do not try to hold the whole PR in working memory at once.",
 		"",
-		"3) **Research phase — do this before reading the diff in detail.**",
-		"   This is the most important step. A review without upfront research produces noise, not signal.",
+		"3) **Review iteratively** — move back and forth between diff inspection, branch context, and documentation verification.",
+		"   Good review is not \"research first, then review\". It is an alternating loop: inspect change, inspect code context, verify best practice, write notes, continue.",
+		"   For Angular or Cumulocity-specific code, documentation verification is not optional.",
+		"   In this codebase, Cumulocity-specific review should lean on Codex MCP heavily.",
+		"   If the change touches `@c8y/*` imports, Cumulocity styles, or platform concepts, Codex MCP should usually be one of your next tool calls.",
 		"",
-		"   a) **Codex research:**",
-		"      - Call `get-codex-structure` to orient yourself on what documentation is available.",
-		"      - For every service, component, hook, pipe, or platform concept you can already identify from the file list and PR metadata:",
-		"        → Call `query-codex` to find the relevant Codex docs.",
-		"        → Call `get-codex-document-enriched` to READ the full documentation including code examples.",
-		"      - Do not skim — read thoroughly. Codex examples are the ground truth for correct platform usage.",
+		"   a) **Start from the diff artifact:**",
+		"      - Read `.clank8y/diff.txt` first and follow the TOC to inspect the changed areas selectively.",
+		"      - Use the diff to decide where to spend review time. Do not blindly read full files first.",
+		"      - For large PRs, work through the diff in manageable groups of files or hunks and keep the scratchpad updated between groups.",
 		"",
-		"   b) **Angular MCP research:**",
-		"      - Call `get_best_practices` for Angular patterns you expect to encounter (signals, DI, control flow, standalone).",
-		"      - Call `find_examples` for patterns the PR is likely to use — read the actual code examples.",
-		"      - This is required even if you feel confident. Your training data may be stale for rapidly evolving APIs.",
+		"   b) **Use branch file content only when the diff is not enough:**",
+		"      - Call `get-pull-request-file-content` when you need surrounding code, implementation details, or data flow that is not visible in the diff.",
+		"      - Prefer targeted reads of specific changed files over broad full-file reads.",
 		"",
-		"   Only proceed to step 4 once you have a solid understanding of what correct usage looks like.",
+		"   c) **Verify best practice when something looks questionable or unfamiliar:**",
+		"      - For Angular patterns, use `get_best_practices`, `find_examples`, and `search_documentation`.",
+		"      - For Cumulocity APIs, components, hooks, widgets, CSS utilities, and design tokens, use `query-codex` and `get-codex-documents`.",
+		"      - If both Angular and Codex could apply, start with Codex for Cumulocity-specific code and then use Angular MCP for Angular-only concerns.",
+		"      - Research is part of the review loop. Do it as soon as the diff or file context raises a framework- or platform-specific question.",
+		"      - If the changed code is Angular-specific or Cumulocity-specific and you did not verify it with the relevant MCP, assume your review is incomplete.",
+		"      - If the changed code touches `@c8y/*` or another Cumulocity concept and you did not use Codex MCP, assume your review is incomplete.",
+		"      - If the changed code touches Cumulocity styles, CSS classes, tokens, or visual components and you did not use Codex MCP, assume your review is incomplete.",
+		"      - Every time you use Angular MCP or Codex MCP, record a one-line note in `Learned / Verified Context` describing what you verified and what conclusion you reached.",
 		"",
-		"4) **Scan the diff** — read the diff TOC, then read changed files.",
-		"   - For each file, determine: is this Angular/Cumulocity frontend code? Focus your review effort accordingly.",
-		"   - Use `read-pull-request-diff-chunk` for targeted reads. Avoid full-file reads unless necessary for small files.",
-		"   - As you read, compare observed usage against what you learned in the research phase.",
-		"   - If you encounter something you did not research yet, go back to Codex / Angular MCP before drawing conclusions.",
+		"   d) **Keep the scratchpad current during the loop:**",
+		"      - Mark reviewed files in `.clank8y/scratchpad.txt` as you complete them.",
+		"      - After each file or file group, add at least one note: a finding, a verification result, an open question, or an explicit reason that nothing was flagged.",
+		"      - Record possible repeated issues under `Suspected Patterns To Expand` so you remember to check them elsewhere in the diff.",
+		"      - Record docs-backed conclusions under `Learned / Verified Context` so you can reuse them later in the review.",
+		"      - As soon as you have a plausible finding, write it down in the scratchpad before you continue expanding the review.",
+		"      - After each reviewed file or file group, update the scratchpad before moving on.",
+		"      - Move something into `Validated Findings` only when you have enough evidence.",
 		"",
-		"5) **Formulate findings** with severity (high / medium / low):",
+		"   e) **Expand suspected repeated mistakes from the diff artifact:**",
+		"      - After writing a plausible issue into the scratchpad, use `rg` or `grep` against `.clank8y/diff.txt` to search for repeated occurrences of the same API, token, selector, utility, or code pattern.",
+		"      - Prefer targeted searches with distinctive strings taken from the suspicious diff hunk rather than broad exploratory searches.",
+		"      - Use the results to decide which additional diff sections and changed files deserve follow-up review.",
+		"      - If `rg` or `grep` suggests the issue repeats, confirm each repeated case in diff context or changed-file context before turning it into a validated finding.",
+		"",
+		"4) **Formulate findings** with severity (high / medium / low):",
 		"   - High: security issues, incorrect API usage that would cause runtime errors, broken patterns.",
 		"   - Medium: missing platform utilities, non-idiomatic patterns, design system violations.",
 		"   - Low: style nitpicks, minor improvements, suggestions for better alternatives.",
+		"   - If you see a pattern once and it may repeat elsewhere, note it in the scratchpad and deliberately expand the review.",
 		"",
-		"6) **Submit the review** via `create-pull-request-review`.",
+		"5) **Submit the review** via `create-pull-request-review`.",
 		"",
 		"### Completion criteria (mandatory):",
 		"- Do not finish without calling `create-pull-request-review`.",
+		"- Before finalizing, read `.clank8y/scratchpad.txt` and confirm every intentionally skipped file is explicitly documented there.",
+		"- For large PRs, do not claim full coverage unless the scratchpad shows what was reviewed, what was skipped, and why.",
+		"- If files or file groups remain unreviewed, record that explicitly in the scratchpad before finalizing.",
+		"- If the PR contains Angular-specific or Cumulocity-specific changes, the scratchpad must contain verification notes from the relevant MCP tools before you finalize.",
+		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, the scratchpad must contain Codex MCP verification notes before you finalize.",
 		"- If there are issues, include inline comments with concrete fixes and reference the docs where possible.",
 		"- If there are no significant issues, still submit a concise review body stating the code looks good.",
+		"- Prefer findings that are recorded as validated in `.clank8y/scratchpad.txt` over speculative comments.",
 		"- Mention the user from EVENT-LEVEL INSTRUCTIONS so they are notified.",
 		"",
 		"### Tooling constraints:",
 		"- Use GitHub MCP tools for PR operations.",
 		"- Use Angular MCP to verify Angular patterns — do not rely solely on your training data.",
 		"- Use Codex MCP to verify Cumulocity patterns — the platform has a rich component/service library.",
-		"- Avoid unrelated shell or local file exploration tools for review logic."
+		"- Native file tools are allowed only so you can read `.clank8y/diff.txt`, read `.clank8y/scratchpad.txt`, and update `.clank8y/scratchpad.txt`.",
+		"- Use `rg` or `grep` as the only local search tool, and only to search `.clank8y/diff.txt` for repeated patterns related to a finding already recorded in the scratchpad.",
+		"- Do not edit repository source files in review mode.",
+		"- Avoid unrelated shell or local file exploration tools for review logic.",
+		"- Do not use broad workspace search. Keep searches narrowly scoped to `.clank8y/diff.txt` and to patterns you are already investigating."
 	].join("\n")
 ].join("\n");
 function buildReviewPrompt(promptContext) {
@@ -20478,4503 +20511,6 @@ function buildReviewPrompt(promptContext) {
 		"",
 		normalizedPromptContext
 	].join("\n");
-}
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/is.js
-var require_is = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.stringArray = exports.array = exports.func = exports.error = exports.number = exports.string = exports.boolean = void 0;
-	function boolean(value) {
-		return value === true || value === false;
-	}
-	exports.boolean = boolean;
-	function string(value) {
-		return typeof value === "string" || value instanceof String;
-	}
-	exports.string = string;
-	function number(value) {
-		return typeof value === "number" || value instanceof Number;
-	}
-	exports.number = number;
-	function error(value) {
-		return value instanceof Error;
-	}
-	exports.error = error;
-	function func(value) {
-		return typeof value === "function";
-	}
-	exports.func = func;
-	function array(value) {
-		return Array.isArray(value);
-	}
-	exports.array = array;
-	function stringArray(value) {
-		return array(value) && value.every((elem) => string(elem));
-	}
-	exports.stringArray = stringArray;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messages.js
-var require_messages = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.Message = exports.NotificationType9 = exports.NotificationType8 = exports.NotificationType7 = exports.NotificationType6 = exports.NotificationType5 = exports.NotificationType4 = exports.NotificationType3 = exports.NotificationType2 = exports.NotificationType1 = exports.NotificationType0 = exports.NotificationType = exports.RequestType9 = exports.RequestType8 = exports.RequestType7 = exports.RequestType6 = exports.RequestType5 = exports.RequestType4 = exports.RequestType3 = exports.RequestType2 = exports.RequestType1 = exports.RequestType = exports.RequestType0 = exports.AbstractMessageSignature = exports.ParameterStructures = exports.ResponseError = exports.ErrorCodes = void 0;
-	const is = require_is();
-	/**
-	* Predefined error codes.
-	*/
-	var ErrorCodes;
-	(function(ErrorCodes) {
-		ErrorCodes.ParseError = -32700;
-		ErrorCodes.InvalidRequest = -32600;
-		ErrorCodes.MethodNotFound = -32601;
-		ErrorCodes.InvalidParams = -32602;
-		ErrorCodes.InternalError = -32603;
-		/**
-		* This is the start range of JSON RPC reserved error codes.
-		* It doesn't denote a real error code. No application error codes should
-		* be defined between the start and end range. For backwards
-		* compatibility the `ServerNotInitialized` and the `UnknownErrorCode`
-		* are left in the range.
-		*
-		* @since 3.16.0
-		*/
-		ErrorCodes.jsonrpcReservedErrorRangeStart = -32099;
-		/** @deprecated use  jsonrpcReservedErrorRangeStart */
-		ErrorCodes.serverErrorStart = -32099;
-		/**
-		* An error occurred when write a message to the transport layer.
-		*/
-		ErrorCodes.MessageWriteError = -32099;
-		/**
-		* An error occurred when reading a message from the transport layer.
-		*/
-		ErrorCodes.MessageReadError = -32098;
-		/**
-		* The connection got disposed or lost and all pending responses got
-		* rejected.
-		*/
-		ErrorCodes.PendingResponseRejected = -32097;
-		/**
-		* The connection is inactive and a use of it failed.
-		*/
-		ErrorCodes.ConnectionInactive = -32096;
-		/**
-		* Error code indicating that a server received a notification or
-		* request before the server has received the `initialize` request.
-		*/
-		ErrorCodes.ServerNotInitialized = -32002;
-		ErrorCodes.UnknownErrorCode = -32001;
-		/**
-		* This is the end range of JSON RPC reserved error codes.
-		* It doesn't denote a real error code.
-		*
-		* @since 3.16.0
-		*/
-		ErrorCodes.jsonrpcReservedErrorRangeEnd = -32e3;
-		/** @deprecated use  jsonrpcReservedErrorRangeEnd */
-		ErrorCodes.serverErrorEnd = -32e3;
-	})(ErrorCodes || (exports.ErrorCodes = ErrorCodes = {}));
-	/**
-	* An error object return in a response in case a request
-	* has failed.
-	*/
-	var ResponseError = class ResponseError extends Error {
-		constructor(code, message, data) {
-			super(message);
-			this.code = is.number(code) ? code : ErrorCodes.UnknownErrorCode;
-			this.data = data;
-			Object.setPrototypeOf(this, ResponseError.prototype);
-		}
-		toJson() {
-			const result = {
-				code: this.code,
-				message: this.message
-			};
-			if (this.data !== void 0) result.data = this.data;
-			return result;
-		}
-	};
-	exports.ResponseError = ResponseError;
-	var ParameterStructures = class ParameterStructures {
-		constructor(kind) {
-			this.kind = kind;
-		}
-		static is(value) {
-			return value === ParameterStructures.auto || value === ParameterStructures.byName || value === ParameterStructures.byPosition;
-		}
-		toString() {
-			return this.kind;
-		}
-	};
-	exports.ParameterStructures = ParameterStructures;
-	/**
-	* The parameter structure is automatically inferred on the number of parameters
-	* and the parameter type in case of a single param.
-	*/
-	ParameterStructures.auto = new ParameterStructures("auto");
-	/**
-	* Forces `byPosition` parameter structure. This is useful if you have a single
-	* parameter which has a literal type.
-	*/
-	ParameterStructures.byPosition = new ParameterStructures("byPosition");
-	/**
-	* Forces `byName` parameter structure. This is only useful when having a single
-	* parameter. The library will report errors if used with a different number of
-	* parameters.
-	*/
-	ParameterStructures.byName = new ParameterStructures("byName");
-	/**
-	* An abstract implementation of a MessageType.
-	*/
-	var AbstractMessageSignature = class {
-		constructor(method, numberOfParams) {
-			this.method = method;
-			this.numberOfParams = numberOfParams;
-		}
-		get parameterStructures() {
-			return ParameterStructures.auto;
-		}
-	};
-	exports.AbstractMessageSignature = AbstractMessageSignature;
-	/**
-	* Classes to type request response pairs
-	*/
-	var RequestType0 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 0);
-		}
-	};
-	exports.RequestType0 = RequestType0;
-	var RequestType = class extends AbstractMessageSignature {
-		constructor(method, _parameterStructures = ParameterStructures.auto) {
-			super(method, 1);
-			this._parameterStructures = _parameterStructures;
-		}
-		get parameterStructures() {
-			return this._parameterStructures;
-		}
-	};
-	exports.RequestType = RequestType;
-	var RequestType1 = class extends AbstractMessageSignature {
-		constructor(method, _parameterStructures = ParameterStructures.auto) {
-			super(method, 1);
-			this._parameterStructures = _parameterStructures;
-		}
-		get parameterStructures() {
-			return this._parameterStructures;
-		}
-	};
-	exports.RequestType1 = RequestType1;
-	var RequestType2 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 2);
-		}
-	};
-	exports.RequestType2 = RequestType2;
-	var RequestType3 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 3);
-		}
-	};
-	exports.RequestType3 = RequestType3;
-	var RequestType4 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 4);
-		}
-	};
-	exports.RequestType4 = RequestType4;
-	var RequestType5 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 5);
-		}
-	};
-	exports.RequestType5 = RequestType5;
-	var RequestType6 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 6);
-		}
-	};
-	exports.RequestType6 = RequestType6;
-	var RequestType7 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 7);
-		}
-	};
-	exports.RequestType7 = RequestType7;
-	var RequestType8 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 8);
-		}
-	};
-	exports.RequestType8 = RequestType8;
-	var RequestType9 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 9);
-		}
-	};
-	exports.RequestType9 = RequestType9;
-	var NotificationType = class extends AbstractMessageSignature {
-		constructor(method, _parameterStructures = ParameterStructures.auto) {
-			super(method, 1);
-			this._parameterStructures = _parameterStructures;
-		}
-		get parameterStructures() {
-			return this._parameterStructures;
-		}
-	};
-	exports.NotificationType = NotificationType;
-	var NotificationType0 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 0);
-		}
-	};
-	exports.NotificationType0 = NotificationType0;
-	var NotificationType1 = class extends AbstractMessageSignature {
-		constructor(method, _parameterStructures = ParameterStructures.auto) {
-			super(method, 1);
-			this._parameterStructures = _parameterStructures;
-		}
-		get parameterStructures() {
-			return this._parameterStructures;
-		}
-	};
-	exports.NotificationType1 = NotificationType1;
-	var NotificationType2 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 2);
-		}
-	};
-	exports.NotificationType2 = NotificationType2;
-	var NotificationType3 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 3);
-		}
-	};
-	exports.NotificationType3 = NotificationType3;
-	var NotificationType4 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 4);
-		}
-	};
-	exports.NotificationType4 = NotificationType4;
-	var NotificationType5 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 5);
-		}
-	};
-	exports.NotificationType5 = NotificationType5;
-	var NotificationType6 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 6);
-		}
-	};
-	exports.NotificationType6 = NotificationType6;
-	var NotificationType7 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 7);
-		}
-	};
-	exports.NotificationType7 = NotificationType7;
-	var NotificationType8 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 8);
-		}
-	};
-	exports.NotificationType8 = NotificationType8;
-	var NotificationType9 = class extends AbstractMessageSignature {
-		constructor(method) {
-			super(method, 9);
-		}
-	};
-	exports.NotificationType9 = NotificationType9;
-	var Message;
-	(function(Message) {
-		/**
-		* Tests if the given message is a request message
-		*/
-		function isRequest(message) {
-			const candidate = message;
-			return candidate && is.string(candidate.method) && (is.string(candidate.id) || is.number(candidate.id));
-		}
-		Message.isRequest = isRequest;
-		/**
-		* Tests if the given message is a notification message
-		*/
-		function isNotification(message) {
-			const candidate = message;
-			return candidate && is.string(candidate.method) && message.id === void 0;
-		}
-		Message.isNotification = isNotification;
-		/**
-		* Tests if the given message is a response message
-		*/
-		function isResponse(message) {
-			const candidate = message;
-			return candidate && (candidate.result !== void 0 || !!candidate.error) && (is.string(candidate.id) || is.number(candidate.id) || candidate.id === null);
-		}
-		Message.isResponse = isResponse;
-	})(Message || (exports.Message = Message = {}));
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/linkedMap.js
-var require_linkedMap = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var _a;
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.LRUCache = exports.LinkedMap = exports.Touch = void 0;
-	var Touch;
-	(function(Touch) {
-		Touch.None = 0;
-		Touch.First = 1;
-		Touch.AsOld = Touch.First;
-		Touch.Last = 2;
-		Touch.AsNew = Touch.Last;
-	})(Touch || (exports.Touch = Touch = {}));
-	var LinkedMap = class {
-		constructor() {
-			this[_a] = "LinkedMap";
-			this._map = /* @__PURE__ */ new Map();
-			this._head = void 0;
-			this._tail = void 0;
-			this._size = 0;
-			this._state = 0;
-		}
-		clear() {
-			this._map.clear();
-			this._head = void 0;
-			this._tail = void 0;
-			this._size = 0;
-			this._state++;
-		}
-		isEmpty() {
-			return !this._head && !this._tail;
-		}
-		get size() {
-			return this._size;
-		}
-		get first() {
-			return this._head?.value;
-		}
-		get last() {
-			return this._tail?.value;
-		}
-		has(key) {
-			return this._map.has(key);
-		}
-		get(key, touch = Touch.None) {
-			const item = this._map.get(key);
-			if (!item) return;
-			if (touch !== Touch.None) this.touch(item, touch);
-			return item.value;
-		}
-		set(key, value, touch = Touch.None) {
-			let item = this._map.get(key);
-			if (item) {
-				item.value = value;
-				if (touch !== Touch.None) this.touch(item, touch);
-			} else {
-				item = {
-					key,
-					value,
-					next: void 0,
-					previous: void 0
-				};
-				switch (touch) {
-					case Touch.None:
-						this.addItemLast(item);
-						break;
-					case Touch.First:
-						this.addItemFirst(item);
-						break;
-					case Touch.Last:
-						this.addItemLast(item);
-						break;
-					default:
-						this.addItemLast(item);
-						break;
-				}
-				this._map.set(key, item);
-				this._size++;
-			}
-			return this;
-		}
-		delete(key) {
-			return !!this.remove(key);
-		}
-		remove(key) {
-			const item = this._map.get(key);
-			if (!item) return;
-			this._map.delete(key);
-			this.removeItem(item);
-			this._size--;
-			return item.value;
-		}
-		shift() {
-			if (!this._head && !this._tail) return;
-			if (!this._head || !this._tail) throw new Error("Invalid list");
-			const item = this._head;
-			this._map.delete(item.key);
-			this.removeItem(item);
-			this._size--;
-			return item.value;
-		}
-		forEach(callbackfn, thisArg) {
-			const state = this._state;
-			let current = this._head;
-			while (current) {
-				if (thisArg) callbackfn.bind(thisArg)(current.value, current.key, this);
-				else callbackfn(current.value, current.key, this);
-				if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
-				current = current.next;
-			}
-		}
-		keys() {
-			const state = this._state;
-			let current = this._head;
-			const iterator = {
-				[Symbol.iterator]: () => {
-					return iterator;
-				},
-				next: () => {
-					if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
-					if (current) {
-						const result = {
-							value: current.key,
-							done: false
-						};
-						current = current.next;
-						return result;
-					} else return {
-						value: void 0,
-						done: true
-					};
-				}
-			};
-			return iterator;
-		}
-		values() {
-			const state = this._state;
-			let current = this._head;
-			const iterator = {
-				[Symbol.iterator]: () => {
-					return iterator;
-				},
-				next: () => {
-					if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
-					if (current) {
-						const result = {
-							value: current.value,
-							done: false
-						};
-						current = current.next;
-						return result;
-					} else return {
-						value: void 0,
-						done: true
-					};
-				}
-			};
-			return iterator;
-		}
-		entries() {
-			const state = this._state;
-			let current = this._head;
-			const iterator = {
-				[Symbol.iterator]: () => {
-					return iterator;
-				},
-				next: () => {
-					if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
-					if (current) {
-						const result = {
-							value: [current.key, current.value],
-							done: false
-						};
-						current = current.next;
-						return result;
-					} else return {
-						value: void 0,
-						done: true
-					};
-				}
-			};
-			return iterator;
-		}
-		[(_a = Symbol.toStringTag, Symbol.iterator)]() {
-			return this.entries();
-		}
-		trimOld(newSize) {
-			if (newSize >= this.size) return;
-			if (newSize === 0) {
-				this.clear();
-				return;
-			}
-			let current = this._head;
-			let currentSize = this.size;
-			while (current && currentSize > newSize) {
-				this._map.delete(current.key);
-				current = current.next;
-				currentSize--;
-			}
-			this._head = current;
-			this._size = currentSize;
-			if (current) current.previous = void 0;
-			this._state++;
-		}
-		addItemFirst(item) {
-			if (!this._head && !this._tail) this._tail = item;
-			else if (!this._head) throw new Error("Invalid list");
-			else {
-				item.next = this._head;
-				this._head.previous = item;
-			}
-			this._head = item;
-			this._state++;
-		}
-		addItemLast(item) {
-			if (!this._head && !this._tail) this._head = item;
-			else if (!this._tail) throw new Error("Invalid list");
-			else {
-				item.previous = this._tail;
-				this._tail.next = item;
-			}
-			this._tail = item;
-			this._state++;
-		}
-		removeItem(item) {
-			if (item === this._head && item === this._tail) {
-				this._head = void 0;
-				this._tail = void 0;
-			} else if (item === this._head) {
-				if (!item.next) throw new Error("Invalid list");
-				item.next.previous = void 0;
-				this._head = item.next;
-			} else if (item === this._tail) {
-				if (!item.previous) throw new Error("Invalid list");
-				item.previous.next = void 0;
-				this._tail = item.previous;
-			} else {
-				const next = item.next;
-				const previous = item.previous;
-				if (!next || !previous) throw new Error("Invalid list");
-				next.previous = previous;
-				previous.next = next;
-			}
-			item.next = void 0;
-			item.previous = void 0;
-			this._state++;
-		}
-		touch(item, touch) {
-			if (!this._head || !this._tail) throw new Error("Invalid list");
-			if (touch !== Touch.First && touch !== Touch.Last) return;
-			if (touch === Touch.First) {
-				if (item === this._head) return;
-				const next = item.next;
-				const previous = item.previous;
-				if (item === this._tail) {
-					previous.next = void 0;
-					this._tail = previous;
-				} else {
-					next.previous = previous;
-					previous.next = next;
-				}
-				item.previous = void 0;
-				item.next = this._head;
-				this._head.previous = item;
-				this._head = item;
-				this._state++;
-			} else if (touch === Touch.Last) {
-				if (item === this._tail) return;
-				const next = item.next;
-				const previous = item.previous;
-				if (item === this._head) {
-					next.previous = void 0;
-					this._head = next;
-				} else {
-					next.previous = previous;
-					previous.next = next;
-				}
-				item.next = void 0;
-				item.previous = this._tail;
-				this._tail.next = item;
-				this._tail = item;
-				this._state++;
-			}
-		}
-		toJSON() {
-			const data = [];
-			this.forEach((value, key) => {
-				data.push([key, value]);
-			});
-			return data;
-		}
-		fromJSON(data) {
-			this.clear();
-			for (const [key, value] of data) this.set(key, value);
-		}
-	};
-	exports.LinkedMap = LinkedMap;
-	var LRUCache = class extends LinkedMap {
-		constructor(limit, ratio = 1) {
-			super();
-			this._limit = limit;
-			this._ratio = Math.min(Math.max(0, ratio), 1);
-		}
-		get limit() {
-			return this._limit;
-		}
-		set limit(limit) {
-			this._limit = limit;
-			this.checkTrim();
-		}
-		get ratio() {
-			return this._ratio;
-		}
-		set ratio(ratio) {
-			this._ratio = Math.min(Math.max(0, ratio), 1);
-			this.checkTrim();
-		}
-		get(key, touch = Touch.AsNew) {
-			return super.get(key, touch);
-		}
-		peek(key) {
-			return super.get(key, Touch.None);
-		}
-		set(key, value) {
-			super.set(key, value, Touch.Last);
-			this.checkTrim();
-			return this;
-		}
-		checkTrim() {
-			if (this.size > this._limit) this.trimOld(Math.round(this._limit * this._ratio));
-		}
-	};
-	exports.LRUCache = LRUCache;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/disposable.js
-var require_disposable = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.Disposable = void 0;
-	var Disposable;
-	(function(Disposable) {
-		function create(func) {
-			return { dispose: func };
-		}
-		Disposable.create = create;
-	})(Disposable || (exports.Disposable = Disposable = {}));
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/ral.js
-var require_ral = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	let _ral;
-	function RAL() {
-		if (_ral === void 0) throw new Error(`No runtime abstraction layer installed`);
-		return _ral;
-	}
-	(function(RAL) {
-		function install(ral) {
-			if (ral === void 0) throw new Error(`No runtime abstraction layer provided`);
-			_ral = ral;
-		}
-		RAL.install = install;
-	})(RAL || (RAL = {}));
-	exports.default = RAL;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/events.js
-var require_events = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.Emitter = exports.Event = void 0;
-	const ral_1 = require_ral();
-	var Event;
-	(function(Event) {
-		const _disposable = { dispose() {} };
-		Event.None = function() {
-			return _disposable;
-		};
-	})(Event || (exports.Event = Event = {}));
-	var CallbackList = class {
-		add(callback, context = null, bucket) {
-			if (!this._callbacks) {
-				this._callbacks = [];
-				this._contexts = [];
-			}
-			this._callbacks.push(callback);
-			this._contexts.push(context);
-			if (Array.isArray(bucket)) bucket.push({ dispose: () => this.remove(callback, context) });
-		}
-		remove(callback, context = null) {
-			if (!this._callbacks) return;
-			let foundCallbackWithDifferentContext = false;
-			for (let i = 0, len = this._callbacks.length; i < len; i++) if (this._callbacks[i] === callback) if (this._contexts[i] === context) {
-				this._callbacks.splice(i, 1);
-				this._contexts.splice(i, 1);
-				return;
-			} else foundCallbackWithDifferentContext = true;
-			if (foundCallbackWithDifferentContext) throw new Error("When adding a listener with a context, you should remove it with the same context");
-		}
-		invoke(...args) {
-			if (!this._callbacks) return [];
-			const ret = [], callbacks = this._callbacks.slice(0), contexts = this._contexts.slice(0);
-			for (let i = 0, len = callbacks.length; i < len; i++) try {
-				ret.push(callbacks[i].apply(contexts[i], args));
-			} catch (e) {
-				(0, ral_1.default)().console.error(e);
-			}
-			return ret;
-		}
-		isEmpty() {
-			return !this._callbacks || this._callbacks.length === 0;
-		}
-		dispose() {
-			this._callbacks = void 0;
-			this._contexts = void 0;
-		}
-	};
-	var Emitter = class Emitter {
-		constructor(_options) {
-			this._options = _options;
-		}
-		/**
-		* For the public to allow to subscribe
-		* to events from this Emitter
-		*/
-		get event() {
-			if (!this._event) this._event = (listener, thisArgs, disposables) => {
-				if (!this._callbacks) this._callbacks = new CallbackList();
-				if (this._options && this._options.onFirstListenerAdd && this._callbacks.isEmpty()) this._options.onFirstListenerAdd(this);
-				this._callbacks.add(listener, thisArgs);
-				const result = { dispose: () => {
-					if (!this._callbacks) return;
-					this._callbacks.remove(listener, thisArgs);
-					result.dispose = Emitter._noop;
-					if (this._options && this._options.onLastListenerRemove && this._callbacks.isEmpty()) this._options.onLastListenerRemove(this);
-				} };
-				if (Array.isArray(disposables)) disposables.push(result);
-				return result;
-			};
-			return this._event;
-		}
-		/**
-		* To be kept private to fire an event to
-		* subscribers
-		*/
-		fire(event) {
-			if (this._callbacks) this._callbacks.invoke.call(this._callbacks, event);
-		}
-		dispose() {
-			if (this._callbacks) {
-				this._callbacks.dispose();
-				this._callbacks = void 0;
-			}
-		}
-	};
-	exports.Emitter = Emitter;
-	Emitter._noop = function() {};
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/cancellation.js
-var require_cancellation = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.CancellationTokenSource = exports.CancellationToken = void 0;
-	const ral_1 = require_ral();
-	const Is = require_is();
-	const events_1 = require_events();
-	var CancellationToken;
-	(function(CancellationToken) {
-		CancellationToken.None = Object.freeze({
-			isCancellationRequested: false,
-			onCancellationRequested: events_1.Event.None
-		});
-		CancellationToken.Cancelled = Object.freeze({
-			isCancellationRequested: true,
-			onCancellationRequested: events_1.Event.None
-		});
-		function is(value) {
-			const candidate = value;
-			return candidate && (candidate === CancellationToken.None || candidate === CancellationToken.Cancelled || Is.boolean(candidate.isCancellationRequested) && !!candidate.onCancellationRequested);
-		}
-		CancellationToken.is = is;
-	})(CancellationToken || (exports.CancellationToken = CancellationToken = {}));
-	const shortcutEvent = Object.freeze(function(callback, context) {
-		const handle = (0, ral_1.default)().timer.setTimeout(callback.bind(context), 0);
-		return { dispose() {
-			handle.dispose();
-		} };
-	});
-	var MutableToken = class {
-		constructor() {
-			this._isCancelled = false;
-		}
-		cancel() {
-			if (!this._isCancelled) {
-				this._isCancelled = true;
-				if (this._emitter) {
-					this._emitter.fire(void 0);
-					this.dispose();
-				}
-			}
-		}
-		get isCancellationRequested() {
-			return this._isCancelled;
-		}
-		get onCancellationRequested() {
-			if (this._isCancelled) return shortcutEvent;
-			if (!this._emitter) this._emitter = new events_1.Emitter();
-			return this._emitter.event;
-		}
-		dispose() {
-			if (this._emitter) {
-				this._emitter.dispose();
-				this._emitter = void 0;
-			}
-		}
-	};
-	var CancellationTokenSource = class {
-		get token() {
-			if (!this._token) this._token = new MutableToken();
-			return this._token;
-		}
-		cancel() {
-			if (!this._token) this._token = CancellationToken.Cancelled;
-			else this._token.cancel();
-		}
-		dispose() {
-			if (!this._token) this._token = CancellationToken.None;
-			else if (this._token instanceof MutableToken) this._token.dispose();
-		}
-	};
-	exports.CancellationTokenSource = CancellationTokenSource;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/sharedArrayCancellation.js
-var require_sharedArrayCancellation = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.SharedArrayReceiverStrategy = exports.SharedArraySenderStrategy = void 0;
-	const cancellation_1 = require_cancellation();
-	var CancellationState;
-	(function(CancellationState) {
-		CancellationState.Continue = 0;
-		CancellationState.Cancelled = 1;
-	})(CancellationState || (CancellationState = {}));
-	var SharedArraySenderStrategy = class {
-		constructor() {
-			this.buffers = /* @__PURE__ */ new Map();
-		}
-		enableCancellation(request) {
-			if (request.id === null) return;
-			const buffer = new SharedArrayBuffer(4);
-			const data = new Int32Array(buffer, 0, 1);
-			data[0] = CancellationState.Continue;
-			this.buffers.set(request.id, buffer);
-			request.$cancellationData = buffer;
-		}
-		async sendCancellation(_conn, id) {
-			const buffer = this.buffers.get(id);
-			if (buffer === void 0) return;
-			const data = new Int32Array(buffer, 0, 1);
-			Atomics.store(data, 0, CancellationState.Cancelled);
-		}
-		cleanup(id) {
-			this.buffers.delete(id);
-		}
-		dispose() {
-			this.buffers.clear();
-		}
-	};
-	exports.SharedArraySenderStrategy = SharedArraySenderStrategy;
-	var SharedArrayBufferCancellationToken = class {
-		constructor(buffer) {
-			this.data = new Int32Array(buffer, 0, 1);
-		}
-		get isCancellationRequested() {
-			return Atomics.load(this.data, 0) === CancellationState.Cancelled;
-		}
-		get onCancellationRequested() {
-			throw new Error(`Cancellation over SharedArrayBuffer doesn't support cancellation events`);
-		}
-	};
-	var SharedArrayBufferCancellationTokenSource = class {
-		constructor(buffer) {
-			this.token = new SharedArrayBufferCancellationToken(buffer);
-		}
-		cancel() {}
-		dispose() {}
-	};
-	var SharedArrayReceiverStrategy = class {
-		constructor() {
-			this.kind = "request";
-		}
-		createCancellationTokenSource(request) {
-			const buffer = request.$cancellationData;
-			if (buffer === void 0) return new cancellation_1.CancellationTokenSource();
-			return new SharedArrayBufferCancellationTokenSource(buffer);
-		}
-	};
-	exports.SharedArrayReceiverStrategy = SharedArrayReceiverStrategy;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/semaphore.js
-var require_semaphore = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.Semaphore = void 0;
-	const ral_1 = require_ral();
-	var Semaphore = class {
-		constructor(capacity = 1) {
-			if (capacity <= 0) throw new Error("Capacity must be greater than 0");
-			this._capacity = capacity;
-			this._active = 0;
-			this._waiting = [];
-		}
-		lock(thunk) {
-			return new Promise((resolve, reject) => {
-				this._waiting.push({
-					thunk,
-					resolve,
-					reject
-				});
-				this.runNext();
-			});
-		}
-		get active() {
-			return this._active;
-		}
-		runNext() {
-			if (this._waiting.length === 0 || this._active === this._capacity) return;
-			(0, ral_1.default)().timer.setImmediate(() => this.doRunNext());
-		}
-		doRunNext() {
-			if (this._waiting.length === 0 || this._active === this._capacity) return;
-			const next = this._waiting.shift();
-			this._active++;
-			if (this._active > this._capacity) throw new Error(`To many thunks active`);
-			try {
-				const result = next.thunk();
-				if (result instanceof Promise) result.then((value) => {
-					this._active--;
-					next.resolve(value);
-					this.runNext();
-				}, (err) => {
-					this._active--;
-					next.reject(err);
-					this.runNext();
-				});
-				else {
-					this._active--;
-					next.resolve(result);
-					this.runNext();
-				}
-			} catch (err) {
-				this._active--;
-				next.reject(err);
-				this.runNext();
-			}
-		}
-	};
-	exports.Semaphore = Semaphore;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messageReader.js
-var require_messageReader = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.ReadableStreamMessageReader = exports.AbstractMessageReader = exports.MessageReader = void 0;
-	const ral_1 = require_ral();
-	const Is = require_is();
-	const events_1 = require_events();
-	const semaphore_1 = require_semaphore();
-	var MessageReader;
-	(function(MessageReader) {
-		function is(value) {
-			let candidate = value;
-			return candidate && Is.func(candidate.listen) && Is.func(candidate.dispose) && Is.func(candidate.onError) && Is.func(candidate.onClose) && Is.func(candidate.onPartialMessage);
-		}
-		MessageReader.is = is;
-	})(MessageReader || (exports.MessageReader = MessageReader = {}));
-	var AbstractMessageReader = class {
-		constructor() {
-			this.errorEmitter = new events_1.Emitter();
-			this.closeEmitter = new events_1.Emitter();
-			this.partialMessageEmitter = new events_1.Emitter();
-		}
-		dispose() {
-			this.errorEmitter.dispose();
-			this.closeEmitter.dispose();
-		}
-		get onError() {
-			return this.errorEmitter.event;
-		}
-		fireError(error) {
-			this.errorEmitter.fire(this.asError(error));
-		}
-		get onClose() {
-			return this.closeEmitter.event;
-		}
-		fireClose() {
-			this.closeEmitter.fire(void 0);
-		}
-		get onPartialMessage() {
-			return this.partialMessageEmitter.event;
-		}
-		firePartialMessage(info) {
-			this.partialMessageEmitter.fire(info);
-		}
-		asError(error) {
-			if (error instanceof Error) return error;
-			else return /* @__PURE__ */ new Error(`Reader received error. Reason: ${Is.string(error.message) ? error.message : "unknown"}`);
-		}
-	};
-	exports.AbstractMessageReader = AbstractMessageReader;
-	var ResolvedMessageReaderOptions;
-	(function(ResolvedMessageReaderOptions) {
-		function fromOptions(options) {
-			let charset;
-			let contentDecoder;
-			const contentDecoders = /* @__PURE__ */ new Map();
-			let contentTypeDecoder;
-			const contentTypeDecoders = /* @__PURE__ */ new Map();
-			if (options === void 0 || typeof options === "string") charset = options ?? "utf-8";
-			else {
-				charset = options.charset ?? "utf-8";
-				if (options.contentDecoder !== void 0) {
-					contentDecoder = options.contentDecoder;
-					contentDecoders.set(contentDecoder.name, contentDecoder);
-				}
-				if (options.contentDecoders !== void 0) for (const decoder of options.contentDecoders) contentDecoders.set(decoder.name, decoder);
-				if (options.contentTypeDecoder !== void 0) {
-					contentTypeDecoder = options.contentTypeDecoder;
-					contentTypeDecoders.set(contentTypeDecoder.name, contentTypeDecoder);
-				}
-				if (options.contentTypeDecoders !== void 0) for (const decoder of options.contentTypeDecoders) contentTypeDecoders.set(decoder.name, decoder);
-			}
-			if (contentTypeDecoder === void 0) {
-				contentTypeDecoder = (0, ral_1.default)().applicationJson.decoder;
-				contentTypeDecoders.set(contentTypeDecoder.name, contentTypeDecoder);
-			}
-			return {
-				charset,
-				contentDecoder,
-				contentDecoders,
-				contentTypeDecoder,
-				contentTypeDecoders
-			};
-		}
-		ResolvedMessageReaderOptions.fromOptions = fromOptions;
-	})(ResolvedMessageReaderOptions || (ResolvedMessageReaderOptions = {}));
-	var ReadableStreamMessageReader = class extends AbstractMessageReader {
-		constructor(readable, options) {
-			super();
-			this.readable = readable;
-			this.options = ResolvedMessageReaderOptions.fromOptions(options);
-			this.buffer = (0, ral_1.default)().messageBuffer.create(this.options.charset);
-			this._partialMessageTimeout = 1e4;
-			this.nextMessageLength = -1;
-			this.messageToken = 0;
-			this.readSemaphore = new semaphore_1.Semaphore(1);
-		}
-		set partialMessageTimeout(timeout) {
-			this._partialMessageTimeout = timeout;
-		}
-		get partialMessageTimeout() {
-			return this._partialMessageTimeout;
-		}
-		listen(callback) {
-			this.nextMessageLength = -1;
-			this.messageToken = 0;
-			this.partialMessageTimer = void 0;
-			this.callback = callback;
-			const result = this.readable.onData((data) => {
-				this.onData(data);
-			});
-			this.readable.onError((error) => this.fireError(error));
-			this.readable.onClose(() => this.fireClose());
-			return result;
-		}
-		onData(data) {
-			try {
-				this.buffer.append(data);
-				while (true) {
-					if (this.nextMessageLength === -1) {
-						const headers = this.buffer.tryReadHeaders(true);
-						if (!headers) return;
-						const contentLength = headers.get("content-length");
-						if (!contentLength) {
-							this.fireError(/* @__PURE__ */ new Error(`Header must provide a Content-Length property.\n${JSON.stringify(Object.fromEntries(headers))}`));
-							return;
-						}
-						const length = parseInt(contentLength);
-						if (isNaN(length)) {
-							this.fireError(/* @__PURE__ */ new Error(`Content-Length value must be a number. Got ${contentLength}`));
-							return;
-						}
-						this.nextMessageLength = length;
-					}
-					const body = this.buffer.tryReadBody(this.nextMessageLength);
-					if (body === void 0) {
-						/** We haven't received the full message yet. */
-						this.setPartialMessageTimer();
-						return;
-					}
-					this.clearPartialMessageTimer();
-					this.nextMessageLength = -1;
-					this.readSemaphore.lock(async () => {
-						const bytes = this.options.contentDecoder !== void 0 ? await this.options.contentDecoder.decode(body) : body;
-						const message = await this.options.contentTypeDecoder.decode(bytes, this.options);
-						this.callback(message);
-					}).catch((error) => {
-						this.fireError(error);
-					});
-				}
-			} catch (error) {
-				this.fireError(error);
-			}
-		}
-		clearPartialMessageTimer() {
-			if (this.partialMessageTimer) {
-				this.partialMessageTimer.dispose();
-				this.partialMessageTimer = void 0;
-			}
-		}
-		setPartialMessageTimer() {
-			this.clearPartialMessageTimer();
-			if (this._partialMessageTimeout <= 0) return;
-			this.partialMessageTimer = (0, ral_1.default)().timer.setTimeout((token, timeout) => {
-				this.partialMessageTimer = void 0;
-				if (token === this.messageToken) {
-					this.firePartialMessage({
-						messageToken: token,
-						waitingTime: timeout
-					});
-					this.setPartialMessageTimer();
-				}
-			}, this._partialMessageTimeout, this.messageToken, this._partialMessageTimeout);
-		}
-	};
-	exports.ReadableStreamMessageReader = ReadableStreamMessageReader;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messageWriter.js
-var require_messageWriter = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.WriteableStreamMessageWriter = exports.AbstractMessageWriter = exports.MessageWriter = void 0;
-	const ral_1 = require_ral();
-	const Is = require_is();
-	const semaphore_1 = require_semaphore();
-	const events_1 = require_events();
-	const ContentLength = "Content-Length: ";
-	const CRLF = "\r\n";
-	var MessageWriter;
-	(function(MessageWriter) {
-		function is(value) {
-			let candidate = value;
-			return candidate && Is.func(candidate.dispose) && Is.func(candidate.onClose) && Is.func(candidate.onError) && Is.func(candidate.write);
-		}
-		MessageWriter.is = is;
-	})(MessageWriter || (exports.MessageWriter = MessageWriter = {}));
-	var AbstractMessageWriter = class {
-		constructor() {
-			this.errorEmitter = new events_1.Emitter();
-			this.closeEmitter = new events_1.Emitter();
-		}
-		dispose() {
-			this.errorEmitter.dispose();
-			this.closeEmitter.dispose();
-		}
-		get onError() {
-			return this.errorEmitter.event;
-		}
-		fireError(error, message, count) {
-			this.errorEmitter.fire([
-				this.asError(error),
-				message,
-				count
-			]);
-		}
-		get onClose() {
-			return this.closeEmitter.event;
-		}
-		fireClose() {
-			this.closeEmitter.fire(void 0);
-		}
-		asError(error) {
-			if (error instanceof Error) return error;
-			else return /* @__PURE__ */ new Error(`Writer received error. Reason: ${Is.string(error.message) ? error.message : "unknown"}`);
-		}
-	};
-	exports.AbstractMessageWriter = AbstractMessageWriter;
-	var ResolvedMessageWriterOptions;
-	(function(ResolvedMessageWriterOptions) {
-		function fromOptions(options) {
-			if (options === void 0 || typeof options === "string") return {
-				charset: options ?? "utf-8",
-				contentTypeEncoder: (0, ral_1.default)().applicationJson.encoder
-			};
-			else return {
-				charset: options.charset ?? "utf-8",
-				contentEncoder: options.contentEncoder,
-				contentTypeEncoder: options.contentTypeEncoder ?? (0, ral_1.default)().applicationJson.encoder
-			};
-		}
-		ResolvedMessageWriterOptions.fromOptions = fromOptions;
-	})(ResolvedMessageWriterOptions || (ResolvedMessageWriterOptions = {}));
-	var WriteableStreamMessageWriter = class extends AbstractMessageWriter {
-		constructor(writable, options) {
-			super();
-			this.writable = writable;
-			this.options = ResolvedMessageWriterOptions.fromOptions(options);
-			this.errorCount = 0;
-			this.writeSemaphore = new semaphore_1.Semaphore(1);
-			this.writable.onError((error) => this.fireError(error));
-			this.writable.onClose(() => this.fireClose());
-		}
-		async write(msg) {
-			return this.writeSemaphore.lock(async () => {
-				return this.options.contentTypeEncoder.encode(msg, this.options).then((buffer) => {
-					if (this.options.contentEncoder !== void 0) return this.options.contentEncoder.encode(buffer);
-					else return buffer;
-				}).then((buffer) => {
-					const headers = [];
-					headers.push(ContentLength, buffer.byteLength.toString(), CRLF);
-					headers.push(CRLF);
-					return this.doWrite(msg, headers, buffer);
-				}, (error) => {
-					this.fireError(error);
-					throw error;
-				});
-			});
-		}
-		async doWrite(msg, headers, data) {
-			try {
-				await this.writable.write(headers.join(""), "ascii");
-				return this.writable.write(data);
-			} catch (error) {
-				this.handleError(error, msg);
-				return Promise.reject(error);
-			}
-		}
-		handleError(error, msg) {
-			this.errorCount++;
-			this.fireError(error, msg, this.errorCount);
-		}
-		end() {
-			this.writable.end();
-		}
-	};
-	exports.WriteableStreamMessageWriter = WriteableStreamMessageWriter;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messageBuffer.js
-var require_messageBuffer = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.AbstractMessageBuffer = void 0;
-	const CR = 13;
-	const LF = 10;
-	const CRLF = "\r\n";
-	var AbstractMessageBuffer = class {
-		constructor(encoding = "utf-8") {
-			this._encoding = encoding;
-			this._chunks = [];
-			this._totalLength = 0;
-		}
-		get encoding() {
-			return this._encoding;
-		}
-		append(chunk) {
-			const toAppend = typeof chunk === "string" ? this.fromString(chunk, this._encoding) : chunk;
-			this._chunks.push(toAppend);
-			this._totalLength += toAppend.byteLength;
-		}
-		tryReadHeaders(lowerCaseKeys = false) {
-			if (this._chunks.length === 0) return;
-			let state = 0;
-			let chunkIndex = 0;
-			let offset = 0;
-			let chunkBytesRead = 0;
-			row: while (chunkIndex < this._chunks.length) {
-				const chunk = this._chunks[chunkIndex];
-				offset = 0;
-				column: while (offset < chunk.length) {
-					switch (chunk[offset]) {
-						case CR:
-							switch (state) {
-								case 0:
-									state = 1;
-									break;
-								case 2:
-									state = 3;
-									break;
-								default: state = 0;
-							}
-							break;
-						case LF:
-							switch (state) {
-								case 1:
-									state = 2;
-									break;
-								case 3:
-									state = 4;
-									offset++;
-									break row;
-								default: state = 0;
-							}
-							break;
-						default: state = 0;
-					}
-					offset++;
-				}
-				chunkBytesRead += chunk.byteLength;
-				chunkIndex++;
-			}
-			if (state !== 4) return;
-			const buffer = this._read(chunkBytesRead + offset);
-			const result = /* @__PURE__ */ new Map();
-			const headers = this.toString(buffer, "ascii").split(CRLF);
-			if (headers.length < 2) return result;
-			for (let i = 0; i < headers.length - 2; i++) {
-				const header = headers[i];
-				const index = header.indexOf(":");
-				if (index === -1) throw new Error(`Message header must separate key and value using ':'\n${header}`);
-				const key = header.substr(0, index);
-				const value = header.substr(index + 1).trim();
-				result.set(lowerCaseKeys ? key.toLowerCase() : key, value);
-			}
-			return result;
-		}
-		tryReadBody(length) {
-			if (this._totalLength < length) return;
-			return this._read(length);
-		}
-		get numberOfBytes() {
-			return this._totalLength;
-		}
-		_read(byteCount) {
-			if (byteCount === 0) return this.emptyBuffer();
-			if (byteCount > this._totalLength) throw new Error(`Cannot read so many bytes!`);
-			if (this._chunks[0].byteLength === byteCount) {
-				const chunk = this._chunks[0];
-				this._chunks.shift();
-				this._totalLength -= byteCount;
-				return this.asNative(chunk);
-			}
-			if (this._chunks[0].byteLength > byteCount) {
-				const chunk = this._chunks[0];
-				const result = this.asNative(chunk, byteCount);
-				this._chunks[0] = chunk.slice(byteCount);
-				this._totalLength -= byteCount;
-				return result;
-			}
-			const result = this.allocNative(byteCount);
-			let resultOffset = 0;
-			let chunkIndex = 0;
-			while (byteCount > 0) {
-				const chunk = this._chunks[chunkIndex];
-				if (chunk.byteLength > byteCount) {
-					const chunkPart = chunk.slice(0, byteCount);
-					result.set(chunkPart, resultOffset);
-					resultOffset += byteCount;
-					this._chunks[chunkIndex] = chunk.slice(byteCount);
-					this._totalLength -= byteCount;
-					byteCount -= byteCount;
-				} else {
-					result.set(chunk, resultOffset);
-					resultOffset += chunk.byteLength;
-					this._chunks.shift();
-					this._totalLength -= chunk.byteLength;
-					byteCount -= chunk.byteLength;
-				}
-			}
-			return result;
-		}
-	};
-	exports.AbstractMessageBuffer = AbstractMessageBuffer;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/connection.js
-var require_connection = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.createMessageConnection = exports.ConnectionOptions = exports.MessageStrategy = exports.CancellationStrategy = exports.CancellationSenderStrategy = exports.CancellationReceiverStrategy = exports.RequestCancellationReceiverStrategy = exports.IdCancellationReceiverStrategy = exports.ConnectionStrategy = exports.ConnectionError = exports.ConnectionErrors = exports.LogTraceNotification = exports.SetTraceNotification = exports.TraceFormat = exports.TraceValues = exports.Trace = exports.NullLogger = exports.ProgressType = exports.ProgressToken = void 0;
-	const ral_1 = require_ral();
-	const Is = require_is();
-	const messages_1 = require_messages();
-	const linkedMap_1 = require_linkedMap();
-	const events_1 = require_events();
-	const cancellation_1 = require_cancellation();
-	var CancelNotification;
-	(function(CancelNotification) {
-		CancelNotification.type = new messages_1.NotificationType("$/cancelRequest");
-	})(CancelNotification || (CancelNotification = {}));
-	var ProgressToken;
-	(function(ProgressToken) {
-		function is(value) {
-			return typeof value === "string" || typeof value === "number";
-		}
-		ProgressToken.is = is;
-	})(ProgressToken || (exports.ProgressToken = ProgressToken = {}));
-	var ProgressNotification;
-	(function(ProgressNotification) {
-		ProgressNotification.type = new messages_1.NotificationType("$/progress");
-	})(ProgressNotification || (ProgressNotification = {}));
-	var ProgressType = class {
-		constructor() {}
-	};
-	exports.ProgressType = ProgressType;
-	var StarRequestHandler;
-	(function(StarRequestHandler) {
-		function is(value) {
-			return Is.func(value);
-		}
-		StarRequestHandler.is = is;
-	})(StarRequestHandler || (StarRequestHandler = {}));
-	exports.NullLogger = Object.freeze({
-		error: () => {},
-		warn: () => {},
-		info: () => {},
-		log: () => {}
-	});
-	var Trace;
-	(function(Trace) {
-		Trace[Trace["Off"] = 0] = "Off";
-		Trace[Trace["Messages"] = 1] = "Messages";
-		Trace[Trace["Compact"] = 2] = "Compact";
-		Trace[Trace["Verbose"] = 3] = "Verbose";
-	})(Trace || (exports.Trace = Trace = {}));
-	var TraceValues;
-	(function(TraceValues) {
-		/**
-		* Turn tracing off.
-		*/
-		TraceValues.Off = "off";
-		/**
-		* Trace messages only.
-		*/
-		TraceValues.Messages = "messages";
-		/**
-		* Compact message tracing.
-		*/
-		TraceValues.Compact = "compact";
-		/**
-		* Verbose message tracing.
-		*/
-		TraceValues.Verbose = "verbose";
-	})(TraceValues || (exports.TraceValues = TraceValues = {}));
-	(function(Trace) {
-		function fromString(value) {
-			if (!Is.string(value)) return Trace.Off;
-			value = value.toLowerCase();
-			switch (value) {
-				case "off": return Trace.Off;
-				case "messages": return Trace.Messages;
-				case "compact": return Trace.Compact;
-				case "verbose": return Trace.Verbose;
-				default: return Trace.Off;
-			}
-		}
-		Trace.fromString = fromString;
-		function toString(value) {
-			switch (value) {
-				case Trace.Off: return "off";
-				case Trace.Messages: return "messages";
-				case Trace.Compact: return "compact";
-				case Trace.Verbose: return "verbose";
-				default: return "off";
-			}
-		}
-		Trace.toString = toString;
-	})(Trace || (exports.Trace = Trace = {}));
-	var TraceFormat;
-	(function(TraceFormat) {
-		TraceFormat["Text"] = "text";
-		TraceFormat["JSON"] = "json";
-	})(TraceFormat || (exports.TraceFormat = TraceFormat = {}));
-	(function(TraceFormat) {
-		function fromString(value) {
-			if (!Is.string(value)) return TraceFormat.Text;
-			value = value.toLowerCase();
-			if (value === "json") return TraceFormat.JSON;
-			else return TraceFormat.Text;
-		}
-		TraceFormat.fromString = fromString;
-	})(TraceFormat || (exports.TraceFormat = TraceFormat = {}));
-	var SetTraceNotification;
-	(function(SetTraceNotification) {
-		SetTraceNotification.type = new messages_1.NotificationType("$/setTrace");
-	})(SetTraceNotification || (exports.SetTraceNotification = SetTraceNotification = {}));
-	var LogTraceNotification;
-	(function(LogTraceNotification) {
-		LogTraceNotification.type = new messages_1.NotificationType("$/logTrace");
-	})(LogTraceNotification || (exports.LogTraceNotification = LogTraceNotification = {}));
-	var ConnectionErrors;
-	(function(ConnectionErrors) {
-		/**
-		* The connection is closed.
-		*/
-		ConnectionErrors[ConnectionErrors["Closed"] = 1] = "Closed";
-		/**
-		* The connection got disposed.
-		*/
-		ConnectionErrors[ConnectionErrors["Disposed"] = 2] = "Disposed";
-		/**
-		* The connection is already in listening mode.
-		*/
-		ConnectionErrors[ConnectionErrors["AlreadyListening"] = 3] = "AlreadyListening";
-	})(ConnectionErrors || (exports.ConnectionErrors = ConnectionErrors = {}));
-	var ConnectionError = class ConnectionError extends Error {
-		constructor(code, message) {
-			super(message);
-			this.code = code;
-			Object.setPrototypeOf(this, ConnectionError.prototype);
-		}
-	};
-	exports.ConnectionError = ConnectionError;
-	var ConnectionStrategy;
-	(function(ConnectionStrategy) {
-		function is(value) {
-			const candidate = value;
-			return candidate && Is.func(candidate.cancelUndispatched);
-		}
-		ConnectionStrategy.is = is;
-	})(ConnectionStrategy || (exports.ConnectionStrategy = ConnectionStrategy = {}));
-	var IdCancellationReceiverStrategy;
-	(function(IdCancellationReceiverStrategy) {
-		function is(value) {
-			const candidate = value;
-			return candidate && (candidate.kind === void 0 || candidate.kind === "id") && Is.func(candidate.createCancellationTokenSource) && (candidate.dispose === void 0 || Is.func(candidate.dispose));
-		}
-		IdCancellationReceiverStrategy.is = is;
-	})(IdCancellationReceiverStrategy || (exports.IdCancellationReceiverStrategy = IdCancellationReceiverStrategy = {}));
-	var RequestCancellationReceiverStrategy;
-	(function(RequestCancellationReceiverStrategy) {
-		function is(value) {
-			const candidate = value;
-			return candidate && candidate.kind === "request" && Is.func(candidate.createCancellationTokenSource) && (candidate.dispose === void 0 || Is.func(candidate.dispose));
-		}
-		RequestCancellationReceiverStrategy.is = is;
-	})(RequestCancellationReceiverStrategy || (exports.RequestCancellationReceiverStrategy = RequestCancellationReceiverStrategy = {}));
-	var CancellationReceiverStrategy;
-	(function(CancellationReceiverStrategy) {
-		CancellationReceiverStrategy.Message = Object.freeze({ createCancellationTokenSource(_) {
-			return new cancellation_1.CancellationTokenSource();
-		} });
-		function is(value) {
-			return IdCancellationReceiverStrategy.is(value) || RequestCancellationReceiverStrategy.is(value);
-		}
-		CancellationReceiverStrategy.is = is;
-	})(CancellationReceiverStrategy || (exports.CancellationReceiverStrategy = CancellationReceiverStrategy = {}));
-	var CancellationSenderStrategy;
-	(function(CancellationSenderStrategy) {
-		CancellationSenderStrategy.Message = Object.freeze({
-			sendCancellation(conn, id) {
-				return conn.sendNotification(CancelNotification.type, { id });
-			},
-			cleanup(_) {}
-		});
-		function is(value) {
-			const candidate = value;
-			return candidate && Is.func(candidate.sendCancellation) && Is.func(candidate.cleanup);
-		}
-		CancellationSenderStrategy.is = is;
-	})(CancellationSenderStrategy || (exports.CancellationSenderStrategy = CancellationSenderStrategy = {}));
-	var CancellationStrategy;
-	(function(CancellationStrategy) {
-		CancellationStrategy.Message = Object.freeze({
-			receiver: CancellationReceiverStrategy.Message,
-			sender: CancellationSenderStrategy.Message
-		});
-		function is(value) {
-			const candidate = value;
-			return candidate && CancellationReceiverStrategy.is(candidate.receiver) && CancellationSenderStrategy.is(candidate.sender);
-		}
-		CancellationStrategy.is = is;
-	})(CancellationStrategy || (exports.CancellationStrategy = CancellationStrategy = {}));
-	var MessageStrategy;
-	(function(MessageStrategy) {
-		function is(value) {
-			const candidate = value;
-			return candidate && Is.func(candidate.handleMessage);
-		}
-		MessageStrategy.is = is;
-	})(MessageStrategy || (exports.MessageStrategy = MessageStrategy = {}));
-	var ConnectionOptions;
-	(function(ConnectionOptions) {
-		function is(value) {
-			const candidate = value;
-			return candidate && (CancellationStrategy.is(candidate.cancellationStrategy) || ConnectionStrategy.is(candidate.connectionStrategy) || MessageStrategy.is(candidate.messageStrategy));
-		}
-		ConnectionOptions.is = is;
-	})(ConnectionOptions || (exports.ConnectionOptions = ConnectionOptions = {}));
-	var ConnectionState;
-	(function(ConnectionState) {
-		ConnectionState[ConnectionState["New"] = 1] = "New";
-		ConnectionState[ConnectionState["Listening"] = 2] = "Listening";
-		ConnectionState[ConnectionState["Closed"] = 3] = "Closed";
-		ConnectionState[ConnectionState["Disposed"] = 4] = "Disposed";
-	})(ConnectionState || (ConnectionState = {}));
-	function createMessageConnection(messageReader, messageWriter, _logger, options) {
-		const logger = _logger !== void 0 ? _logger : exports.NullLogger;
-		let sequenceNumber = 0;
-		let notificationSequenceNumber = 0;
-		let unknownResponseSequenceNumber = 0;
-		const version = "2.0";
-		let starRequestHandler = void 0;
-		const requestHandlers = /* @__PURE__ */ new Map();
-		let starNotificationHandler = void 0;
-		const notificationHandlers = /* @__PURE__ */ new Map();
-		const progressHandlers = /* @__PURE__ */ new Map();
-		let timer;
-		let messageQueue = new linkedMap_1.LinkedMap();
-		let responsePromises = /* @__PURE__ */ new Map();
-		let knownCanceledRequests = /* @__PURE__ */ new Set();
-		let requestTokens = /* @__PURE__ */ new Map();
-		let trace = Trace.Off;
-		let traceFormat = TraceFormat.Text;
-		let tracer;
-		let state = ConnectionState.New;
-		const errorEmitter = new events_1.Emitter();
-		const closeEmitter = new events_1.Emitter();
-		const unhandledNotificationEmitter = new events_1.Emitter();
-		const unhandledProgressEmitter = new events_1.Emitter();
-		const disposeEmitter = new events_1.Emitter();
-		const cancellationStrategy = options && options.cancellationStrategy ? options.cancellationStrategy : CancellationStrategy.Message;
-		function createRequestQueueKey(id) {
-			if (id === null) throw new Error(`Can't send requests with id null since the response can't be correlated.`);
-			return "req-" + id.toString();
-		}
-		function createResponseQueueKey(id) {
-			if (id === null) return "res-unknown-" + (++unknownResponseSequenceNumber).toString();
-			else return "res-" + id.toString();
-		}
-		function createNotificationQueueKey() {
-			return "not-" + (++notificationSequenceNumber).toString();
-		}
-		function addMessageToQueue(queue, message) {
-			if (messages_1.Message.isRequest(message)) queue.set(createRequestQueueKey(message.id), message);
-			else if (messages_1.Message.isResponse(message)) queue.set(createResponseQueueKey(message.id), message);
-			else queue.set(createNotificationQueueKey(), message);
-		}
-		function cancelUndispatched(_message) {}
-		function isListening() {
-			return state === ConnectionState.Listening;
-		}
-		function isClosed() {
-			return state === ConnectionState.Closed;
-		}
-		function isDisposed() {
-			return state === ConnectionState.Disposed;
-		}
-		function closeHandler() {
-			if (state === ConnectionState.New || state === ConnectionState.Listening) {
-				state = ConnectionState.Closed;
-				closeEmitter.fire(void 0);
-			}
-		}
-		function readErrorHandler(error) {
-			errorEmitter.fire([
-				error,
-				void 0,
-				void 0
-			]);
-		}
-		function writeErrorHandler(data) {
-			errorEmitter.fire(data);
-		}
-		messageReader.onClose(closeHandler);
-		messageReader.onError(readErrorHandler);
-		messageWriter.onClose(closeHandler);
-		messageWriter.onError(writeErrorHandler);
-		function triggerMessageQueue() {
-			if (timer || messageQueue.size === 0) return;
-			timer = (0, ral_1.default)().timer.setImmediate(() => {
-				timer = void 0;
-				processMessageQueue();
-			});
-		}
-		function handleMessage(message) {
-			if (messages_1.Message.isRequest(message)) handleRequest(message);
-			else if (messages_1.Message.isNotification(message)) handleNotification(message);
-			else if (messages_1.Message.isResponse(message)) handleResponse(message);
-			else handleInvalidMessage(message);
-		}
-		function processMessageQueue() {
-			if (messageQueue.size === 0) return;
-			const message = messageQueue.shift();
-			try {
-				const messageStrategy = options?.messageStrategy;
-				if (MessageStrategy.is(messageStrategy)) messageStrategy.handleMessage(message, handleMessage);
-				else handleMessage(message);
-			} finally {
-				triggerMessageQueue();
-			}
-		}
-		const callback = (message) => {
-			try {
-				if (messages_1.Message.isNotification(message) && message.method === CancelNotification.type.method) {
-					const cancelId = message.params.id;
-					const key = createRequestQueueKey(cancelId);
-					const toCancel = messageQueue.get(key);
-					if (messages_1.Message.isRequest(toCancel)) {
-						const strategy = options?.connectionStrategy;
-						const response = strategy && strategy.cancelUndispatched ? strategy.cancelUndispatched(toCancel, cancelUndispatched) : cancelUndispatched(toCancel);
-						if (response && (response.error !== void 0 || response.result !== void 0)) {
-							messageQueue.delete(key);
-							requestTokens.delete(cancelId);
-							response.id = toCancel.id;
-							traceSendingResponse(response, message.method, Date.now());
-							messageWriter.write(response).catch(() => logger.error(`Sending response for canceled message failed.`));
-							return;
-						}
-					}
-					const cancellationToken = requestTokens.get(cancelId);
-					if (cancellationToken !== void 0) {
-						cancellationToken.cancel();
-						traceReceivedNotification(message);
-						return;
-					} else knownCanceledRequests.add(cancelId);
-				}
-				addMessageToQueue(messageQueue, message);
-			} finally {
-				triggerMessageQueue();
-			}
-		};
-		function handleRequest(requestMessage) {
-			if (isDisposed()) return;
-			function reply(resultOrError, method, startTime) {
-				const message = {
-					jsonrpc: version,
-					id: requestMessage.id
-				};
-				if (resultOrError instanceof messages_1.ResponseError) message.error = resultOrError.toJson();
-				else message.result = resultOrError === void 0 ? null : resultOrError;
-				traceSendingResponse(message, method, startTime);
-				messageWriter.write(message).catch(() => logger.error(`Sending response failed.`));
-			}
-			function replyError(error, method, startTime) {
-				const message = {
-					jsonrpc: version,
-					id: requestMessage.id,
-					error: error.toJson()
-				};
-				traceSendingResponse(message, method, startTime);
-				messageWriter.write(message).catch(() => logger.error(`Sending response failed.`));
-			}
-			function replySuccess(result, method, startTime) {
-				if (result === void 0) result = null;
-				const message = {
-					jsonrpc: version,
-					id: requestMessage.id,
-					result
-				};
-				traceSendingResponse(message, method, startTime);
-				messageWriter.write(message).catch(() => logger.error(`Sending response failed.`));
-			}
-			traceReceivedRequest(requestMessage);
-			const element = requestHandlers.get(requestMessage.method);
-			let type;
-			let requestHandler;
-			if (element) {
-				type = element.type;
-				requestHandler = element.handler;
-			}
-			const startTime = Date.now();
-			if (requestHandler || starRequestHandler) {
-				const tokenKey = requestMessage.id ?? String(Date.now());
-				const cancellationSource = IdCancellationReceiverStrategy.is(cancellationStrategy.receiver) ? cancellationStrategy.receiver.createCancellationTokenSource(tokenKey) : cancellationStrategy.receiver.createCancellationTokenSource(requestMessage);
-				if (requestMessage.id !== null && knownCanceledRequests.has(requestMessage.id)) cancellationSource.cancel();
-				if (requestMessage.id !== null) requestTokens.set(tokenKey, cancellationSource);
-				try {
-					let handlerResult;
-					if (requestHandler) if (requestMessage.params === void 0) {
-						if (type !== void 0 && type.numberOfParams !== 0) {
-							replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InvalidParams, `Request ${requestMessage.method} defines ${type.numberOfParams} params but received none.`), requestMessage.method, startTime);
-							return;
-						}
-						handlerResult = requestHandler(cancellationSource.token);
-					} else if (Array.isArray(requestMessage.params)) {
-						if (type !== void 0 && type.parameterStructures === messages_1.ParameterStructures.byName) {
-							replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InvalidParams, `Request ${requestMessage.method} defines parameters by name but received parameters by position`), requestMessage.method, startTime);
-							return;
-						}
-						handlerResult = requestHandler(...requestMessage.params, cancellationSource.token);
-					} else {
-						if (type !== void 0 && type.parameterStructures === messages_1.ParameterStructures.byPosition) {
-							replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InvalidParams, `Request ${requestMessage.method} defines parameters by position but received parameters by name`), requestMessage.method, startTime);
-							return;
-						}
-						handlerResult = requestHandler(requestMessage.params, cancellationSource.token);
-					}
-					else if (starRequestHandler) handlerResult = starRequestHandler(requestMessage.method, requestMessage.params, cancellationSource.token);
-					const promise = handlerResult;
-					if (!handlerResult) {
-						requestTokens.delete(tokenKey);
-						replySuccess(handlerResult, requestMessage.method, startTime);
-					} else if (promise.then) promise.then((resultOrError) => {
-						requestTokens.delete(tokenKey);
-						reply(resultOrError, requestMessage.method, startTime);
-					}, (error) => {
-						requestTokens.delete(tokenKey);
-						if (error instanceof messages_1.ResponseError) replyError(error, requestMessage.method, startTime);
-						else if (error && Is.string(error.message)) replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed with message: ${error.message}`), requestMessage.method, startTime);
-						else replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed unexpectedly without providing any details.`), requestMessage.method, startTime);
-					});
-					else {
-						requestTokens.delete(tokenKey);
-						reply(handlerResult, requestMessage.method, startTime);
-					}
-				} catch (error) {
-					requestTokens.delete(tokenKey);
-					if (error instanceof messages_1.ResponseError) reply(error, requestMessage.method, startTime);
-					else if (error && Is.string(error.message)) replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed with message: ${error.message}`), requestMessage.method, startTime);
-					else replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed unexpectedly without providing any details.`), requestMessage.method, startTime);
-				}
-			} else replyError(new messages_1.ResponseError(messages_1.ErrorCodes.MethodNotFound, `Unhandled method ${requestMessage.method}`), requestMessage.method, startTime);
-		}
-		function handleResponse(responseMessage) {
-			if (isDisposed()) return;
-			if (responseMessage.id === null) if (responseMessage.error) logger.error(`Received response message without id: Error is: \n${JSON.stringify(responseMessage.error, void 0, 4)}`);
-			else logger.error(`Received response message without id. No further error information provided.`);
-			else {
-				const key = responseMessage.id;
-				const responsePromise = responsePromises.get(key);
-				traceReceivedResponse(responseMessage, responsePromise);
-				if (responsePromise !== void 0) {
-					responsePromises.delete(key);
-					try {
-						if (responseMessage.error) {
-							const error = responseMessage.error;
-							responsePromise.reject(new messages_1.ResponseError(error.code, error.message, error.data));
-						} else if (responseMessage.result !== void 0) responsePromise.resolve(responseMessage.result);
-						else throw new Error("Should never happen.");
-					} catch (error) {
-						if (error.message) logger.error(`Response handler '${responsePromise.method}' failed with message: ${error.message}`);
-						else logger.error(`Response handler '${responsePromise.method}' failed unexpectedly.`);
-					}
-				}
-			}
-		}
-		function handleNotification(message) {
-			if (isDisposed()) return;
-			let type = void 0;
-			let notificationHandler;
-			if (message.method === CancelNotification.type.method) {
-				const cancelId = message.params.id;
-				knownCanceledRequests.delete(cancelId);
-				traceReceivedNotification(message);
-				return;
-			} else {
-				const element = notificationHandlers.get(message.method);
-				if (element) {
-					notificationHandler = element.handler;
-					type = element.type;
-				}
-			}
-			if (notificationHandler || starNotificationHandler) try {
-				traceReceivedNotification(message);
-				if (notificationHandler) if (message.params === void 0) {
-					if (type !== void 0) {
-						if (type.numberOfParams !== 0 && type.parameterStructures !== messages_1.ParameterStructures.byName) logger.error(`Notification ${message.method} defines ${type.numberOfParams} params but received none.`);
-					}
-					notificationHandler();
-				} else if (Array.isArray(message.params)) {
-					const params = message.params;
-					if (message.method === ProgressNotification.type.method && params.length === 2 && ProgressToken.is(params[0])) notificationHandler({
-						token: params[0],
-						value: params[1]
-					});
-					else {
-						if (type !== void 0) {
-							if (type.parameterStructures === messages_1.ParameterStructures.byName) logger.error(`Notification ${message.method} defines parameters by name but received parameters by position`);
-							if (type.numberOfParams !== message.params.length) logger.error(`Notification ${message.method} defines ${type.numberOfParams} params but received ${params.length} arguments`);
-						}
-						notificationHandler(...params);
-					}
-				} else {
-					if (type !== void 0 && type.parameterStructures === messages_1.ParameterStructures.byPosition) logger.error(`Notification ${message.method} defines parameters by position but received parameters by name`);
-					notificationHandler(message.params);
-				}
-				else if (starNotificationHandler) starNotificationHandler(message.method, message.params);
-			} catch (error) {
-				if (error.message) logger.error(`Notification handler '${message.method}' failed with message: ${error.message}`);
-				else logger.error(`Notification handler '${message.method}' failed unexpectedly.`);
-			}
-			else unhandledNotificationEmitter.fire(message);
-		}
-		function handleInvalidMessage(message) {
-			if (!message) {
-				logger.error("Received empty message.");
-				return;
-			}
-			logger.error(`Received message which is neither a response nor a notification message:\n${JSON.stringify(message, null, 4)}`);
-			const responseMessage = message;
-			if (Is.string(responseMessage.id) || Is.number(responseMessage.id)) {
-				const key = responseMessage.id;
-				const responseHandler = responsePromises.get(key);
-				if (responseHandler) responseHandler.reject(/* @__PURE__ */ new Error("The received response has neither a result nor an error property."));
-			}
-		}
-		function stringifyTrace(params) {
-			if (params === void 0 || params === null) return;
-			switch (trace) {
-				case Trace.Verbose: return JSON.stringify(params, null, 4);
-				case Trace.Compact: return JSON.stringify(params);
-				default: return;
-			}
-		}
-		function traceSendingRequest(message) {
-			if (trace === Trace.Off || !tracer) return;
-			if (traceFormat === TraceFormat.Text) {
-				let data = void 0;
-				if ((trace === Trace.Verbose || trace === Trace.Compact) && message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
-				tracer.log(`Sending request '${message.method} - (${message.id})'.`, data);
-			} else logLSPMessage("send-request", message);
-		}
-		function traceSendingNotification(message) {
-			if (trace === Trace.Off || !tracer) return;
-			if (traceFormat === TraceFormat.Text) {
-				let data = void 0;
-				if (trace === Trace.Verbose || trace === Trace.Compact) if (message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
-				else data = "No parameters provided.\n\n";
-				tracer.log(`Sending notification '${message.method}'.`, data);
-			} else logLSPMessage("send-notification", message);
-		}
-		function traceSendingResponse(message, method, startTime) {
-			if (trace === Trace.Off || !tracer) return;
-			if (traceFormat === TraceFormat.Text) {
-				let data = void 0;
-				if (trace === Trace.Verbose || trace === Trace.Compact) {
-					if (message.error && message.error.data) data = `Error data: ${stringifyTrace(message.error.data)}\n\n`;
-					else if (message.result) data = `Result: ${stringifyTrace(message.result)}\n\n`;
-					else if (message.error === void 0) data = "No result returned.\n\n";
-				}
-				tracer.log(`Sending response '${method} - (${message.id})'. Processing request took ${Date.now() - startTime}ms`, data);
-			} else logLSPMessage("send-response", message);
-		}
-		function traceReceivedRequest(message) {
-			if (trace === Trace.Off || !tracer) return;
-			if (traceFormat === TraceFormat.Text) {
-				let data = void 0;
-				if ((trace === Trace.Verbose || trace === Trace.Compact) && message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
-				tracer.log(`Received request '${message.method} - (${message.id})'.`, data);
-			} else logLSPMessage("receive-request", message);
-		}
-		function traceReceivedNotification(message) {
-			if (trace === Trace.Off || !tracer || message.method === LogTraceNotification.type.method) return;
-			if (traceFormat === TraceFormat.Text) {
-				let data = void 0;
-				if (trace === Trace.Verbose || trace === Trace.Compact) if (message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
-				else data = "No parameters provided.\n\n";
-				tracer.log(`Received notification '${message.method}'.`, data);
-			} else logLSPMessage("receive-notification", message);
-		}
-		function traceReceivedResponse(message, responsePromise) {
-			if (trace === Trace.Off || !tracer) return;
-			if (traceFormat === TraceFormat.Text) {
-				let data = void 0;
-				if (trace === Trace.Verbose || trace === Trace.Compact) {
-					if (message.error && message.error.data) data = `Error data: ${stringifyTrace(message.error.data)}\n\n`;
-					else if (message.result) data = `Result: ${stringifyTrace(message.result)}\n\n`;
-					else if (message.error === void 0) data = "No result returned.\n\n";
-				}
-				if (responsePromise) {
-					const error = message.error ? ` Request failed: ${message.error.message} (${message.error.code}).` : "";
-					tracer.log(`Received response '${responsePromise.method} - (${message.id})' in ${Date.now() - responsePromise.timerStart}ms.${error}`, data);
-				} else tracer.log(`Received response ${message.id} without active response promise.`, data);
-			} else logLSPMessage("receive-response", message);
-		}
-		function logLSPMessage(type, message) {
-			if (!tracer || trace === Trace.Off) return;
-			const lspMessage = {
-				isLSPMessage: true,
-				type,
-				message,
-				timestamp: Date.now()
-			};
-			tracer.log(lspMessage);
-		}
-		function throwIfClosedOrDisposed() {
-			if (isClosed()) throw new ConnectionError(ConnectionErrors.Closed, "Connection is closed.");
-			if (isDisposed()) throw new ConnectionError(ConnectionErrors.Disposed, "Connection is disposed.");
-		}
-		function throwIfListening() {
-			if (isListening()) throw new ConnectionError(ConnectionErrors.AlreadyListening, "Connection is already listening");
-		}
-		function throwIfNotListening() {
-			if (!isListening()) throw new Error("Call listen() first.");
-		}
-		function undefinedToNull(param) {
-			if (param === void 0) return null;
-			else return param;
-		}
-		function nullToUndefined(param) {
-			if (param === null) return;
-			else return param;
-		}
-		function isNamedParam(param) {
-			return param !== void 0 && param !== null && !Array.isArray(param) && typeof param === "object";
-		}
-		function computeSingleParam(parameterStructures, param) {
-			switch (parameterStructures) {
-				case messages_1.ParameterStructures.auto: if (isNamedParam(param)) return nullToUndefined(param);
-				else return [undefinedToNull(param)];
-				case messages_1.ParameterStructures.byName:
-					if (!isNamedParam(param)) throw new Error(`Received parameters by name but param is not an object literal.`);
-					return nullToUndefined(param);
-				case messages_1.ParameterStructures.byPosition: return [undefinedToNull(param)];
-				default: throw new Error(`Unknown parameter structure ${parameterStructures.toString()}`);
-			}
-		}
-		function computeMessageParams(type, params) {
-			let result;
-			const numberOfParams = type.numberOfParams;
-			switch (numberOfParams) {
-				case 0:
-					result = void 0;
-					break;
-				case 1:
-					result = computeSingleParam(type.parameterStructures, params[0]);
-					break;
-				default:
-					result = [];
-					for (let i = 0; i < params.length && i < numberOfParams; i++) result.push(undefinedToNull(params[i]));
-					if (params.length < numberOfParams) for (let i = params.length; i < numberOfParams; i++) result.push(null);
-					break;
-			}
-			return result;
-		}
-		const connection = {
-			sendNotification: (type, ...args) => {
-				throwIfClosedOrDisposed();
-				let method;
-				let messageParams;
-				if (Is.string(type)) {
-					method = type;
-					const first = args[0];
-					let paramStart = 0;
-					let parameterStructures = messages_1.ParameterStructures.auto;
-					if (messages_1.ParameterStructures.is(first)) {
-						paramStart = 1;
-						parameterStructures = first;
-					}
-					let paramEnd = args.length;
-					const numberOfParams = paramEnd - paramStart;
-					switch (numberOfParams) {
-						case 0:
-							messageParams = void 0;
-							break;
-						case 1:
-							messageParams = computeSingleParam(parameterStructures, args[paramStart]);
-							break;
-						default:
-							if (parameterStructures === messages_1.ParameterStructures.byName) throw new Error(`Received ${numberOfParams} parameters for 'by Name' notification parameter structure.`);
-							messageParams = args.slice(paramStart, paramEnd).map((value) => undefinedToNull(value));
-							break;
-					}
-				} else {
-					const params = args;
-					method = type.method;
-					messageParams = computeMessageParams(type, params);
-				}
-				const notificationMessage = {
-					jsonrpc: version,
-					method,
-					params: messageParams
-				};
-				traceSendingNotification(notificationMessage);
-				return messageWriter.write(notificationMessage).catch((error) => {
-					logger.error(`Sending notification failed.`);
-					throw error;
-				});
-			},
-			onNotification: (type, handler) => {
-				throwIfClosedOrDisposed();
-				let method;
-				if (Is.func(type)) starNotificationHandler = type;
-				else if (handler) if (Is.string(type)) {
-					method = type;
-					notificationHandlers.set(type, {
-						type: void 0,
-						handler
-					});
-				} else {
-					method = type.method;
-					notificationHandlers.set(type.method, {
-						type,
-						handler
-					});
-				}
-				return { dispose: () => {
-					if (method !== void 0) notificationHandlers.delete(method);
-					else starNotificationHandler = void 0;
-				} };
-			},
-			onProgress: (_type, token, handler) => {
-				if (progressHandlers.has(token)) throw new Error(`Progress handler for token ${token} already registered`);
-				progressHandlers.set(token, handler);
-				return { dispose: () => {
-					progressHandlers.delete(token);
-				} };
-			},
-			sendProgress: (_type, token, value) => {
-				return connection.sendNotification(ProgressNotification.type, {
-					token,
-					value
-				});
-			},
-			onUnhandledProgress: unhandledProgressEmitter.event,
-			sendRequest: (type, ...args) => {
-				throwIfClosedOrDisposed();
-				throwIfNotListening();
-				let method;
-				let messageParams;
-				let token = void 0;
-				if (Is.string(type)) {
-					method = type;
-					const first = args[0];
-					const last = args[args.length - 1];
-					let paramStart = 0;
-					let parameterStructures = messages_1.ParameterStructures.auto;
-					if (messages_1.ParameterStructures.is(first)) {
-						paramStart = 1;
-						parameterStructures = first;
-					}
-					let paramEnd = args.length;
-					if (cancellation_1.CancellationToken.is(last)) {
-						paramEnd = paramEnd - 1;
-						token = last;
-					}
-					const numberOfParams = paramEnd - paramStart;
-					switch (numberOfParams) {
-						case 0:
-							messageParams = void 0;
-							break;
-						case 1:
-							messageParams = computeSingleParam(parameterStructures, args[paramStart]);
-							break;
-						default:
-							if (parameterStructures === messages_1.ParameterStructures.byName) throw new Error(`Received ${numberOfParams} parameters for 'by Name' request parameter structure.`);
-							messageParams = args.slice(paramStart, paramEnd).map((value) => undefinedToNull(value));
-							break;
-					}
-				} else {
-					const params = args;
-					method = type.method;
-					messageParams = computeMessageParams(type, params);
-					const numberOfParams = type.numberOfParams;
-					token = cancellation_1.CancellationToken.is(params[numberOfParams]) ? params[numberOfParams] : void 0;
-				}
-				const id = sequenceNumber++;
-				let disposable;
-				if (token) disposable = token.onCancellationRequested(() => {
-					const p = cancellationStrategy.sender.sendCancellation(connection, id);
-					if (p === void 0) {
-						logger.log(`Received no promise from cancellation strategy when cancelling id ${id}`);
-						return Promise.resolve();
-					} else return p.catch(() => {
-						logger.log(`Sending cancellation messages for id ${id} failed`);
-					});
-				});
-				const requestMessage = {
-					jsonrpc: version,
-					id,
-					method,
-					params: messageParams
-				};
-				traceSendingRequest(requestMessage);
-				if (typeof cancellationStrategy.sender.enableCancellation === "function") cancellationStrategy.sender.enableCancellation(requestMessage);
-				return new Promise(async (resolve, reject) => {
-					const resolveWithCleanup = (r) => {
-						resolve(r);
-						cancellationStrategy.sender.cleanup(id);
-						disposable?.dispose();
-					};
-					const rejectWithCleanup = (r) => {
-						reject(r);
-						cancellationStrategy.sender.cleanup(id);
-						disposable?.dispose();
-					};
-					const responsePromise = {
-						method,
-						timerStart: Date.now(),
-						resolve: resolveWithCleanup,
-						reject: rejectWithCleanup
-					};
-					try {
-						responsePromises.set(id, responsePromise);
-						await messageWriter.write(requestMessage);
-					} catch (error) {
-						responsePromises.delete(id);
-						responsePromise.reject(new messages_1.ResponseError(messages_1.ErrorCodes.MessageWriteError, error.message ? error.message : "Unknown reason"));
-						logger.error(`Sending request failed.`);
-						throw error;
-					}
-				});
-			},
-			onRequest: (type, handler) => {
-				throwIfClosedOrDisposed();
-				let method = null;
-				if (StarRequestHandler.is(type)) {
-					method = void 0;
-					starRequestHandler = type;
-				} else if (Is.string(type)) {
-					method = null;
-					if (handler !== void 0) {
-						method = type;
-						requestHandlers.set(type, {
-							handler,
-							type: void 0
-						});
-					}
-				} else if (handler !== void 0) {
-					method = type.method;
-					requestHandlers.set(type.method, {
-						type,
-						handler
-					});
-				}
-				return { dispose: () => {
-					if (method === null) return;
-					if (method !== void 0) requestHandlers.delete(method);
-					else starRequestHandler = void 0;
-				} };
-			},
-			hasPendingResponse: () => {
-				return responsePromises.size > 0;
-			},
-			trace: async (_value, _tracer, sendNotificationOrTraceOptions) => {
-				let _sendNotification = false;
-				let _traceFormat = TraceFormat.Text;
-				if (sendNotificationOrTraceOptions !== void 0) if (Is.boolean(sendNotificationOrTraceOptions)) _sendNotification = sendNotificationOrTraceOptions;
-				else {
-					_sendNotification = sendNotificationOrTraceOptions.sendNotification || false;
-					_traceFormat = sendNotificationOrTraceOptions.traceFormat || TraceFormat.Text;
-				}
-				trace = _value;
-				traceFormat = _traceFormat;
-				if (trace === Trace.Off) tracer = void 0;
-				else tracer = _tracer;
-				if (_sendNotification && !isClosed() && !isDisposed()) await connection.sendNotification(SetTraceNotification.type, { value: Trace.toString(_value) });
-			},
-			onError: errorEmitter.event,
-			onClose: closeEmitter.event,
-			onUnhandledNotification: unhandledNotificationEmitter.event,
-			onDispose: disposeEmitter.event,
-			end: () => {
-				messageWriter.end();
-			},
-			dispose: () => {
-				if (isDisposed()) return;
-				state = ConnectionState.Disposed;
-				disposeEmitter.fire(void 0);
-				const error = new messages_1.ResponseError(messages_1.ErrorCodes.PendingResponseRejected, "Pending response rejected since connection got disposed");
-				for (const promise of responsePromises.values()) promise.reject(error);
-				responsePromises = /* @__PURE__ */ new Map();
-				requestTokens = /* @__PURE__ */ new Map();
-				knownCanceledRequests = /* @__PURE__ */ new Set();
-				messageQueue = new linkedMap_1.LinkedMap();
-				if (Is.func(messageWriter.dispose)) messageWriter.dispose();
-				if (Is.func(messageReader.dispose)) messageReader.dispose();
-			},
-			listen: () => {
-				throwIfClosedOrDisposed();
-				throwIfListening();
-				state = ConnectionState.Listening;
-				messageReader.listen(callback);
-			},
-			inspect: () => {
-				(0, ral_1.default)().console.log("inspect");
-			}
-		};
-		connection.onNotification(LogTraceNotification.type, (params) => {
-			if (trace === Trace.Off || !tracer) return;
-			const verbose = trace === Trace.Verbose || trace === Trace.Compact;
-			tracer.log(params.message, verbose ? params.verbose : void 0);
-		});
-		connection.onNotification(ProgressNotification.type, (params) => {
-			const handler = progressHandlers.get(params.token);
-			if (handler) handler(params.value);
-			else unhandledProgressEmitter.fire(params);
-		});
-		return connection;
-	}
-	exports.createMessageConnection = createMessageConnection;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/api.js
-var require_api = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.ProgressType = exports.ProgressToken = exports.createMessageConnection = exports.NullLogger = exports.ConnectionOptions = exports.ConnectionStrategy = exports.AbstractMessageBuffer = exports.WriteableStreamMessageWriter = exports.AbstractMessageWriter = exports.MessageWriter = exports.ReadableStreamMessageReader = exports.AbstractMessageReader = exports.MessageReader = exports.SharedArrayReceiverStrategy = exports.SharedArraySenderStrategy = exports.CancellationToken = exports.CancellationTokenSource = exports.Emitter = exports.Event = exports.Disposable = exports.LRUCache = exports.Touch = exports.LinkedMap = exports.ParameterStructures = exports.NotificationType9 = exports.NotificationType8 = exports.NotificationType7 = exports.NotificationType6 = exports.NotificationType5 = exports.NotificationType4 = exports.NotificationType3 = exports.NotificationType2 = exports.NotificationType1 = exports.NotificationType0 = exports.NotificationType = exports.ErrorCodes = exports.ResponseError = exports.RequestType9 = exports.RequestType8 = exports.RequestType7 = exports.RequestType6 = exports.RequestType5 = exports.RequestType4 = exports.RequestType3 = exports.RequestType2 = exports.RequestType1 = exports.RequestType0 = exports.RequestType = exports.Message = exports.RAL = void 0;
-	exports.MessageStrategy = exports.CancellationStrategy = exports.CancellationSenderStrategy = exports.CancellationReceiverStrategy = exports.ConnectionError = exports.ConnectionErrors = exports.LogTraceNotification = exports.SetTraceNotification = exports.TraceFormat = exports.TraceValues = exports.Trace = void 0;
-	const messages_1 = require_messages();
-	Object.defineProperty(exports, "Message", {
-		enumerable: true,
-		get: function() {
-			return messages_1.Message;
-		}
-	});
-	Object.defineProperty(exports, "RequestType", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType;
-		}
-	});
-	Object.defineProperty(exports, "RequestType0", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType0;
-		}
-	});
-	Object.defineProperty(exports, "RequestType1", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType1;
-		}
-	});
-	Object.defineProperty(exports, "RequestType2", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType2;
-		}
-	});
-	Object.defineProperty(exports, "RequestType3", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType3;
-		}
-	});
-	Object.defineProperty(exports, "RequestType4", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType4;
-		}
-	});
-	Object.defineProperty(exports, "RequestType5", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType5;
-		}
-	});
-	Object.defineProperty(exports, "RequestType6", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType6;
-		}
-	});
-	Object.defineProperty(exports, "RequestType7", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType7;
-		}
-	});
-	Object.defineProperty(exports, "RequestType8", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType8;
-		}
-	});
-	Object.defineProperty(exports, "RequestType9", {
-		enumerable: true,
-		get: function() {
-			return messages_1.RequestType9;
-		}
-	});
-	Object.defineProperty(exports, "ResponseError", {
-		enumerable: true,
-		get: function() {
-			return messages_1.ResponseError;
-		}
-	});
-	Object.defineProperty(exports, "ErrorCodes", {
-		enumerable: true,
-		get: function() {
-			return messages_1.ErrorCodes;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType0", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType0;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType1", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType1;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType2", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType2;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType3", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType3;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType4", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType4;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType5", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType5;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType6", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType6;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType7", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType7;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType8", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType8;
-		}
-	});
-	Object.defineProperty(exports, "NotificationType9", {
-		enumerable: true,
-		get: function() {
-			return messages_1.NotificationType9;
-		}
-	});
-	Object.defineProperty(exports, "ParameterStructures", {
-		enumerable: true,
-		get: function() {
-			return messages_1.ParameterStructures;
-		}
-	});
-	const linkedMap_1 = require_linkedMap();
-	Object.defineProperty(exports, "LinkedMap", {
-		enumerable: true,
-		get: function() {
-			return linkedMap_1.LinkedMap;
-		}
-	});
-	Object.defineProperty(exports, "LRUCache", {
-		enumerable: true,
-		get: function() {
-			return linkedMap_1.LRUCache;
-		}
-	});
-	Object.defineProperty(exports, "Touch", {
-		enumerable: true,
-		get: function() {
-			return linkedMap_1.Touch;
-		}
-	});
-	const disposable_1 = require_disposable();
-	Object.defineProperty(exports, "Disposable", {
-		enumerable: true,
-		get: function() {
-			return disposable_1.Disposable;
-		}
-	});
-	const events_1 = require_events();
-	Object.defineProperty(exports, "Event", {
-		enumerable: true,
-		get: function() {
-			return events_1.Event;
-		}
-	});
-	Object.defineProperty(exports, "Emitter", {
-		enumerable: true,
-		get: function() {
-			return events_1.Emitter;
-		}
-	});
-	const cancellation_1 = require_cancellation();
-	Object.defineProperty(exports, "CancellationTokenSource", {
-		enumerable: true,
-		get: function() {
-			return cancellation_1.CancellationTokenSource;
-		}
-	});
-	Object.defineProperty(exports, "CancellationToken", {
-		enumerable: true,
-		get: function() {
-			return cancellation_1.CancellationToken;
-		}
-	});
-	const sharedArrayCancellation_1 = require_sharedArrayCancellation();
-	Object.defineProperty(exports, "SharedArraySenderStrategy", {
-		enumerable: true,
-		get: function() {
-			return sharedArrayCancellation_1.SharedArraySenderStrategy;
-		}
-	});
-	Object.defineProperty(exports, "SharedArrayReceiverStrategy", {
-		enumerable: true,
-		get: function() {
-			return sharedArrayCancellation_1.SharedArrayReceiverStrategy;
-		}
-	});
-	const messageReader_1 = require_messageReader();
-	Object.defineProperty(exports, "MessageReader", {
-		enumerable: true,
-		get: function() {
-			return messageReader_1.MessageReader;
-		}
-	});
-	Object.defineProperty(exports, "AbstractMessageReader", {
-		enumerable: true,
-		get: function() {
-			return messageReader_1.AbstractMessageReader;
-		}
-	});
-	Object.defineProperty(exports, "ReadableStreamMessageReader", {
-		enumerable: true,
-		get: function() {
-			return messageReader_1.ReadableStreamMessageReader;
-		}
-	});
-	const messageWriter_1 = require_messageWriter();
-	Object.defineProperty(exports, "MessageWriter", {
-		enumerable: true,
-		get: function() {
-			return messageWriter_1.MessageWriter;
-		}
-	});
-	Object.defineProperty(exports, "AbstractMessageWriter", {
-		enumerable: true,
-		get: function() {
-			return messageWriter_1.AbstractMessageWriter;
-		}
-	});
-	Object.defineProperty(exports, "WriteableStreamMessageWriter", {
-		enumerable: true,
-		get: function() {
-			return messageWriter_1.WriteableStreamMessageWriter;
-		}
-	});
-	const messageBuffer_1 = require_messageBuffer();
-	Object.defineProperty(exports, "AbstractMessageBuffer", {
-		enumerable: true,
-		get: function() {
-			return messageBuffer_1.AbstractMessageBuffer;
-		}
-	});
-	const connection_1 = require_connection();
-	Object.defineProperty(exports, "ConnectionStrategy", {
-		enumerable: true,
-		get: function() {
-			return connection_1.ConnectionStrategy;
-		}
-	});
-	Object.defineProperty(exports, "ConnectionOptions", {
-		enumerable: true,
-		get: function() {
-			return connection_1.ConnectionOptions;
-		}
-	});
-	Object.defineProperty(exports, "NullLogger", {
-		enumerable: true,
-		get: function() {
-			return connection_1.NullLogger;
-		}
-	});
-	Object.defineProperty(exports, "createMessageConnection", {
-		enumerable: true,
-		get: function() {
-			return connection_1.createMessageConnection;
-		}
-	});
-	Object.defineProperty(exports, "ProgressToken", {
-		enumerable: true,
-		get: function() {
-			return connection_1.ProgressToken;
-		}
-	});
-	Object.defineProperty(exports, "ProgressType", {
-		enumerable: true,
-		get: function() {
-			return connection_1.ProgressType;
-		}
-	});
-	Object.defineProperty(exports, "Trace", {
-		enumerable: true,
-		get: function() {
-			return connection_1.Trace;
-		}
-	});
-	Object.defineProperty(exports, "TraceValues", {
-		enumerable: true,
-		get: function() {
-			return connection_1.TraceValues;
-		}
-	});
-	Object.defineProperty(exports, "TraceFormat", {
-		enumerable: true,
-		get: function() {
-			return connection_1.TraceFormat;
-		}
-	});
-	Object.defineProperty(exports, "SetTraceNotification", {
-		enumerable: true,
-		get: function() {
-			return connection_1.SetTraceNotification;
-		}
-	});
-	Object.defineProperty(exports, "LogTraceNotification", {
-		enumerable: true,
-		get: function() {
-			return connection_1.LogTraceNotification;
-		}
-	});
-	Object.defineProperty(exports, "ConnectionErrors", {
-		enumerable: true,
-		get: function() {
-			return connection_1.ConnectionErrors;
-		}
-	});
-	Object.defineProperty(exports, "ConnectionError", {
-		enumerable: true,
-		get: function() {
-			return connection_1.ConnectionError;
-		}
-	});
-	Object.defineProperty(exports, "CancellationReceiverStrategy", {
-		enumerable: true,
-		get: function() {
-			return connection_1.CancellationReceiverStrategy;
-		}
-	});
-	Object.defineProperty(exports, "CancellationSenderStrategy", {
-		enumerable: true,
-		get: function() {
-			return connection_1.CancellationSenderStrategy;
-		}
-	});
-	Object.defineProperty(exports, "CancellationStrategy", {
-		enumerable: true,
-		get: function() {
-			return connection_1.CancellationStrategy;
-		}
-	});
-	Object.defineProperty(exports, "MessageStrategy", {
-		enumerable: true,
-		get: function() {
-			return connection_1.MessageStrategy;
-		}
-	});
-	const ral_1 = require_ral();
-	exports.RAL = ral_1.default;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/node/ril.js
-var require_ril = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const util_1 = __require("util");
-	const api_1 = require_api();
-	var MessageBuffer = class MessageBuffer extends api_1.AbstractMessageBuffer {
-		constructor(encoding = "utf-8") {
-			super(encoding);
-		}
-		emptyBuffer() {
-			return MessageBuffer.emptyBuffer;
-		}
-		fromString(value, encoding) {
-			return Buffer.from(value, encoding);
-		}
-		toString(value, encoding) {
-			if (value instanceof Buffer) return value.toString(encoding);
-			else return new util_1.TextDecoder(encoding).decode(value);
-		}
-		asNative(buffer, length) {
-			if (length === void 0) return buffer instanceof Buffer ? buffer : Buffer.from(buffer);
-			else return buffer instanceof Buffer ? buffer.slice(0, length) : Buffer.from(buffer, 0, length);
-		}
-		allocNative(length) {
-			return Buffer.allocUnsafe(length);
-		}
-	};
-	MessageBuffer.emptyBuffer = Buffer.allocUnsafe(0);
-	var ReadableStreamWrapper = class {
-		constructor(stream) {
-			this.stream = stream;
-		}
-		onClose(listener) {
-			this.stream.on("close", listener);
-			return api_1.Disposable.create(() => this.stream.off("close", listener));
-		}
-		onError(listener) {
-			this.stream.on("error", listener);
-			return api_1.Disposable.create(() => this.stream.off("error", listener));
-		}
-		onEnd(listener) {
-			this.stream.on("end", listener);
-			return api_1.Disposable.create(() => this.stream.off("end", listener));
-		}
-		onData(listener) {
-			this.stream.on("data", listener);
-			return api_1.Disposable.create(() => this.stream.off("data", listener));
-		}
-	};
-	var WritableStreamWrapper = class {
-		constructor(stream) {
-			this.stream = stream;
-		}
-		onClose(listener) {
-			this.stream.on("close", listener);
-			return api_1.Disposable.create(() => this.stream.off("close", listener));
-		}
-		onError(listener) {
-			this.stream.on("error", listener);
-			return api_1.Disposable.create(() => this.stream.off("error", listener));
-		}
-		onEnd(listener) {
-			this.stream.on("end", listener);
-			return api_1.Disposable.create(() => this.stream.off("end", listener));
-		}
-		write(data, encoding) {
-			return new Promise((resolve, reject) => {
-				const callback = (error) => {
-					if (error === void 0 || error === null) resolve();
-					else reject(error);
-				};
-				if (typeof data === "string") this.stream.write(data, encoding, callback);
-				else this.stream.write(data, callback);
-			});
-		}
-		end() {
-			this.stream.end();
-		}
-	};
-	const _ril = Object.freeze({
-		messageBuffer: Object.freeze({ create: (encoding) => new MessageBuffer(encoding) }),
-		applicationJson: Object.freeze({
-			encoder: Object.freeze({
-				name: "application/json",
-				encode: (msg, options) => {
-					try {
-						return Promise.resolve(Buffer.from(JSON.stringify(msg, void 0, 0), options.charset));
-					} catch (err) {
-						return Promise.reject(err);
-					}
-				}
-			}),
-			decoder: Object.freeze({
-				name: "application/json",
-				decode: (buffer, options) => {
-					try {
-						if (buffer instanceof Buffer) return Promise.resolve(JSON.parse(buffer.toString(options.charset)));
-						else return Promise.resolve(JSON.parse(new util_1.TextDecoder(options.charset).decode(buffer)));
-					} catch (err) {
-						return Promise.reject(err);
-					}
-				}
-			})
-		}),
-		stream: Object.freeze({
-			asReadableStream: (stream) => new ReadableStreamWrapper(stream),
-			asWritableStream: (stream) => new WritableStreamWrapper(stream)
-		}),
-		console,
-		timer: Object.freeze({
-			setTimeout(callback, ms, ...args) {
-				const handle = setTimeout(callback, ms, ...args);
-				return { dispose: () => clearTimeout(handle) };
-			},
-			setImmediate(callback, ...args) {
-				const handle = setImmediate(callback, ...args);
-				return { dispose: () => clearImmediate(handle) };
-			},
-			setInterval(callback, ms, ...args) {
-				const handle = setInterval(callback, ms, ...args);
-				return { dispose: () => clearInterval(handle) };
-			}
-		})
-	});
-	function RIL() {
-		return _ril;
-	}
-	(function(RIL) {
-		function install() {
-			api_1.RAL.install(_ril);
-		}
-		RIL.install = install;
-	})(RIL || (RIL = {}));
-	exports.default = RIL;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/node/main.js
-var require_main = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
-		if (k2 === void 0) k2 = k;
-		var desc = Object.getOwnPropertyDescriptor(m, k);
-		if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) desc = {
-			enumerable: true,
-			get: function() {
-				return m[k];
-			}
-		};
-		Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-		if (k2 === void 0) k2 = k;
-		o[k2] = m[k];
-	}));
-	var __exportStar = exports && exports.__exportStar || function(m, exports$2) {
-		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$2, p)) __createBinding(exports$2, m, p);
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.createMessageConnection = exports.createServerSocketTransport = exports.createClientSocketTransport = exports.createServerPipeTransport = exports.createClientPipeTransport = exports.generateRandomPipeName = exports.StreamMessageWriter = exports.StreamMessageReader = exports.SocketMessageWriter = exports.SocketMessageReader = exports.PortMessageWriter = exports.PortMessageReader = exports.IPCMessageWriter = exports.IPCMessageReader = void 0;
-	const ril_1 = require_ril();
-	ril_1.default.install();
-	const path$1 = __require("path");
-	const os$1 = __require("os");
-	const crypto_1 = __require("crypto");
-	const net_1 = __require("net");
-	const api_1 = require_api();
-	__exportStar(require_api(), exports);
-	var IPCMessageReader = class extends api_1.AbstractMessageReader {
-		constructor(process) {
-			super();
-			this.process = process;
-			let eventEmitter = this.process;
-			eventEmitter.on("error", (error) => this.fireError(error));
-			eventEmitter.on("close", () => this.fireClose());
-		}
-		listen(callback) {
-			this.process.on("message", callback);
-			return api_1.Disposable.create(() => this.process.off("message", callback));
-		}
-	};
-	exports.IPCMessageReader = IPCMessageReader;
-	var IPCMessageWriter = class extends api_1.AbstractMessageWriter {
-		constructor(process) {
-			super();
-			this.process = process;
-			this.errorCount = 0;
-			const eventEmitter = this.process;
-			eventEmitter.on("error", (error) => this.fireError(error));
-			eventEmitter.on("close", () => this.fireClose);
-		}
-		write(msg) {
-			try {
-				if (typeof this.process.send === "function") this.process.send(msg, void 0, void 0, (error) => {
-					if (error) {
-						this.errorCount++;
-						this.handleError(error, msg);
-					} else this.errorCount = 0;
-				});
-				return Promise.resolve();
-			} catch (error) {
-				this.handleError(error, msg);
-				return Promise.reject(error);
-			}
-		}
-		handleError(error, msg) {
-			this.errorCount++;
-			this.fireError(error, msg, this.errorCount);
-		}
-		end() {}
-	};
-	exports.IPCMessageWriter = IPCMessageWriter;
-	var PortMessageReader = class extends api_1.AbstractMessageReader {
-		constructor(port) {
-			super();
-			this.onData = new api_1.Emitter();
-			port.on("close", () => this.fireClose);
-			port.on("error", (error) => this.fireError(error));
-			port.on("message", (message) => {
-				this.onData.fire(message);
-			});
-		}
-		listen(callback) {
-			return this.onData.event(callback);
-		}
-	};
-	exports.PortMessageReader = PortMessageReader;
-	var PortMessageWriter = class extends api_1.AbstractMessageWriter {
-		constructor(port) {
-			super();
-			this.port = port;
-			this.errorCount = 0;
-			port.on("close", () => this.fireClose());
-			port.on("error", (error) => this.fireError(error));
-		}
-		write(msg) {
-			try {
-				this.port.postMessage(msg);
-				return Promise.resolve();
-			} catch (error) {
-				this.handleError(error, msg);
-				return Promise.reject(error);
-			}
-		}
-		handleError(error, msg) {
-			this.errorCount++;
-			this.fireError(error, msg, this.errorCount);
-		}
-		end() {}
-	};
-	exports.PortMessageWriter = PortMessageWriter;
-	var SocketMessageReader = class extends api_1.ReadableStreamMessageReader {
-		constructor(socket, encoding = "utf-8") {
-			super((0, ril_1.default)().stream.asReadableStream(socket), encoding);
-		}
-	};
-	exports.SocketMessageReader = SocketMessageReader;
-	var SocketMessageWriter = class extends api_1.WriteableStreamMessageWriter {
-		constructor(socket, options) {
-			super((0, ril_1.default)().stream.asWritableStream(socket), options);
-			this.socket = socket;
-		}
-		dispose() {
-			super.dispose();
-			this.socket.destroy();
-		}
-	};
-	exports.SocketMessageWriter = SocketMessageWriter;
-	var StreamMessageReader = class extends api_1.ReadableStreamMessageReader {
-		constructor(readable, encoding) {
-			super((0, ril_1.default)().stream.asReadableStream(readable), encoding);
-		}
-	};
-	exports.StreamMessageReader = StreamMessageReader;
-	var StreamMessageWriter = class extends api_1.WriteableStreamMessageWriter {
-		constructor(writable, options) {
-			super((0, ril_1.default)().stream.asWritableStream(writable), options);
-		}
-	};
-	exports.StreamMessageWriter = StreamMessageWriter;
-	const XDG_RUNTIME_DIR = process.env["XDG_RUNTIME_DIR"];
-	const safeIpcPathLengths = new Map([["linux", 107], ["darwin", 103]]);
-	function generateRandomPipeName() {
-		const randomSuffix = (0, crypto_1.randomBytes)(21).toString("hex");
-		if (process.platform === "win32") return `\\\\.\\pipe\\vscode-jsonrpc-${randomSuffix}-sock`;
-		let result;
-		if (XDG_RUNTIME_DIR) result = path$1.join(XDG_RUNTIME_DIR, `vscode-ipc-${randomSuffix}.sock`);
-		else result = path$1.join(os$1.tmpdir(), `vscode-${randomSuffix}.sock`);
-		const limit = safeIpcPathLengths.get(process.platform);
-		if (limit !== void 0 && result.length > limit) (0, ril_1.default)().console.warn(`WARNING: IPC handle "${result}" is longer than ${limit} characters.`);
-		return result;
-	}
-	exports.generateRandomPipeName = generateRandomPipeName;
-	function createClientPipeTransport(pipeName, encoding = "utf-8") {
-		let connectResolve;
-		const connected = new Promise((resolve, _reject) => {
-			connectResolve = resolve;
-		});
-		return new Promise((resolve, reject) => {
-			let server = (0, net_1.createServer)((socket) => {
-				server.close();
-				connectResolve([new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)]);
-			});
-			server.on("error", reject);
-			server.listen(pipeName, () => {
-				server.removeListener("error", reject);
-				resolve({ onConnected: () => {
-					return connected;
-				} });
-			});
-		});
-	}
-	exports.createClientPipeTransport = createClientPipeTransport;
-	function createServerPipeTransport(pipeName, encoding = "utf-8") {
-		const socket = (0, net_1.createConnection)(pipeName);
-		return [new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)];
-	}
-	exports.createServerPipeTransport = createServerPipeTransport;
-	function createClientSocketTransport(port, encoding = "utf-8") {
-		let connectResolve;
-		const connected = new Promise((resolve, _reject) => {
-			connectResolve = resolve;
-		});
-		return new Promise((resolve, reject) => {
-			const server = (0, net_1.createServer)((socket) => {
-				server.close();
-				connectResolve([new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)]);
-			});
-			server.on("error", reject);
-			server.listen(port, "127.0.0.1", () => {
-				server.removeListener("error", reject);
-				resolve({ onConnected: () => {
-					return connected;
-				} });
-			});
-		});
-	}
-	exports.createClientSocketTransport = createClientSocketTransport;
-	function createServerSocketTransport(port, encoding = "utf-8") {
-		const socket = (0, net_1.createConnection)(port, "127.0.0.1");
-		return [new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)];
-	}
-	exports.createServerSocketTransport = createServerSocketTransport;
-	function isReadableStream(value) {
-		const candidate = value;
-		return candidate.read !== void 0 && candidate.addListener !== void 0;
-	}
-	function isWritableStream(value) {
-		const candidate = value;
-		return candidate.write !== void 0 && candidate.addListener !== void 0;
-	}
-	function createMessageConnection(input, output, logger, options) {
-		if (!logger) logger = api_1.NullLogger;
-		const reader = isReadableStream(input) ? new StreamMessageReader(input) : input;
-		const writer = isWritableStream(output) ? new StreamMessageWriter(output) : output;
-		if (api_1.ConnectionStrategy.is(options)) options = { connectionStrategy: options };
-		return (0, api_1.createMessageConnection)(reader, writer, logger, options);
-	}
-	exports.createMessageConnection = createMessageConnection;
-}));
-
-//#endregion
-//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/node.js
-var require_node = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-	module.exports = require_main();
-}));
-
-//#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/generated/rpc.js
-var import_node = require_node();
-function createServerRpc(connection) {
-	return {
-		ping: async (params) => connection.sendRequest("ping", params),
-		models: { list: async () => connection.sendRequest("models.list", {}) },
-		tools: { list: async (params) => connection.sendRequest("tools.list", params) },
-		account: { getQuota: async () => connection.sendRequest("account.getQuota", {}) }
-	};
-}
-function createSessionRpc(connection, sessionId) {
-	return {
-		model: {
-			getCurrent: async () => connection.sendRequest("session.model.getCurrent", { sessionId }),
-			switchTo: async (params) => connection.sendRequest("session.model.switchTo", {
-				sessionId,
-				...params
-			})
-		},
-		mode: {
-			get: async () => connection.sendRequest("session.mode.get", { sessionId }),
-			set: async (params) => connection.sendRequest("session.mode.set", {
-				sessionId,
-				...params
-			})
-		},
-		plan: {
-			read: async () => connection.sendRequest("session.plan.read", { sessionId }),
-			update: async (params) => connection.sendRequest("session.plan.update", {
-				sessionId,
-				...params
-			}),
-			delete: async () => connection.sendRequest("session.plan.delete", { sessionId })
-		},
-		workspace: {
-			listFiles: async () => connection.sendRequest("session.workspace.listFiles", { sessionId }),
-			readFile: async (params) => connection.sendRequest("session.workspace.readFile", {
-				sessionId,
-				...params
-			}),
-			createFile: async (params) => connection.sendRequest("session.workspace.createFile", {
-				sessionId,
-				...params
-			})
-		},
-		fleet: { start: async (params) => connection.sendRequest("session.fleet.start", {
-			sessionId,
-			...params
-		}) },
-		agent: {
-			list: async () => connection.sendRequest("session.agent.list", { sessionId }),
-			getCurrent: async () => connection.sendRequest("session.agent.getCurrent", { sessionId }),
-			select: async (params) => connection.sendRequest("session.agent.select", {
-				sessionId,
-				...params
-			}),
-			deselect: async () => connection.sendRequest("session.agent.deselect", { sessionId })
-		},
-		compaction: { compact: async () => connection.sendRequest("session.compaction.compact", { sessionId }) },
-		tools: { handlePendingToolCall: async (params) => connection.sendRequest("session.tools.handlePendingToolCall", {
-			sessionId,
-			...params
-		}) },
-		permissions: { handlePendingPermissionRequest: async (params) => connection.sendRequest("session.permissions.handlePendingPermissionRequest", {
-			sessionId,
-			...params
-		}) }
-	};
-}
-
-//#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/sdkProtocolVersion.js
-const SDK_PROTOCOL_VERSION = 3;
-function getSdkProtocolVersion() {
-	return SDK_PROTOCOL_VERSION;
-}
-
-//#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/session.js
-var CopilotSession = class {
-	/**
-	* Creates a new CopilotSession instance.
-	*
-	* @param sessionId - The unique identifier for this session
-	* @param connection - The JSON-RPC message connection to the Copilot CLI
-	* @param workspacePath - Path to the session workspace directory (when infinite sessions enabled)
-	* @internal This constructor is internal. Use {@link CopilotClient.createSession} to create sessions.
-	*/
-	constructor(sessionId, connection, _workspacePath) {
-		this.sessionId = sessionId;
-		this.connection = connection;
-		this._workspacePath = _workspacePath;
-	}
-	eventHandlers = /* @__PURE__ */ new Set();
-	typedEventHandlers = /* @__PURE__ */ new Map();
-	toolHandlers = /* @__PURE__ */ new Map();
-	permissionHandler;
-	userInputHandler;
-	hooks;
-	_rpc = null;
-	/**
-	* Typed session-scoped RPC methods.
-	*/
-	get rpc() {
-		if (!this._rpc) this._rpc = createSessionRpc(this.connection, this.sessionId);
-		return this._rpc;
-	}
-	/**
-	* Path to the session workspace directory when infinite sessions are enabled.
-	* Contains checkpoints/, plan.md, and files/ subdirectories.
-	* Undefined if infinite sessions are disabled.
-	*/
-	get workspacePath() {
-		return this._workspacePath;
-	}
-	/**
-	* Sends a message to this session and waits for the response.
-	*
-	* The message is processed asynchronously. Subscribe to events via {@link on}
-	* to receive streaming responses and other session events.
-	*
-	* @param options - The message options including the prompt and optional attachments
-	* @returns A promise that resolves with the message ID of the response
-	* @throws Error if the session has been disconnected or the connection fails
-	*
-	* @example
-	* ```typescript
-	* const messageId = await session.send({
-	*   prompt: "Explain this code",
-	*   attachments: [{ type: "file", path: "./src/index.ts" }]
-	* });
-	* ```
-	*/
-	async send(options) {
-		return (await this.connection.sendRequest("session.send", {
-			sessionId: this.sessionId,
-			prompt: options.prompt,
-			attachments: options.attachments,
-			mode: options.mode
-		})).messageId;
-	}
-	/**
-	* Sends a message to this session and waits until the session becomes idle.
-	*
-	* This is a convenience method that combines {@link send} with waiting for
-	* the `session.idle` event. Use this when you want to block until the
-	* assistant has finished processing the message.
-	*
-	* Events are still delivered to handlers registered via {@link on} while waiting.
-	*
-	* @param options - The message options including the prompt and optional attachments
-	* @param timeout - Timeout in milliseconds (default: 60000). Controls how long to wait; does not abort in-flight agent work.
-	* @returns A promise that resolves with the final assistant message when the session becomes idle,
-	*          or undefined if no assistant message was received
-	* @throws Error if the timeout is reached before the session becomes idle
-	* @throws Error if the session has been disconnected or the connection fails
-	*
-	* @example
-	* ```typescript
-	* // Send and wait for completion with default 60s timeout
-	* const response = await session.sendAndWait({ prompt: "What is 2+2?" });
-	* console.log(response?.data.content); // "4"
-	* ```
-	*/
-	async sendAndWait(options, timeout) {
-		const effectiveTimeout = timeout ?? 6e4;
-		let resolveIdle;
-		let rejectWithError;
-		const idlePromise = new Promise((resolve, reject) => {
-			resolveIdle = resolve;
-			rejectWithError = reject;
-		});
-		let lastAssistantMessage;
-		const unsubscribe = this.on((event) => {
-			if (event.type === "assistant.message") lastAssistantMessage = event;
-			else if (event.type === "session.idle") resolveIdle();
-			else if (event.type === "session.error") {
-				const error = new Error(event.data.message);
-				error.stack = event.data.stack;
-				rejectWithError(error);
-			}
-		});
-		let timeoutId;
-		try {
-			await this.send(options);
-			const timeoutPromise = new Promise((_, reject) => {
-				timeoutId = setTimeout(() => reject(/* @__PURE__ */ new Error(`Timeout after ${effectiveTimeout}ms waiting for session.idle`)), effectiveTimeout);
-			});
-			await Promise.race([idlePromise, timeoutPromise]);
-			return lastAssistantMessage;
-		} finally {
-			if (timeoutId !== void 0) clearTimeout(timeoutId);
-			unsubscribe();
-		}
-	}
-	on(eventTypeOrHandler, handler) {
-		if (typeof eventTypeOrHandler === "string" && handler) {
-			const eventType = eventTypeOrHandler;
-			if (!this.typedEventHandlers.has(eventType)) this.typedEventHandlers.set(eventType, /* @__PURE__ */ new Set());
-			const storedHandler = handler;
-			this.typedEventHandlers.get(eventType).add(storedHandler);
-			return () => {
-				const handlers = this.typedEventHandlers.get(eventType);
-				if (handlers) handlers.delete(storedHandler);
-			};
-		}
-		const wildcardHandler = eventTypeOrHandler;
-		this.eventHandlers.add(wildcardHandler);
-		return () => {
-			this.eventHandlers.delete(wildcardHandler);
-		};
-	}
-	/**
-	* Dispatches an event to all registered handlers.
-	* Also handles broadcast request events internally (external tool calls, permissions).
-	*
-	* @param event - The session event to dispatch
-	* @internal This method is for internal use by the SDK.
-	*/
-	_dispatchEvent(event) {
-		this._handleBroadcastEvent(event);
-		const typedHandlers = this.typedEventHandlers.get(event.type);
-		if (typedHandlers) for (const handler of typedHandlers) try {
-			handler(event);
-		} catch (_error) {}
-		for (const handler of this.eventHandlers) try {
-			handler(event);
-		} catch (_error) {}
-	}
-	/**
-	* Handles broadcast request events by executing local handlers and responding via RPC.
-	* Handlers are dispatched as fire-and-forget — rejections propagate as unhandled promise
-	* rejections, consistent with standard EventEmitter / event handler semantics.
-	* @internal
-	*/
-	_handleBroadcastEvent(event) {
-		if (event.type === "external_tool.requested") {
-			const { requestId, toolName } = event.data;
-			const args = event.data.arguments;
-			const toolCallId = event.data.toolCallId;
-			const handler = this.toolHandlers.get(toolName);
-			if (handler) this._executeToolAndRespond(requestId, toolName, toolCallId, args, handler);
-		} else if (event.type === "permission.requested") {
-			const { requestId, permissionRequest } = event.data;
-			if (this.permissionHandler) this._executePermissionAndRespond(requestId, permissionRequest);
-		}
-	}
-	/**
-	* Executes a tool handler and sends the result back via RPC.
-	* @internal
-	*/
-	async _executeToolAndRespond(requestId, toolName, toolCallId, args, handler) {
-		try {
-			const rawResult = await handler(args, {
-				sessionId: this.sessionId,
-				toolCallId,
-				toolName,
-				arguments: args
-			});
-			let result;
-			if (rawResult == null) result = "";
-			else if (typeof rawResult === "string") result = rawResult;
-			else result = JSON.stringify(rawResult);
-			await this.rpc.tools.handlePendingToolCall({
-				requestId,
-				result
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			try {
-				await this.rpc.tools.handlePendingToolCall({
-					requestId,
-					error: message
-				});
-			} catch (rpcError) {
-				if (!(rpcError instanceof import_node.ConnectionError || rpcError instanceof import_node.ResponseError)) throw rpcError;
-			}
-		}
-	}
-	/**
-	* Executes a permission handler and sends the result back via RPC.
-	* @internal
-	*/
-	async _executePermissionAndRespond(requestId, permissionRequest) {
-		try {
-			const result = await this.permissionHandler(permissionRequest, { sessionId: this.sessionId });
-			await this.rpc.permissions.handlePendingPermissionRequest({
-				requestId,
-				result
-			});
-		} catch (_error) {
-			try {
-				await this.rpc.permissions.handlePendingPermissionRequest({
-					requestId,
-					result: { kind: "denied-no-approval-rule-and-could-not-request-from-user" }
-				});
-			} catch (rpcError) {
-				if (!(rpcError instanceof import_node.ConnectionError || rpcError instanceof import_node.ResponseError)) throw rpcError;
-			}
-		}
-	}
-	/**
-	* Registers custom tool handlers for this session.
-	*
-	* Tools allow the assistant to execute custom functions. When the assistant
-	* invokes a tool, the corresponding handler is called with the tool arguments.
-	*
-	* @param tools - An array of tool definitions with their handlers, or undefined to clear all tools
-	* @internal This method is typically called internally when creating a session with tools.
-	*/
-	registerTools(tools) {
-		this.toolHandlers.clear();
-		if (!tools) return;
-		for (const tool of tools) this.toolHandlers.set(tool.name, tool.handler);
-	}
-	/**
-	* Retrieves a registered tool handler by name.
-	*
-	* @param name - The name of the tool to retrieve
-	* @returns The tool handler if found, or undefined
-	* @internal This method is for internal use by the SDK.
-	*/
-	getToolHandler(name) {
-		return this.toolHandlers.get(name);
-	}
-	/**
-	* Registers a handler for permission requests.
-	*
-	* When the assistant needs permission to perform certain actions (e.g., file operations),
-	* this handler is called to approve or deny the request.
-	*
-	* @param handler - The permission handler function, or undefined to remove the handler
-	* @internal This method is typically called internally when creating a session.
-	*/
-	registerPermissionHandler(handler) {
-		this.permissionHandler = handler;
-	}
-	/**
-	* Registers a user input handler for ask_user requests.
-	*
-	* When the agent needs input from the user (via ask_user tool),
-	* this handler is called to provide the response.
-	*
-	* @param handler - The user input handler function, or undefined to remove the handler
-	* @internal This method is typically called internally when creating a session.
-	*/
-	registerUserInputHandler(handler) {
-		this.userInputHandler = handler;
-	}
-	/**
-	* Registers hook handlers for session lifecycle events.
-	*
-	* Hooks allow custom logic to be executed at various points during
-	* the session lifecycle (before/after tool use, session start/end, etc.).
-	*
-	* @param hooks - The hook handlers object, or undefined to remove all hooks
-	* @internal This method is typically called internally when creating a session.
-	*/
-	registerHooks(hooks) {
-		this.hooks = hooks;
-	}
-	/**
-	* Handles a permission request in the v2 protocol format (synchronous RPC).
-	* Used as a back-compat adapter when connected to a v2 server.
-	*
-	* @param request - The permission request data from the CLI
-	* @returns A promise that resolves with the permission decision
-	* @internal This method is for internal use by the SDK.
-	*/
-	async _handlePermissionRequestV2(request) {
-		if (!this.permissionHandler) return { kind: "denied-no-approval-rule-and-could-not-request-from-user" };
-		try {
-			return await this.permissionHandler(request, { sessionId: this.sessionId });
-		} catch (_error) {
-			return { kind: "denied-no-approval-rule-and-could-not-request-from-user" };
-		}
-	}
-	/**
-	* Handles a user input request from the Copilot CLI.
-	*
-	* @param request - The user input request data from the CLI
-	* @returns A promise that resolves with the user's response
-	* @internal This method is for internal use by the SDK.
-	*/
-	async _handleUserInputRequest(request) {
-		if (!this.userInputHandler) throw new Error("User input requested but no handler registered");
-		try {
-			return await this.userInputHandler(request, { sessionId: this.sessionId });
-		} catch (error) {
-			throw error;
-		}
-	}
-	/**
-	* Handles a hooks invocation from the Copilot CLI.
-	*
-	* @param hookType - The type of hook being invoked
-	* @param input - The input data for the hook
-	* @returns A promise that resolves with the hook output, or undefined
-	* @internal This method is for internal use by the SDK.
-	*/
-	async _handleHooksInvoke(hookType, input) {
-		if (!this.hooks) return;
-		const handler = {
-			preToolUse: this.hooks.onPreToolUse,
-			postToolUse: this.hooks.onPostToolUse,
-			userPromptSubmitted: this.hooks.onUserPromptSubmitted,
-			sessionStart: this.hooks.onSessionStart,
-			sessionEnd: this.hooks.onSessionEnd,
-			errorOccurred: this.hooks.onErrorOccurred
-		}[hookType];
-		if (!handler) return;
-		try {
-			return await handler(input, { sessionId: this.sessionId });
-		} catch (_error) {
-			return;
-		}
-	}
-	/**
-	* Retrieves all events and messages from this session's history.
-	*
-	* This returns the complete conversation history including user messages,
-	* assistant responses, tool executions, and other session events.
-	*
-	* @returns A promise that resolves with an array of all session events
-	* @throws Error if the session has been disconnected or the connection fails
-	*
-	* @example
-	* ```typescript
-	* const events = await session.getMessages();
-	* for (const event of events) {
-	*   if (event.type === "assistant.message") {
-	*     console.log("Assistant:", event.data.content);
-	*   }
-	* }
-	* ```
-	*/
-	async getMessages() {
-		return (await this.connection.sendRequest("session.getMessages", { sessionId: this.sessionId })).events;
-	}
-	/**
-	* Disconnects this session and releases all in-memory resources (event handlers,
-	* tool handlers, permission handlers).
-	*
-	* Session state on disk (conversation history, planning state, artifacts) is
-	* preserved, so the conversation can be resumed later by calling
-	* {@link CopilotClient.resumeSession} with the session ID. To permanently
-	* remove all session data including files on disk, use
-	* {@link CopilotClient.deleteSession} instead.
-	*
-	* After calling this method, the session object can no longer be used.
-	*
-	* @returns A promise that resolves when the session is disconnected
-	* @throws Error if the connection fails
-	*
-	* @example
-	* ```typescript
-	* // Clean up when done — session can still be resumed later
-	* await session.disconnect();
-	* ```
-	*/
-	async disconnect() {
-		await this.connection.sendRequest("session.destroy", { sessionId: this.sessionId });
-		this.eventHandlers.clear();
-		this.typedEventHandlers.clear();
-		this.toolHandlers.clear();
-		this.permissionHandler = void 0;
-	}
-	/**
-	* @deprecated Use {@link disconnect} instead. This method will be removed in a future release.
-	*
-	* Disconnects this session and releases all in-memory resources.
-	* Session data on disk is preserved for later resumption.
-	*
-	* @returns A promise that resolves when the session is disconnected
-	* @throws Error if the connection fails
-	*/
-	async destroy() {
-		return this.disconnect();
-	}
-	/** Enables `await using session = ...` syntax for automatic cleanup. */
-	async [Symbol.asyncDispose]() {
-		return this.disconnect();
-	}
-	/**
-	* Aborts the currently processing message in this session.
-	*
-	* Use this to cancel a long-running request. The session remains valid
-	* and can continue to be used for new messages.
-	*
-	* @returns A promise that resolves when the abort request is acknowledged
-	* @throws Error if the session has been disconnected or the connection fails
-	*
-	* @example
-	* ```typescript
-	* // Start a long-running request
-	* const messagePromise = session.send({ prompt: "Write a very long story..." });
-	*
-	* // Abort after 5 seconds
-	* setTimeout(async () => {
-	*   await session.abort();
-	* }, 5000);
-	* ```
-	*/
-	async abort() {
-		await this.connection.sendRequest("session.abort", { sessionId: this.sessionId });
-	}
-	/**
-	* Change the model for this session.
-	* The new model takes effect for the next message. Conversation history is preserved.
-	*
-	* @param model - Model ID to switch to
-	*
-	* @example
-	* ```typescript
-	* await session.setModel("gpt-4.1");
-	* ```
-	*/
-	async setModel(model) {
-		await this.rpc.model.switchTo({ modelId: model });
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/client.js
-const MIN_PROTOCOL_VERSION = 2;
-function isZodSchema(value) {
-	return value != null && typeof value === "object" && "toJSONSchema" in value && typeof value.toJSONSchema === "function";
-}
-function toJsonSchema$1(parameters) {
-	if (!parameters) return void 0;
-	if (isZodSchema(parameters)) return parameters.toJSONSchema();
-	return parameters;
-}
-function getNodeExecPath() {
-	if (process.versions.bun) return "node";
-	return process.execPath;
-}
-function getBundledCliPath() {
-	return join(dirname(dirname(fileURLToPath(import.meta.resolve("@github/copilot/sdk")))), "index.js");
-}
-var CopilotClient = class {
-	cliProcess = null;
-	connection = null;
-	socket = null;
-	actualPort = null;
-	actualHost = "localhost";
-	state = "disconnected";
-	sessions = /* @__PURE__ */ new Map();
-	stderrBuffer = "";
-	options;
-	isExternalServer = false;
-	forceStopping = false;
-	modelsCache = null;
-	modelsCacheLock = Promise.resolve();
-	sessionLifecycleHandlers = /* @__PURE__ */ new Set();
-	typedLifecycleHandlers = /* @__PURE__ */ new Map();
-	_rpc = null;
-	processExitPromise = null;
-	negotiatedProtocolVersion = null;
-	/**
-	* Typed server-scoped RPC methods.
-	* @throws Error if the client is not connected
-	*/
-	get rpc() {
-		if (!this.connection) throw new Error("Client is not connected. Call start() first.");
-		if (!this._rpc) this._rpc = createServerRpc(this.connection);
-		return this._rpc;
-	}
-	/**
-	* Creates a new CopilotClient instance.
-	*
-	* @param options - Configuration options for the client
-	* @throws Error if mutually exclusive options are provided (e.g., cliUrl with useStdio or cliPath)
-	*
-	* @example
-	* ```typescript
-	* // Default options - spawns CLI server using stdio
-	* const client = new CopilotClient();
-	*
-	* // Connect to an existing server
-	* const client = new CopilotClient({ cliUrl: "localhost:3000" });
-	*
-	* // Custom CLI path with specific log level
-	* const client = new CopilotClient({
-	*   cliPath: "/usr/local/bin/copilot",
-	*   logLevel: "debug"
-	* });
-	* ```
-	*/
-	constructor(options = {}) {
-		if (options.cliUrl && (options.useStdio === true || options.cliPath)) throw new Error("cliUrl is mutually exclusive with useStdio and cliPath");
-		if (options.isChildProcess && (options.cliUrl || options.useStdio === false)) throw new Error("isChildProcess must be used in conjunction with useStdio and not with cliUrl");
-		if (options.cliUrl && (options.githubToken || options.useLoggedInUser !== void 0)) throw new Error("githubToken and useLoggedInUser cannot be used with cliUrl (external server manages its own auth)");
-		if (options.cliUrl) {
-			const { host, port } = this.parseCliUrl(options.cliUrl);
-			this.actualHost = host;
-			this.actualPort = port;
-			this.isExternalServer = true;
-		}
-		if (options.isChildProcess) this.isExternalServer = true;
-		this.options = {
-			cliPath: options.cliPath || getBundledCliPath(),
-			cliArgs: options.cliArgs ?? [],
-			cwd: options.cwd ?? process.cwd(),
-			port: options.port || 0,
-			useStdio: options.cliUrl ? false : options.useStdio ?? true,
-			isChildProcess: options.isChildProcess ?? false,
-			cliUrl: options.cliUrl,
-			logLevel: options.logLevel || "debug",
-			autoStart: options.autoStart ?? true,
-			autoRestart: options.autoRestart ?? true,
-			env: options.env ?? process.env,
-			githubToken: options.githubToken,
-			useLoggedInUser: options.useLoggedInUser ?? (options.githubToken ? false : true)
-		};
-	}
-	/**
-	* Parse CLI URL into host and port
-	* Supports formats: "host:port", "http://host:port", "https://host:port", or just "port"
-	*/
-	parseCliUrl(url) {
-		let cleanUrl = url.replace(/^https?:\/\//, "");
-		if (/^\d+$/.test(cleanUrl)) return {
-			host: "localhost",
-			port: parseInt(cleanUrl, 10)
-		};
-		const parts = cleanUrl.split(":");
-		if (parts.length !== 2) throw new Error(`Invalid cliUrl format: ${url}. Expected "host:port", "http://host:port", or "port"`);
-		const host = parts[0] || "localhost";
-		const port = parseInt(parts[1], 10);
-		if (isNaN(port) || port <= 0 || port > 65535) throw new Error(`Invalid port in cliUrl: ${url}`);
-		return {
-			host,
-			port
-		};
-	}
-	/**
-	* Starts the CLI server and establishes a connection.
-	*
-	* If connecting to an external server (via cliUrl), only establishes the connection.
-	* Otherwise, spawns the CLI server process and then connects.
-	*
-	* This method is called automatically when creating a session if `autoStart` is true (default).
-	*
-	* @returns A promise that resolves when the connection is established
-	* @throws Error if the server fails to start or the connection fails
-	*
-	* @example
-	* ```typescript
-	* const client = new CopilotClient({ autoStart: false });
-	* await client.start();
-	* // Now ready to create sessions
-	* ```
-	*/
-	async start() {
-		if (this.state === "connected") return;
-		this.state = "connecting";
-		try {
-			if (!this.isExternalServer) await this.startCLIServer();
-			await this.connectToServer();
-			await this.verifyProtocolVersion();
-			this.state = "connected";
-		} catch (error) {
-			this.state = "error";
-			throw error;
-		}
-	}
-	/**
-	* Stops the CLI server and closes all active sessions.
-	*
-	* This method performs graceful cleanup:
-	* 1. Closes all active sessions (releases in-memory resources)
-	* 2. Closes the JSON-RPC connection
-	* 3. Terminates the CLI server process (if spawned by this client)
-	*
-	* Note: session data on disk is preserved, so sessions can be resumed later.
-	* To permanently remove session data before stopping, call
-	* {@link deleteSession} for each session first.
-	*
-	* @returns A promise that resolves with an array of errors encountered during cleanup.
-	*          An empty array indicates all cleanup succeeded.
-	*
-	* @example
-	* ```typescript
-	* const errors = await client.stop();
-	* if (errors.length > 0) {
-	*   console.error("Cleanup errors:", errors);
-	* }
-	* ```
-	*/
-	async stop() {
-		const errors = [];
-		for (const session of this.sessions.values()) {
-			const sessionId = session.sessionId;
-			let lastError = null;
-			for (let attempt = 1; attempt <= 3; attempt++) try {
-				await session.disconnect();
-				lastError = null;
-				break;
-			} catch (error) {
-				lastError = error instanceof Error ? error : new Error(String(error));
-				if (attempt < 3) {
-					const delay = 100 * Math.pow(2, attempt - 1);
-					await new Promise((resolve) => setTimeout(resolve, delay));
-				}
-			}
-			if (lastError) errors.push(/* @__PURE__ */ new Error(`Failed to disconnect session ${sessionId} after 3 attempts: ${lastError.message}`));
-		}
-		this.sessions.clear();
-		if (this.connection) {
-			try {
-				this.connection.dispose();
-			} catch (error) {
-				errors.push(/* @__PURE__ */ new Error(`Failed to dispose connection: ${error instanceof Error ? error.message : String(error)}`));
-			}
-			this.connection = null;
-			this._rpc = null;
-		}
-		this.modelsCache = null;
-		if (this.socket) {
-			try {
-				this.socket.end();
-			} catch (error) {
-				errors.push(/* @__PURE__ */ new Error(`Failed to close socket: ${error instanceof Error ? error.message : String(error)}`));
-			}
-			this.socket = null;
-		}
-		if (this.cliProcess && !this.isExternalServer) {
-			try {
-				this.cliProcess.kill();
-			} catch (error) {
-				errors.push(/* @__PURE__ */ new Error(`Failed to kill CLI process: ${error instanceof Error ? error.message : String(error)}`));
-			}
-			this.cliProcess = null;
-		}
-		this.state = "disconnected";
-		this.actualPort = null;
-		this.stderrBuffer = "";
-		this.processExitPromise = null;
-		return errors;
-	}
-	/**
-	* Forcefully stops the CLI server without graceful cleanup.
-	*
-	* Use this when {@link stop} fails or takes too long. This method:
-	* - Clears all sessions immediately without destroying them
-	* - Force closes the connection
-	* - Sends SIGKILL to the CLI process (if spawned by this client)
-	*
-	* @returns A promise that resolves when the force stop is complete
-	*
-	* @example
-	* ```typescript
-	* // If normal stop hangs, force stop
-	* const stopPromise = client.stop();
-	* const timeout = new Promise((_, reject) =>
-	*   setTimeout(() => reject(new Error("Timeout")), 5000)
-	* );
-	*
-	* try {
-	*   await Promise.race([stopPromise, timeout]);
-	* } catch {
-	*   await client.forceStop();
-	* }
-	* ```
-	*/
-	async forceStop() {
-		this.forceStopping = true;
-		this.sessions.clear();
-		if (this.connection) {
-			try {
-				this.connection.dispose();
-			} catch {}
-			this.connection = null;
-			this._rpc = null;
-		}
-		this.modelsCache = null;
-		if (this.socket) {
-			try {
-				this.socket.destroy();
-			} catch {}
-			this.socket = null;
-		}
-		if (this.cliProcess && !this.isExternalServer) {
-			try {
-				this.cliProcess.kill("SIGKILL");
-			} catch {}
-			this.cliProcess = null;
-		}
-		this.state = "disconnected";
-		this.actualPort = null;
-		this.stderrBuffer = "";
-		this.processExitPromise = null;
-	}
-	/**
-	* Creates a new conversation session with the Copilot CLI.
-	*
-	* Sessions maintain conversation state, handle events, and manage tool execution.
-	* If the client is not connected and `autoStart` is enabled, this will automatically
-	* start the connection.
-	*
-	* @param config - Optional configuration for the session
-	* @returns A promise that resolves with the created session
-	* @throws Error if the client is not connected and autoStart is disabled
-	*
-	* @example
-	* ```typescript
-	* // Basic session
-	* const session = await client.createSession({ onPermissionRequest: approveAll });
-	*
-	* // Session with model and tools
-	* const session = await client.createSession({
-	*   onPermissionRequest: approveAll,
-	*   model: "gpt-4",
-	*   tools: [{
-	*     name: "get_weather",
-	*     description: "Get weather for a location",
-	*     parameters: { type: "object", properties: { location: { type: "string" } } },
-	*     handler: async (args) => ({ temperature: 72 })
-	*   }]
-	* });
-	* ```
-	*/
-	async createSession(config) {
-		if (!config?.onPermissionRequest) throw new Error("An onPermissionRequest handler is required when creating a session. For example, to allow all permissions, use { onPermissionRequest: approveAll }.");
-		if (!this.connection) if (this.options.autoStart) await this.start();
-		else throw new Error("Client not connected. Call start() first.");
-		const { sessionId, workspacePath } = await this.connection.sendRequest("session.create", {
-			model: config.model,
-			sessionId: config.sessionId,
-			clientName: config.clientName,
-			reasoningEffort: config.reasoningEffort,
-			tools: config.tools?.map((tool) => ({
-				name: tool.name,
-				description: tool.description,
-				parameters: toJsonSchema$1(tool.parameters),
-				overridesBuiltInTool: tool.overridesBuiltInTool
-			})),
-			systemMessage: config.systemMessage,
-			availableTools: config.availableTools,
-			excludedTools: config.excludedTools,
-			provider: config.provider,
-			requestPermission: true,
-			requestUserInput: !!config.onUserInputRequest,
-			hooks: !!(config.hooks && Object.values(config.hooks).some(Boolean)),
-			workingDirectory: config.workingDirectory,
-			streaming: config.streaming,
-			mcpServers: config.mcpServers,
-			envValueMode: "direct",
-			customAgents: config.customAgents,
-			configDir: config.configDir,
-			skillDirectories: config.skillDirectories,
-			disabledSkills: config.disabledSkills,
-			infiniteSessions: config.infiniteSessions
-		});
-		const session = new CopilotSession(sessionId, this.connection, workspacePath);
-		session.registerTools(config.tools);
-		session.registerPermissionHandler(config.onPermissionRequest);
-		if (config.onUserInputRequest) session.registerUserInputHandler(config.onUserInputRequest);
-		if (config.hooks) session.registerHooks(config.hooks);
-		this.sessions.set(sessionId, session);
-		return session;
-	}
-	/**
-	* Resumes an existing conversation session by its ID.
-	*
-	* This allows you to continue a previous conversation, maintaining all
-	* conversation history. The session must have been previously created
-	* and not deleted.
-	*
-	* @param sessionId - The ID of the session to resume
-	* @param config - Optional configuration for the resumed session
-	* @returns A promise that resolves with the resumed session
-	* @throws Error if the session does not exist or the client is not connected
-	*
-	* @example
-	* ```typescript
-	* // Resume a previous session
-	* const session = await client.resumeSession("session-123", { onPermissionRequest: approveAll });
-	*
-	* // Resume with new tools
-	* const session = await client.resumeSession("session-123", {
-	*   onPermissionRequest: approveAll,
-	*   tools: [myNewTool]
-	* });
-	* ```
-	*/
-	async resumeSession(sessionId, config) {
-		if (!config?.onPermissionRequest) throw new Error("An onPermissionRequest handler is required when resuming a session. For example, to allow all permissions, use { onPermissionRequest: approveAll }.");
-		if (!this.connection) if (this.options.autoStart) await this.start();
-		else throw new Error("Client not connected. Call start() first.");
-		const { sessionId: resumedSessionId, workspacePath } = await this.connection.sendRequest("session.resume", {
-			sessionId,
-			clientName: config.clientName,
-			model: config.model,
-			reasoningEffort: config.reasoningEffort,
-			systemMessage: config.systemMessage,
-			availableTools: config.availableTools,
-			excludedTools: config.excludedTools,
-			tools: config.tools?.map((tool) => ({
-				name: tool.name,
-				description: tool.description,
-				parameters: toJsonSchema$1(tool.parameters),
-				overridesBuiltInTool: tool.overridesBuiltInTool
-			})),
-			provider: config.provider,
-			requestPermission: true,
-			requestUserInput: !!config.onUserInputRequest,
-			hooks: !!(config.hooks && Object.values(config.hooks).some(Boolean)),
-			workingDirectory: config.workingDirectory,
-			configDir: config.configDir,
-			streaming: config.streaming,
-			mcpServers: config.mcpServers,
-			envValueMode: "direct",
-			customAgents: config.customAgents,
-			skillDirectories: config.skillDirectories,
-			disabledSkills: config.disabledSkills,
-			infiniteSessions: config.infiniteSessions,
-			disableResume: config.disableResume
-		});
-		const session = new CopilotSession(resumedSessionId, this.connection, workspacePath);
-		session.registerTools(config.tools);
-		session.registerPermissionHandler(config.onPermissionRequest);
-		if (config.onUserInputRequest) session.registerUserInputHandler(config.onUserInputRequest);
-		if (config.hooks) session.registerHooks(config.hooks);
-		this.sessions.set(resumedSessionId, session);
-		return session;
-	}
-	/**
-	* Gets the current connection state of the client.
-	*
-	* @returns The current connection state: "disconnected", "connecting", "connected", or "error"
-	*
-	* @example
-	* ```typescript
-	* if (client.getState() === "connected") {
-	*   const session = await client.createSession({ onPermissionRequest: approveAll });
-	* }
-	* ```
-	*/
-	getState() {
-		return this.state;
-	}
-	/**
-	* Sends a ping request to the server to verify connectivity.
-	*
-	* @param message - Optional message to include in the ping
-	* @returns A promise that resolves with the ping response containing the message and timestamp
-	* @throws Error if the client is not connected
-	*
-	* @example
-	* ```typescript
-	* const response = await client.ping("health check");
-	* console.log(`Server responded at ${new Date(response.timestamp)}`);
-	* ```
-	*/
-	async ping(message) {
-		if (!this.connection) throw new Error("Client not connected");
-		return await this.connection.sendRequest("ping", { message });
-	}
-	/**
-	* Get CLI status including version and protocol information
-	*/
-	async getStatus() {
-		if (!this.connection) throw new Error("Client not connected");
-		return await this.connection.sendRequest("status.get", {});
-	}
-	/**
-	* Get current authentication status
-	*/
-	async getAuthStatus() {
-		if (!this.connection) throw new Error("Client not connected");
-		return await this.connection.sendRequest("auth.getStatus", {});
-	}
-	/**
-	* List available models with their metadata.
-	*
-	* Results are cached after the first successful call to avoid rate limiting.
-	* The cache is cleared when the client disconnects.
-	*
-	* @throws Error if not authenticated
-	*/
-	async listModels() {
-		if (!this.connection) throw new Error("Client not connected");
-		await this.modelsCacheLock;
-		let resolveLock;
-		this.modelsCacheLock = new Promise((resolve) => {
-			resolveLock = resolve;
-		});
-		try {
-			if (this.modelsCache !== null) return [...this.modelsCache];
-			const models = (await this.connection.sendRequest("models.list", {})).models;
-			this.modelsCache = models;
-			return [...models];
-		} finally {
-			resolveLock();
-		}
-	}
-	/**
-	* Verify that the server's protocol version is within the supported range
-	* and store the negotiated version.
-	*/
-	async verifyProtocolVersion() {
-		const maxVersion = getSdkProtocolVersion();
-		let pingResult;
-		if (this.processExitPromise) pingResult = await Promise.race([this.ping(), this.processExitPromise]);
-		else pingResult = await this.ping();
-		const serverVersion = pingResult.protocolVersion;
-		if (serverVersion === void 0) throw new Error(`SDK protocol version mismatch: SDK supports versions ${MIN_PROTOCOL_VERSION}-${maxVersion}, but server does not report a protocol version. Please update your server to ensure compatibility.`);
-		if (serverVersion < MIN_PROTOCOL_VERSION || serverVersion > maxVersion) throw new Error(`SDK protocol version mismatch: SDK supports versions ${MIN_PROTOCOL_VERSION}-${maxVersion}, but server reports version ${serverVersion}. Please update your SDK or server to ensure compatibility.`);
-		this.negotiatedProtocolVersion = serverVersion;
-	}
-	/**
-	* Gets the ID of the most recently updated session.
-	*
-	* This is useful for resuming the last conversation when the session ID
-	* was not stored.
-	*
-	* @returns A promise that resolves with the session ID, or undefined if no sessions exist
-	* @throws Error if the client is not connected
-	*
-	* @example
-	* ```typescript
-	* const lastId = await client.getLastSessionId();
-	* if (lastId) {
-	*   const session = await client.resumeSession(lastId, { onPermissionRequest: approveAll });
-	* }
-	* ```
-	*/
-	async getLastSessionId() {
-		if (!this.connection) throw new Error("Client not connected");
-		return (await this.connection.sendRequest("session.getLastId", {})).sessionId;
-	}
-	/**
-	* Permanently deletes a session and all its data from disk, including
-	* conversation history, planning state, and artifacts.
-	*
-	* Unlike {@link CopilotSession.disconnect}, which only releases in-memory
-	* resources and preserves session data for later resumption, this method
-	* is irreversible. The session cannot be resumed after deletion.
-	*
-	* @param sessionId - The ID of the session to delete
-	* @returns A promise that resolves when the session is deleted
-	* @throws Error if the session does not exist or deletion fails
-	*
-	* @example
-	* ```typescript
-	* await client.deleteSession("session-123");
-	* ```
-	*/
-	async deleteSession(sessionId) {
-		if (!this.connection) throw new Error("Client not connected");
-		const { success, error } = await this.connection.sendRequest("session.delete", { sessionId });
-		if (!success) throw new Error(`Failed to delete session ${sessionId}: ${error || "Unknown error"}`);
-		this.sessions.delete(sessionId);
-	}
-	/**
-	* List all available sessions.
-	*
-	* @param filter - Optional filter to limit returned sessions by context fields
-	*
-	* @example
-	* // List all sessions
-	* const sessions = await client.listSessions();
-	*
-	* @example
-	* // List sessions for a specific repository
-	* const sessions = await client.listSessions({ repository: "owner/repo" });
-	*/
-	async listSessions(filter) {
-		if (!this.connection) throw new Error("Client not connected");
-		const { sessions } = await this.connection.sendRequest("session.list", { filter });
-		return sessions.map((s) => ({
-			sessionId: s.sessionId,
-			startTime: new Date(s.startTime),
-			modifiedTime: new Date(s.modifiedTime),
-			summary: s.summary,
-			isRemote: s.isRemote,
-			context: s.context
-		}));
-	}
-	/**
-	* Gets the foreground session ID in TUI+server mode.
-	*
-	* This returns the ID of the session currently displayed in the TUI.
-	* Only available when connecting to a server running in TUI+server mode (--ui-server).
-	*
-	* @returns A promise that resolves with the foreground session ID, or undefined if none
-	* @throws Error if the client is not connected
-	*
-	* @example
-	* ```typescript
-	* const sessionId = await client.getForegroundSessionId();
-	* if (sessionId) {
-	*   console.log(`TUI is displaying session: ${sessionId}`);
-	* }
-	* ```
-	*/
-	async getForegroundSessionId() {
-		if (!this.connection) throw new Error("Client not connected");
-		return (await this.connection.sendRequest("session.getForeground", {})).sessionId;
-	}
-	/**
-	* Sets the foreground session in TUI+server mode.
-	*
-	* This requests the TUI to switch to displaying the specified session.
-	* Only available when connecting to a server running in TUI+server mode (--ui-server).
-	*
-	* @param sessionId - The ID of the session to display in the TUI
-	* @returns A promise that resolves when the session is switched
-	* @throws Error if the client is not connected or if the operation fails
-	*
-	* @example
-	* ```typescript
-	* // Switch the TUI to display a specific session
-	* await client.setForegroundSessionId("session-123");
-	* ```
-	*/
-	async setForegroundSessionId(sessionId) {
-		if (!this.connection) throw new Error("Client not connected");
-		const result = await this.connection.sendRequest("session.setForeground", { sessionId });
-		if (!result.success) throw new Error(result.error || "Failed to set foreground session");
-	}
-	on(eventTypeOrHandler, handler) {
-		if (typeof eventTypeOrHandler === "string" && handler) {
-			const eventType = eventTypeOrHandler;
-			if (!this.typedLifecycleHandlers.has(eventType)) this.typedLifecycleHandlers.set(eventType, /* @__PURE__ */ new Set());
-			const storedHandler = handler;
-			this.typedLifecycleHandlers.get(eventType).add(storedHandler);
-			return () => {
-				const handlers = this.typedLifecycleHandlers.get(eventType);
-				if (handlers) handlers.delete(storedHandler);
-			};
-		}
-		const wildcardHandler = eventTypeOrHandler;
-		this.sessionLifecycleHandlers.add(wildcardHandler);
-		return () => {
-			this.sessionLifecycleHandlers.delete(wildcardHandler);
-		};
-	}
-	/**
-	* Start the CLI server process
-	*/
-	async startCLIServer() {
-		return new Promise((resolve, reject) => {
-			this.stderrBuffer = "";
-			const args = [
-				...this.options.cliArgs,
-				"--headless",
-				"--no-auto-update",
-				"--log-level",
-				this.options.logLevel
-			];
-			if (this.options.useStdio) args.push("--stdio");
-			else if (this.options.port > 0) args.push("--port", this.options.port.toString());
-			if (this.options.githubToken) args.push("--auth-token-env", "COPILOT_SDK_AUTH_TOKEN");
-			if (!this.options.useLoggedInUser) args.push("--no-auto-login");
-			const envWithoutNodeDebug = { ...this.options.env };
-			delete envWithoutNodeDebug.NODE_DEBUG;
-			if (this.options.githubToken) envWithoutNodeDebug.COPILOT_SDK_AUTH_TOKEN = this.options.githubToken;
-			if (!existsSync$1(this.options.cliPath)) throw new Error(`Copilot CLI not found at ${this.options.cliPath}. Ensure @github/copilot is installed.`);
-			const stdioConfig = this.options.useStdio ? [
-				"pipe",
-				"pipe",
-				"pipe"
-			] : [
-				"ignore",
-				"pipe",
-				"pipe"
-			];
-			if (this.options.cliPath.endsWith(".js")) this.cliProcess = spawn(getNodeExecPath(), [this.options.cliPath, ...args], {
-				stdio: stdioConfig,
-				cwd: this.options.cwd,
-				env: envWithoutNodeDebug,
-				windowsHide: true
-			});
-			else this.cliProcess = spawn(this.options.cliPath, args, {
-				stdio: stdioConfig,
-				cwd: this.options.cwd,
-				env: envWithoutNodeDebug,
-				windowsHide: true
-			});
-			let stdout = "";
-			let resolved = false;
-			if (this.options.useStdio) {
-				resolved = true;
-				resolve();
-			} else this.cliProcess.stdout?.on("data", (data) => {
-				stdout += data.toString();
-				const match = stdout.match(/listening on port (\d+)/i);
-				if (match && !resolved) {
-					this.actualPort = parseInt(match[1], 10);
-					resolved = true;
-					resolve();
-				}
-			});
-			this.cliProcess.stderr?.on("data", (data) => {
-				this.stderrBuffer += data.toString();
-				const lines = data.toString().split("\n");
-				for (const line of lines) if (line.trim()) process.stderr.write(`[CLI subprocess] ${line}
-`);
-			});
-			this.cliProcess.on("error", (error) => {
-				if (!resolved) {
-					resolved = true;
-					const stderrOutput = this.stderrBuffer.trim();
-					if (stderrOutput) reject(/* @__PURE__ */ new Error(`Failed to start CLI server: ${error.message}
-stderr: ${stderrOutput}`));
-					else reject(/* @__PURE__ */ new Error(`Failed to start CLI server: ${error.message}`));
-				}
-			});
-			this.processExitPromise = new Promise((_, rejectProcessExit) => {
-				this.cliProcess.on("exit", (code) => {
-					setTimeout(() => {
-						const stderrOutput = this.stderrBuffer.trim();
-						if (stderrOutput) rejectProcessExit(/* @__PURE__ */ new Error(`CLI server exited with code ${code}
-stderr: ${stderrOutput}`));
-						else rejectProcessExit(/* @__PURE__ */ new Error(`CLI server exited unexpectedly with code ${code}`));
-					}, 50);
-				});
-			});
-			this.processExitPromise.catch(() => {});
-			this.cliProcess.on("exit", (code) => {
-				if (!resolved) {
-					resolved = true;
-					const stderrOutput = this.stderrBuffer.trim();
-					if (stderrOutput) reject(/* @__PURE__ */ new Error(`CLI server exited with code ${code}
-stderr: ${stderrOutput}`));
-					else reject(/* @__PURE__ */ new Error(`CLI server exited with code ${code}`));
-				} else if (this.options.autoRestart && this.state === "connected") this.reconnect();
-			});
-			setTimeout(() => {
-				if (!resolved) {
-					resolved = true;
-					reject(/* @__PURE__ */ new Error("Timeout waiting for CLI server to start"));
-				}
-			}, 1e4);
-		});
-	}
-	/**
-	* Connect to the CLI server (via socket or stdio)
-	*/
-	async connectToServer() {
-		if (this.options.isChildProcess) return this.connectToParentProcessViaStdio();
-		else if (this.options.useStdio) return this.connectToChildProcessViaStdio();
-		else return this.connectViaTcp();
-	}
-	/**
-	* Connect to child via stdio pipes
-	*/
-	async connectToChildProcessViaStdio() {
-		if (!this.cliProcess) throw new Error("CLI process not started");
-		this.cliProcess.stdin?.on("error", (err) => {
-			if (!this.forceStopping) throw err;
-		});
-		this.connection = (0, import_node.createMessageConnection)(new import_node.StreamMessageReader(this.cliProcess.stdout), new import_node.StreamMessageWriter(this.cliProcess.stdin));
-		this.attachConnectionHandlers();
-		this.connection.listen();
-	}
-	/**
-	* Connect to parent via stdio pipes
-	*/
-	async connectToParentProcessViaStdio() {
-		if (this.cliProcess) throw new Error("CLI child process was unexpectedly started in parent process mode");
-		this.connection = (0, import_node.createMessageConnection)(new import_node.StreamMessageReader(process.stdin), new import_node.StreamMessageWriter(process.stdout));
-		this.attachConnectionHandlers();
-		this.connection.listen();
-	}
-	/**
-	* Connect to the CLI server via TCP socket
-	*/
-	async connectViaTcp() {
-		if (!this.actualPort) throw new Error("Server port not available");
-		return new Promise((resolve, reject) => {
-			this.socket = new Socket();
-			this.socket.connect(this.actualPort, this.actualHost, () => {
-				this.connection = (0, import_node.createMessageConnection)(new import_node.StreamMessageReader(this.socket), new import_node.StreamMessageWriter(this.socket));
-				this.attachConnectionHandlers();
-				this.connection.listen();
-				resolve();
-			});
-			this.socket.on("error", (error) => {
-				reject(/* @__PURE__ */ new Error(`Failed to connect to CLI server: ${error.message}`));
-			});
-		});
-	}
-	attachConnectionHandlers() {
-		if (!this.connection) return;
-		this.connection.onNotification("session.event", (notification) => {
-			this.handleSessionEventNotification(notification);
-		});
-		this.connection.onNotification("session.lifecycle", (notification) => {
-			this.handleSessionLifecycleNotification(notification);
-		});
-		this.connection.onRequest("tool.call", async (params) => await this.handleToolCallRequestV2(params));
-		this.connection.onRequest("permission.request", async (params) => await this.handlePermissionRequestV2(params));
-		this.connection.onRequest("userInput.request", async (params) => await this.handleUserInputRequest(params));
-		this.connection.onRequest("hooks.invoke", async (params) => await this.handleHooksInvoke(params));
-		this.connection.onClose(() => {
-			if (this.state === "connected" && this.options.autoRestart) this.reconnect();
-		});
-		this.connection.onError((_error) => {});
-	}
-	handleSessionEventNotification(notification) {
-		if (typeof notification !== "object" || !notification || !("sessionId" in notification) || typeof notification.sessionId !== "string" || !("event" in notification)) return;
-		const session = this.sessions.get(notification.sessionId);
-		if (session) session._dispatchEvent(notification.event);
-	}
-	handleSessionLifecycleNotification(notification) {
-		if (typeof notification !== "object" || !notification || !("type" in notification) || typeof notification.type !== "string" || !("sessionId" in notification) || typeof notification.sessionId !== "string") return;
-		const event = notification;
-		const typedHandlers = this.typedLifecycleHandlers.get(event.type);
-		if (typedHandlers) for (const handler of typedHandlers) try {
-			handler(event);
-		} catch {}
-		for (const handler of this.sessionLifecycleHandlers) try {
-			handler(event);
-		} catch {}
-	}
-	async handleUserInputRequest(params) {
-		if (!params || typeof params.sessionId !== "string" || typeof params.question !== "string") throw new Error("Invalid user input request payload");
-		const session = this.sessions.get(params.sessionId);
-		if (!session) throw new Error(`Session not found: ${params.sessionId}`);
-		return await session._handleUserInputRequest({
-			question: params.question,
-			choices: params.choices,
-			allowFreeform: params.allowFreeform
-		});
-	}
-	async handleHooksInvoke(params) {
-		if (!params || typeof params.sessionId !== "string" || typeof params.hookType !== "string") throw new Error("Invalid hooks invoke payload");
-		const session = this.sessions.get(params.sessionId);
-		if (!session) throw new Error(`Session not found: ${params.sessionId}`);
-		return { output: await session._handleHooksInvoke(params.hookType, params.input) };
-	}
-	/**
-	* Handles a v2-style tool.call RPC request from the server.
-	* Looks up the session and tool handler, executes it, and returns the result
-	* in the v2 response format.
-	*/
-	async handleToolCallRequestV2(params) {
-		if (!params || typeof params.sessionId !== "string" || typeof params.toolCallId !== "string" || typeof params.toolName !== "string") throw new Error("Invalid tool call payload");
-		const session = this.sessions.get(params.sessionId);
-		if (!session) throw new Error(`Unknown session ${params.sessionId}`);
-		const handler = session.getToolHandler(params.toolName);
-		if (!handler) return { result: {
-			textResultForLlm: `Tool '${params.toolName}' is not supported by this client instance.`,
-			resultType: "failure",
-			error: `tool '${params.toolName}' not supported`,
-			toolTelemetry: {}
-		} };
-		try {
-			const invocation = {
-				sessionId: params.sessionId,
-				toolCallId: params.toolCallId,
-				toolName: params.toolName,
-				arguments: params.arguments
-			};
-			const result = await handler(params.arguments, invocation);
-			return { result: this.normalizeToolResultV2(result) };
-		} catch (error) {
-			return { result: {
-				textResultForLlm: "Invoking this tool produced an error. Detailed information is not available.",
-				resultType: "failure",
-				error: error instanceof Error ? error.message : String(error),
-				toolTelemetry: {}
-			} };
-		}
-	}
-	/**
-	* Handles a v2-style permission.request RPC request from the server.
-	*/
-	async handlePermissionRequestV2(params) {
-		if (!params || typeof params.sessionId !== "string" || !params.permissionRequest) throw new Error("Invalid permission request payload");
-		const session = this.sessions.get(params.sessionId);
-		if (!session) throw new Error(`Session not found: ${params.sessionId}`);
-		try {
-			return { result: await session._handlePermissionRequestV2(params.permissionRequest) };
-		} catch (_error) {
-			return { result: { kind: "denied-no-approval-rule-and-could-not-request-from-user" } };
-		}
-	}
-	normalizeToolResultV2(result) {
-		if (result === void 0 || result === null) return {
-			textResultForLlm: "Tool returned no result",
-			resultType: "failure",
-			error: "tool returned no result",
-			toolTelemetry: {}
-		};
-		if (this.isToolResultObject(result)) return result;
-		return {
-			textResultForLlm: typeof result === "string" ? result : JSON.stringify(result),
-			resultType: "success",
-			toolTelemetry: {}
-		};
-	}
-	isToolResultObject(value) {
-		return typeof value === "object" && value !== null && "textResultForLlm" in value && typeof value.textResultForLlm === "string" && "resultType" in value;
-	}
-	/**
-	* Attempt to reconnect to the server
-	*/
-	async reconnect() {
-		this.state = "disconnected";
-		try {
-			await this.stop();
-			await this.start();
-		} catch (_error) {}
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/types.js
-function defineTool$1(name, config) {
-	return {
-		name,
-		...config
-	};
 }
 
 //#endregion
@@ -27448,8 +22984,8 @@ var require_dist = /* @__PURE__ */ __commonJSMin(((exports) => {
 		if (k2 === void 0) k2 = k;
 		o[k2] = m[k];
 	}));
-	var __exportStar = exports && exports.__exportStar || function(m, exports$1) {
-		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$1, p)) __createBinding(exports$1, m, p);
+	var __exportStar = exports && exports.__exportStar || function(m, exports$2) {
+		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$2, p)) __createBinding(exports$2, m, p);
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	__exportStar(require_client(), exports);
@@ -31328,7 +26864,7 @@ function getGlobalDefs() {
 *
 * @returns The converted JSON Schema.
 */
-function toJsonSchema(schema, config) {
+function toJsonSchema$1(schema, config) {
 	const context = {
 		definitions: {},
 		referenceMap: /* @__PURE__ */ new Map(),
@@ -31380,7 +26916,7 @@ var ValibotJsonSchemaAdapter = class extends JsonSchemaAdapter {
 	* @returns {Promise<ReturnType<typeof toJsonSchema>>} - The converted JSON Schema
 	*/
 	async toJsonSchema(schema) {
-		return add_type_to_enums(toJsonSchema(schema));
+		return add_type_to_enums(toJsonSchema$1(schema));
 	}
 };
 
@@ -35845,7 +31381,7 @@ var HttpTransport = class {
 * @param {ToolOptions<TSchema, TOutputSchema>} options
 * @param {TSchema extends undefined ? (()=>Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
 */
-function defineTool(options, execute) {
+function defineTool$1(options, execute) {
 	return {
 		...options,
 		execute
@@ -36447,23 +31983,15 @@ function buildClank8yCommentBody(rawBody, options) {
 
 //#endregion
 //#region src/mcp/github.ts
-const DIFF_CHUNK_DEFAULT_LIMIT = 200;
-const DIFF_CHUNK_MAX_LIMIT = 400;
-const DIFF_CHUNK_MAX_CHARS = 3e4;
 const FILE_CHUNK_DEFAULT_LIMIT = 200;
 const FILE_CHUNK_MAX_LIMIT = 400;
 const FILE_CHUNK_MAX_CHARS = 3e4;
 const FILE_FULL_MAX_LINES = 250;
 const FILE_FULL_MAX_CHARS = 2e4;
+const CLANK8Y_ARTIFACT_DIR = ".clank8y";
+const DIFF_ARTIFACT_FILE = "diff.txt";
+const SCRATCHPAD_ARTIFACT_FILE = "scratchpad.txt";
 let _githubMCP = null;
-const prDiffCache = /* @__PURE__ */ new Map();
-async function getDiffCacheKey() {
-	const pullRequest = getActivePullRequestContext();
-	return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`;
-}
-function padNum(n) {
-	return n.toString().padStart(4, " ");
-}
 function normalizeEscapedNewlines(text) {
 	return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
 		if (match === "\\r\\n") return "\r\n";
@@ -36478,6 +32006,70 @@ function stripSurroundingQuotes(text) {
 }
 function normalizeToolString(text) {
 	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
+}
+function normalizeUniqueStrings(entries) {
+	const seen = /* @__PURE__ */ new Set();
+	const normalized = [];
+	for (const entry of entries ?? []) {
+		const value = normalizeToolString(entry).trim();
+		if (!value || seen.has(value)) continue;
+		seen.add(value);
+		normalized.push(value);
+	}
+	return normalized;
+}
+function getReviewArtifactPaths() {
+	const workspaceRoot = process$1.cwd();
+	const artifactDir = path.join(workspaceRoot, CLANK8Y_ARTIFACT_DIR);
+	return {
+		artifactDir,
+		diffPath: path.join(artifactDir, DIFF_ARTIFACT_FILE),
+		scratchpadPath: path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)
+	};
+}
+async function ensureReviewArtifactDir() {
+	const artifactPaths = getReviewArtifactPaths();
+	await mkdir(artifactPaths.artifactDir, { recursive: true });
+	return artifactPaths;
+}
+function buildReviewScratchpadContent(input) {
+	const changedFiles = normalizeUniqueStrings(input.changedFiles);
+	return [
+		"# clank8y review scratchpad",
+		"",
+		`repository: ${input.repository}`,
+		`pull_request: #${input.pullRequestNumber}`,
+		`diff_path: ${input.diffPath}`,
+		"",
+		"Instructions:",
+		"- Keep this file updated during the review.",
+		"- Mark a file as reviewed by changing `[ ]` to `[x]`.",
+		"- After each file or file group, add at least one note before continuing.",
+		"- Record only strong, evidence-backed findings.",
+		"- Use `Suspected Patterns To Expand` for hypotheses that still need expansion or proof.",
+		"- Use `Learned / Verified Context` to capture docs-backed conclusions you want to remember later in the run.",
+		"- Every Angular MCP or Codex MCP lookup should leave a short note in `Learned / Verified Context`.",
+		"- Before submitting the review, confirm all intentionally skipped files are explained in `Notes`.",
+		"",
+		"## Changed Files",
+		...changedFiles.map((file) => `- [ ] ${file}`),
+		"",
+		"## Suspected Patterns To Expand",
+		"- None yet.",
+		"",
+		"## Learned / Verified Context",
+		"- None yet. Add one line per Angular MCP or Codex MCP verification.",
+		"",
+		"## Validated Findings",
+		"- None yet.",
+		"",
+		"## Open Questions",
+		"- None yet.",
+		"",
+		"## Notes",
+		"- None yet. If a file group produced no finding, record that explicitly.",
+		""
+	].join("\n");
 }
 async function fetchAllPullRequestFiles() {
 	const octokit = await getOctokit();
@@ -36532,13 +32124,13 @@ function formatFilesWithLineNumbers(files) {
 			const marker = line[0] ?? " ";
 			const code = line.slice(1);
 			if (marker === "-") {
-				output.push(`| ${padNum(oldLine)} | ---- | - | ${code}`);
+				output.push(`|${oldLine}|-|${code}`);
 				oldLine += 1;
 			} else if (marker === "+") {
-				output.push(`| ---- | ${padNum(newLine)} | + | ${code}`);
+				output.push(`|${newLine}|+|${code}`);
 				newLine += 1;
 			} else {
-				output.push(`| ${padNum(oldLine)} | ${padNum(newLine)} |   | ${code}`);
+				output.push(`|${oldLine}|${newLine}||${code}`);
 				oldLine += 1;
 				newLine += 1;
 			}
@@ -36557,14 +32149,6 @@ function formatFilesWithLineNumbers(files) {
 		content: `${toc}${output.join("\n")}`,
 		toc
 	};
-}
-async function getOrBuildPullRequestDiff() {
-	const cacheKey = await getDiffCacheKey();
-	const cachedDiff = prDiffCache.get(cacheKey);
-	if (cachedDiff) return cachedDiff;
-	const diff = formatFilesWithLineNumbers(await fetchAllPullRequestFiles());
-	prDiffCache.set(cacheKey, diff);
-	return diff;
 }
 function githubMCP() {
 	if (!_githubMCP) _githubMCP = createGitHubMCP();
@@ -36619,7 +32203,44 @@ const mcp = new McpServer({
 	adapter: new ValibotJsonSchemaAdapter(),
 	capabilities: { tools: { listChanged: true } }
 });
-const preparePullRequestReviewTool = defineTool({
+const setPullRequestContextTool = defineTool$1({
+	name: "set-pull-request-context",
+	description: "Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.",
+	title: "Set Pull Request Context",
+	schema: pipe(object({
+		repository: pipe(string(), description("Repository in owner/repo format for the pull request to review.")),
+		pr_number: pipe(number(), description("The pull request number to set as the active review context."))
+	}), description("Arguments for selecting the active pull request before any review-specific GitHub MCP tools are used."))
+}, async ({ repository, pr_number }) => {
+	try {
+		const pullRequest = await setPullRequestContext({
+			repository,
+			prNumber: pr_number
+		});
+		return tool.structured({
+			success: true,
+			context: {
+				repository: `${pullRequest.owner}/${pullRequest.repo}`,
+				pullRequestNumber: pullRequest.number,
+				baseRef: pullRequest.baseRef,
+				headRef: pullRequest.headRef
+			},
+			pullRequest: {
+				number: pullRequest.number,
+				owner: pullRequest.owner,
+				repo: pullRequest.repo,
+				headRef: pullRequest.headRef,
+				headSha: pullRequest.headSha,
+				baseRef: pullRequest.baseRef,
+				baseSha: pullRequest.baseSha
+			}
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return tool.error(`Failed to set pull request context: ${message}`);
+	}
+});
+const preparePullRequestReviewTool = defineTool$1({
 	name: "prepare-pull-request-review",
 	description: "Single entrypoint for review setup: PR metadata, file summary, and diff TOC with chunk-read instructions",
 	title: "Prepare Pull Request Review"
@@ -36633,8 +32254,15 @@ const preparePullRequestReviewTool = defineTool({
 			pull_number: pullRequest.number
 		}), fetchAllPullRequestFiles()]);
 		const diff = formatFilesWithLineNumbers(files);
-		const cacheKey = await getDiffCacheKey();
-		prDiffCache.set(cacheKey, diff);
+		const artifactPaths = await ensureReviewArtifactDir();
+		const scratchpadContent = buildReviewScratchpadContent({
+			repository: `${pullRequest.owner}/${pullRequest.repo}`,
+			pullRequestNumber: pullRequest.number,
+			diffPath: artifactPaths.diffPath,
+			changedFiles: files.map((file) => file.filename)
+		});
+		await writeFile(artifactPaths.diffPath, diff.content, "utf-8");
+		await writeFile(artifactPaths.scratchpadPath, scratchpadContent, "utf-8");
 		const totalDiffLines = diff.content.split("\n").length;
 		const fileSummaries = files.map((file) => ({
 			path: file.filename,
@@ -36670,21 +32298,18 @@ const preparePullRequestReviewTool = defineTool({
 				summary: fileSummaries
 			},
 			diff: {
+				path: artifactPaths.diffPath,
 				totalLines: totalDiffLines,
 				toc: diff.toc
 			},
-			nextSteps: [
-				"Use read-pull-request-diff-chunk with small offset/limit windows, guided by TOC line ranges.",
-				"Use get-pull-request-file-content with offset/limit for relevant files only; avoid full=true unless required.",
-				"Submit findings with create-pull-request-review."
-			]
+			scratchpad: { path: artifactPaths.scratchpadPath }
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		return tool.error(`Failed to prepare pull request review context: ${message}`);
 	}
 });
-const createPullRequestReviewTool = defineTool({
+const createPullRequestReviewTool = defineTool$1({
 	name: "create-pull-request-review",
 	description: "Submit a review for the current pull request with optional inline comments",
 	title: "Create Pull Request Review",
@@ -36756,37 +32381,7 @@ const createPullRequestReviewTool = defineTool({
 		return tool.error(`Failed to create pull request review: ${message}`);
 	}
 });
-const readPullRequestDiffChunkTool = defineTool({
-	name: "read-pull-request-diff-chunk",
-	description: "Read a line range from the cached pull request diff",
-	title: "Read Pull Request Diff Chunk",
-	schema: pipe(object({
-		offset: optional(pipe(number(), description("1-based starting line number in the cached formatted diff. Defaults to 1."))),
-		limit: optional(pipe(number(), description("Maximum number of lines to return. Defaults to 200 and is capped at 400.")))
-	}), description("Chunk selection arguments for reading the cached pull request diff."))
-}, async ({ offset, limit }) => {
-	try {
-		const lines = (await getOrBuildPullRequestDiff()).content.split("\n");
-		const totalLines = lines.length;
-		const requestedOffset = offset ?? 1;
-		const startLine = Math.max(1, requestedOffset);
-		const requestedLimit = limit ?? DIFF_CHUNK_DEFAULT_LIMIT;
-		const normalizedLimit = Math.max(1, Math.min(DIFF_CHUNK_MAX_LIMIT, requestedLimit));
-		const endLine = Math.min(totalLines, startLine + normalizedLimit - 1);
-		const rawChunk = lines.slice(startLine - 1, endLine).join("\n");
-		const chunk = rawChunk.length > DIFF_CHUNK_MAX_CHARS ? `${rawChunk.slice(0, DIFF_CHUNK_MAX_CHARS)}\n\n[truncated: chunk exceeded ${DIFF_CHUNK_MAX_CHARS} characters]` : rawChunk;
-		return tool.text([
-			`Diff chunk ${startLine}-${endLine} of ${totalLines}`,
-			`Remaining lines after this chunk: ${Math.max(0, totalLines - endLine)}`,
-			"",
-			chunk
-		].join("\n"));
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return tool.error(`Failed to read pull request diff chunk: ${message}`);
-	}
-});
-const getPullRequestFileContentTool = defineTool({
+const getPullRequestFileContentTool = defineTool$1({
 	name: "get-pull-request-file-content",
 	description: "Get content for a changed pull request file, with chunked reads by default",
 	title: "Get Pull Request File Content",
@@ -36841,9 +32436,9 @@ const getPullRequestFileContentTool = defineTool({
 	}
 });
 const githubMcpTools = [
+	setPullRequestContextTool,
 	preparePullRequestReviewTool,
 	createPullRequestReviewTool,
-	readPullRequestDiffChunkTool,
 	getPullRequestFileContentTool
 ];
 mcp.tools(githubMcpTools);
@@ -36928,6 +32523,4503 @@ function toCopilotMCPServersConfig(servers, startResults, options) {
 		}
 	}
 	return config;
+}
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/is.js
+var require_is = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.stringArray = exports.array = exports.func = exports.error = exports.number = exports.string = exports.boolean = void 0;
+	function boolean(value) {
+		return value === true || value === false;
+	}
+	exports.boolean = boolean;
+	function string(value) {
+		return typeof value === "string" || value instanceof String;
+	}
+	exports.string = string;
+	function number(value) {
+		return typeof value === "number" || value instanceof Number;
+	}
+	exports.number = number;
+	function error(value) {
+		return value instanceof Error;
+	}
+	exports.error = error;
+	function func(value) {
+		return typeof value === "function";
+	}
+	exports.func = func;
+	function array(value) {
+		return Array.isArray(value);
+	}
+	exports.array = array;
+	function stringArray(value) {
+		return array(value) && value.every((elem) => string(elem));
+	}
+	exports.stringArray = stringArray;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messages.js
+var require_messages = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.Message = exports.NotificationType9 = exports.NotificationType8 = exports.NotificationType7 = exports.NotificationType6 = exports.NotificationType5 = exports.NotificationType4 = exports.NotificationType3 = exports.NotificationType2 = exports.NotificationType1 = exports.NotificationType0 = exports.NotificationType = exports.RequestType9 = exports.RequestType8 = exports.RequestType7 = exports.RequestType6 = exports.RequestType5 = exports.RequestType4 = exports.RequestType3 = exports.RequestType2 = exports.RequestType1 = exports.RequestType = exports.RequestType0 = exports.AbstractMessageSignature = exports.ParameterStructures = exports.ResponseError = exports.ErrorCodes = void 0;
+	const is = require_is();
+	/**
+	* Predefined error codes.
+	*/
+	var ErrorCodes;
+	(function(ErrorCodes) {
+		ErrorCodes.ParseError = -32700;
+		ErrorCodes.InvalidRequest = -32600;
+		ErrorCodes.MethodNotFound = -32601;
+		ErrorCodes.InvalidParams = -32602;
+		ErrorCodes.InternalError = -32603;
+		/**
+		* This is the start range of JSON RPC reserved error codes.
+		* It doesn't denote a real error code. No application error codes should
+		* be defined between the start and end range. For backwards
+		* compatibility the `ServerNotInitialized` and the `UnknownErrorCode`
+		* are left in the range.
+		*
+		* @since 3.16.0
+		*/
+		ErrorCodes.jsonrpcReservedErrorRangeStart = -32099;
+		/** @deprecated use  jsonrpcReservedErrorRangeStart */
+		ErrorCodes.serverErrorStart = -32099;
+		/**
+		* An error occurred when write a message to the transport layer.
+		*/
+		ErrorCodes.MessageWriteError = -32099;
+		/**
+		* An error occurred when reading a message from the transport layer.
+		*/
+		ErrorCodes.MessageReadError = -32098;
+		/**
+		* The connection got disposed or lost and all pending responses got
+		* rejected.
+		*/
+		ErrorCodes.PendingResponseRejected = -32097;
+		/**
+		* The connection is inactive and a use of it failed.
+		*/
+		ErrorCodes.ConnectionInactive = -32096;
+		/**
+		* Error code indicating that a server received a notification or
+		* request before the server has received the `initialize` request.
+		*/
+		ErrorCodes.ServerNotInitialized = -32002;
+		ErrorCodes.UnknownErrorCode = -32001;
+		/**
+		* This is the end range of JSON RPC reserved error codes.
+		* It doesn't denote a real error code.
+		*
+		* @since 3.16.0
+		*/
+		ErrorCodes.jsonrpcReservedErrorRangeEnd = -32e3;
+		/** @deprecated use  jsonrpcReservedErrorRangeEnd */
+		ErrorCodes.serverErrorEnd = -32e3;
+	})(ErrorCodes || (exports.ErrorCodes = ErrorCodes = {}));
+	/**
+	* An error object return in a response in case a request
+	* has failed.
+	*/
+	var ResponseError = class ResponseError extends Error {
+		constructor(code, message, data) {
+			super(message);
+			this.code = is.number(code) ? code : ErrorCodes.UnknownErrorCode;
+			this.data = data;
+			Object.setPrototypeOf(this, ResponseError.prototype);
+		}
+		toJson() {
+			const result = {
+				code: this.code,
+				message: this.message
+			};
+			if (this.data !== void 0) result.data = this.data;
+			return result;
+		}
+	};
+	exports.ResponseError = ResponseError;
+	var ParameterStructures = class ParameterStructures {
+		constructor(kind) {
+			this.kind = kind;
+		}
+		static is(value) {
+			return value === ParameterStructures.auto || value === ParameterStructures.byName || value === ParameterStructures.byPosition;
+		}
+		toString() {
+			return this.kind;
+		}
+	};
+	exports.ParameterStructures = ParameterStructures;
+	/**
+	* The parameter structure is automatically inferred on the number of parameters
+	* and the parameter type in case of a single param.
+	*/
+	ParameterStructures.auto = new ParameterStructures("auto");
+	/**
+	* Forces `byPosition` parameter structure. This is useful if you have a single
+	* parameter which has a literal type.
+	*/
+	ParameterStructures.byPosition = new ParameterStructures("byPosition");
+	/**
+	* Forces `byName` parameter structure. This is only useful when having a single
+	* parameter. The library will report errors if used with a different number of
+	* parameters.
+	*/
+	ParameterStructures.byName = new ParameterStructures("byName");
+	/**
+	* An abstract implementation of a MessageType.
+	*/
+	var AbstractMessageSignature = class {
+		constructor(method, numberOfParams) {
+			this.method = method;
+			this.numberOfParams = numberOfParams;
+		}
+		get parameterStructures() {
+			return ParameterStructures.auto;
+		}
+	};
+	exports.AbstractMessageSignature = AbstractMessageSignature;
+	/**
+	* Classes to type request response pairs
+	*/
+	var RequestType0 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 0);
+		}
+	};
+	exports.RequestType0 = RequestType0;
+	var RequestType = class extends AbstractMessageSignature {
+		constructor(method, _parameterStructures = ParameterStructures.auto) {
+			super(method, 1);
+			this._parameterStructures = _parameterStructures;
+		}
+		get parameterStructures() {
+			return this._parameterStructures;
+		}
+	};
+	exports.RequestType = RequestType;
+	var RequestType1 = class extends AbstractMessageSignature {
+		constructor(method, _parameterStructures = ParameterStructures.auto) {
+			super(method, 1);
+			this._parameterStructures = _parameterStructures;
+		}
+		get parameterStructures() {
+			return this._parameterStructures;
+		}
+	};
+	exports.RequestType1 = RequestType1;
+	var RequestType2 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 2);
+		}
+	};
+	exports.RequestType2 = RequestType2;
+	var RequestType3 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 3);
+		}
+	};
+	exports.RequestType3 = RequestType3;
+	var RequestType4 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 4);
+		}
+	};
+	exports.RequestType4 = RequestType4;
+	var RequestType5 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 5);
+		}
+	};
+	exports.RequestType5 = RequestType5;
+	var RequestType6 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 6);
+		}
+	};
+	exports.RequestType6 = RequestType6;
+	var RequestType7 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 7);
+		}
+	};
+	exports.RequestType7 = RequestType7;
+	var RequestType8 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 8);
+		}
+	};
+	exports.RequestType8 = RequestType8;
+	var RequestType9 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 9);
+		}
+	};
+	exports.RequestType9 = RequestType9;
+	var NotificationType = class extends AbstractMessageSignature {
+		constructor(method, _parameterStructures = ParameterStructures.auto) {
+			super(method, 1);
+			this._parameterStructures = _parameterStructures;
+		}
+		get parameterStructures() {
+			return this._parameterStructures;
+		}
+	};
+	exports.NotificationType = NotificationType;
+	var NotificationType0 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 0);
+		}
+	};
+	exports.NotificationType0 = NotificationType0;
+	var NotificationType1 = class extends AbstractMessageSignature {
+		constructor(method, _parameterStructures = ParameterStructures.auto) {
+			super(method, 1);
+			this._parameterStructures = _parameterStructures;
+		}
+		get parameterStructures() {
+			return this._parameterStructures;
+		}
+	};
+	exports.NotificationType1 = NotificationType1;
+	var NotificationType2 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 2);
+		}
+	};
+	exports.NotificationType2 = NotificationType2;
+	var NotificationType3 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 3);
+		}
+	};
+	exports.NotificationType3 = NotificationType3;
+	var NotificationType4 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 4);
+		}
+	};
+	exports.NotificationType4 = NotificationType4;
+	var NotificationType5 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 5);
+		}
+	};
+	exports.NotificationType5 = NotificationType5;
+	var NotificationType6 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 6);
+		}
+	};
+	exports.NotificationType6 = NotificationType6;
+	var NotificationType7 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 7);
+		}
+	};
+	exports.NotificationType7 = NotificationType7;
+	var NotificationType8 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 8);
+		}
+	};
+	exports.NotificationType8 = NotificationType8;
+	var NotificationType9 = class extends AbstractMessageSignature {
+		constructor(method) {
+			super(method, 9);
+		}
+	};
+	exports.NotificationType9 = NotificationType9;
+	var Message;
+	(function(Message) {
+		/**
+		* Tests if the given message is a request message
+		*/
+		function isRequest(message) {
+			const candidate = message;
+			return candidate && is.string(candidate.method) && (is.string(candidate.id) || is.number(candidate.id));
+		}
+		Message.isRequest = isRequest;
+		/**
+		* Tests if the given message is a notification message
+		*/
+		function isNotification(message) {
+			const candidate = message;
+			return candidate && is.string(candidate.method) && message.id === void 0;
+		}
+		Message.isNotification = isNotification;
+		/**
+		* Tests if the given message is a response message
+		*/
+		function isResponse(message) {
+			const candidate = message;
+			return candidate && (candidate.result !== void 0 || !!candidate.error) && (is.string(candidate.id) || is.number(candidate.id) || candidate.id === null);
+		}
+		Message.isResponse = isResponse;
+	})(Message || (exports.Message = Message = {}));
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/linkedMap.js
+var require_linkedMap = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var _a;
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.LRUCache = exports.LinkedMap = exports.Touch = void 0;
+	var Touch;
+	(function(Touch) {
+		Touch.None = 0;
+		Touch.First = 1;
+		Touch.AsOld = Touch.First;
+		Touch.Last = 2;
+		Touch.AsNew = Touch.Last;
+	})(Touch || (exports.Touch = Touch = {}));
+	var LinkedMap = class {
+		constructor() {
+			this[_a] = "LinkedMap";
+			this._map = /* @__PURE__ */ new Map();
+			this._head = void 0;
+			this._tail = void 0;
+			this._size = 0;
+			this._state = 0;
+		}
+		clear() {
+			this._map.clear();
+			this._head = void 0;
+			this._tail = void 0;
+			this._size = 0;
+			this._state++;
+		}
+		isEmpty() {
+			return !this._head && !this._tail;
+		}
+		get size() {
+			return this._size;
+		}
+		get first() {
+			return this._head?.value;
+		}
+		get last() {
+			return this._tail?.value;
+		}
+		has(key) {
+			return this._map.has(key);
+		}
+		get(key, touch = Touch.None) {
+			const item = this._map.get(key);
+			if (!item) return;
+			if (touch !== Touch.None) this.touch(item, touch);
+			return item.value;
+		}
+		set(key, value, touch = Touch.None) {
+			let item = this._map.get(key);
+			if (item) {
+				item.value = value;
+				if (touch !== Touch.None) this.touch(item, touch);
+			} else {
+				item = {
+					key,
+					value,
+					next: void 0,
+					previous: void 0
+				};
+				switch (touch) {
+					case Touch.None:
+						this.addItemLast(item);
+						break;
+					case Touch.First:
+						this.addItemFirst(item);
+						break;
+					case Touch.Last:
+						this.addItemLast(item);
+						break;
+					default:
+						this.addItemLast(item);
+						break;
+				}
+				this._map.set(key, item);
+				this._size++;
+			}
+			return this;
+		}
+		delete(key) {
+			return !!this.remove(key);
+		}
+		remove(key) {
+			const item = this._map.get(key);
+			if (!item) return;
+			this._map.delete(key);
+			this.removeItem(item);
+			this._size--;
+			return item.value;
+		}
+		shift() {
+			if (!this._head && !this._tail) return;
+			if (!this._head || !this._tail) throw new Error("Invalid list");
+			const item = this._head;
+			this._map.delete(item.key);
+			this.removeItem(item);
+			this._size--;
+			return item.value;
+		}
+		forEach(callbackfn, thisArg) {
+			const state = this._state;
+			let current = this._head;
+			while (current) {
+				if (thisArg) callbackfn.bind(thisArg)(current.value, current.key, this);
+				else callbackfn(current.value, current.key, this);
+				if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
+				current = current.next;
+			}
+		}
+		keys() {
+			const state = this._state;
+			let current = this._head;
+			const iterator = {
+				[Symbol.iterator]: () => {
+					return iterator;
+				},
+				next: () => {
+					if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
+					if (current) {
+						const result = {
+							value: current.key,
+							done: false
+						};
+						current = current.next;
+						return result;
+					} else return {
+						value: void 0,
+						done: true
+					};
+				}
+			};
+			return iterator;
+		}
+		values() {
+			const state = this._state;
+			let current = this._head;
+			const iterator = {
+				[Symbol.iterator]: () => {
+					return iterator;
+				},
+				next: () => {
+					if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
+					if (current) {
+						const result = {
+							value: current.value,
+							done: false
+						};
+						current = current.next;
+						return result;
+					} else return {
+						value: void 0,
+						done: true
+					};
+				}
+			};
+			return iterator;
+		}
+		entries() {
+			const state = this._state;
+			let current = this._head;
+			const iterator = {
+				[Symbol.iterator]: () => {
+					return iterator;
+				},
+				next: () => {
+					if (this._state !== state) throw new Error(`LinkedMap got modified during iteration.`);
+					if (current) {
+						const result = {
+							value: [current.key, current.value],
+							done: false
+						};
+						current = current.next;
+						return result;
+					} else return {
+						value: void 0,
+						done: true
+					};
+				}
+			};
+			return iterator;
+		}
+		[(_a = Symbol.toStringTag, Symbol.iterator)]() {
+			return this.entries();
+		}
+		trimOld(newSize) {
+			if (newSize >= this.size) return;
+			if (newSize === 0) {
+				this.clear();
+				return;
+			}
+			let current = this._head;
+			let currentSize = this.size;
+			while (current && currentSize > newSize) {
+				this._map.delete(current.key);
+				current = current.next;
+				currentSize--;
+			}
+			this._head = current;
+			this._size = currentSize;
+			if (current) current.previous = void 0;
+			this._state++;
+		}
+		addItemFirst(item) {
+			if (!this._head && !this._tail) this._tail = item;
+			else if (!this._head) throw new Error("Invalid list");
+			else {
+				item.next = this._head;
+				this._head.previous = item;
+			}
+			this._head = item;
+			this._state++;
+		}
+		addItemLast(item) {
+			if (!this._head && !this._tail) this._head = item;
+			else if (!this._tail) throw new Error("Invalid list");
+			else {
+				item.previous = this._tail;
+				this._tail.next = item;
+			}
+			this._tail = item;
+			this._state++;
+		}
+		removeItem(item) {
+			if (item === this._head && item === this._tail) {
+				this._head = void 0;
+				this._tail = void 0;
+			} else if (item === this._head) {
+				if (!item.next) throw new Error("Invalid list");
+				item.next.previous = void 0;
+				this._head = item.next;
+			} else if (item === this._tail) {
+				if (!item.previous) throw new Error("Invalid list");
+				item.previous.next = void 0;
+				this._tail = item.previous;
+			} else {
+				const next = item.next;
+				const previous = item.previous;
+				if (!next || !previous) throw new Error("Invalid list");
+				next.previous = previous;
+				previous.next = next;
+			}
+			item.next = void 0;
+			item.previous = void 0;
+			this._state++;
+		}
+		touch(item, touch) {
+			if (!this._head || !this._tail) throw new Error("Invalid list");
+			if (touch !== Touch.First && touch !== Touch.Last) return;
+			if (touch === Touch.First) {
+				if (item === this._head) return;
+				const next = item.next;
+				const previous = item.previous;
+				if (item === this._tail) {
+					previous.next = void 0;
+					this._tail = previous;
+				} else {
+					next.previous = previous;
+					previous.next = next;
+				}
+				item.previous = void 0;
+				item.next = this._head;
+				this._head.previous = item;
+				this._head = item;
+				this._state++;
+			} else if (touch === Touch.Last) {
+				if (item === this._tail) return;
+				const next = item.next;
+				const previous = item.previous;
+				if (item === this._head) {
+					next.previous = void 0;
+					this._head = next;
+				} else {
+					next.previous = previous;
+					previous.next = next;
+				}
+				item.next = void 0;
+				item.previous = this._tail;
+				this._tail.next = item;
+				this._tail = item;
+				this._state++;
+			}
+		}
+		toJSON() {
+			const data = [];
+			this.forEach((value, key) => {
+				data.push([key, value]);
+			});
+			return data;
+		}
+		fromJSON(data) {
+			this.clear();
+			for (const [key, value] of data) this.set(key, value);
+		}
+	};
+	exports.LinkedMap = LinkedMap;
+	var LRUCache = class extends LinkedMap {
+		constructor(limit, ratio = 1) {
+			super();
+			this._limit = limit;
+			this._ratio = Math.min(Math.max(0, ratio), 1);
+		}
+		get limit() {
+			return this._limit;
+		}
+		set limit(limit) {
+			this._limit = limit;
+			this.checkTrim();
+		}
+		get ratio() {
+			return this._ratio;
+		}
+		set ratio(ratio) {
+			this._ratio = Math.min(Math.max(0, ratio), 1);
+			this.checkTrim();
+		}
+		get(key, touch = Touch.AsNew) {
+			return super.get(key, touch);
+		}
+		peek(key) {
+			return super.get(key, Touch.None);
+		}
+		set(key, value) {
+			super.set(key, value, Touch.Last);
+			this.checkTrim();
+			return this;
+		}
+		checkTrim() {
+			if (this.size > this._limit) this.trimOld(Math.round(this._limit * this._ratio));
+		}
+	};
+	exports.LRUCache = LRUCache;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/disposable.js
+var require_disposable = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.Disposable = void 0;
+	var Disposable;
+	(function(Disposable) {
+		function create(func) {
+			return { dispose: func };
+		}
+		Disposable.create = create;
+	})(Disposable || (exports.Disposable = Disposable = {}));
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/ral.js
+var require_ral = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	let _ral;
+	function RAL() {
+		if (_ral === void 0) throw new Error(`No runtime abstraction layer installed`);
+		return _ral;
+	}
+	(function(RAL) {
+		function install(ral) {
+			if (ral === void 0) throw new Error(`No runtime abstraction layer provided`);
+			_ral = ral;
+		}
+		RAL.install = install;
+	})(RAL || (RAL = {}));
+	exports.default = RAL;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/events.js
+var require_events = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.Emitter = exports.Event = void 0;
+	const ral_1 = require_ral();
+	var Event;
+	(function(Event) {
+		const _disposable = { dispose() {} };
+		Event.None = function() {
+			return _disposable;
+		};
+	})(Event || (exports.Event = Event = {}));
+	var CallbackList = class {
+		add(callback, context = null, bucket) {
+			if (!this._callbacks) {
+				this._callbacks = [];
+				this._contexts = [];
+			}
+			this._callbacks.push(callback);
+			this._contexts.push(context);
+			if (Array.isArray(bucket)) bucket.push({ dispose: () => this.remove(callback, context) });
+		}
+		remove(callback, context = null) {
+			if (!this._callbacks) return;
+			let foundCallbackWithDifferentContext = false;
+			for (let i = 0, len = this._callbacks.length; i < len; i++) if (this._callbacks[i] === callback) if (this._contexts[i] === context) {
+				this._callbacks.splice(i, 1);
+				this._contexts.splice(i, 1);
+				return;
+			} else foundCallbackWithDifferentContext = true;
+			if (foundCallbackWithDifferentContext) throw new Error("When adding a listener with a context, you should remove it with the same context");
+		}
+		invoke(...args) {
+			if (!this._callbacks) return [];
+			const ret = [], callbacks = this._callbacks.slice(0), contexts = this._contexts.slice(0);
+			for (let i = 0, len = callbacks.length; i < len; i++) try {
+				ret.push(callbacks[i].apply(contexts[i], args));
+			} catch (e) {
+				(0, ral_1.default)().console.error(e);
+			}
+			return ret;
+		}
+		isEmpty() {
+			return !this._callbacks || this._callbacks.length === 0;
+		}
+		dispose() {
+			this._callbacks = void 0;
+			this._contexts = void 0;
+		}
+	};
+	var Emitter = class Emitter {
+		constructor(_options) {
+			this._options = _options;
+		}
+		/**
+		* For the public to allow to subscribe
+		* to events from this Emitter
+		*/
+		get event() {
+			if (!this._event) this._event = (listener, thisArgs, disposables) => {
+				if (!this._callbacks) this._callbacks = new CallbackList();
+				if (this._options && this._options.onFirstListenerAdd && this._callbacks.isEmpty()) this._options.onFirstListenerAdd(this);
+				this._callbacks.add(listener, thisArgs);
+				const result = { dispose: () => {
+					if (!this._callbacks) return;
+					this._callbacks.remove(listener, thisArgs);
+					result.dispose = Emitter._noop;
+					if (this._options && this._options.onLastListenerRemove && this._callbacks.isEmpty()) this._options.onLastListenerRemove(this);
+				} };
+				if (Array.isArray(disposables)) disposables.push(result);
+				return result;
+			};
+			return this._event;
+		}
+		/**
+		* To be kept private to fire an event to
+		* subscribers
+		*/
+		fire(event) {
+			if (this._callbacks) this._callbacks.invoke.call(this._callbacks, event);
+		}
+		dispose() {
+			if (this._callbacks) {
+				this._callbacks.dispose();
+				this._callbacks = void 0;
+			}
+		}
+	};
+	exports.Emitter = Emitter;
+	Emitter._noop = function() {};
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/cancellation.js
+var require_cancellation = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.CancellationTokenSource = exports.CancellationToken = void 0;
+	const ral_1 = require_ral();
+	const Is = require_is();
+	const events_1 = require_events();
+	var CancellationToken;
+	(function(CancellationToken) {
+		CancellationToken.None = Object.freeze({
+			isCancellationRequested: false,
+			onCancellationRequested: events_1.Event.None
+		});
+		CancellationToken.Cancelled = Object.freeze({
+			isCancellationRequested: true,
+			onCancellationRequested: events_1.Event.None
+		});
+		function is(value) {
+			const candidate = value;
+			return candidate && (candidate === CancellationToken.None || candidate === CancellationToken.Cancelled || Is.boolean(candidate.isCancellationRequested) && !!candidate.onCancellationRequested);
+		}
+		CancellationToken.is = is;
+	})(CancellationToken || (exports.CancellationToken = CancellationToken = {}));
+	const shortcutEvent = Object.freeze(function(callback, context) {
+		const handle = (0, ral_1.default)().timer.setTimeout(callback.bind(context), 0);
+		return { dispose() {
+			handle.dispose();
+		} };
+	});
+	var MutableToken = class {
+		constructor() {
+			this._isCancelled = false;
+		}
+		cancel() {
+			if (!this._isCancelled) {
+				this._isCancelled = true;
+				if (this._emitter) {
+					this._emitter.fire(void 0);
+					this.dispose();
+				}
+			}
+		}
+		get isCancellationRequested() {
+			return this._isCancelled;
+		}
+		get onCancellationRequested() {
+			if (this._isCancelled) return shortcutEvent;
+			if (!this._emitter) this._emitter = new events_1.Emitter();
+			return this._emitter.event;
+		}
+		dispose() {
+			if (this._emitter) {
+				this._emitter.dispose();
+				this._emitter = void 0;
+			}
+		}
+	};
+	var CancellationTokenSource = class {
+		get token() {
+			if (!this._token) this._token = new MutableToken();
+			return this._token;
+		}
+		cancel() {
+			if (!this._token) this._token = CancellationToken.Cancelled;
+			else this._token.cancel();
+		}
+		dispose() {
+			if (!this._token) this._token = CancellationToken.None;
+			else if (this._token instanceof MutableToken) this._token.dispose();
+		}
+	};
+	exports.CancellationTokenSource = CancellationTokenSource;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/sharedArrayCancellation.js
+var require_sharedArrayCancellation = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.SharedArrayReceiverStrategy = exports.SharedArraySenderStrategy = void 0;
+	const cancellation_1 = require_cancellation();
+	var CancellationState;
+	(function(CancellationState) {
+		CancellationState.Continue = 0;
+		CancellationState.Cancelled = 1;
+	})(CancellationState || (CancellationState = {}));
+	var SharedArraySenderStrategy = class {
+		constructor() {
+			this.buffers = /* @__PURE__ */ new Map();
+		}
+		enableCancellation(request) {
+			if (request.id === null) return;
+			const buffer = new SharedArrayBuffer(4);
+			const data = new Int32Array(buffer, 0, 1);
+			data[0] = CancellationState.Continue;
+			this.buffers.set(request.id, buffer);
+			request.$cancellationData = buffer;
+		}
+		async sendCancellation(_conn, id) {
+			const buffer = this.buffers.get(id);
+			if (buffer === void 0) return;
+			const data = new Int32Array(buffer, 0, 1);
+			Atomics.store(data, 0, CancellationState.Cancelled);
+		}
+		cleanup(id) {
+			this.buffers.delete(id);
+		}
+		dispose() {
+			this.buffers.clear();
+		}
+	};
+	exports.SharedArraySenderStrategy = SharedArraySenderStrategy;
+	var SharedArrayBufferCancellationToken = class {
+		constructor(buffer) {
+			this.data = new Int32Array(buffer, 0, 1);
+		}
+		get isCancellationRequested() {
+			return Atomics.load(this.data, 0) === CancellationState.Cancelled;
+		}
+		get onCancellationRequested() {
+			throw new Error(`Cancellation over SharedArrayBuffer doesn't support cancellation events`);
+		}
+	};
+	var SharedArrayBufferCancellationTokenSource = class {
+		constructor(buffer) {
+			this.token = new SharedArrayBufferCancellationToken(buffer);
+		}
+		cancel() {}
+		dispose() {}
+	};
+	var SharedArrayReceiverStrategy = class {
+		constructor() {
+			this.kind = "request";
+		}
+		createCancellationTokenSource(request) {
+			const buffer = request.$cancellationData;
+			if (buffer === void 0) return new cancellation_1.CancellationTokenSource();
+			return new SharedArrayBufferCancellationTokenSource(buffer);
+		}
+	};
+	exports.SharedArrayReceiverStrategy = SharedArrayReceiverStrategy;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/semaphore.js
+var require_semaphore = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.Semaphore = void 0;
+	const ral_1 = require_ral();
+	var Semaphore = class {
+		constructor(capacity = 1) {
+			if (capacity <= 0) throw new Error("Capacity must be greater than 0");
+			this._capacity = capacity;
+			this._active = 0;
+			this._waiting = [];
+		}
+		lock(thunk) {
+			return new Promise((resolve, reject) => {
+				this._waiting.push({
+					thunk,
+					resolve,
+					reject
+				});
+				this.runNext();
+			});
+		}
+		get active() {
+			return this._active;
+		}
+		runNext() {
+			if (this._waiting.length === 0 || this._active === this._capacity) return;
+			(0, ral_1.default)().timer.setImmediate(() => this.doRunNext());
+		}
+		doRunNext() {
+			if (this._waiting.length === 0 || this._active === this._capacity) return;
+			const next = this._waiting.shift();
+			this._active++;
+			if (this._active > this._capacity) throw new Error(`To many thunks active`);
+			try {
+				const result = next.thunk();
+				if (result instanceof Promise) result.then((value) => {
+					this._active--;
+					next.resolve(value);
+					this.runNext();
+				}, (err) => {
+					this._active--;
+					next.reject(err);
+					this.runNext();
+				});
+				else {
+					this._active--;
+					next.resolve(result);
+					this.runNext();
+				}
+			} catch (err) {
+				this._active--;
+				next.reject(err);
+				this.runNext();
+			}
+		}
+	};
+	exports.Semaphore = Semaphore;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messageReader.js
+var require_messageReader = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.ReadableStreamMessageReader = exports.AbstractMessageReader = exports.MessageReader = void 0;
+	const ral_1 = require_ral();
+	const Is = require_is();
+	const events_1 = require_events();
+	const semaphore_1 = require_semaphore();
+	var MessageReader;
+	(function(MessageReader) {
+		function is(value) {
+			let candidate = value;
+			return candidate && Is.func(candidate.listen) && Is.func(candidate.dispose) && Is.func(candidate.onError) && Is.func(candidate.onClose) && Is.func(candidate.onPartialMessage);
+		}
+		MessageReader.is = is;
+	})(MessageReader || (exports.MessageReader = MessageReader = {}));
+	var AbstractMessageReader = class {
+		constructor() {
+			this.errorEmitter = new events_1.Emitter();
+			this.closeEmitter = new events_1.Emitter();
+			this.partialMessageEmitter = new events_1.Emitter();
+		}
+		dispose() {
+			this.errorEmitter.dispose();
+			this.closeEmitter.dispose();
+		}
+		get onError() {
+			return this.errorEmitter.event;
+		}
+		fireError(error) {
+			this.errorEmitter.fire(this.asError(error));
+		}
+		get onClose() {
+			return this.closeEmitter.event;
+		}
+		fireClose() {
+			this.closeEmitter.fire(void 0);
+		}
+		get onPartialMessage() {
+			return this.partialMessageEmitter.event;
+		}
+		firePartialMessage(info) {
+			this.partialMessageEmitter.fire(info);
+		}
+		asError(error) {
+			if (error instanceof Error) return error;
+			else return /* @__PURE__ */ new Error(`Reader received error. Reason: ${Is.string(error.message) ? error.message : "unknown"}`);
+		}
+	};
+	exports.AbstractMessageReader = AbstractMessageReader;
+	var ResolvedMessageReaderOptions;
+	(function(ResolvedMessageReaderOptions) {
+		function fromOptions(options) {
+			let charset;
+			let contentDecoder;
+			const contentDecoders = /* @__PURE__ */ new Map();
+			let contentTypeDecoder;
+			const contentTypeDecoders = /* @__PURE__ */ new Map();
+			if (options === void 0 || typeof options === "string") charset = options ?? "utf-8";
+			else {
+				charset = options.charset ?? "utf-8";
+				if (options.contentDecoder !== void 0) {
+					contentDecoder = options.contentDecoder;
+					contentDecoders.set(contentDecoder.name, contentDecoder);
+				}
+				if (options.contentDecoders !== void 0) for (const decoder of options.contentDecoders) contentDecoders.set(decoder.name, decoder);
+				if (options.contentTypeDecoder !== void 0) {
+					contentTypeDecoder = options.contentTypeDecoder;
+					contentTypeDecoders.set(contentTypeDecoder.name, contentTypeDecoder);
+				}
+				if (options.contentTypeDecoders !== void 0) for (const decoder of options.contentTypeDecoders) contentTypeDecoders.set(decoder.name, decoder);
+			}
+			if (contentTypeDecoder === void 0) {
+				contentTypeDecoder = (0, ral_1.default)().applicationJson.decoder;
+				contentTypeDecoders.set(contentTypeDecoder.name, contentTypeDecoder);
+			}
+			return {
+				charset,
+				contentDecoder,
+				contentDecoders,
+				contentTypeDecoder,
+				contentTypeDecoders
+			};
+		}
+		ResolvedMessageReaderOptions.fromOptions = fromOptions;
+	})(ResolvedMessageReaderOptions || (ResolvedMessageReaderOptions = {}));
+	var ReadableStreamMessageReader = class extends AbstractMessageReader {
+		constructor(readable, options) {
+			super();
+			this.readable = readable;
+			this.options = ResolvedMessageReaderOptions.fromOptions(options);
+			this.buffer = (0, ral_1.default)().messageBuffer.create(this.options.charset);
+			this._partialMessageTimeout = 1e4;
+			this.nextMessageLength = -1;
+			this.messageToken = 0;
+			this.readSemaphore = new semaphore_1.Semaphore(1);
+		}
+		set partialMessageTimeout(timeout) {
+			this._partialMessageTimeout = timeout;
+		}
+		get partialMessageTimeout() {
+			return this._partialMessageTimeout;
+		}
+		listen(callback) {
+			this.nextMessageLength = -1;
+			this.messageToken = 0;
+			this.partialMessageTimer = void 0;
+			this.callback = callback;
+			const result = this.readable.onData((data) => {
+				this.onData(data);
+			});
+			this.readable.onError((error) => this.fireError(error));
+			this.readable.onClose(() => this.fireClose());
+			return result;
+		}
+		onData(data) {
+			try {
+				this.buffer.append(data);
+				while (true) {
+					if (this.nextMessageLength === -1) {
+						const headers = this.buffer.tryReadHeaders(true);
+						if (!headers) return;
+						const contentLength = headers.get("content-length");
+						if (!contentLength) {
+							this.fireError(/* @__PURE__ */ new Error(`Header must provide a Content-Length property.\n${JSON.stringify(Object.fromEntries(headers))}`));
+							return;
+						}
+						const length = parseInt(contentLength);
+						if (isNaN(length)) {
+							this.fireError(/* @__PURE__ */ new Error(`Content-Length value must be a number. Got ${contentLength}`));
+							return;
+						}
+						this.nextMessageLength = length;
+					}
+					const body = this.buffer.tryReadBody(this.nextMessageLength);
+					if (body === void 0) {
+						/** We haven't received the full message yet. */
+						this.setPartialMessageTimer();
+						return;
+					}
+					this.clearPartialMessageTimer();
+					this.nextMessageLength = -1;
+					this.readSemaphore.lock(async () => {
+						const bytes = this.options.contentDecoder !== void 0 ? await this.options.contentDecoder.decode(body) : body;
+						const message = await this.options.contentTypeDecoder.decode(bytes, this.options);
+						this.callback(message);
+					}).catch((error) => {
+						this.fireError(error);
+					});
+				}
+			} catch (error) {
+				this.fireError(error);
+			}
+		}
+		clearPartialMessageTimer() {
+			if (this.partialMessageTimer) {
+				this.partialMessageTimer.dispose();
+				this.partialMessageTimer = void 0;
+			}
+		}
+		setPartialMessageTimer() {
+			this.clearPartialMessageTimer();
+			if (this._partialMessageTimeout <= 0) return;
+			this.partialMessageTimer = (0, ral_1.default)().timer.setTimeout((token, timeout) => {
+				this.partialMessageTimer = void 0;
+				if (token === this.messageToken) {
+					this.firePartialMessage({
+						messageToken: token,
+						waitingTime: timeout
+					});
+					this.setPartialMessageTimer();
+				}
+			}, this._partialMessageTimeout, this.messageToken, this._partialMessageTimeout);
+		}
+	};
+	exports.ReadableStreamMessageReader = ReadableStreamMessageReader;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messageWriter.js
+var require_messageWriter = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.WriteableStreamMessageWriter = exports.AbstractMessageWriter = exports.MessageWriter = void 0;
+	const ral_1 = require_ral();
+	const Is = require_is();
+	const semaphore_1 = require_semaphore();
+	const events_1 = require_events();
+	const ContentLength = "Content-Length: ";
+	const CRLF = "\r\n";
+	var MessageWriter;
+	(function(MessageWriter) {
+		function is(value) {
+			let candidate = value;
+			return candidate && Is.func(candidate.dispose) && Is.func(candidate.onClose) && Is.func(candidate.onError) && Is.func(candidate.write);
+		}
+		MessageWriter.is = is;
+	})(MessageWriter || (exports.MessageWriter = MessageWriter = {}));
+	var AbstractMessageWriter = class {
+		constructor() {
+			this.errorEmitter = new events_1.Emitter();
+			this.closeEmitter = new events_1.Emitter();
+		}
+		dispose() {
+			this.errorEmitter.dispose();
+			this.closeEmitter.dispose();
+		}
+		get onError() {
+			return this.errorEmitter.event;
+		}
+		fireError(error, message, count) {
+			this.errorEmitter.fire([
+				this.asError(error),
+				message,
+				count
+			]);
+		}
+		get onClose() {
+			return this.closeEmitter.event;
+		}
+		fireClose() {
+			this.closeEmitter.fire(void 0);
+		}
+		asError(error) {
+			if (error instanceof Error) return error;
+			else return /* @__PURE__ */ new Error(`Writer received error. Reason: ${Is.string(error.message) ? error.message : "unknown"}`);
+		}
+	};
+	exports.AbstractMessageWriter = AbstractMessageWriter;
+	var ResolvedMessageWriterOptions;
+	(function(ResolvedMessageWriterOptions) {
+		function fromOptions(options) {
+			if (options === void 0 || typeof options === "string") return {
+				charset: options ?? "utf-8",
+				contentTypeEncoder: (0, ral_1.default)().applicationJson.encoder
+			};
+			else return {
+				charset: options.charset ?? "utf-8",
+				contentEncoder: options.contentEncoder,
+				contentTypeEncoder: options.contentTypeEncoder ?? (0, ral_1.default)().applicationJson.encoder
+			};
+		}
+		ResolvedMessageWriterOptions.fromOptions = fromOptions;
+	})(ResolvedMessageWriterOptions || (ResolvedMessageWriterOptions = {}));
+	var WriteableStreamMessageWriter = class extends AbstractMessageWriter {
+		constructor(writable, options) {
+			super();
+			this.writable = writable;
+			this.options = ResolvedMessageWriterOptions.fromOptions(options);
+			this.errorCount = 0;
+			this.writeSemaphore = new semaphore_1.Semaphore(1);
+			this.writable.onError((error) => this.fireError(error));
+			this.writable.onClose(() => this.fireClose());
+		}
+		async write(msg) {
+			return this.writeSemaphore.lock(async () => {
+				return this.options.contentTypeEncoder.encode(msg, this.options).then((buffer) => {
+					if (this.options.contentEncoder !== void 0) return this.options.contentEncoder.encode(buffer);
+					else return buffer;
+				}).then((buffer) => {
+					const headers = [];
+					headers.push(ContentLength, buffer.byteLength.toString(), CRLF);
+					headers.push(CRLF);
+					return this.doWrite(msg, headers, buffer);
+				}, (error) => {
+					this.fireError(error);
+					throw error;
+				});
+			});
+		}
+		async doWrite(msg, headers, data) {
+			try {
+				await this.writable.write(headers.join(""), "ascii");
+				return this.writable.write(data);
+			} catch (error) {
+				this.handleError(error, msg);
+				return Promise.reject(error);
+			}
+		}
+		handleError(error, msg) {
+			this.errorCount++;
+			this.fireError(error, msg, this.errorCount);
+		}
+		end() {
+			this.writable.end();
+		}
+	};
+	exports.WriteableStreamMessageWriter = WriteableStreamMessageWriter;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/messageBuffer.js
+var require_messageBuffer = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.AbstractMessageBuffer = void 0;
+	const CR = 13;
+	const LF = 10;
+	const CRLF = "\r\n";
+	var AbstractMessageBuffer = class {
+		constructor(encoding = "utf-8") {
+			this._encoding = encoding;
+			this._chunks = [];
+			this._totalLength = 0;
+		}
+		get encoding() {
+			return this._encoding;
+		}
+		append(chunk) {
+			const toAppend = typeof chunk === "string" ? this.fromString(chunk, this._encoding) : chunk;
+			this._chunks.push(toAppend);
+			this._totalLength += toAppend.byteLength;
+		}
+		tryReadHeaders(lowerCaseKeys = false) {
+			if (this._chunks.length === 0) return;
+			let state = 0;
+			let chunkIndex = 0;
+			let offset = 0;
+			let chunkBytesRead = 0;
+			row: while (chunkIndex < this._chunks.length) {
+				const chunk = this._chunks[chunkIndex];
+				offset = 0;
+				column: while (offset < chunk.length) {
+					switch (chunk[offset]) {
+						case CR:
+							switch (state) {
+								case 0:
+									state = 1;
+									break;
+								case 2:
+									state = 3;
+									break;
+								default: state = 0;
+							}
+							break;
+						case LF:
+							switch (state) {
+								case 1:
+									state = 2;
+									break;
+								case 3:
+									state = 4;
+									offset++;
+									break row;
+								default: state = 0;
+							}
+							break;
+						default: state = 0;
+					}
+					offset++;
+				}
+				chunkBytesRead += chunk.byteLength;
+				chunkIndex++;
+			}
+			if (state !== 4) return;
+			const buffer = this._read(chunkBytesRead + offset);
+			const result = /* @__PURE__ */ new Map();
+			const headers = this.toString(buffer, "ascii").split(CRLF);
+			if (headers.length < 2) return result;
+			for (let i = 0; i < headers.length - 2; i++) {
+				const header = headers[i];
+				const index = header.indexOf(":");
+				if (index === -1) throw new Error(`Message header must separate key and value using ':'\n${header}`);
+				const key = header.substr(0, index);
+				const value = header.substr(index + 1).trim();
+				result.set(lowerCaseKeys ? key.toLowerCase() : key, value);
+			}
+			return result;
+		}
+		tryReadBody(length) {
+			if (this._totalLength < length) return;
+			return this._read(length);
+		}
+		get numberOfBytes() {
+			return this._totalLength;
+		}
+		_read(byteCount) {
+			if (byteCount === 0) return this.emptyBuffer();
+			if (byteCount > this._totalLength) throw new Error(`Cannot read so many bytes!`);
+			if (this._chunks[0].byteLength === byteCount) {
+				const chunk = this._chunks[0];
+				this._chunks.shift();
+				this._totalLength -= byteCount;
+				return this.asNative(chunk);
+			}
+			if (this._chunks[0].byteLength > byteCount) {
+				const chunk = this._chunks[0];
+				const result = this.asNative(chunk, byteCount);
+				this._chunks[0] = chunk.slice(byteCount);
+				this._totalLength -= byteCount;
+				return result;
+			}
+			const result = this.allocNative(byteCount);
+			let resultOffset = 0;
+			let chunkIndex = 0;
+			while (byteCount > 0) {
+				const chunk = this._chunks[chunkIndex];
+				if (chunk.byteLength > byteCount) {
+					const chunkPart = chunk.slice(0, byteCount);
+					result.set(chunkPart, resultOffset);
+					resultOffset += byteCount;
+					this._chunks[chunkIndex] = chunk.slice(byteCount);
+					this._totalLength -= byteCount;
+					byteCount -= byteCount;
+				} else {
+					result.set(chunk, resultOffset);
+					resultOffset += chunk.byteLength;
+					this._chunks.shift();
+					this._totalLength -= chunk.byteLength;
+					byteCount -= chunk.byteLength;
+				}
+			}
+			return result;
+		}
+	};
+	exports.AbstractMessageBuffer = AbstractMessageBuffer;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/connection.js
+var require_connection = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.createMessageConnection = exports.ConnectionOptions = exports.MessageStrategy = exports.CancellationStrategy = exports.CancellationSenderStrategy = exports.CancellationReceiverStrategy = exports.RequestCancellationReceiverStrategy = exports.IdCancellationReceiverStrategy = exports.ConnectionStrategy = exports.ConnectionError = exports.ConnectionErrors = exports.LogTraceNotification = exports.SetTraceNotification = exports.TraceFormat = exports.TraceValues = exports.Trace = exports.NullLogger = exports.ProgressType = exports.ProgressToken = void 0;
+	const ral_1 = require_ral();
+	const Is = require_is();
+	const messages_1 = require_messages();
+	const linkedMap_1 = require_linkedMap();
+	const events_1 = require_events();
+	const cancellation_1 = require_cancellation();
+	var CancelNotification;
+	(function(CancelNotification) {
+		CancelNotification.type = new messages_1.NotificationType("$/cancelRequest");
+	})(CancelNotification || (CancelNotification = {}));
+	var ProgressToken;
+	(function(ProgressToken) {
+		function is(value) {
+			return typeof value === "string" || typeof value === "number";
+		}
+		ProgressToken.is = is;
+	})(ProgressToken || (exports.ProgressToken = ProgressToken = {}));
+	var ProgressNotification;
+	(function(ProgressNotification) {
+		ProgressNotification.type = new messages_1.NotificationType("$/progress");
+	})(ProgressNotification || (ProgressNotification = {}));
+	var ProgressType = class {
+		constructor() {}
+	};
+	exports.ProgressType = ProgressType;
+	var StarRequestHandler;
+	(function(StarRequestHandler) {
+		function is(value) {
+			return Is.func(value);
+		}
+		StarRequestHandler.is = is;
+	})(StarRequestHandler || (StarRequestHandler = {}));
+	exports.NullLogger = Object.freeze({
+		error: () => {},
+		warn: () => {},
+		info: () => {},
+		log: () => {}
+	});
+	var Trace;
+	(function(Trace) {
+		Trace[Trace["Off"] = 0] = "Off";
+		Trace[Trace["Messages"] = 1] = "Messages";
+		Trace[Trace["Compact"] = 2] = "Compact";
+		Trace[Trace["Verbose"] = 3] = "Verbose";
+	})(Trace || (exports.Trace = Trace = {}));
+	var TraceValues;
+	(function(TraceValues) {
+		/**
+		* Turn tracing off.
+		*/
+		TraceValues.Off = "off";
+		/**
+		* Trace messages only.
+		*/
+		TraceValues.Messages = "messages";
+		/**
+		* Compact message tracing.
+		*/
+		TraceValues.Compact = "compact";
+		/**
+		* Verbose message tracing.
+		*/
+		TraceValues.Verbose = "verbose";
+	})(TraceValues || (exports.TraceValues = TraceValues = {}));
+	(function(Trace) {
+		function fromString(value) {
+			if (!Is.string(value)) return Trace.Off;
+			value = value.toLowerCase();
+			switch (value) {
+				case "off": return Trace.Off;
+				case "messages": return Trace.Messages;
+				case "compact": return Trace.Compact;
+				case "verbose": return Trace.Verbose;
+				default: return Trace.Off;
+			}
+		}
+		Trace.fromString = fromString;
+		function toString(value) {
+			switch (value) {
+				case Trace.Off: return "off";
+				case Trace.Messages: return "messages";
+				case Trace.Compact: return "compact";
+				case Trace.Verbose: return "verbose";
+				default: return "off";
+			}
+		}
+		Trace.toString = toString;
+	})(Trace || (exports.Trace = Trace = {}));
+	var TraceFormat;
+	(function(TraceFormat) {
+		TraceFormat["Text"] = "text";
+		TraceFormat["JSON"] = "json";
+	})(TraceFormat || (exports.TraceFormat = TraceFormat = {}));
+	(function(TraceFormat) {
+		function fromString(value) {
+			if (!Is.string(value)) return TraceFormat.Text;
+			value = value.toLowerCase();
+			if (value === "json") return TraceFormat.JSON;
+			else return TraceFormat.Text;
+		}
+		TraceFormat.fromString = fromString;
+	})(TraceFormat || (exports.TraceFormat = TraceFormat = {}));
+	var SetTraceNotification;
+	(function(SetTraceNotification) {
+		SetTraceNotification.type = new messages_1.NotificationType("$/setTrace");
+	})(SetTraceNotification || (exports.SetTraceNotification = SetTraceNotification = {}));
+	var LogTraceNotification;
+	(function(LogTraceNotification) {
+		LogTraceNotification.type = new messages_1.NotificationType("$/logTrace");
+	})(LogTraceNotification || (exports.LogTraceNotification = LogTraceNotification = {}));
+	var ConnectionErrors;
+	(function(ConnectionErrors) {
+		/**
+		* The connection is closed.
+		*/
+		ConnectionErrors[ConnectionErrors["Closed"] = 1] = "Closed";
+		/**
+		* The connection got disposed.
+		*/
+		ConnectionErrors[ConnectionErrors["Disposed"] = 2] = "Disposed";
+		/**
+		* The connection is already in listening mode.
+		*/
+		ConnectionErrors[ConnectionErrors["AlreadyListening"] = 3] = "AlreadyListening";
+	})(ConnectionErrors || (exports.ConnectionErrors = ConnectionErrors = {}));
+	var ConnectionError = class ConnectionError extends Error {
+		constructor(code, message) {
+			super(message);
+			this.code = code;
+			Object.setPrototypeOf(this, ConnectionError.prototype);
+		}
+	};
+	exports.ConnectionError = ConnectionError;
+	var ConnectionStrategy;
+	(function(ConnectionStrategy) {
+		function is(value) {
+			const candidate = value;
+			return candidate && Is.func(candidate.cancelUndispatched);
+		}
+		ConnectionStrategy.is = is;
+	})(ConnectionStrategy || (exports.ConnectionStrategy = ConnectionStrategy = {}));
+	var IdCancellationReceiverStrategy;
+	(function(IdCancellationReceiverStrategy) {
+		function is(value) {
+			const candidate = value;
+			return candidate && (candidate.kind === void 0 || candidate.kind === "id") && Is.func(candidate.createCancellationTokenSource) && (candidate.dispose === void 0 || Is.func(candidate.dispose));
+		}
+		IdCancellationReceiverStrategy.is = is;
+	})(IdCancellationReceiverStrategy || (exports.IdCancellationReceiverStrategy = IdCancellationReceiverStrategy = {}));
+	var RequestCancellationReceiverStrategy;
+	(function(RequestCancellationReceiverStrategy) {
+		function is(value) {
+			const candidate = value;
+			return candidate && candidate.kind === "request" && Is.func(candidate.createCancellationTokenSource) && (candidate.dispose === void 0 || Is.func(candidate.dispose));
+		}
+		RequestCancellationReceiverStrategy.is = is;
+	})(RequestCancellationReceiverStrategy || (exports.RequestCancellationReceiverStrategy = RequestCancellationReceiverStrategy = {}));
+	var CancellationReceiverStrategy;
+	(function(CancellationReceiverStrategy) {
+		CancellationReceiverStrategy.Message = Object.freeze({ createCancellationTokenSource(_) {
+			return new cancellation_1.CancellationTokenSource();
+		} });
+		function is(value) {
+			return IdCancellationReceiverStrategy.is(value) || RequestCancellationReceiverStrategy.is(value);
+		}
+		CancellationReceiverStrategy.is = is;
+	})(CancellationReceiverStrategy || (exports.CancellationReceiverStrategy = CancellationReceiverStrategy = {}));
+	var CancellationSenderStrategy;
+	(function(CancellationSenderStrategy) {
+		CancellationSenderStrategy.Message = Object.freeze({
+			sendCancellation(conn, id) {
+				return conn.sendNotification(CancelNotification.type, { id });
+			},
+			cleanup(_) {}
+		});
+		function is(value) {
+			const candidate = value;
+			return candidate && Is.func(candidate.sendCancellation) && Is.func(candidate.cleanup);
+		}
+		CancellationSenderStrategy.is = is;
+	})(CancellationSenderStrategy || (exports.CancellationSenderStrategy = CancellationSenderStrategy = {}));
+	var CancellationStrategy;
+	(function(CancellationStrategy) {
+		CancellationStrategy.Message = Object.freeze({
+			receiver: CancellationReceiverStrategy.Message,
+			sender: CancellationSenderStrategy.Message
+		});
+		function is(value) {
+			const candidate = value;
+			return candidate && CancellationReceiverStrategy.is(candidate.receiver) && CancellationSenderStrategy.is(candidate.sender);
+		}
+		CancellationStrategy.is = is;
+	})(CancellationStrategy || (exports.CancellationStrategy = CancellationStrategy = {}));
+	var MessageStrategy;
+	(function(MessageStrategy) {
+		function is(value) {
+			const candidate = value;
+			return candidate && Is.func(candidate.handleMessage);
+		}
+		MessageStrategy.is = is;
+	})(MessageStrategy || (exports.MessageStrategy = MessageStrategy = {}));
+	var ConnectionOptions;
+	(function(ConnectionOptions) {
+		function is(value) {
+			const candidate = value;
+			return candidate && (CancellationStrategy.is(candidate.cancellationStrategy) || ConnectionStrategy.is(candidate.connectionStrategy) || MessageStrategy.is(candidate.messageStrategy));
+		}
+		ConnectionOptions.is = is;
+	})(ConnectionOptions || (exports.ConnectionOptions = ConnectionOptions = {}));
+	var ConnectionState;
+	(function(ConnectionState) {
+		ConnectionState[ConnectionState["New"] = 1] = "New";
+		ConnectionState[ConnectionState["Listening"] = 2] = "Listening";
+		ConnectionState[ConnectionState["Closed"] = 3] = "Closed";
+		ConnectionState[ConnectionState["Disposed"] = 4] = "Disposed";
+	})(ConnectionState || (ConnectionState = {}));
+	function createMessageConnection(messageReader, messageWriter, _logger, options) {
+		const logger = _logger !== void 0 ? _logger : exports.NullLogger;
+		let sequenceNumber = 0;
+		let notificationSequenceNumber = 0;
+		let unknownResponseSequenceNumber = 0;
+		const version = "2.0";
+		let starRequestHandler = void 0;
+		const requestHandlers = /* @__PURE__ */ new Map();
+		let starNotificationHandler = void 0;
+		const notificationHandlers = /* @__PURE__ */ new Map();
+		const progressHandlers = /* @__PURE__ */ new Map();
+		let timer;
+		let messageQueue = new linkedMap_1.LinkedMap();
+		let responsePromises = /* @__PURE__ */ new Map();
+		let knownCanceledRequests = /* @__PURE__ */ new Set();
+		let requestTokens = /* @__PURE__ */ new Map();
+		let trace = Trace.Off;
+		let traceFormat = TraceFormat.Text;
+		let tracer;
+		let state = ConnectionState.New;
+		const errorEmitter = new events_1.Emitter();
+		const closeEmitter = new events_1.Emitter();
+		const unhandledNotificationEmitter = new events_1.Emitter();
+		const unhandledProgressEmitter = new events_1.Emitter();
+		const disposeEmitter = new events_1.Emitter();
+		const cancellationStrategy = options && options.cancellationStrategy ? options.cancellationStrategy : CancellationStrategy.Message;
+		function createRequestQueueKey(id) {
+			if (id === null) throw new Error(`Can't send requests with id null since the response can't be correlated.`);
+			return "req-" + id.toString();
+		}
+		function createResponseQueueKey(id) {
+			if (id === null) return "res-unknown-" + (++unknownResponseSequenceNumber).toString();
+			else return "res-" + id.toString();
+		}
+		function createNotificationQueueKey() {
+			return "not-" + (++notificationSequenceNumber).toString();
+		}
+		function addMessageToQueue(queue, message) {
+			if (messages_1.Message.isRequest(message)) queue.set(createRequestQueueKey(message.id), message);
+			else if (messages_1.Message.isResponse(message)) queue.set(createResponseQueueKey(message.id), message);
+			else queue.set(createNotificationQueueKey(), message);
+		}
+		function cancelUndispatched(_message) {}
+		function isListening() {
+			return state === ConnectionState.Listening;
+		}
+		function isClosed() {
+			return state === ConnectionState.Closed;
+		}
+		function isDisposed() {
+			return state === ConnectionState.Disposed;
+		}
+		function closeHandler() {
+			if (state === ConnectionState.New || state === ConnectionState.Listening) {
+				state = ConnectionState.Closed;
+				closeEmitter.fire(void 0);
+			}
+		}
+		function readErrorHandler(error) {
+			errorEmitter.fire([
+				error,
+				void 0,
+				void 0
+			]);
+		}
+		function writeErrorHandler(data) {
+			errorEmitter.fire(data);
+		}
+		messageReader.onClose(closeHandler);
+		messageReader.onError(readErrorHandler);
+		messageWriter.onClose(closeHandler);
+		messageWriter.onError(writeErrorHandler);
+		function triggerMessageQueue() {
+			if (timer || messageQueue.size === 0) return;
+			timer = (0, ral_1.default)().timer.setImmediate(() => {
+				timer = void 0;
+				processMessageQueue();
+			});
+		}
+		function handleMessage(message) {
+			if (messages_1.Message.isRequest(message)) handleRequest(message);
+			else if (messages_1.Message.isNotification(message)) handleNotification(message);
+			else if (messages_1.Message.isResponse(message)) handleResponse(message);
+			else handleInvalidMessage(message);
+		}
+		function processMessageQueue() {
+			if (messageQueue.size === 0) return;
+			const message = messageQueue.shift();
+			try {
+				const messageStrategy = options?.messageStrategy;
+				if (MessageStrategy.is(messageStrategy)) messageStrategy.handleMessage(message, handleMessage);
+				else handleMessage(message);
+			} finally {
+				triggerMessageQueue();
+			}
+		}
+		const callback = (message) => {
+			try {
+				if (messages_1.Message.isNotification(message) && message.method === CancelNotification.type.method) {
+					const cancelId = message.params.id;
+					const key = createRequestQueueKey(cancelId);
+					const toCancel = messageQueue.get(key);
+					if (messages_1.Message.isRequest(toCancel)) {
+						const strategy = options?.connectionStrategy;
+						const response = strategy && strategy.cancelUndispatched ? strategy.cancelUndispatched(toCancel, cancelUndispatched) : cancelUndispatched(toCancel);
+						if (response && (response.error !== void 0 || response.result !== void 0)) {
+							messageQueue.delete(key);
+							requestTokens.delete(cancelId);
+							response.id = toCancel.id;
+							traceSendingResponse(response, message.method, Date.now());
+							messageWriter.write(response).catch(() => logger.error(`Sending response for canceled message failed.`));
+							return;
+						}
+					}
+					const cancellationToken = requestTokens.get(cancelId);
+					if (cancellationToken !== void 0) {
+						cancellationToken.cancel();
+						traceReceivedNotification(message);
+						return;
+					} else knownCanceledRequests.add(cancelId);
+				}
+				addMessageToQueue(messageQueue, message);
+			} finally {
+				triggerMessageQueue();
+			}
+		};
+		function handleRequest(requestMessage) {
+			if (isDisposed()) return;
+			function reply(resultOrError, method, startTime) {
+				const message = {
+					jsonrpc: version,
+					id: requestMessage.id
+				};
+				if (resultOrError instanceof messages_1.ResponseError) message.error = resultOrError.toJson();
+				else message.result = resultOrError === void 0 ? null : resultOrError;
+				traceSendingResponse(message, method, startTime);
+				messageWriter.write(message).catch(() => logger.error(`Sending response failed.`));
+			}
+			function replyError(error, method, startTime) {
+				const message = {
+					jsonrpc: version,
+					id: requestMessage.id,
+					error: error.toJson()
+				};
+				traceSendingResponse(message, method, startTime);
+				messageWriter.write(message).catch(() => logger.error(`Sending response failed.`));
+			}
+			function replySuccess(result, method, startTime) {
+				if (result === void 0) result = null;
+				const message = {
+					jsonrpc: version,
+					id: requestMessage.id,
+					result
+				};
+				traceSendingResponse(message, method, startTime);
+				messageWriter.write(message).catch(() => logger.error(`Sending response failed.`));
+			}
+			traceReceivedRequest(requestMessage);
+			const element = requestHandlers.get(requestMessage.method);
+			let type;
+			let requestHandler;
+			if (element) {
+				type = element.type;
+				requestHandler = element.handler;
+			}
+			const startTime = Date.now();
+			if (requestHandler || starRequestHandler) {
+				const tokenKey = requestMessage.id ?? String(Date.now());
+				const cancellationSource = IdCancellationReceiverStrategy.is(cancellationStrategy.receiver) ? cancellationStrategy.receiver.createCancellationTokenSource(tokenKey) : cancellationStrategy.receiver.createCancellationTokenSource(requestMessage);
+				if (requestMessage.id !== null && knownCanceledRequests.has(requestMessage.id)) cancellationSource.cancel();
+				if (requestMessage.id !== null) requestTokens.set(tokenKey, cancellationSource);
+				try {
+					let handlerResult;
+					if (requestHandler) if (requestMessage.params === void 0) {
+						if (type !== void 0 && type.numberOfParams !== 0) {
+							replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InvalidParams, `Request ${requestMessage.method} defines ${type.numberOfParams} params but received none.`), requestMessage.method, startTime);
+							return;
+						}
+						handlerResult = requestHandler(cancellationSource.token);
+					} else if (Array.isArray(requestMessage.params)) {
+						if (type !== void 0 && type.parameterStructures === messages_1.ParameterStructures.byName) {
+							replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InvalidParams, `Request ${requestMessage.method} defines parameters by name but received parameters by position`), requestMessage.method, startTime);
+							return;
+						}
+						handlerResult = requestHandler(...requestMessage.params, cancellationSource.token);
+					} else {
+						if (type !== void 0 && type.parameterStructures === messages_1.ParameterStructures.byPosition) {
+							replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InvalidParams, `Request ${requestMessage.method} defines parameters by position but received parameters by name`), requestMessage.method, startTime);
+							return;
+						}
+						handlerResult = requestHandler(requestMessage.params, cancellationSource.token);
+					}
+					else if (starRequestHandler) handlerResult = starRequestHandler(requestMessage.method, requestMessage.params, cancellationSource.token);
+					const promise = handlerResult;
+					if (!handlerResult) {
+						requestTokens.delete(tokenKey);
+						replySuccess(handlerResult, requestMessage.method, startTime);
+					} else if (promise.then) promise.then((resultOrError) => {
+						requestTokens.delete(tokenKey);
+						reply(resultOrError, requestMessage.method, startTime);
+					}, (error) => {
+						requestTokens.delete(tokenKey);
+						if (error instanceof messages_1.ResponseError) replyError(error, requestMessage.method, startTime);
+						else if (error && Is.string(error.message)) replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed with message: ${error.message}`), requestMessage.method, startTime);
+						else replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed unexpectedly without providing any details.`), requestMessage.method, startTime);
+					});
+					else {
+						requestTokens.delete(tokenKey);
+						reply(handlerResult, requestMessage.method, startTime);
+					}
+				} catch (error) {
+					requestTokens.delete(tokenKey);
+					if (error instanceof messages_1.ResponseError) reply(error, requestMessage.method, startTime);
+					else if (error && Is.string(error.message)) replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed with message: ${error.message}`), requestMessage.method, startTime);
+					else replyError(new messages_1.ResponseError(messages_1.ErrorCodes.InternalError, `Request ${requestMessage.method} failed unexpectedly without providing any details.`), requestMessage.method, startTime);
+				}
+			} else replyError(new messages_1.ResponseError(messages_1.ErrorCodes.MethodNotFound, `Unhandled method ${requestMessage.method}`), requestMessage.method, startTime);
+		}
+		function handleResponse(responseMessage) {
+			if (isDisposed()) return;
+			if (responseMessage.id === null) if (responseMessage.error) logger.error(`Received response message without id: Error is: \n${JSON.stringify(responseMessage.error, void 0, 4)}`);
+			else logger.error(`Received response message without id. No further error information provided.`);
+			else {
+				const key = responseMessage.id;
+				const responsePromise = responsePromises.get(key);
+				traceReceivedResponse(responseMessage, responsePromise);
+				if (responsePromise !== void 0) {
+					responsePromises.delete(key);
+					try {
+						if (responseMessage.error) {
+							const error = responseMessage.error;
+							responsePromise.reject(new messages_1.ResponseError(error.code, error.message, error.data));
+						} else if (responseMessage.result !== void 0) responsePromise.resolve(responseMessage.result);
+						else throw new Error("Should never happen.");
+					} catch (error) {
+						if (error.message) logger.error(`Response handler '${responsePromise.method}' failed with message: ${error.message}`);
+						else logger.error(`Response handler '${responsePromise.method}' failed unexpectedly.`);
+					}
+				}
+			}
+		}
+		function handleNotification(message) {
+			if (isDisposed()) return;
+			let type = void 0;
+			let notificationHandler;
+			if (message.method === CancelNotification.type.method) {
+				const cancelId = message.params.id;
+				knownCanceledRequests.delete(cancelId);
+				traceReceivedNotification(message);
+				return;
+			} else {
+				const element = notificationHandlers.get(message.method);
+				if (element) {
+					notificationHandler = element.handler;
+					type = element.type;
+				}
+			}
+			if (notificationHandler || starNotificationHandler) try {
+				traceReceivedNotification(message);
+				if (notificationHandler) if (message.params === void 0) {
+					if (type !== void 0) {
+						if (type.numberOfParams !== 0 && type.parameterStructures !== messages_1.ParameterStructures.byName) logger.error(`Notification ${message.method} defines ${type.numberOfParams} params but received none.`);
+					}
+					notificationHandler();
+				} else if (Array.isArray(message.params)) {
+					const params = message.params;
+					if (message.method === ProgressNotification.type.method && params.length === 2 && ProgressToken.is(params[0])) notificationHandler({
+						token: params[0],
+						value: params[1]
+					});
+					else {
+						if (type !== void 0) {
+							if (type.parameterStructures === messages_1.ParameterStructures.byName) logger.error(`Notification ${message.method} defines parameters by name but received parameters by position`);
+							if (type.numberOfParams !== message.params.length) logger.error(`Notification ${message.method} defines ${type.numberOfParams} params but received ${params.length} arguments`);
+						}
+						notificationHandler(...params);
+					}
+				} else {
+					if (type !== void 0 && type.parameterStructures === messages_1.ParameterStructures.byPosition) logger.error(`Notification ${message.method} defines parameters by position but received parameters by name`);
+					notificationHandler(message.params);
+				}
+				else if (starNotificationHandler) starNotificationHandler(message.method, message.params);
+			} catch (error) {
+				if (error.message) logger.error(`Notification handler '${message.method}' failed with message: ${error.message}`);
+				else logger.error(`Notification handler '${message.method}' failed unexpectedly.`);
+			}
+			else unhandledNotificationEmitter.fire(message);
+		}
+		function handleInvalidMessage(message) {
+			if (!message) {
+				logger.error("Received empty message.");
+				return;
+			}
+			logger.error(`Received message which is neither a response nor a notification message:\n${JSON.stringify(message, null, 4)}`);
+			const responseMessage = message;
+			if (Is.string(responseMessage.id) || Is.number(responseMessage.id)) {
+				const key = responseMessage.id;
+				const responseHandler = responsePromises.get(key);
+				if (responseHandler) responseHandler.reject(/* @__PURE__ */ new Error("The received response has neither a result nor an error property."));
+			}
+		}
+		function stringifyTrace(params) {
+			if (params === void 0 || params === null) return;
+			switch (trace) {
+				case Trace.Verbose: return JSON.stringify(params, null, 4);
+				case Trace.Compact: return JSON.stringify(params);
+				default: return;
+			}
+		}
+		function traceSendingRequest(message) {
+			if (trace === Trace.Off || !tracer) return;
+			if (traceFormat === TraceFormat.Text) {
+				let data = void 0;
+				if ((trace === Trace.Verbose || trace === Trace.Compact) && message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
+				tracer.log(`Sending request '${message.method} - (${message.id})'.`, data);
+			} else logLSPMessage("send-request", message);
+		}
+		function traceSendingNotification(message) {
+			if (trace === Trace.Off || !tracer) return;
+			if (traceFormat === TraceFormat.Text) {
+				let data = void 0;
+				if (trace === Trace.Verbose || trace === Trace.Compact) if (message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
+				else data = "No parameters provided.\n\n";
+				tracer.log(`Sending notification '${message.method}'.`, data);
+			} else logLSPMessage("send-notification", message);
+		}
+		function traceSendingResponse(message, method, startTime) {
+			if (trace === Trace.Off || !tracer) return;
+			if (traceFormat === TraceFormat.Text) {
+				let data = void 0;
+				if (trace === Trace.Verbose || trace === Trace.Compact) {
+					if (message.error && message.error.data) data = `Error data: ${stringifyTrace(message.error.data)}\n\n`;
+					else if (message.result) data = `Result: ${stringifyTrace(message.result)}\n\n`;
+					else if (message.error === void 0) data = "No result returned.\n\n";
+				}
+				tracer.log(`Sending response '${method} - (${message.id})'. Processing request took ${Date.now() - startTime}ms`, data);
+			} else logLSPMessage("send-response", message);
+		}
+		function traceReceivedRequest(message) {
+			if (trace === Trace.Off || !tracer) return;
+			if (traceFormat === TraceFormat.Text) {
+				let data = void 0;
+				if ((trace === Trace.Verbose || trace === Trace.Compact) && message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
+				tracer.log(`Received request '${message.method} - (${message.id})'.`, data);
+			} else logLSPMessage("receive-request", message);
+		}
+		function traceReceivedNotification(message) {
+			if (trace === Trace.Off || !tracer || message.method === LogTraceNotification.type.method) return;
+			if (traceFormat === TraceFormat.Text) {
+				let data = void 0;
+				if (trace === Trace.Verbose || trace === Trace.Compact) if (message.params) data = `Params: ${stringifyTrace(message.params)}\n\n`;
+				else data = "No parameters provided.\n\n";
+				tracer.log(`Received notification '${message.method}'.`, data);
+			} else logLSPMessage("receive-notification", message);
+		}
+		function traceReceivedResponse(message, responsePromise) {
+			if (trace === Trace.Off || !tracer) return;
+			if (traceFormat === TraceFormat.Text) {
+				let data = void 0;
+				if (trace === Trace.Verbose || trace === Trace.Compact) {
+					if (message.error && message.error.data) data = `Error data: ${stringifyTrace(message.error.data)}\n\n`;
+					else if (message.result) data = `Result: ${stringifyTrace(message.result)}\n\n`;
+					else if (message.error === void 0) data = "No result returned.\n\n";
+				}
+				if (responsePromise) {
+					const error = message.error ? ` Request failed: ${message.error.message} (${message.error.code}).` : "";
+					tracer.log(`Received response '${responsePromise.method} - (${message.id})' in ${Date.now() - responsePromise.timerStart}ms.${error}`, data);
+				} else tracer.log(`Received response ${message.id} without active response promise.`, data);
+			} else logLSPMessage("receive-response", message);
+		}
+		function logLSPMessage(type, message) {
+			if (!tracer || trace === Trace.Off) return;
+			const lspMessage = {
+				isLSPMessage: true,
+				type,
+				message,
+				timestamp: Date.now()
+			};
+			tracer.log(lspMessage);
+		}
+		function throwIfClosedOrDisposed() {
+			if (isClosed()) throw new ConnectionError(ConnectionErrors.Closed, "Connection is closed.");
+			if (isDisposed()) throw new ConnectionError(ConnectionErrors.Disposed, "Connection is disposed.");
+		}
+		function throwIfListening() {
+			if (isListening()) throw new ConnectionError(ConnectionErrors.AlreadyListening, "Connection is already listening");
+		}
+		function throwIfNotListening() {
+			if (!isListening()) throw new Error("Call listen() first.");
+		}
+		function undefinedToNull(param) {
+			if (param === void 0) return null;
+			else return param;
+		}
+		function nullToUndefined(param) {
+			if (param === null) return;
+			else return param;
+		}
+		function isNamedParam(param) {
+			return param !== void 0 && param !== null && !Array.isArray(param) && typeof param === "object";
+		}
+		function computeSingleParam(parameterStructures, param) {
+			switch (parameterStructures) {
+				case messages_1.ParameterStructures.auto: if (isNamedParam(param)) return nullToUndefined(param);
+				else return [undefinedToNull(param)];
+				case messages_1.ParameterStructures.byName:
+					if (!isNamedParam(param)) throw new Error(`Received parameters by name but param is not an object literal.`);
+					return nullToUndefined(param);
+				case messages_1.ParameterStructures.byPosition: return [undefinedToNull(param)];
+				default: throw new Error(`Unknown parameter structure ${parameterStructures.toString()}`);
+			}
+		}
+		function computeMessageParams(type, params) {
+			let result;
+			const numberOfParams = type.numberOfParams;
+			switch (numberOfParams) {
+				case 0:
+					result = void 0;
+					break;
+				case 1:
+					result = computeSingleParam(type.parameterStructures, params[0]);
+					break;
+				default:
+					result = [];
+					for (let i = 0; i < params.length && i < numberOfParams; i++) result.push(undefinedToNull(params[i]));
+					if (params.length < numberOfParams) for (let i = params.length; i < numberOfParams; i++) result.push(null);
+					break;
+			}
+			return result;
+		}
+		const connection = {
+			sendNotification: (type, ...args) => {
+				throwIfClosedOrDisposed();
+				let method;
+				let messageParams;
+				if (Is.string(type)) {
+					method = type;
+					const first = args[0];
+					let paramStart = 0;
+					let parameterStructures = messages_1.ParameterStructures.auto;
+					if (messages_1.ParameterStructures.is(first)) {
+						paramStart = 1;
+						parameterStructures = first;
+					}
+					let paramEnd = args.length;
+					const numberOfParams = paramEnd - paramStart;
+					switch (numberOfParams) {
+						case 0:
+							messageParams = void 0;
+							break;
+						case 1:
+							messageParams = computeSingleParam(parameterStructures, args[paramStart]);
+							break;
+						default:
+							if (parameterStructures === messages_1.ParameterStructures.byName) throw new Error(`Received ${numberOfParams} parameters for 'by Name' notification parameter structure.`);
+							messageParams = args.slice(paramStart, paramEnd).map((value) => undefinedToNull(value));
+							break;
+					}
+				} else {
+					const params = args;
+					method = type.method;
+					messageParams = computeMessageParams(type, params);
+				}
+				const notificationMessage = {
+					jsonrpc: version,
+					method,
+					params: messageParams
+				};
+				traceSendingNotification(notificationMessage);
+				return messageWriter.write(notificationMessage).catch((error) => {
+					logger.error(`Sending notification failed.`);
+					throw error;
+				});
+			},
+			onNotification: (type, handler) => {
+				throwIfClosedOrDisposed();
+				let method;
+				if (Is.func(type)) starNotificationHandler = type;
+				else if (handler) if (Is.string(type)) {
+					method = type;
+					notificationHandlers.set(type, {
+						type: void 0,
+						handler
+					});
+				} else {
+					method = type.method;
+					notificationHandlers.set(type.method, {
+						type,
+						handler
+					});
+				}
+				return { dispose: () => {
+					if (method !== void 0) notificationHandlers.delete(method);
+					else starNotificationHandler = void 0;
+				} };
+			},
+			onProgress: (_type, token, handler) => {
+				if (progressHandlers.has(token)) throw new Error(`Progress handler for token ${token} already registered`);
+				progressHandlers.set(token, handler);
+				return { dispose: () => {
+					progressHandlers.delete(token);
+				} };
+			},
+			sendProgress: (_type, token, value) => {
+				return connection.sendNotification(ProgressNotification.type, {
+					token,
+					value
+				});
+			},
+			onUnhandledProgress: unhandledProgressEmitter.event,
+			sendRequest: (type, ...args) => {
+				throwIfClosedOrDisposed();
+				throwIfNotListening();
+				let method;
+				let messageParams;
+				let token = void 0;
+				if (Is.string(type)) {
+					method = type;
+					const first = args[0];
+					const last = args[args.length - 1];
+					let paramStart = 0;
+					let parameterStructures = messages_1.ParameterStructures.auto;
+					if (messages_1.ParameterStructures.is(first)) {
+						paramStart = 1;
+						parameterStructures = first;
+					}
+					let paramEnd = args.length;
+					if (cancellation_1.CancellationToken.is(last)) {
+						paramEnd = paramEnd - 1;
+						token = last;
+					}
+					const numberOfParams = paramEnd - paramStart;
+					switch (numberOfParams) {
+						case 0:
+							messageParams = void 0;
+							break;
+						case 1:
+							messageParams = computeSingleParam(parameterStructures, args[paramStart]);
+							break;
+						default:
+							if (parameterStructures === messages_1.ParameterStructures.byName) throw new Error(`Received ${numberOfParams} parameters for 'by Name' request parameter structure.`);
+							messageParams = args.slice(paramStart, paramEnd).map((value) => undefinedToNull(value));
+							break;
+					}
+				} else {
+					const params = args;
+					method = type.method;
+					messageParams = computeMessageParams(type, params);
+					const numberOfParams = type.numberOfParams;
+					token = cancellation_1.CancellationToken.is(params[numberOfParams]) ? params[numberOfParams] : void 0;
+				}
+				const id = sequenceNumber++;
+				let disposable;
+				if (token) disposable = token.onCancellationRequested(() => {
+					const p = cancellationStrategy.sender.sendCancellation(connection, id);
+					if (p === void 0) {
+						logger.log(`Received no promise from cancellation strategy when cancelling id ${id}`);
+						return Promise.resolve();
+					} else return p.catch(() => {
+						logger.log(`Sending cancellation messages for id ${id} failed`);
+					});
+				});
+				const requestMessage = {
+					jsonrpc: version,
+					id,
+					method,
+					params: messageParams
+				};
+				traceSendingRequest(requestMessage);
+				if (typeof cancellationStrategy.sender.enableCancellation === "function") cancellationStrategy.sender.enableCancellation(requestMessage);
+				return new Promise(async (resolve, reject) => {
+					const resolveWithCleanup = (r) => {
+						resolve(r);
+						cancellationStrategy.sender.cleanup(id);
+						disposable?.dispose();
+					};
+					const rejectWithCleanup = (r) => {
+						reject(r);
+						cancellationStrategy.sender.cleanup(id);
+						disposable?.dispose();
+					};
+					const responsePromise = {
+						method,
+						timerStart: Date.now(),
+						resolve: resolveWithCleanup,
+						reject: rejectWithCleanup
+					};
+					try {
+						responsePromises.set(id, responsePromise);
+						await messageWriter.write(requestMessage);
+					} catch (error) {
+						responsePromises.delete(id);
+						responsePromise.reject(new messages_1.ResponseError(messages_1.ErrorCodes.MessageWriteError, error.message ? error.message : "Unknown reason"));
+						logger.error(`Sending request failed.`);
+						throw error;
+					}
+				});
+			},
+			onRequest: (type, handler) => {
+				throwIfClosedOrDisposed();
+				let method = null;
+				if (StarRequestHandler.is(type)) {
+					method = void 0;
+					starRequestHandler = type;
+				} else if (Is.string(type)) {
+					method = null;
+					if (handler !== void 0) {
+						method = type;
+						requestHandlers.set(type, {
+							handler,
+							type: void 0
+						});
+					}
+				} else if (handler !== void 0) {
+					method = type.method;
+					requestHandlers.set(type.method, {
+						type,
+						handler
+					});
+				}
+				return { dispose: () => {
+					if (method === null) return;
+					if (method !== void 0) requestHandlers.delete(method);
+					else starRequestHandler = void 0;
+				} };
+			},
+			hasPendingResponse: () => {
+				return responsePromises.size > 0;
+			},
+			trace: async (_value, _tracer, sendNotificationOrTraceOptions) => {
+				let _sendNotification = false;
+				let _traceFormat = TraceFormat.Text;
+				if (sendNotificationOrTraceOptions !== void 0) if (Is.boolean(sendNotificationOrTraceOptions)) _sendNotification = sendNotificationOrTraceOptions;
+				else {
+					_sendNotification = sendNotificationOrTraceOptions.sendNotification || false;
+					_traceFormat = sendNotificationOrTraceOptions.traceFormat || TraceFormat.Text;
+				}
+				trace = _value;
+				traceFormat = _traceFormat;
+				if (trace === Trace.Off) tracer = void 0;
+				else tracer = _tracer;
+				if (_sendNotification && !isClosed() && !isDisposed()) await connection.sendNotification(SetTraceNotification.type, { value: Trace.toString(_value) });
+			},
+			onError: errorEmitter.event,
+			onClose: closeEmitter.event,
+			onUnhandledNotification: unhandledNotificationEmitter.event,
+			onDispose: disposeEmitter.event,
+			end: () => {
+				messageWriter.end();
+			},
+			dispose: () => {
+				if (isDisposed()) return;
+				state = ConnectionState.Disposed;
+				disposeEmitter.fire(void 0);
+				const error = new messages_1.ResponseError(messages_1.ErrorCodes.PendingResponseRejected, "Pending response rejected since connection got disposed");
+				for (const promise of responsePromises.values()) promise.reject(error);
+				responsePromises = /* @__PURE__ */ new Map();
+				requestTokens = /* @__PURE__ */ new Map();
+				knownCanceledRequests = /* @__PURE__ */ new Set();
+				messageQueue = new linkedMap_1.LinkedMap();
+				if (Is.func(messageWriter.dispose)) messageWriter.dispose();
+				if (Is.func(messageReader.dispose)) messageReader.dispose();
+			},
+			listen: () => {
+				throwIfClosedOrDisposed();
+				throwIfListening();
+				state = ConnectionState.Listening;
+				messageReader.listen(callback);
+			},
+			inspect: () => {
+				(0, ral_1.default)().console.log("inspect");
+			}
+		};
+		connection.onNotification(LogTraceNotification.type, (params) => {
+			if (trace === Trace.Off || !tracer) return;
+			const verbose = trace === Trace.Verbose || trace === Trace.Compact;
+			tracer.log(params.message, verbose ? params.verbose : void 0);
+		});
+		connection.onNotification(ProgressNotification.type, (params) => {
+			const handler = progressHandlers.get(params.token);
+			if (handler) handler(params.value);
+			else unhandledProgressEmitter.fire(params);
+		});
+		return connection;
+	}
+	exports.createMessageConnection = createMessageConnection;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/common/api.js
+var require_api = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.ProgressType = exports.ProgressToken = exports.createMessageConnection = exports.NullLogger = exports.ConnectionOptions = exports.ConnectionStrategy = exports.AbstractMessageBuffer = exports.WriteableStreamMessageWriter = exports.AbstractMessageWriter = exports.MessageWriter = exports.ReadableStreamMessageReader = exports.AbstractMessageReader = exports.MessageReader = exports.SharedArrayReceiverStrategy = exports.SharedArraySenderStrategy = exports.CancellationToken = exports.CancellationTokenSource = exports.Emitter = exports.Event = exports.Disposable = exports.LRUCache = exports.Touch = exports.LinkedMap = exports.ParameterStructures = exports.NotificationType9 = exports.NotificationType8 = exports.NotificationType7 = exports.NotificationType6 = exports.NotificationType5 = exports.NotificationType4 = exports.NotificationType3 = exports.NotificationType2 = exports.NotificationType1 = exports.NotificationType0 = exports.NotificationType = exports.ErrorCodes = exports.ResponseError = exports.RequestType9 = exports.RequestType8 = exports.RequestType7 = exports.RequestType6 = exports.RequestType5 = exports.RequestType4 = exports.RequestType3 = exports.RequestType2 = exports.RequestType1 = exports.RequestType0 = exports.RequestType = exports.Message = exports.RAL = void 0;
+	exports.MessageStrategy = exports.CancellationStrategy = exports.CancellationSenderStrategy = exports.CancellationReceiverStrategy = exports.ConnectionError = exports.ConnectionErrors = exports.LogTraceNotification = exports.SetTraceNotification = exports.TraceFormat = exports.TraceValues = exports.Trace = void 0;
+	const messages_1 = require_messages();
+	Object.defineProperty(exports, "Message", {
+		enumerable: true,
+		get: function() {
+			return messages_1.Message;
+		}
+	});
+	Object.defineProperty(exports, "RequestType", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType;
+		}
+	});
+	Object.defineProperty(exports, "RequestType0", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType0;
+		}
+	});
+	Object.defineProperty(exports, "RequestType1", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType1;
+		}
+	});
+	Object.defineProperty(exports, "RequestType2", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType2;
+		}
+	});
+	Object.defineProperty(exports, "RequestType3", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType3;
+		}
+	});
+	Object.defineProperty(exports, "RequestType4", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType4;
+		}
+	});
+	Object.defineProperty(exports, "RequestType5", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType5;
+		}
+	});
+	Object.defineProperty(exports, "RequestType6", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType6;
+		}
+	});
+	Object.defineProperty(exports, "RequestType7", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType7;
+		}
+	});
+	Object.defineProperty(exports, "RequestType8", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType8;
+		}
+	});
+	Object.defineProperty(exports, "RequestType9", {
+		enumerable: true,
+		get: function() {
+			return messages_1.RequestType9;
+		}
+	});
+	Object.defineProperty(exports, "ResponseError", {
+		enumerable: true,
+		get: function() {
+			return messages_1.ResponseError;
+		}
+	});
+	Object.defineProperty(exports, "ErrorCodes", {
+		enumerable: true,
+		get: function() {
+			return messages_1.ErrorCodes;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType0", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType0;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType1", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType1;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType2", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType2;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType3", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType3;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType4", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType4;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType5", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType5;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType6", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType6;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType7", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType7;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType8", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType8;
+		}
+	});
+	Object.defineProperty(exports, "NotificationType9", {
+		enumerable: true,
+		get: function() {
+			return messages_1.NotificationType9;
+		}
+	});
+	Object.defineProperty(exports, "ParameterStructures", {
+		enumerable: true,
+		get: function() {
+			return messages_1.ParameterStructures;
+		}
+	});
+	const linkedMap_1 = require_linkedMap();
+	Object.defineProperty(exports, "LinkedMap", {
+		enumerable: true,
+		get: function() {
+			return linkedMap_1.LinkedMap;
+		}
+	});
+	Object.defineProperty(exports, "LRUCache", {
+		enumerable: true,
+		get: function() {
+			return linkedMap_1.LRUCache;
+		}
+	});
+	Object.defineProperty(exports, "Touch", {
+		enumerable: true,
+		get: function() {
+			return linkedMap_1.Touch;
+		}
+	});
+	const disposable_1 = require_disposable();
+	Object.defineProperty(exports, "Disposable", {
+		enumerable: true,
+		get: function() {
+			return disposable_1.Disposable;
+		}
+	});
+	const events_1 = require_events();
+	Object.defineProperty(exports, "Event", {
+		enumerable: true,
+		get: function() {
+			return events_1.Event;
+		}
+	});
+	Object.defineProperty(exports, "Emitter", {
+		enumerable: true,
+		get: function() {
+			return events_1.Emitter;
+		}
+	});
+	const cancellation_1 = require_cancellation();
+	Object.defineProperty(exports, "CancellationTokenSource", {
+		enumerable: true,
+		get: function() {
+			return cancellation_1.CancellationTokenSource;
+		}
+	});
+	Object.defineProperty(exports, "CancellationToken", {
+		enumerable: true,
+		get: function() {
+			return cancellation_1.CancellationToken;
+		}
+	});
+	const sharedArrayCancellation_1 = require_sharedArrayCancellation();
+	Object.defineProperty(exports, "SharedArraySenderStrategy", {
+		enumerable: true,
+		get: function() {
+			return sharedArrayCancellation_1.SharedArraySenderStrategy;
+		}
+	});
+	Object.defineProperty(exports, "SharedArrayReceiverStrategy", {
+		enumerable: true,
+		get: function() {
+			return sharedArrayCancellation_1.SharedArrayReceiverStrategy;
+		}
+	});
+	const messageReader_1 = require_messageReader();
+	Object.defineProperty(exports, "MessageReader", {
+		enumerable: true,
+		get: function() {
+			return messageReader_1.MessageReader;
+		}
+	});
+	Object.defineProperty(exports, "AbstractMessageReader", {
+		enumerable: true,
+		get: function() {
+			return messageReader_1.AbstractMessageReader;
+		}
+	});
+	Object.defineProperty(exports, "ReadableStreamMessageReader", {
+		enumerable: true,
+		get: function() {
+			return messageReader_1.ReadableStreamMessageReader;
+		}
+	});
+	const messageWriter_1 = require_messageWriter();
+	Object.defineProperty(exports, "MessageWriter", {
+		enumerable: true,
+		get: function() {
+			return messageWriter_1.MessageWriter;
+		}
+	});
+	Object.defineProperty(exports, "AbstractMessageWriter", {
+		enumerable: true,
+		get: function() {
+			return messageWriter_1.AbstractMessageWriter;
+		}
+	});
+	Object.defineProperty(exports, "WriteableStreamMessageWriter", {
+		enumerable: true,
+		get: function() {
+			return messageWriter_1.WriteableStreamMessageWriter;
+		}
+	});
+	const messageBuffer_1 = require_messageBuffer();
+	Object.defineProperty(exports, "AbstractMessageBuffer", {
+		enumerable: true,
+		get: function() {
+			return messageBuffer_1.AbstractMessageBuffer;
+		}
+	});
+	const connection_1 = require_connection();
+	Object.defineProperty(exports, "ConnectionStrategy", {
+		enumerable: true,
+		get: function() {
+			return connection_1.ConnectionStrategy;
+		}
+	});
+	Object.defineProperty(exports, "ConnectionOptions", {
+		enumerable: true,
+		get: function() {
+			return connection_1.ConnectionOptions;
+		}
+	});
+	Object.defineProperty(exports, "NullLogger", {
+		enumerable: true,
+		get: function() {
+			return connection_1.NullLogger;
+		}
+	});
+	Object.defineProperty(exports, "createMessageConnection", {
+		enumerable: true,
+		get: function() {
+			return connection_1.createMessageConnection;
+		}
+	});
+	Object.defineProperty(exports, "ProgressToken", {
+		enumerable: true,
+		get: function() {
+			return connection_1.ProgressToken;
+		}
+	});
+	Object.defineProperty(exports, "ProgressType", {
+		enumerable: true,
+		get: function() {
+			return connection_1.ProgressType;
+		}
+	});
+	Object.defineProperty(exports, "Trace", {
+		enumerable: true,
+		get: function() {
+			return connection_1.Trace;
+		}
+	});
+	Object.defineProperty(exports, "TraceValues", {
+		enumerable: true,
+		get: function() {
+			return connection_1.TraceValues;
+		}
+	});
+	Object.defineProperty(exports, "TraceFormat", {
+		enumerable: true,
+		get: function() {
+			return connection_1.TraceFormat;
+		}
+	});
+	Object.defineProperty(exports, "SetTraceNotification", {
+		enumerable: true,
+		get: function() {
+			return connection_1.SetTraceNotification;
+		}
+	});
+	Object.defineProperty(exports, "LogTraceNotification", {
+		enumerable: true,
+		get: function() {
+			return connection_1.LogTraceNotification;
+		}
+	});
+	Object.defineProperty(exports, "ConnectionErrors", {
+		enumerable: true,
+		get: function() {
+			return connection_1.ConnectionErrors;
+		}
+	});
+	Object.defineProperty(exports, "ConnectionError", {
+		enumerable: true,
+		get: function() {
+			return connection_1.ConnectionError;
+		}
+	});
+	Object.defineProperty(exports, "CancellationReceiverStrategy", {
+		enumerable: true,
+		get: function() {
+			return connection_1.CancellationReceiverStrategy;
+		}
+	});
+	Object.defineProperty(exports, "CancellationSenderStrategy", {
+		enumerable: true,
+		get: function() {
+			return connection_1.CancellationSenderStrategy;
+		}
+	});
+	Object.defineProperty(exports, "CancellationStrategy", {
+		enumerable: true,
+		get: function() {
+			return connection_1.CancellationStrategy;
+		}
+	});
+	Object.defineProperty(exports, "MessageStrategy", {
+		enumerable: true,
+		get: function() {
+			return connection_1.MessageStrategy;
+		}
+	});
+	const ral_1 = require_ral();
+	exports.RAL = ral_1.default;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/node/ril.js
+var require_ril = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const util_1 = __require("util");
+	const api_1 = require_api();
+	var MessageBuffer = class MessageBuffer extends api_1.AbstractMessageBuffer {
+		constructor(encoding = "utf-8") {
+			super(encoding);
+		}
+		emptyBuffer() {
+			return MessageBuffer.emptyBuffer;
+		}
+		fromString(value, encoding) {
+			return Buffer.from(value, encoding);
+		}
+		toString(value, encoding) {
+			if (value instanceof Buffer) return value.toString(encoding);
+			else return new util_1.TextDecoder(encoding).decode(value);
+		}
+		asNative(buffer, length) {
+			if (length === void 0) return buffer instanceof Buffer ? buffer : Buffer.from(buffer);
+			else return buffer instanceof Buffer ? buffer.slice(0, length) : Buffer.from(buffer, 0, length);
+		}
+		allocNative(length) {
+			return Buffer.allocUnsafe(length);
+		}
+	};
+	MessageBuffer.emptyBuffer = Buffer.allocUnsafe(0);
+	var ReadableStreamWrapper = class {
+		constructor(stream) {
+			this.stream = stream;
+		}
+		onClose(listener) {
+			this.stream.on("close", listener);
+			return api_1.Disposable.create(() => this.stream.off("close", listener));
+		}
+		onError(listener) {
+			this.stream.on("error", listener);
+			return api_1.Disposable.create(() => this.stream.off("error", listener));
+		}
+		onEnd(listener) {
+			this.stream.on("end", listener);
+			return api_1.Disposable.create(() => this.stream.off("end", listener));
+		}
+		onData(listener) {
+			this.stream.on("data", listener);
+			return api_1.Disposable.create(() => this.stream.off("data", listener));
+		}
+	};
+	var WritableStreamWrapper = class {
+		constructor(stream) {
+			this.stream = stream;
+		}
+		onClose(listener) {
+			this.stream.on("close", listener);
+			return api_1.Disposable.create(() => this.stream.off("close", listener));
+		}
+		onError(listener) {
+			this.stream.on("error", listener);
+			return api_1.Disposable.create(() => this.stream.off("error", listener));
+		}
+		onEnd(listener) {
+			this.stream.on("end", listener);
+			return api_1.Disposable.create(() => this.stream.off("end", listener));
+		}
+		write(data, encoding) {
+			return new Promise((resolve, reject) => {
+				const callback = (error) => {
+					if (error === void 0 || error === null) resolve();
+					else reject(error);
+				};
+				if (typeof data === "string") this.stream.write(data, encoding, callback);
+				else this.stream.write(data, callback);
+			});
+		}
+		end() {
+			this.stream.end();
+		}
+	};
+	const _ril = Object.freeze({
+		messageBuffer: Object.freeze({ create: (encoding) => new MessageBuffer(encoding) }),
+		applicationJson: Object.freeze({
+			encoder: Object.freeze({
+				name: "application/json",
+				encode: (msg, options) => {
+					try {
+						return Promise.resolve(Buffer.from(JSON.stringify(msg, void 0, 0), options.charset));
+					} catch (err) {
+						return Promise.reject(err);
+					}
+				}
+			}),
+			decoder: Object.freeze({
+				name: "application/json",
+				decode: (buffer, options) => {
+					try {
+						if (buffer instanceof Buffer) return Promise.resolve(JSON.parse(buffer.toString(options.charset)));
+						else return Promise.resolve(JSON.parse(new util_1.TextDecoder(options.charset).decode(buffer)));
+					} catch (err) {
+						return Promise.reject(err);
+					}
+				}
+			})
+		}),
+		stream: Object.freeze({
+			asReadableStream: (stream) => new ReadableStreamWrapper(stream),
+			asWritableStream: (stream) => new WritableStreamWrapper(stream)
+		}),
+		console,
+		timer: Object.freeze({
+			setTimeout(callback, ms, ...args) {
+				const handle = setTimeout(callback, ms, ...args);
+				return { dispose: () => clearTimeout(handle) };
+			},
+			setImmediate(callback, ...args) {
+				const handle = setImmediate(callback, ...args);
+				return { dispose: () => clearImmediate(handle) };
+			},
+			setInterval(callback, ms, ...args) {
+				const handle = setInterval(callback, ms, ...args);
+				return { dispose: () => clearInterval(handle) };
+			}
+		})
+	});
+	function RIL() {
+		return _ril;
+	}
+	(function(RIL) {
+		function install() {
+			api_1.RAL.install(_ril);
+		}
+		RIL.install = install;
+	})(RIL || (RIL = {}));
+	exports.default = RIL;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/lib/node/main.js
+var require_main = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
+		if (k2 === void 0) k2 = k;
+		var desc = Object.getOwnPropertyDescriptor(m, k);
+		if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) desc = {
+			enumerable: true,
+			get: function() {
+				return m[k];
+			}
+		};
+		Object.defineProperty(o, k2, desc);
+	}) : (function(o, m, k, k2) {
+		if (k2 === void 0) k2 = k;
+		o[k2] = m[k];
+	}));
+	var __exportStar = exports && exports.__exportStar || function(m, exports$1) {
+		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$1, p)) __createBinding(exports$1, m, p);
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.createMessageConnection = exports.createServerSocketTransport = exports.createClientSocketTransport = exports.createServerPipeTransport = exports.createClientPipeTransport = exports.generateRandomPipeName = exports.StreamMessageWriter = exports.StreamMessageReader = exports.SocketMessageWriter = exports.SocketMessageReader = exports.PortMessageWriter = exports.PortMessageReader = exports.IPCMessageWriter = exports.IPCMessageReader = void 0;
+	const ril_1 = require_ril();
+	ril_1.default.install();
+	const path$1 = __require("path");
+	const os$1 = __require("os");
+	const crypto_1 = __require("crypto");
+	const net_1 = __require("net");
+	const api_1 = require_api();
+	__exportStar(require_api(), exports);
+	var IPCMessageReader = class extends api_1.AbstractMessageReader {
+		constructor(process) {
+			super();
+			this.process = process;
+			let eventEmitter = this.process;
+			eventEmitter.on("error", (error) => this.fireError(error));
+			eventEmitter.on("close", () => this.fireClose());
+		}
+		listen(callback) {
+			this.process.on("message", callback);
+			return api_1.Disposable.create(() => this.process.off("message", callback));
+		}
+	};
+	exports.IPCMessageReader = IPCMessageReader;
+	var IPCMessageWriter = class extends api_1.AbstractMessageWriter {
+		constructor(process) {
+			super();
+			this.process = process;
+			this.errorCount = 0;
+			const eventEmitter = this.process;
+			eventEmitter.on("error", (error) => this.fireError(error));
+			eventEmitter.on("close", () => this.fireClose);
+		}
+		write(msg) {
+			try {
+				if (typeof this.process.send === "function") this.process.send(msg, void 0, void 0, (error) => {
+					if (error) {
+						this.errorCount++;
+						this.handleError(error, msg);
+					} else this.errorCount = 0;
+				});
+				return Promise.resolve();
+			} catch (error) {
+				this.handleError(error, msg);
+				return Promise.reject(error);
+			}
+		}
+		handleError(error, msg) {
+			this.errorCount++;
+			this.fireError(error, msg, this.errorCount);
+		}
+		end() {}
+	};
+	exports.IPCMessageWriter = IPCMessageWriter;
+	var PortMessageReader = class extends api_1.AbstractMessageReader {
+		constructor(port) {
+			super();
+			this.onData = new api_1.Emitter();
+			port.on("close", () => this.fireClose);
+			port.on("error", (error) => this.fireError(error));
+			port.on("message", (message) => {
+				this.onData.fire(message);
+			});
+		}
+		listen(callback) {
+			return this.onData.event(callback);
+		}
+	};
+	exports.PortMessageReader = PortMessageReader;
+	var PortMessageWriter = class extends api_1.AbstractMessageWriter {
+		constructor(port) {
+			super();
+			this.port = port;
+			this.errorCount = 0;
+			port.on("close", () => this.fireClose());
+			port.on("error", (error) => this.fireError(error));
+		}
+		write(msg) {
+			try {
+				this.port.postMessage(msg);
+				return Promise.resolve();
+			} catch (error) {
+				this.handleError(error, msg);
+				return Promise.reject(error);
+			}
+		}
+		handleError(error, msg) {
+			this.errorCount++;
+			this.fireError(error, msg, this.errorCount);
+		}
+		end() {}
+	};
+	exports.PortMessageWriter = PortMessageWriter;
+	var SocketMessageReader = class extends api_1.ReadableStreamMessageReader {
+		constructor(socket, encoding = "utf-8") {
+			super((0, ril_1.default)().stream.asReadableStream(socket), encoding);
+		}
+	};
+	exports.SocketMessageReader = SocketMessageReader;
+	var SocketMessageWriter = class extends api_1.WriteableStreamMessageWriter {
+		constructor(socket, options) {
+			super((0, ril_1.default)().stream.asWritableStream(socket), options);
+			this.socket = socket;
+		}
+		dispose() {
+			super.dispose();
+			this.socket.destroy();
+		}
+	};
+	exports.SocketMessageWriter = SocketMessageWriter;
+	var StreamMessageReader = class extends api_1.ReadableStreamMessageReader {
+		constructor(readable, encoding) {
+			super((0, ril_1.default)().stream.asReadableStream(readable), encoding);
+		}
+	};
+	exports.StreamMessageReader = StreamMessageReader;
+	var StreamMessageWriter = class extends api_1.WriteableStreamMessageWriter {
+		constructor(writable, options) {
+			super((0, ril_1.default)().stream.asWritableStream(writable), options);
+		}
+	};
+	exports.StreamMessageWriter = StreamMessageWriter;
+	const XDG_RUNTIME_DIR = process.env["XDG_RUNTIME_DIR"];
+	const safeIpcPathLengths = new Map([["linux", 107], ["darwin", 103]]);
+	function generateRandomPipeName() {
+		const randomSuffix = (0, crypto_1.randomBytes)(21).toString("hex");
+		if (process.platform === "win32") return `\\\\.\\pipe\\vscode-jsonrpc-${randomSuffix}-sock`;
+		let result;
+		if (XDG_RUNTIME_DIR) result = path$1.join(XDG_RUNTIME_DIR, `vscode-ipc-${randomSuffix}.sock`);
+		else result = path$1.join(os$1.tmpdir(), `vscode-${randomSuffix}.sock`);
+		const limit = safeIpcPathLengths.get(process.platform);
+		if (limit !== void 0 && result.length > limit) (0, ril_1.default)().console.warn(`WARNING: IPC handle "${result}" is longer than ${limit} characters.`);
+		return result;
+	}
+	exports.generateRandomPipeName = generateRandomPipeName;
+	function createClientPipeTransport(pipeName, encoding = "utf-8") {
+		let connectResolve;
+		const connected = new Promise((resolve, _reject) => {
+			connectResolve = resolve;
+		});
+		return new Promise((resolve, reject) => {
+			let server = (0, net_1.createServer)((socket) => {
+				server.close();
+				connectResolve([new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)]);
+			});
+			server.on("error", reject);
+			server.listen(pipeName, () => {
+				server.removeListener("error", reject);
+				resolve({ onConnected: () => {
+					return connected;
+				} });
+			});
+		});
+	}
+	exports.createClientPipeTransport = createClientPipeTransport;
+	function createServerPipeTransport(pipeName, encoding = "utf-8") {
+		const socket = (0, net_1.createConnection)(pipeName);
+		return [new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)];
+	}
+	exports.createServerPipeTransport = createServerPipeTransport;
+	function createClientSocketTransport(port, encoding = "utf-8") {
+		let connectResolve;
+		const connected = new Promise((resolve, _reject) => {
+			connectResolve = resolve;
+		});
+		return new Promise((resolve, reject) => {
+			const server = (0, net_1.createServer)((socket) => {
+				server.close();
+				connectResolve([new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)]);
+			});
+			server.on("error", reject);
+			server.listen(port, "127.0.0.1", () => {
+				server.removeListener("error", reject);
+				resolve({ onConnected: () => {
+					return connected;
+				} });
+			});
+		});
+	}
+	exports.createClientSocketTransport = createClientSocketTransport;
+	function createServerSocketTransport(port, encoding = "utf-8") {
+		const socket = (0, net_1.createConnection)(port, "127.0.0.1");
+		return [new SocketMessageReader(socket, encoding), new SocketMessageWriter(socket, encoding)];
+	}
+	exports.createServerSocketTransport = createServerSocketTransport;
+	function isReadableStream(value) {
+		const candidate = value;
+		return candidate.read !== void 0 && candidate.addListener !== void 0;
+	}
+	function isWritableStream(value) {
+		const candidate = value;
+		return candidate.write !== void 0 && candidate.addListener !== void 0;
+	}
+	function createMessageConnection(input, output, logger, options) {
+		if (!logger) logger = api_1.NullLogger;
+		const reader = isReadableStream(input) ? new StreamMessageReader(input) : input;
+		const writer = isWritableStream(output) ? new StreamMessageWriter(output) : output;
+		if (api_1.ConnectionStrategy.is(options)) options = { connectionStrategy: options };
+		return (0, api_1.createMessageConnection)(reader, writer, logger, options);
+	}
+	exports.createMessageConnection = createMessageConnection;
+}));
+
+//#endregion
+//#region node_modules/.pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc/node.js
+var require_node = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	module.exports = require_main();
+}));
+
+//#endregion
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/generated/rpc.js
+var import_node = require_node();
+function createServerRpc(connection) {
+	return {
+		ping: async (params) => connection.sendRequest("ping", params),
+		models: { list: async () => connection.sendRequest("models.list", {}) },
+		tools: { list: async (params) => connection.sendRequest("tools.list", params) },
+		account: { getQuota: async () => connection.sendRequest("account.getQuota", {}) }
+	};
+}
+function createSessionRpc(connection, sessionId) {
+	return {
+		model: {
+			getCurrent: async () => connection.sendRequest("session.model.getCurrent", { sessionId }),
+			switchTo: async (params) => connection.sendRequest("session.model.switchTo", {
+				sessionId,
+				...params
+			})
+		},
+		mode: {
+			get: async () => connection.sendRequest("session.mode.get", { sessionId }),
+			set: async (params) => connection.sendRequest("session.mode.set", {
+				sessionId,
+				...params
+			})
+		},
+		plan: {
+			read: async () => connection.sendRequest("session.plan.read", { sessionId }),
+			update: async (params) => connection.sendRequest("session.plan.update", {
+				sessionId,
+				...params
+			}),
+			delete: async () => connection.sendRequest("session.plan.delete", { sessionId })
+		},
+		workspace: {
+			listFiles: async () => connection.sendRequest("session.workspace.listFiles", { sessionId }),
+			readFile: async (params) => connection.sendRequest("session.workspace.readFile", {
+				sessionId,
+				...params
+			}),
+			createFile: async (params) => connection.sendRequest("session.workspace.createFile", {
+				sessionId,
+				...params
+			})
+		},
+		fleet: { start: async (params) => connection.sendRequest("session.fleet.start", {
+			sessionId,
+			...params
+		}) },
+		agent: {
+			list: async () => connection.sendRequest("session.agent.list", { sessionId }),
+			getCurrent: async () => connection.sendRequest("session.agent.getCurrent", { sessionId }),
+			select: async (params) => connection.sendRequest("session.agent.select", {
+				sessionId,
+				...params
+			}),
+			deselect: async () => connection.sendRequest("session.agent.deselect", { sessionId })
+		},
+		compaction: { compact: async () => connection.sendRequest("session.compaction.compact", { sessionId }) },
+		tools: { handlePendingToolCall: async (params) => connection.sendRequest("session.tools.handlePendingToolCall", {
+			sessionId,
+			...params
+		}) },
+		permissions: { handlePendingPermissionRequest: async (params) => connection.sendRequest("session.permissions.handlePendingPermissionRequest", {
+			sessionId,
+			...params
+		}) }
+	};
+}
+
+//#endregion
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/sdkProtocolVersion.js
+const SDK_PROTOCOL_VERSION = 3;
+function getSdkProtocolVersion() {
+	return SDK_PROTOCOL_VERSION;
+}
+
+//#endregion
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/session.js
+var CopilotSession = class {
+	/**
+	* Creates a new CopilotSession instance.
+	*
+	* @param sessionId - The unique identifier for this session
+	* @param connection - The JSON-RPC message connection to the Copilot CLI
+	* @param workspacePath - Path to the session workspace directory (when infinite sessions enabled)
+	* @internal This constructor is internal. Use {@link CopilotClient.createSession} to create sessions.
+	*/
+	constructor(sessionId, connection, _workspacePath) {
+		this.sessionId = sessionId;
+		this.connection = connection;
+		this._workspacePath = _workspacePath;
+	}
+	eventHandlers = /* @__PURE__ */ new Set();
+	typedEventHandlers = /* @__PURE__ */ new Map();
+	toolHandlers = /* @__PURE__ */ new Map();
+	permissionHandler;
+	userInputHandler;
+	hooks;
+	_rpc = null;
+	/**
+	* Typed session-scoped RPC methods.
+	*/
+	get rpc() {
+		if (!this._rpc) this._rpc = createSessionRpc(this.connection, this.sessionId);
+		return this._rpc;
+	}
+	/**
+	* Path to the session workspace directory when infinite sessions are enabled.
+	* Contains checkpoints/, plan.md, and files/ subdirectories.
+	* Undefined if infinite sessions are disabled.
+	*/
+	get workspacePath() {
+		return this._workspacePath;
+	}
+	/**
+	* Sends a message to this session and waits for the response.
+	*
+	* The message is processed asynchronously. Subscribe to events via {@link on}
+	* to receive streaming responses and other session events.
+	*
+	* @param options - The message options including the prompt and optional attachments
+	* @returns A promise that resolves with the message ID of the response
+	* @throws Error if the session has been disconnected or the connection fails
+	*
+	* @example
+	* ```typescript
+	* const messageId = await session.send({
+	*   prompt: "Explain this code",
+	*   attachments: [{ type: "file", path: "./src/index.ts" }]
+	* });
+	* ```
+	*/
+	async send(options) {
+		return (await this.connection.sendRequest("session.send", {
+			sessionId: this.sessionId,
+			prompt: options.prompt,
+			attachments: options.attachments,
+			mode: options.mode
+		})).messageId;
+	}
+	/**
+	* Sends a message to this session and waits until the session becomes idle.
+	*
+	* This is a convenience method that combines {@link send} with waiting for
+	* the `session.idle` event. Use this when you want to block until the
+	* assistant has finished processing the message.
+	*
+	* Events are still delivered to handlers registered via {@link on} while waiting.
+	*
+	* @param options - The message options including the prompt and optional attachments
+	* @param timeout - Timeout in milliseconds (default: 60000). Controls how long to wait; does not abort in-flight agent work.
+	* @returns A promise that resolves with the final assistant message when the session becomes idle,
+	*          or undefined if no assistant message was received
+	* @throws Error if the timeout is reached before the session becomes idle
+	* @throws Error if the session has been disconnected or the connection fails
+	*
+	* @example
+	* ```typescript
+	* // Send and wait for completion with default 60s timeout
+	* const response = await session.sendAndWait({ prompt: "What is 2+2?" });
+	* console.log(response?.data.content); // "4"
+	* ```
+	*/
+	async sendAndWait(options, timeout) {
+		const effectiveTimeout = timeout ?? 6e4;
+		let resolveIdle;
+		let rejectWithError;
+		const idlePromise = new Promise((resolve, reject) => {
+			resolveIdle = resolve;
+			rejectWithError = reject;
+		});
+		let lastAssistantMessage;
+		const unsubscribe = this.on((event) => {
+			if (event.type === "assistant.message") lastAssistantMessage = event;
+			else if (event.type === "session.idle") resolveIdle();
+			else if (event.type === "session.error") {
+				const error = new Error(event.data.message);
+				error.stack = event.data.stack;
+				rejectWithError(error);
+			}
+		});
+		let timeoutId;
+		try {
+			await this.send(options);
+			const timeoutPromise = new Promise((_, reject) => {
+				timeoutId = setTimeout(() => reject(/* @__PURE__ */ new Error(`Timeout after ${effectiveTimeout}ms waiting for session.idle`)), effectiveTimeout);
+			});
+			await Promise.race([idlePromise, timeoutPromise]);
+			return lastAssistantMessage;
+		} finally {
+			if (timeoutId !== void 0) clearTimeout(timeoutId);
+			unsubscribe();
+		}
+	}
+	on(eventTypeOrHandler, handler) {
+		if (typeof eventTypeOrHandler === "string" && handler) {
+			const eventType = eventTypeOrHandler;
+			if (!this.typedEventHandlers.has(eventType)) this.typedEventHandlers.set(eventType, /* @__PURE__ */ new Set());
+			const storedHandler = handler;
+			this.typedEventHandlers.get(eventType).add(storedHandler);
+			return () => {
+				const handlers = this.typedEventHandlers.get(eventType);
+				if (handlers) handlers.delete(storedHandler);
+			};
+		}
+		const wildcardHandler = eventTypeOrHandler;
+		this.eventHandlers.add(wildcardHandler);
+		return () => {
+			this.eventHandlers.delete(wildcardHandler);
+		};
+	}
+	/**
+	* Dispatches an event to all registered handlers.
+	* Also handles broadcast request events internally (external tool calls, permissions).
+	*
+	* @param event - The session event to dispatch
+	* @internal This method is for internal use by the SDK.
+	*/
+	_dispatchEvent(event) {
+		this._handleBroadcastEvent(event);
+		const typedHandlers = this.typedEventHandlers.get(event.type);
+		if (typedHandlers) for (const handler of typedHandlers) try {
+			handler(event);
+		} catch (_error) {}
+		for (const handler of this.eventHandlers) try {
+			handler(event);
+		} catch (_error) {}
+	}
+	/**
+	* Handles broadcast request events by executing local handlers and responding via RPC.
+	* Handlers are dispatched as fire-and-forget — rejections propagate as unhandled promise
+	* rejections, consistent with standard EventEmitter / event handler semantics.
+	* @internal
+	*/
+	_handleBroadcastEvent(event) {
+		if (event.type === "external_tool.requested") {
+			const { requestId, toolName } = event.data;
+			const args = event.data.arguments;
+			const toolCallId = event.data.toolCallId;
+			const handler = this.toolHandlers.get(toolName);
+			if (handler) this._executeToolAndRespond(requestId, toolName, toolCallId, args, handler);
+		} else if (event.type === "permission.requested") {
+			const { requestId, permissionRequest } = event.data;
+			if (this.permissionHandler) this._executePermissionAndRespond(requestId, permissionRequest);
+		}
+	}
+	/**
+	* Executes a tool handler and sends the result back via RPC.
+	* @internal
+	*/
+	async _executeToolAndRespond(requestId, toolName, toolCallId, args, handler) {
+		try {
+			const rawResult = await handler(args, {
+				sessionId: this.sessionId,
+				toolCallId,
+				toolName,
+				arguments: args
+			});
+			let result;
+			if (rawResult == null) result = "";
+			else if (typeof rawResult === "string") result = rawResult;
+			else result = JSON.stringify(rawResult);
+			await this.rpc.tools.handlePendingToolCall({
+				requestId,
+				result
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			try {
+				await this.rpc.tools.handlePendingToolCall({
+					requestId,
+					error: message
+				});
+			} catch (rpcError) {
+				if (!(rpcError instanceof import_node.ConnectionError || rpcError instanceof import_node.ResponseError)) throw rpcError;
+			}
+		}
+	}
+	/**
+	* Executes a permission handler and sends the result back via RPC.
+	* @internal
+	*/
+	async _executePermissionAndRespond(requestId, permissionRequest) {
+		try {
+			const result = await this.permissionHandler(permissionRequest, { sessionId: this.sessionId });
+			await this.rpc.permissions.handlePendingPermissionRequest({
+				requestId,
+				result
+			});
+		} catch (_error) {
+			try {
+				await this.rpc.permissions.handlePendingPermissionRequest({
+					requestId,
+					result: { kind: "denied-no-approval-rule-and-could-not-request-from-user" }
+				});
+			} catch (rpcError) {
+				if (!(rpcError instanceof import_node.ConnectionError || rpcError instanceof import_node.ResponseError)) throw rpcError;
+			}
+		}
+	}
+	/**
+	* Registers custom tool handlers for this session.
+	*
+	* Tools allow the assistant to execute custom functions. When the assistant
+	* invokes a tool, the corresponding handler is called with the tool arguments.
+	*
+	* @param tools - An array of tool definitions with their handlers, or undefined to clear all tools
+	* @internal This method is typically called internally when creating a session with tools.
+	*/
+	registerTools(tools) {
+		this.toolHandlers.clear();
+		if (!tools) return;
+		for (const tool of tools) this.toolHandlers.set(tool.name, tool.handler);
+	}
+	/**
+	* Retrieves a registered tool handler by name.
+	*
+	* @param name - The name of the tool to retrieve
+	* @returns The tool handler if found, or undefined
+	* @internal This method is for internal use by the SDK.
+	*/
+	getToolHandler(name) {
+		return this.toolHandlers.get(name);
+	}
+	/**
+	* Registers a handler for permission requests.
+	*
+	* When the assistant needs permission to perform certain actions (e.g., file operations),
+	* this handler is called to approve or deny the request.
+	*
+	* @param handler - The permission handler function, or undefined to remove the handler
+	* @internal This method is typically called internally when creating a session.
+	*/
+	registerPermissionHandler(handler) {
+		this.permissionHandler = handler;
+	}
+	/**
+	* Registers a user input handler for ask_user requests.
+	*
+	* When the agent needs input from the user (via ask_user tool),
+	* this handler is called to provide the response.
+	*
+	* @param handler - The user input handler function, or undefined to remove the handler
+	* @internal This method is typically called internally when creating a session.
+	*/
+	registerUserInputHandler(handler) {
+		this.userInputHandler = handler;
+	}
+	/**
+	* Registers hook handlers for session lifecycle events.
+	*
+	* Hooks allow custom logic to be executed at various points during
+	* the session lifecycle (before/after tool use, session start/end, etc.).
+	*
+	* @param hooks - The hook handlers object, or undefined to remove all hooks
+	* @internal This method is typically called internally when creating a session.
+	*/
+	registerHooks(hooks) {
+		this.hooks = hooks;
+	}
+	/**
+	* Handles a permission request in the v2 protocol format (synchronous RPC).
+	* Used as a back-compat adapter when connected to a v2 server.
+	*
+	* @param request - The permission request data from the CLI
+	* @returns A promise that resolves with the permission decision
+	* @internal This method is for internal use by the SDK.
+	*/
+	async _handlePermissionRequestV2(request) {
+		if (!this.permissionHandler) return { kind: "denied-no-approval-rule-and-could-not-request-from-user" };
+		try {
+			return await this.permissionHandler(request, { sessionId: this.sessionId });
+		} catch (_error) {
+			return { kind: "denied-no-approval-rule-and-could-not-request-from-user" };
+		}
+	}
+	/**
+	* Handles a user input request from the Copilot CLI.
+	*
+	* @param request - The user input request data from the CLI
+	* @returns A promise that resolves with the user's response
+	* @internal This method is for internal use by the SDK.
+	*/
+	async _handleUserInputRequest(request) {
+		if (!this.userInputHandler) throw new Error("User input requested but no handler registered");
+		try {
+			return await this.userInputHandler(request, { sessionId: this.sessionId });
+		} catch (error) {
+			throw error;
+		}
+	}
+	/**
+	* Handles a hooks invocation from the Copilot CLI.
+	*
+	* @param hookType - The type of hook being invoked
+	* @param input - The input data for the hook
+	* @returns A promise that resolves with the hook output, or undefined
+	* @internal This method is for internal use by the SDK.
+	*/
+	async _handleHooksInvoke(hookType, input) {
+		if (!this.hooks) return;
+		const handler = {
+			preToolUse: this.hooks.onPreToolUse,
+			postToolUse: this.hooks.onPostToolUse,
+			userPromptSubmitted: this.hooks.onUserPromptSubmitted,
+			sessionStart: this.hooks.onSessionStart,
+			sessionEnd: this.hooks.onSessionEnd,
+			errorOccurred: this.hooks.onErrorOccurred
+		}[hookType];
+		if (!handler) return;
+		try {
+			return await handler(input, { sessionId: this.sessionId });
+		} catch (_error) {
+			return;
+		}
+	}
+	/**
+	* Retrieves all events and messages from this session's history.
+	*
+	* This returns the complete conversation history including user messages,
+	* assistant responses, tool executions, and other session events.
+	*
+	* @returns A promise that resolves with an array of all session events
+	* @throws Error if the session has been disconnected or the connection fails
+	*
+	* @example
+	* ```typescript
+	* const events = await session.getMessages();
+	* for (const event of events) {
+	*   if (event.type === "assistant.message") {
+	*     console.log("Assistant:", event.data.content);
+	*   }
+	* }
+	* ```
+	*/
+	async getMessages() {
+		return (await this.connection.sendRequest("session.getMessages", { sessionId: this.sessionId })).events;
+	}
+	/**
+	* Disconnects this session and releases all in-memory resources (event handlers,
+	* tool handlers, permission handlers).
+	*
+	* Session state on disk (conversation history, planning state, artifacts) is
+	* preserved, so the conversation can be resumed later by calling
+	* {@link CopilotClient.resumeSession} with the session ID. To permanently
+	* remove all session data including files on disk, use
+	* {@link CopilotClient.deleteSession} instead.
+	*
+	* After calling this method, the session object can no longer be used.
+	*
+	* @returns A promise that resolves when the session is disconnected
+	* @throws Error if the connection fails
+	*
+	* @example
+	* ```typescript
+	* // Clean up when done — session can still be resumed later
+	* await session.disconnect();
+	* ```
+	*/
+	async disconnect() {
+		await this.connection.sendRequest("session.destroy", { sessionId: this.sessionId });
+		this.eventHandlers.clear();
+		this.typedEventHandlers.clear();
+		this.toolHandlers.clear();
+		this.permissionHandler = void 0;
+	}
+	/**
+	* @deprecated Use {@link disconnect} instead. This method will be removed in a future release.
+	*
+	* Disconnects this session and releases all in-memory resources.
+	* Session data on disk is preserved for later resumption.
+	*
+	* @returns A promise that resolves when the session is disconnected
+	* @throws Error if the connection fails
+	*/
+	async destroy() {
+		return this.disconnect();
+	}
+	/** Enables `await using session = ...` syntax for automatic cleanup. */
+	async [Symbol.asyncDispose]() {
+		return this.disconnect();
+	}
+	/**
+	* Aborts the currently processing message in this session.
+	*
+	* Use this to cancel a long-running request. The session remains valid
+	* and can continue to be used for new messages.
+	*
+	* @returns A promise that resolves when the abort request is acknowledged
+	* @throws Error if the session has been disconnected or the connection fails
+	*
+	* @example
+	* ```typescript
+	* // Start a long-running request
+	* const messagePromise = session.send({ prompt: "Write a very long story..." });
+	*
+	* // Abort after 5 seconds
+	* setTimeout(async () => {
+	*   await session.abort();
+	* }, 5000);
+	* ```
+	*/
+	async abort() {
+		await this.connection.sendRequest("session.abort", { sessionId: this.sessionId });
+	}
+	/**
+	* Change the model for this session.
+	* The new model takes effect for the next message. Conversation history is preserved.
+	*
+	* @param model - Model ID to switch to
+	*
+	* @example
+	* ```typescript
+	* await session.setModel("gpt-4.1");
+	* ```
+	*/
+	async setModel(model) {
+		await this.rpc.model.switchTo({ modelId: model });
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/client.js
+const MIN_PROTOCOL_VERSION = 2;
+function isZodSchema(value) {
+	return value != null && typeof value === "object" && "toJSONSchema" in value && typeof value.toJSONSchema === "function";
+}
+function toJsonSchema(parameters) {
+	if (!parameters) return void 0;
+	if (isZodSchema(parameters)) return parameters.toJSONSchema();
+	return parameters;
+}
+function getNodeExecPath() {
+	if (process.versions.bun) return "node";
+	return process.execPath;
+}
+function getBundledCliPath() {
+	return join(dirname(dirname(fileURLToPath(import.meta.resolve("@github/copilot/sdk")))), "index.js");
+}
+var CopilotClient = class {
+	cliProcess = null;
+	connection = null;
+	socket = null;
+	actualPort = null;
+	actualHost = "localhost";
+	state = "disconnected";
+	sessions = /* @__PURE__ */ new Map();
+	stderrBuffer = "";
+	options;
+	isExternalServer = false;
+	forceStopping = false;
+	modelsCache = null;
+	modelsCacheLock = Promise.resolve();
+	sessionLifecycleHandlers = /* @__PURE__ */ new Set();
+	typedLifecycleHandlers = /* @__PURE__ */ new Map();
+	_rpc = null;
+	processExitPromise = null;
+	negotiatedProtocolVersion = null;
+	/**
+	* Typed server-scoped RPC methods.
+	* @throws Error if the client is not connected
+	*/
+	get rpc() {
+		if (!this.connection) throw new Error("Client is not connected. Call start() first.");
+		if (!this._rpc) this._rpc = createServerRpc(this.connection);
+		return this._rpc;
+	}
+	/**
+	* Creates a new CopilotClient instance.
+	*
+	* @param options - Configuration options for the client
+	* @throws Error if mutually exclusive options are provided (e.g., cliUrl with useStdio or cliPath)
+	*
+	* @example
+	* ```typescript
+	* // Default options - spawns CLI server using stdio
+	* const client = new CopilotClient();
+	*
+	* // Connect to an existing server
+	* const client = new CopilotClient({ cliUrl: "localhost:3000" });
+	*
+	* // Custom CLI path with specific log level
+	* const client = new CopilotClient({
+	*   cliPath: "/usr/local/bin/copilot",
+	*   logLevel: "debug"
+	* });
+	* ```
+	*/
+	constructor(options = {}) {
+		if (options.cliUrl && (options.useStdio === true || options.cliPath)) throw new Error("cliUrl is mutually exclusive with useStdio and cliPath");
+		if (options.isChildProcess && (options.cliUrl || options.useStdio === false)) throw new Error("isChildProcess must be used in conjunction with useStdio and not with cliUrl");
+		if (options.cliUrl && (options.githubToken || options.useLoggedInUser !== void 0)) throw new Error("githubToken and useLoggedInUser cannot be used with cliUrl (external server manages its own auth)");
+		if (options.cliUrl) {
+			const { host, port } = this.parseCliUrl(options.cliUrl);
+			this.actualHost = host;
+			this.actualPort = port;
+			this.isExternalServer = true;
+		}
+		if (options.isChildProcess) this.isExternalServer = true;
+		this.options = {
+			cliPath: options.cliPath || getBundledCliPath(),
+			cliArgs: options.cliArgs ?? [],
+			cwd: options.cwd ?? process.cwd(),
+			port: options.port || 0,
+			useStdio: options.cliUrl ? false : options.useStdio ?? true,
+			isChildProcess: options.isChildProcess ?? false,
+			cliUrl: options.cliUrl,
+			logLevel: options.logLevel || "debug",
+			autoStart: options.autoStart ?? true,
+			autoRestart: options.autoRestart ?? true,
+			env: options.env ?? process.env,
+			githubToken: options.githubToken,
+			useLoggedInUser: options.useLoggedInUser ?? (options.githubToken ? false : true)
+		};
+	}
+	/**
+	* Parse CLI URL into host and port
+	* Supports formats: "host:port", "http://host:port", "https://host:port", or just "port"
+	*/
+	parseCliUrl(url) {
+		let cleanUrl = url.replace(/^https?:\/\//, "");
+		if (/^\d+$/.test(cleanUrl)) return {
+			host: "localhost",
+			port: parseInt(cleanUrl, 10)
+		};
+		const parts = cleanUrl.split(":");
+		if (parts.length !== 2) throw new Error(`Invalid cliUrl format: ${url}. Expected "host:port", "http://host:port", or "port"`);
+		const host = parts[0] || "localhost";
+		const port = parseInt(parts[1], 10);
+		if (isNaN(port) || port <= 0 || port > 65535) throw new Error(`Invalid port in cliUrl: ${url}`);
+		return {
+			host,
+			port
+		};
+	}
+	/**
+	* Starts the CLI server and establishes a connection.
+	*
+	* If connecting to an external server (via cliUrl), only establishes the connection.
+	* Otherwise, spawns the CLI server process and then connects.
+	*
+	* This method is called automatically when creating a session if `autoStart` is true (default).
+	*
+	* @returns A promise that resolves when the connection is established
+	* @throws Error if the server fails to start or the connection fails
+	*
+	* @example
+	* ```typescript
+	* const client = new CopilotClient({ autoStart: false });
+	* await client.start();
+	* // Now ready to create sessions
+	* ```
+	*/
+	async start() {
+		if (this.state === "connected") return;
+		this.state = "connecting";
+		try {
+			if (!this.isExternalServer) await this.startCLIServer();
+			await this.connectToServer();
+			await this.verifyProtocolVersion();
+			this.state = "connected";
+		} catch (error) {
+			this.state = "error";
+			throw error;
+		}
+	}
+	/**
+	* Stops the CLI server and closes all active sessions.
+	*
+	* This method performs graceful cleanup:
+	* 1. Closes all active sessions (releases in-memory resources)
+	* 2. Closes the JSON-RPC connection
+	* 3. Terminates the CLI server process (if spawned by this client)
+	*
+	* Note: session data on disk is preserved, so sessions can be resumed later.
+	* To permanently remove session data before stopping, call
+	* {@link deleteSession} for each session first.
+	*
+	* @returns A promise that resolves with an array of errors encountered during cleanup.
+	*          An empty array indicates all cleanup succeeded.
+	*
+	* @example
+	* ```typescript
+	* const errors = await client.stop();
+	* if (errors.length > 0) {
+	*   console.error("Cleanup errors:", errors);
+	* }
+	* ```
+	*/
+	async stop() {
+		const errors = [];
+		for (const session of this.sessions.values()) {
+			const sessionId = session.sessionId;
+			let lastError = null;
+			for (let attempt = 1; attempt <= 3; attempt++) try {
+				await session.disconnect();
+				lastError = null;
+				break;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+				if (attempt < 3) {
+					const delay = 100 * Math.pow(2, attempt - 1);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			}
+			if (lastError) errors.push(/* @__PURE__ */ new Error(`Failed to disconnect session ${sessionId} after 3 attempts: ${lastError.message}`));
+		}
+		this.sessions.clear();
+		if (this.connection) {
+			try {
+				this.connection.dispose();
+			} catch (error) {
+				errors.push(/* @__PURE__ */ new Error(`Failed to dispose connection: ${error instanceof Error ? error.message : String(error)}`));
+			}
+			this.connection = null;
+			this._rpc = null;
+		}
+		this.modelsCache = null;
+		if (this.socket) {
+			try {
+				this.socket.end();
+			} catch (error) {
+				errors.push(/* @__PURE__ */ new Error(`Failed to close socket: ${error instanceof Error ? error.message : String(error)}`));
+			}
+			this.socket = null;
+		}
+		if (this.cliProcess && !this.isExternalServer) {
+			try {
+				this.cliProcess.kill();
+			} catch (error) {
+				errors.push(/* @__PURE__ */ new Error(`Failed to kill CLI process: ${error instanceof Error ? error.message : String(error)}`));
+			}
+			this.cliProcess = null;
+		}
+		this.state = "disconnected";
+		this.actualPort = null;
+		this.stderrBuffer = "";
+		this.processExitPromise = null;
+		return errors;
+	}
+	/**
+	* Forcefully stops the CLI server without graceful cleanup.
+	*
+	* Use this when {@link stop} fails or takes too long. This method:
+	* - Clears all sessions immediately without destroying them
+	* - Force closes the connection
+	* - Sends SIGKILL to the CLI process (if spawned by this client)
+	*
+	* @returns A promise that resolves when the force stop is complete
+	*
+	* @example
+	* ```typescript
+	* // If normal stop hangs, force stop
+	* const stopPromise = client.stop();
+	* const timeout = new Promise((_, reject) =>
+	*   setTimeout(() => reject(new Error("Timeout")), 5000)
+	* );
+	*
+	* try {
+	*   await Promise.race([stopPromise, timeout]);
+	* } catch {
+	*   await client.forceStop();
+	* }
+	* ```
+	*/
+	async forceStop() {
+		this.forceStopping = true;
+		this.sessions.clear();
+		if (this.connection) {
+			try {
+				this.connection.dispose();
+			} catch {}
+			this.connection = null;
+			this._rpc = null;
+		}
+		this.modelsCache = null;
+		if (this.socket) {
+			try {
+				this.socket.destroy();
+			} catch {}
+			this.socket = null;
+		}
+		if (this.cliProcess && !this.isExternalServer) {
+			try {
+				this.cliProcess.kill("SIGKILL");
+			} catch {}
+			this.cliProcess = null;
+		}
+		this.state = "disconnected";
+		this.actualPort = null;
+		this.stderrBuffer = "";
+		this.processExitPromise = null;
+	}
+	/**
+	* Creates a new conversation session with the Copilot CLI.
+	*
+	* Sessions maintain conversation state, handle events, and manage tool execution.
+	* If the client is not connected and `autoStart` is enabled, this will automatically
+	* start the connection.
+	*
+	* @param config - Optional configuration for the session
+	* @returns A promise that resolves with the created session
+	* @throws Error if the client is not connected and autoStart is disabled
+	*
+	* @example
+	* ```typescript
+	* // Basic session
+	* const session = await client.createSession({ onPermissionRequest: approveAll });
+	*
+	* // Session with model and tools
+	* const session = await client.createSession({
+	*   onPermissionRequest: approveAll,
+	*   model: "gpt-4",
+	*   tools: [{
+	*     name: "get_weather",
+	*     description: "Get weather for a location",
+	*     parameters: { type: "object", properties: { location: { type: "string" } } },
+	*     handler: async (args) => ({ temperature: 72 })
+	*   }]
+	* });
+	* ```
+	*/
+	async createSession(config) {
+		if (!config?.onPermissionRequest) throw new Error("An onPermissionRequest handler is required when creating a session. For example, to allow all permissions, use { onPermissionRequest: approveAll }.");
+		if (!this.connection) if (this.options.autoStart) await this.start();
+		else throw new Error("Client not connected. Call start() first.");
+		const { sessionId, workspacePath } = await this.connection.sendRequest("session.create", {
+			model: config.model,
+			sessionId: config.sessionId,
+			clientName: config.clientName,
+			reasoningEffort: config.reasoningEffort,
+			tools: config.tools?.map((tool) => ({
+				name: tool.name,
+				description: tool.description,
+				parameters: toJsonSchema(tool.parameters),
+				overridesBuiltInTool: tool.overridesBuiltInTool
+			})),
+			systemMessage: config.systemMessage,
+			availableTools: config.availableTools,
+			excludedTools: config.excludedTools,
+			provider: config.provider,
+			requestPermission: true,
+			requestUserInput: !!config.onUserInputRequest,
+			hooks: !!(config.hooks && Object.values(config.hooks).some(Boolean)),
+			workingDirectory: config.workingDirectory,
+			streaming: config.streaming,
+			mcpServers: config.mcpServers,
+			envValueMode: "direct",
+			customAgents: config.customAgents,
+			configDir: config.configDir,
+			skillDirectories: config.skillDirectories,
+			disabledSkills: config.disabledSkills,
+			infiniteSessions: config.infiniteSessions
+		});
+		const session = new CopilotSession(sessionId, this.connection, workspacePath);
+		session.registerTools(config.tools);
+		session.registerPermissionHandler(config.onPermissionRequest);
+		if (config.onUserInputRequest) session.registerUserInputHandler(config.onUserInputRequest);
+		if (config.hooks) session.registerHooks(config.hooks);
+		this.sessions.set(sessionId, session);
+		return session;
+	}
+	/**
+	* Resumes an existing conversation session by its ID.
+	*
+	* This allows you to continue a previous conversation, maintaining all
+	* conversation history. The session must have been previously created
+	* and not deleted.
+	*
+	* @param sessionId - The ID of the session to resume
+	* @param config - Optional configuration for the resumed session
+	* @returns A promise that resolves with the resumed session
+	* @throws Error if the session does not exist or the client is not connected
+	*
+	* @example
+	* ```typescript
+	* // Resume a previous session
+	* const session = await client.resumeSession("session-123", { onPermissionRequest: approveAll });
+	*
+	* // Resume with new tools
+	* const session = await client.resumeSession("session-123", {
+	*   onPermissionRequest: approveAll,
+	*   tools: [myNewTool]
+	* });
+	* ```
+	*/
+	async resumeSession(sessionId, config) {
+		if (!config?.onPermissionRequest) throw new Error("An onPermissionRequest handler is required when resuming a session. For example, to allow all permissions, use { onPermissionRequest: approveAll }.");
+		if (!this.connection) if (this.options.autoStart) await this.start();
+		else throw new Error("Client not connected. Call start() first.");
+		const { sessionId: resumedSessionId, workspacePath } = await this.connection.sendRequest("session.resume", {
+			sessionId,
+			clientName: config.clientName,
+			model: config.model,
+			reasoningEffort: config.reasoningEffort,
+			systemMessage: config.systemMessage,
+			availableTools: config.availableTools,
+			excludedTools: config.excludedTools,
+			tools: config.tools?.map((tool) => ({
+				name: tool.name,
+				description: tool.description,
+				parameters: toJsonSchema(tool.parameters),
+				overridesBuiltInTool: tool.overridesBuiltInTool
+			})),
+			provider: config.provider,
+			requestPermission: true,
+			requestUserInput: !!config.onUserInputRequest,
+			hooks: !!(config.hooks && Object.values(config.hooks).some(Boolean)),
+			workingDirectory: config.workingDirectory,
+			configDir: config.configDir,
+			streaming: config.streaming,
+			mcpServers: config.mcpServers,
+			envValueMode: "direct",
+			customAgents: config.customAgents,
+			skillDirectories: config.skillDirectories,
+			disabledSkills: config.disabledSkills,
+			infiniteSessions: config.infiniteSessions,
+			disableResume: config.disableResume
+		});
+		const session = new CopilotSession(resumedSessionId, this.connection, workspacePath);
+		session.registerTools(config.tools);
+		session.registerPermissionHandler(config.onPermissionRequest);
+		if (config.onUserInputRequest) session.registerUserInputHandler(config.onUserInputRequest);
+		if (config.hooks) session.registerHooks(config.hooks);
+		this.sessions.set(resumedSessionId, session);
+		return session;
+	}
+	/**
+	* Gets the current connection state of the client.
+	*
+	* @returns The current connection state: "disconnected", "connecting", "connected", or "error"
+	*
+	* @example
+	* ```typescript
+	* if (client.getState() === "connected") {
+	*   const session = await client.createSession({ onPermissionRequest: approveAll });
+	* }
+	* ```
+	*/
+	getState() {
+		return this.state;
+	}
+	/**
+	* Sends a ping request to the server to verify connectivity.
+	*
+	* @param message - Optional message to include in the ping
+	* @returns A promise that resolves with the ping response containing the message and timestamp
+	* @throws Error if the client is not connected
+	*
+	* @example
+	* ```typescript
+	* const response = await client.ping("health check");
+	* console.log(`Server responded at ${new Date(response.timestamp)}`);
+	* ```
+	*/
+	async ping(message) {
+		if (!this.connection) throw new Error("Client not connected");
+		return await this.connection.sendRequest("ping", { message });
+	}
+	/**
+	* Get CLI status including version and protocol information
+	*/
+	async getStatus() {
+		if (!this.connection) throw new Error("Client not connected");
+		return await this.connection.sendRequest("status.get", {});
+	}
+	/**
+	* Get current authentication status
+	*/
+	async getAuthStatus() {
+		if (!this.connection) throw new Error("Client not connected");
+		return await this.connection.sendRequest("auth.getStatus", {});
+	}
+	/**
+	* List available models with their metadata.
+	*
+	* Results are cached after the first successful call to avoid rate limiting.
+	* The cache is cleared when the client disconnects.
+	*
+	* @throws Error if not authenticated
+	*/
+	async listModels() {
+		if (!this.connection) throw new Error("Client not connected");
+		await this.modelsCacheLock;
+		let resolveLock;
+		this.modelsCacheLock = new Promise((resolve) => {
+			resolveLock = resolve;
+		});
+		try {
+			if (this.modelsCache !== null) return [...this.modelsCache];
+			const models = (await this.connection.sendRequest("models.list", {})).models;
+			this.modelsCache = models;
+			return [...models];
+		} finally {
+			resolveLock();
+		}
+	}
+	/**
+	* Verify that the server's protocol version is within the supported range
+	* and store the negotiated version.
+	*/
+	async verifyProtocolVersion() {
+		const maxVersion = getSdkProtocolVersion();
+		let pingResult;
+		if (this.processExitPromise) pingResult = await Promise.race([this.ping(), this.processExitPromise]);
+		else pingResult = await this.ping();
+		const serverVersion = pingResult.protocolVersion;
+		if (serverVersion === void 0) throw new Error(`SDK protocol version mismatch: SDK supports versions ${MIN_PROTOCOL_VERSION}-${maxVersion}, but server does not report a protocol version. Please update your server to ensure compatibility.`);
+		if (serverVersion < MIN_PROTOCOL_VERSION || serverVersion > maxVersion) throw new Error(`SDK protocol version mismatch: SDK supports versions ${MIN_PROTOCOL_VERSION}-${maxVersion}, but server reports version ${serverVersion}. Please update your SDK or server to ensure compatibility.`);
+		this.negotiatedProtocolVersion = serverVersion;
+	}
+	/**
+	* Gets the ID of the most recently updated session.
+	*
+	* This is useful for resuming the last conversation when the session ID
+	* was not stored.
+	*
+	* @returns A promise that resolves with the session ID, or undefined if no sessions exist
+	* @throws Error if the client is not connected
+	*
+	* @example
+	* ```typescript
+	* const lastId = await client.getLastSessionId();
+	* if (lastId) {
+	*   const session = await client.resumeSession(lastId, { onPermissionRequest: approveAll });
+	* }
+	* ```
+	*/
+	async getLastSessionId() {
+		if (!this.connection) throw new Error("Client not connected");
+		return (await this.connection.sendRequest("session.getLastId", {})).sessionId;
+	}
+	/**
+	* Permanently deletes a session and all its data from disk, including
+	* conversation history, planning state, and artifacts.
+	*
+	* Unlike {@link CopilotSession.disconnect}, which only releases in-memory
+	* resources and preserves session data for later resumption, this method
+	* is irreversible. The session cannot be resumed after deletion.
+	*
+	* @param sessionId - The ID of the session to delete
+	* @returns A promise that resolves when the session is deleted
+	* @throws Error if the session does not exist or deletion fails
+	*
+	* @example
+	* ```typescript
+	* await client.deleteSession("session-123");
+	* ```
+	*/
+	async deleteSession(sessionId) {
+		if (!this.connection) throw new Error("Client not connected");
+		const { success, error } = await this.connection.sendRequest("session.delete", { sessionId });
+		if (!success) throw new Error(`Failed to delete session ${sessionId}: ${error || "Unknown error"}`);
+		this.sessions.delete(sessionId);
+	}
+	/**
+	* List all available sessions.
+	*
+	* @param filter - Optional filter to limit returned sessions by context fields
+	*
+	* @example
+	* // List all sessions
+	* const sessions = await client.listSessions();
+	*
+	* @example
+	* // List sessions for a specific repository
+	* const sessions = await client.listSessions({ repository: "owner/repo" });
+	*/
+	async listSessions(filter) {
+		if (!this.connection) throw new Error("Client not connected");
+		const { sessions } = await this.connection.sendRequest("session.list", { filter });
+		return sessions.map((s) => ({
+			sessionId: s.sessionId,
+			startTime: new Date(s.startTime),
+			modifiedTime: new Date(s.modifiedTime),
+			summary: s.summary,
+			isRemote: s.isRemote,
+			context: s.context
+		}));
+	}
+	/**
+	* Gets the foreground session ID in TUI+server mode.
+	*
+	* This returns the ID of the session currently displayed in the TUI.
+	* Only available when connecting to a server running in TUI+server mode (--ui-server).
+	*
+	* @returns A promise that resolves with the foreground session ID, or undefined if none
+	* @throws Error if the client is not connected
+	*
+	* @example
+	* ```typescript
+	* const sessionId = await client.getForegroundSessionId();
+	* if (sessionId) {
+	*   console.log(`TUI is displaying session: ${sessionId}`);
+	* }
+	* ```
+	*/
+	async getForegroundSessionId() {
+		if (!this.connection) throw new Error("Client not connected");
+		return (await this.connection.sendRequest("session.getForeground", {})).sessionId;
+	}
+	/**
+	* Sets the foreground session in TUI+server mode.
+	*
+	* This requests the TUI to switch to displaying the specified session.
+	* Only available when connecting to a server running in TUI+server mode (--ui-server).
+	*
+	* @param sessionId - The ID of the session to display in the TUI
+	* @returns A promise that resolves when the session is switched
+	* @throws Error if the client is not connected or if the operation fails
+	*
+	* @example
+	* ```typescript
+	* // Switch the TUI to display a specific session
+	* await client.setForegroundSessionId("session-123");
+	* ```
+	*/
+	async setForegroundSessionId(sessionId) {
+		if (!this.connection) throw new Error("Client not connected");
+		const result = await this.connection.sendRequest("session.setForeground", { sessionId });
+		if (!result.success) throw new Error(result.error || "Failed to set foreground session");
+	}
+	on(eventTypeOrHandler, handler) {
+		if (typeof eventTypeOrHandler === "string" && handler) {
+			const eventType = eventTypeOrHandler;
+			if (!this.typedLifecycleHandlers.has(eventType)) this.typedLifecycleHandlers.set(eventType, /* @__PURE__ */ new Set());
+			const storedHandler = handler;
+			this.typedLifecycleHandlers.get(eventType).add(storedHandler);
+			return () => {
+				const handlers = this.typedLifecycleHandlers.get(eventType);
+				if (handlers) handlers.delete(storedHandler);
+			};
+		}
+		const wildcardHandler = eventTypeOrHandler;
+		this.sessionLifecycleHandlers.add(wildcardHandler);
+		return () => {
+			this.sessionLifecycleHandlers.delete(wildcardHandler);
+		};
+	}
+	/**
+	* Start the CLI server process
+	*/
+	async startCLIServer() {
+		return new Promise((resolve, reject) => {
+			this.stderrBuffer = "";
+			const args = [
+				...this.options.cliArgs,
+				"--headless",
+				"--no-auto-update",
+				"--log-level",
+				this.options.logLevel
+			];
+			if (this.options.useStdio) args.push("--stdio");
+			else if (this.options.port > 0) args.push("--port", this.options.port.toString());
+			if (this.options.githubToken) args.push("--auth-token-env", "COPILOT_SDK_AUTH_TOKEN");
+			if (!this.options.useLoggedInUser) args.push("--no-auto-login");
+			const envWithoutNodeDebug = { ...this.options.env };
+			delete envWithoutNodeDebug.NODE_DEBUG;
+			if (this.options.githubToken) envWithoutNodeDebug.COPILOT_SDK_AUTH_TOKEN = this.options.githubToken;
+			if (!existsSync$1(this.options.cliPath)) throw new Error(`Copilot CLI not found at ${this.options.cliPath}. Ensure @github/copilot is installed.`);
+			const stdioConfig = this.options.useStdio ? [
+				"pipe",
+				"pipe",
+				"pipe"
+			] : [
+				"ignore",
+				"pipe",
+				"pipe"
+			];
+			if (this.options.cliPath.endsWith(".js")) this.cliProcess = spawn(getNodeExecPath(), [this.options.cliPath, ...args], {
+				stdio: stdioConfig,
+				cwd: this.options.cwd,
+				env: envWithoutNodeDebug,
+				windowsHide: true
+			});
+			else this.cliProcess = spawn(this.options.cliPath, args, {
+				stdio: stdioConfig,
+				cwd: this.options.cwd,
+				env: envWithoutNodeDebug,
+				windowsHide: true
+			});
+			let stdout = "";
+			let resolved = false;
+			if (this.options.useStdio) {
+				resolved = true;
+				resolve();
+			} else this.cliProcess.stdout?.on("data", (data) => {
+				stdout += data.toString();
+				const match = stdout.match(/listening on port (\d+)/i);
+				if (match && !resolved) {
+					this.actualPort = parseInt(match[1], 10);
+					resolved = true;
+					resolve();
+				}
+			});
+			this.cliProcess.stderr?.on("data", (data) => {
+				this.stderrBuffer += data.toString();
+				const lines = data.toString().split("\n");
+				for (const line of lines) if (line.trim()) process.stderr.write(`[CLI subprocess] ${line}
+`);
+			});
+			this.cliProcess.on("error", (error) => {
+				if (!resolved) {
+					resolved = true;
+					const stderrOutput = this.stderrBuffer.trim();
+					if (stderrOutput) reject(/* @__PURE__ */ new Error(`Failed to start CLI server: ${error.message}
+stderr: ${stderrOutput}`));
+					else reject(/* @__PURE__ */ new Error(`Failed to start CLI server: ${error.message}`));
+				}
+			});
+			this.processExitPromise = new Promise((_, rejectProcessExit) => {
+				this.cliProcess.on("exit", (code) => {
+					setTimeout(() => {
+						const stderrOutput = this.stderrBuffer.trim();
+						if (stderrOutput) rejectProcessExit(/* @__PURE__ */ new Error(`CLI server exited with code ${code}
+stderr: ${stderrOutput}`));
+						else rejectProcessExit(/* @__PURE__ */ new Error(`CLI server exited unexpectedly with code ${code}`));
+					}, 50);
+				});
+			});
+			this.processExitPromise.catch(() => {});
+			this.cliProcess.on("exit", (code) => {
+				if (!resolved) {
+					resolved = true;
+					const stderrOutput = this.stderrBuffer.trim();
+					if (stderrOutput) reject(/* @__PURE__ */ new Error(`CLI server exited with code ${code}
+stderr: ${stderrOutput}`));
+					else reject(/* @__PURE__ */ new Error(`CLI server exited with code ${code}`));
+				} else if (this.options.autoRestart && this.state === "connected") this.reconnect();
+			});
+			setTimeout(() => {
+				if (!resolved) {
+					resolved = true;
+					reject(/* @__PURE__ */ new Error("Timeout waiting for CLI server to start"));
+				}
+			}, 1e4);
+		});
+	}
+	/**
+	* Connect to the CLI server (via socket or stdio)
+	*/
+	async connectToServer() {
+		if (this.options.isChildProcess) return this.connectToParentProcessViaStdio();
+		else if (this.options.useStdio) return this.connectToChildProcessViaStdio();
+		else return this.connectViaTcp();
+	}
+	/**
+	* Connect to child via stdio pipes
+	*/
+	async connectToChildProcessViaStdio() {
+		if (!this.cliProcess) throw new Error("CLI process not started");
+		this.cliProcess.stdin?.on("error", (err) => {
+			if (!this.forceStopping) throw err;
+		});
+		this.connection = (0, import_node.createMessageConnection)(new import_node.StreamMessageReader(this.cliProcess.stdout), new import_node.StreamMessageWriter(this.cliProcess.stdin));
+		this.attachConnectionHandlers();
+		this.connection.listen();
+	}
+	/**
+	* Connect to parent via stdio pipes
+	*/
+	async connectToParentProcessViaStdio() {
+		if (this.cliProcess) throw new Error("CLI child process was unexpectedly started in parent process mode");
+		this.connection = (0, import_node.createMessageConnection)(new import_node.StreamMessageReader(process.stdin), new import_node.StreamMessageWriter(process.stdout));
+		this.attachConnectionHandlers();
+		this.connection.listen();
+	}
+	/**
+	* Connect to the CLI server via TCP socket
+	*/
+	async connectViaTcp() {
+		if (!this.actualPort) throw new Error("Server port not available");
+		return new Promise((resolve, reject) => {
+			this.socket = new Socket();
+			this.socket.connect(this.actualPort, this.actualHost, () => {
+				this.connection = (0, import_node.createMessageConnection)(new import_node.StreamMessageReader(this.socket), new import_node.StreamMessageWriter(this.socket));
+				this.attachConnectionHandlers();
+				this.connection.listen();
+				resolve();
+			});
+			this.socket.on("error", (error) => {
+				reject(/* @__PURE__ */ new Error(`Failed to connect to CLI server: ${error.message}`));
+			});
+		});
+	}
+	attachConnectionHandlers() {
+		if (!this.connection) return;
+		this.connection.onNotification("session.event", (notification) => {
+			this.handleSessionEventNotification(notification);
+		});
+		this.connection.onNotification("session.lifecycle", (notification) => {
+			this.handleSessionLifecycleNotification(notification);
+		});
+		this.connection.onRequest("tool.call", async (params) => await this.handleToolCallRequestV2(params));
+		this.connection.onRequest("permission.request", async (params) => await this.handlePermissionRequestV2(params));
+		this.connection.onRequest("userInput.request", async (params) => await this.handleUserInputRequest(params));
+		this.connection.onRequest("hooks.invoke", async (params) => await this.handleHooksInvoke(params));
+		this.connection.onClose(() => {
+			if (this.state === "connected" && this.options.autoRestart) this.reconnect();
+		});
+		this.connection.onError((_error) => {});
+	}
+	handleSessionEventNotification(notification) {
+		if (typeof notification !== "object" || !notification || !("sessionId" in notification) || typeof notification.sessionId !== "string" || !("event" in notification)) return;
+		const session = this.sessions.get(notification.sessionId);
+		if (session) session._dispatchEvent(notification.event);
+	}
+	handleSessionLifecycleNotification(notification) {
+		if (typeof notification !== "object" || !notification || !("type" in notification) || typeof notification.type !== "string" || !("sessionId" in notification) || typeof notification.sessionId !== "string") return;
+		const event = notification;
+		const typedHandlers = this.typedLifecycleHandlers.get(event.type);
+		if (typedHandlers) for (const handler of typedHandlers) try {
+			handler(event);
+		} catch {}
+		for (const handler of this.sessionLifecycleHandlers) try {
+			handler(event);
+		} catch {}
+	}
+	async handleUserInputRequest(params) {
+		if (!params || typeof params.sessionId !== "string" || typeof params.question !== "string") throw new Error("Invalid user input request payload");
+		const session = this.sessions.get(params.sessionId);
+		if (!session) throw new Error(`Session not found: ${params.sessionId}`);
+		return await session._handleUserInputRequest({
+			question: params.question,
+			choices: params.choices,
+			allowFreeform: params.allowFreeform
+		});
+	}
+	async handleHooksInvoke(params) {
+		if (!params || typeof params.sessionId !== "string" || typeof params.hookType !== "string") throw new Error("Invalid hooks invoke payload");
+		const session = this.sessions.get(params.sessionId);
+		if (!session) throw new Error(`Session not found: ${params.sessionId}`);
+		return { output: await session._handleHooksInvoke(params.hookType, params.input) };
+	}
+	/**
+	* Handles a v2-style tool.call RPC request from the server.
+	* Looks up the session and tool handler, executes it, and returns the result
+	* in the v2 response format.
+	*/
+	async handleToolCallRequestV2(params) {
+		if (!params || typeof params.sessionId !== "string" || typeof params.toolCallId !== "string" || typeof params.toolName !== "string") throw new Error("Invalid tool call payload");
+		const session = this.sessions.get(params.sessionId);
+		if (!session) throw new Error(`Unknown session ${params.sessionId}`);
+		const handler = session.getToolHandler(params.toolName);
+		if (!handler) return { result: {
+			textResultForLlm: `Tool '${params.toolName}' is not supported by this client instance.`,
+			resultType: "failure",
+			error: `tool '${params.toolName}' not supported`,
+			toolTelemetry: {}
+		} };
+		try {
+			const invocation = {
+				sessionId: params.sessionId,
+				toolCallId: params.toolCallId,
+				toolName: params.toolName,
+				arguments: params.arguments
+			};
+			const result = await handler(params.arguments, invocation);
+			return { result: this.normalizeToolResultV2(result) };
+		} catch (error) {
+			return { result: {
+				textResultForLlm: "Invoking this tool produced an error. Detailed information is not available.",
+				resultType: "failure",
+				error: error instanceof Error ? error.message : String(error),
+				toolTelemetry: {}
+			} };
+		}
+	}
+	/**
+	* Handles a v2-style permission.request RPC request from the server.
+	*/
+	async handlePermissionRequestV2(params) {
+		if (!params || typeof params.sessionId !== "string" || !params.permissionRequest) throw new Error("Invalid permission request payload");
+		const session = this.sessions.get(params.sessionId);
+		if (!session) throw new Error(`Session not found: ${params.sessionId}`);
+		try {
+			return { result: await session._handlePermissionRequestV2(params.permissionRequest) };
+		} catch (_error) {
+			return { result: { kind: "denied-no-approval-rule-and-could-not-request-from-user" } };
+		}
+	}
+	normalizeToolResultV2(result) {
+		if (result === void 0 || result === null) return {
+			textResultForLlm: "Tool returned no result",
+			resultType: "failure",
+			error: "tool returned no result",
+			toolTelemetry: {}
+		};
+		if (this.isToolResultObject(result)) return result;
+		return {
+			textResultForLlm: typeof result === "string" ? result : JSON.stringify(result),
+			resultType: "success",
+			toolTelemetry: {}
+		};
+	}
+	isToolResultObject(value) {
+		return typeof value === "object" && value !== null && "textResultForLlm" in value && typeof value.textResultForLlm === "string" && "resultType" in value;
+	}
+	/**
+	* Attempt to reconnect to the server
+	*/
+	async reconnect() {
+		this.state = "disconnected";
+		try {
+			await this.stop();
+			await this.start();
+		} catch (_error) {}
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/@github+copilot-sdk@0.1.32/node_modules/@github/copilot-sdk/dist/types.js
+function defineTool(name, config) {
+	return {
+		name,
+		...config
+	};
 }
 
 //#endregion
@@ -37553,13 +37645,11 @@ const q = K;
 //#region src/agents/copilot/client.ts
 const COPILOT_CLI_PACKAGE = "@github/copilot";
 const COPILOT_CLI_VERSION = "1.0.2";
-const COPILOT_EXCLUDED_TOOLS = [
+const COPILOT_REVIEW_EXCLUDED_TOOLS = [
 	"bash",
 	"create",
-	"edit",
 	"github-say-hello",
 	"glob",
-	"grep",
 	"list_agents",
 	"list_bash",
 	"read_agent",
@@ -37567,10 +37657,8 @@ const COPILOT_EXCLUDED_TOOLS = [
 	"sql",
 	"stop_bash",
 	"task",
-	"view",
 	"web_fetch",
-	"write_bash",
-	"rg"
+	"write_bash"
 ];
 function prependPath(entries) {
 	const current = process$1.env.PATH ?? "";
@@ -37626,21 +37714,37 @@ async function ensureCopilotCliInstalled() {
 	consola.info(`Prepended npm global bin to PATH: ${npmGlobalBin}`);
 	cliPath = await resolveCopilotCliPath();
 	if (!cliPath) throw new Error(`GitHub Copilot CLI ${COPILOT_CLI_VERSION} is required but was not found after installation attempt.`);
-	consola.info(`GitHub Copilot CLI installed and resolved at: ${cliPath}`);
+	consola.info(`Giub Copilot CLI installed and resolved at: ${cliPath}`);
 	return cliPath;
 }
 function resolveCopilotAgentToken() {
 	return getClank8yRuntimeContext().auth.copilotToken;
 }
-function createCopilotPermissionHandler() {
-	return async (request) => {
-		if (request.kind === "mcp" || request.kind === "custom-tool" || request.kind === "read") return { kind: "approved" };
+const copilotPermissionHandler = (request) => {
+	const canWrite = [path.join(process$1.cwd(), ".clank8y", "scratchpad.txt")];
+	const canRead = [...canWrite, path.join(process$1.cwd(), ".clank8y", "diff.txt")];
+	if (request.kind === "mcp" || request.kind === "custom-tool") return { kind: "approved" };
+	if (request.kind === "read") {
+		const targetPath = "path" in request && typeof request.path === "string" ? request.path : void 0;
+		if (targetPath && canRead.includes(targetPath)) return { kind: "approved" };
 		return {
 			kind: "denied-by-rules",
-			rules: ["Only MCP, custom-tool, and read tool permissions are allowed."]
+			rules: ["Review mode may only read .clank8y/diff.txt and .clank8y/scratchpad.txt via native file tools."]
 		};
+	}
+	if (request.kind === "write") {
+		const targetPath = "fileName" in request && typeof request.fileName === "string" ? request.fileName : void 0;
+		if (targetPath && canWrite.includes(targetPath)) return { kind: "approved" };
+		return {
+			kind: "denied-by-rules",
+			rules: ["Review mode may only write .clank8y/scratchpad.txt via native file tools."]
+		};
+	}
+	return {
+		kind: "denied-by-rules",
+		rules: ["Only MCP, mode selection, reading .clank8y artifacts, searching .clank8y/diff.txt via rg, and writing .clank8y/scratchpad.txt are allowed in review mode."]
 	};
-}
+};
 async function getCopilotClient() {
 	consola.info("Preparing GitHub Copilot review agent");
 	const cliPath = await ensureCopilotCliInstalled();
@@ -37704,15 +37808,28 @@ function buildModeSelectionPrompt(promptContext) {
 
 //#endregion
 //#region src/agents/copilot/selectMode.ts
+const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
+	...COPILOT_REVIEW_EXCLUDED_TOOLS,
+	"rg",
+	"create",
+	"edit",
+	"view"
+];
 async function selectCopilotMode(options) {
 	let selection = null;
 	const session = await options.client.createSession({
 		model: options.model,
-		excludedTools: COPILOT_EXCLUDED_TOOLS,
-		onPermissionRequest: createCopilotPermissionHandler(),
-		tools: [defineTool$1(MODE_SELECTION_TOOL_NAME, {
+		excludedTools: COPILOT_SELECT_MODE_EXCLUDED_TOOLS,
+		onPermissionRequest: (request) => {
+			if (request.kind === "custom-tool" || request.kind === "mcp") return { kind: "approved" };
+			return {
+				kind: "denied-by-rules",
+				rules: ["Only the mode selection tool may be used during mode selection."]
+			};
+		},
+		tools: [defineTool(MODE_SELECTION_TOOL_NAME, {
 			description: MODE_SELECTION_TOOL_DESCRIPTION,
-			parameters: toJsonSchema(clank8yModeSelectionSchema, { errorMode: "warn" }),
+			parameters: toJsonSchema$1(clank8yModeSelectionSchema, { errorMode: "warn" }),
 			handler: async (input) => {
 				selection = input;
 				return {
@@ -37733,42 +37850,6 @@ async function selectCopilotMode(options) {
 
 //#endregion
 //#region src/agents/copilot.ts
-const setPRContextTool = defineTool$1("set-pull-request-context", {
-	description: "Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.",
-	parameters: toJsonSchema(object({
-		repository: pipe(string(), description("Repository in owner/repo format for the pull request to review.")),
-		pr_number: pipe(number(), description("The pull request number to set the context for"))
-	}), { errorMode: "warn" }),
-	handler: async ({ repository, pr_number }) => {
-		const pullRequest = await setPullRequestContext({
-			repository,
-			prNumber: pr_number
-		});
-		return {
-			success: true,
-			context: {
-				repository: `${pullRequest.owner}/${pullRequest.repo}`,
-				pullRequestNumber: pullRequest.number,
-				baseRef: pullRequest.baseRef,
-				headRef: pullRequest.headRef
-			},
-			pullRequest: {
-				number: pullRequest.number,
-				owner: pullRequest.owner,
-				repo: pullRequest.repo,
-				headRef: pullRequest.headRef,
-				headSha: pullRequest.headSha,
-				baseRef: pullRequest.baseRef,
-				baseSha: pullRequest.baseSha
-			},
-			nextSteps: [
-				"Call prepare-pull-request-review.",
-				"Read only relevant diff/file chunks.",
-				"Submit findings with create-pull-request-review."
-			]
-		};
-	}
-});
 const githubCopilotAgent = async (options) => {
 	const agentName = "github-copilot";
 	const model = options.model ?? "claude-sonnet-4.6";
@@ -37794,10 +37875,9 @@ const githubCopilotAgent = async (options) => {
 		const startResults = await startAll(servers);
 		try {
 			const session = await client.createSession({
-				excludedTools: COPILOT_EXCLUDED_TOOLS,
+				excludedTools: COPILOT_REVIEW_EXCLUDED_TOOLS,
 				model,
-				tools: [setPRContextTool],
-				onPermissionRequest: createCopilotPermissionHandler(),
+				onPermissionRequest: copilotPermissionHandler,
 				mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: options.tools.maxRuntimeMs })
 			});
 			session.on("assistant.turn_start", (event) => {
