@@ -37569,7 +37569,8 @@ const COPILOT_EXCLUDED_TOOLS = [
 	"task",
 	"view",
 	"web_fetch",
-	"write_bash"
+	"write_bash",
+	"rg"
 ];
 function prependPath(entries) {
 	const current = process$1.env.PATH ?? "";
