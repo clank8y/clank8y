@@ -25,6 +25,9 @@ const setPRContextTool = defineTool<{
     v.object({
       pr_number: v.pipe(v.number(), v.description('The pull request number to set the context for')),
     }),
+    {
+      errorMode: 'warn',
+    },
   ) as any,
   handler: async ({ pr_number }) => {
     const pullRequest = await setPullRequestContext(pr_number)
@@ -50,7 +53,7 @@ const setPRContextTool = defineTool<{
 })
 
 export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
-  const agent = 'github-copilot'
+  const agentName = 'github-copilot'
   const model = options.model ?? 'claude-sonnet-4.6'
   const client = await getCopilotClient()
   await ensureCopilotModelAvailable(client, model)
@@ -108,7 +111,7 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
       session.on('assistant.message', (event) => {
         if (event.data.reasoningText) {
           logAgentMessage({
-            agent,
+            agent: agentName,
             model,
           }, event.data.reasoningText)
         }
@@ -130,7 +133,7 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
 
         if (response?.data.content) {
           logAgentMessage({
-            agent,
+            agent: agentName,
             model,
           }, response.data.content)
         } else {
@@ -148,7 +151,7 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
   }
 
   const clank8yAgent: Clank8yAgent = {
-    name: 'Clank8y Copilot',
+    name: agentName,
     provider: 'GitHub Copilot',
     model,
     selectMode,

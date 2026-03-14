@@ -1,5 +1,4 @@
 import { defu } from 'defu'
-import { consola } from 'consola'
 import { logAgentMessage } from '../logging'
 import { buildReviewPrompt } from '../prompt'
 import { getPullRequestReviewContext } from '../setup'
@@ -104,8 +103,10 @@ export async function runClank8y(options: Clank8yAgentOptions): Promise<void> {
   const selection = await agent.selectMode(context.promptContext)
   const prompt = buildClank8yPrompt(selection.mode, context.promptContext)
 
-  consola.info(`Selected mode: ${selection.mode}`)
-  consola.info(`Mode selection reason: ${selection.reason}`)
+  logAgentMessage({
+    agent: agent.provider,
+    model: agent.model,
+  }, `Selected mode: ${selection.mode}\nMode selection reason: ${selection.reason}`)
 
   logAgentMessage({
     agent: agent.provider,

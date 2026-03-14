@@ -28,7 +28,9 @@ export async function selectCopilotMode(options: {
     tools: [
       defineTool<Clank8yModeSelection>(MODE_SELECTION_TOOL_NAME, {
         description: MODE_SELECTION_TOOL_DESCRIPTION,
-        parameters: toJsonSchema(clank8yModeSelectionSchema) as any,
+        parameters: toJsonSchema(clank8yModeSelectionSchema, {
+          errorMode: 'warn',
+        }) as any,
         handler: async (input) => {
           selection = input
           return {
