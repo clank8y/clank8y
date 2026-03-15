@@ -1,6 +1,6 @@
 import process$1, { stdin, stdout } from "node:process";
 import { WriteStream } from "node:tty";
-import f from "node:readline";
+import c from "node:readline";
 
 //#region node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/chunks/prompt.mjs
 function getDefaultExportFromCjs(x) {
@@ -399,7 +399,7 @@ function G(t, u, F) {
 `).map((e) => oD(e, u, F)).join(`
 `);
 }
-const c = {
+const c$1 = {
 	actions: new Set([
 		"up",
 		"down",
@@ -419,7 +419,7 @@ const c = {
 	])
 };
 function k$1(t, u) {
-	if (typeof t == "string") return c.aliases.get(t) === u;
+	if (typeof t == "string") return c$1.aliases.get(t) === u;
 	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
 	return false;
 }
@@ -481,13 +481,13 @@ var x = class {
 			const e = new WriteStream(0);
 			e._write = (s, i, D) => {
 				this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
-			}, this.input.pipe(e), this.rl = f.createInterface({
+			}, this.input.pipe(e), this.rl = c.createInterface({
 				input: this.input,
 				output: e,
 				tabSize: 2,
 				prompt: "",
 				escapeCodeTimeout: 50
-			}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
+			}), c.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
 				this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
 			}), this.once("cancel", () => {
 				this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S);
@@ -495,7 +495,7 @@ var x = class {
 		});
 	}
 	onKeypress(u, F) {
-		if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c.aliases.has(F.name) && this.emit("cursor", c.aliases.get(F.name)), c.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
+		if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
 			if (this.opts.validate) {
 				const e = this.opts.validate(this.value);
 				e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
