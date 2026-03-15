@@ -17,7 +17,7 @@ export interface MCPServer {
 
 // ─── HTTP (in-process) MCP server ─────────────────────────────────────────────
 
-export interface LocalMCPServer extends MCPServer {
+export interface LocalHTTPMCPServer extends MCPServer {
   readonly serverType: 'http'
   readonly status:
     | { readonly url: string, readonly state: 'running' }
@@ -34,7 +34,7 @@ export interface LocalMCPServer extends MCPServer {
  * Always-running external HTTP MCP server. `start()` returns the static URL;
  * `stop()` is a no-op. `status` is always `running`.
  */
-export interface RemoteMCPServer extends MCPServer {
+export interface RemoteHTTPMCPServer extends MCPServer {
   readonly serverType: 'http'
   readonly status: { readonly state: 'running' }
   start: () => Promise<{ url: string, toolNames: string[] }>
@@ -49,6 +49,8 @@ export interface LocalStdioMCPServer extends MCPServer {
    */
   start: () => Promise<{ command: string, args: string[], toolNames: string[] }>
 }
+
+export type Clank8yMCPServer = LocalHTTPMCPServer | RemoteHTTPMCPServer | LocalStdioMCPServer
 
 // ─── Discriminated start results ──────────────────────────────────────────────
 
@@ -69,7 +71,7 @@ export type MCPStartResult = HTTPStartResult | StdioStartResult
 
 // ─── Lifecycle helpers ────────────────────────────────────────────────────────
 
-export type MCPServerMap = Record<string, LocalMCPServer | RemoteMCPServer | LocalStdioMCPServer>
+export type MCPServerMap = Record<string, LocalHTTPMCPServer | RemoteHTTPMCPServer | LocalStdioMCPServer>
 export type MCPStartResultMap<T extends MCPServerMap> = {
   [K in keyof T]: T[K] extends LocalStdioMCPServer ? StdioStartResult : HTTPStartResult
 }
@@ -79,7 +81,7 @@ export async function startAll<T extends MCPServerMap>(servers: T): Promise<MCPS
 
   for (const [name, server] of Object.entries(servers)) {
     if (server.serverType === 'http') {
-      const { url, toolNames } = await (server as LocalMCPServer).start()
+      const { url, toolNames } = await (server as LocalHTTPMCPServer).start()
       results[name] = { type: 'http', url, toolNames }
     } else {
       const { command, args, toolNames } = await (server as LocalStdioMCPServer).start()

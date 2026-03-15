@@ -1,9 +1,11 @@
 import { defu } from 'defu'
 import { logAgentMessage } from '../logging'
-import { buildPrompt } from '../prompts'
+import { buildModeSelectionPrompt, buildPrompt } from '../prompts'
 import type { DeepOptional } from '../types'
-import { githubCopilotAgent } from './copilot'
 import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
+import type { LocalHTTPMCPServer } from '../mcp'
+import { selectModeMCP } from '../mcp/selectMode'
+import { githubCopilotAgent } from './copilot'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -64,12 +66,18 @@ export interface Clank8yRunInput {
   prompt: string
 }
 
+export interface SelectModeOptions {
+  prompt: string
+  mcp: LocalHTTPMCPServer
+}
+
 export interface Clank8yAgent {
   name: string
   provider: string
   model: string
-  selectMode: (prompt: string) => Promise<Clank8yModeSelection>
+  selectMode: (options: SelectModeOptions) => Promise<void>
   run: (input: Clank8yRunInput) => Promise<void>
+  cleanup?: () => Promise<void>
 }
 
 export type Clank8yAgentFactory = (options: Omit<Clank8yAgentConfiguration, 'agent'>) => Clank8yAgent | Promise<Clank8yAgent>
@@ -89,7 +97,27 @@ async function getClank8yAgent(options: Clank8yAgentOptions): Promise<Clank8yAge
 
 export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
   const agent = await getClank8yAgent(options)
-  const selection = await agent.selectMode(options.promptContext)
+
+  const {
+    mcp,
+    getSelection,
+  } = selectModeMCP()
+
+  await mcp.start()
+
+  await agent.selectMode({
+    prompt: buildModeSelectionPrompt(options.promptContext),
+    mcp,
+  })
+
+  await mcp.stop()
+
+  const selection = getSelection()
+
+  if (!selection) {
+    throw new Error('Mode selection failed: the model did not provide a valid clank8y mode selection.')
+  }
+
   const prompt = buildPrompt(selection.mode, options.promptContext)
 
   logAgentMessage({
@@ -111,6 +139,8 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     mode: selection.mode,
     prompt,
   })
+
+  await agent.cleanup?.()
 
   return selection
 }

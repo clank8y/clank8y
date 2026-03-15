@@ -1,11 +1,7 @@
-import { defineTool } from '@github/copilot-sdk'
-import type { CopilotClient } from '@github/copilot-sdk'
-import { toJsonSchema } from '@valibot/to-json-schema'
-import { clank8yModeSelectionSchema, MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME, MODE_SELECTION_TOOL_TITLE } from '../../modeSelection'
-import type { Clank8yModeSelection } from '../../modeSelection'
-import { buildModeSelectionPrompt } from '../../prompts'
+import type { LocalHTTPMCPServer } from '../../mcp'
 import {
   COPILOT_REVIEW_EXCLUDED_TOOLS,
+  getCopilotClient,
 } from './client'
 
 export const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
@@ -17,54 +13,46 @@ export const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
 ]
 
 export async function selectCopilotMode(options: {
-  client: CopilotClient
   model: string
   prompt: string
-}): Promise<Clank8yModeSelection> {
-  let selection: Clank8yModeSelection | null = null
+  mcp: LocalHTTPMCPServer
+  timeoutMs?: number
+}): Promise<void> {
+  if (options.mcp.status.state !== 'running') {
+    throw new Error('Select mode MCP server must be started before mode selection.')
+  }
 
-  const session = await options.client.createSession({
+  const client = await getCopilotClient()
+
+  const session = await client.createSession({
     model: options.model,
-    excludedTools: COPILOT_SELECT_MODE_EXCLUDED_TOOLS,
+    // tools in github copilot are prefixed with the mcp server name set in the mcpServers object
+    availableTools: options.mcp.allowedTools.map((n) => `selectMode-${n}`),
     onPermissionRequest: (request) => {
-      if (request.kind === 'custom-tool' || request.kind === 'mcp') {
+      if (request.kind === 'mcp') {
         return {
           kind: 'approved' as const,
         }
       }
+
       return {
         kind: 'denied-by-rules',
-        rules: ['Only the mode selection tool may be used during mode selection.'],
+        rules: ['Only the select mode MCP tool may be used during mode selection.'],
       }
     },
-    tools: [
-      defineTool<Clank8yModeSelection>(MODE_SELECTION_TOOL_NAME, {
-        description: MODE_SELECTION_TOOL_DESCRIPTION,
-        parameters: toJsonSchema(clank8yModeSelectionSchema, {
-          errorMode: 'warn',
-        }) as any,
-        handler: async (input) => {
-          selection = input
-          return {
-            success: true,
-            message: `${MODE_SELECTION_TOOL_TITLE} received: ${input.mode}.`,
-          }
-        },
-      }),
-    ],
+    mcpServers: {
+      selectMode: {
+        type: 'http',
+        url: options.mcp.status.url,
+        tools: options.mcp.allowedTools,
+        timeout: options.timeoutMs ?? 60_000,
+      },
+    },
   })
 
-  try {
-    await session.sendAndWait({
-      prompt: buildModeSelectionPrompt(options.prompt),
-    })
-  } finally {
-    await session.disconnect()
-  }
+  await session.sendAndWait({
+    prompt: options.prompt,
+  })
 
-  if (!selection) {
-    throw new Error('Mode selection failed: the model did not provide a valid clank8y mode selection.')
-  }
-
-  return selection
+  await client.deleteSession(session.sessionId)
 }

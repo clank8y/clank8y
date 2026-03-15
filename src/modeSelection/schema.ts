@@ -13,10 +13,14 @@ export const clank8yModeSelectionSchema = v.object({
   mode: clank8yModeSchema,
   reason: v.pipe(
     v.string(),
-    v.trim(),
+    // TODO: tmcp valibot adapter take have options and fails here
+    // v.trim(),
     v.minLength(1, 'Mode selection reason is required.'),
     v.description('A concise explanation for why this mode fits the current run.'),
   ),
 })
 
-export type Clank8yModeSelection = v.InferOutput<typeof clank8yModeSelectionSchema>
+export interface Clank8yModeSelection {
+  mode: Clank8yMode
+  reason: string
+}
