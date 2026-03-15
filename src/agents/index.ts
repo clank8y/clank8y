@@ -1,11 +1,11 @@
 import { defu } from 'defu'
 import { logAgentMessage } from '../logging'
-import { buildPrompt } from '../prompts'
+import { buildModeSelectionPrompt, buildPrompt } from '../prompts'
 import type { DeepOptional } from '../types'
-import { githubCopilotAgent } from './copilot'
 import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
 import type { LocalHTTPMCPServer } from '../mcp'
 import { selectModeMCP } from '../mcp/selectMode'
+import { githubCopilotAgent } from './copilot'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -77,6 +77,7 @@ export interface Clank8yAgent {
   model: string
   selectMode: (options: SelectModeOptions) => Promise<void>
   run: (input: Clank8yRunInput) => Promise<void>
+  cleanup?: () => Promise<void>
 }
 
 export type Clank8yAgentFactory = (options: Omit<Clank8yAgentConfiguration, 'agent'>) => Clank8yAgent | Promise<Clank8yAgent>
@@ -99,17 +100,19 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
 
   const {
     mcp,
-    selection,
+    getSelection,
   } = selectModeMCP()
 
   await mcp.start()
 
   await agent.selectMode({
-    prompt: options.promptContext,
+    prompt: buildModeSelectionPrompt(options.promptContext),
     mcp,
   })
 
   await mcp.stop()
+
+  const selection = getSelection()
 
   if (!selection) {
     throw new Error('Mode selection failed: the model did not provide a valid clank8y mode selection.')
@@ -136,6 +139,8 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     mode: selection.mode,
     prompt,
   })
+
+  await agent.cleanup?.()
 
   return selection
 }

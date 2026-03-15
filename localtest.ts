@@ -131,5 +131,5 @@ async function main(): Promise<void> {
 main().catch((error) => {
   const message = error instanceof Error ? error.message : String(error)
   console.error(`localtest failed: ${message}`)
-  process.exitCode = 1
+  process.exit(1)
 })
