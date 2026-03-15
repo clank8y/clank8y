@@ -12,4 +12,7 @@ export default defineConfig({
   noExternal: [/.*/],
   treeshake: true,
   inlineOnly: false,
+  outputOptions: {
+    codeSplitting: false,
+  },
 })
