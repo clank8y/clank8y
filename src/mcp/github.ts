@@ -17,7 +17,7 @@ import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
 import { encode } from '@toon-format/toon'
 import { buildClank8yCommentBody } from '../../shared/comment'
-import { doesDiffArtifactExist, doesScratchpadArtifactExist, ensureReviewArtifactDir, writeDiffArtifact, writeScratchpadArtifact } from '../utils/reviewArtifacts'
+import { doesDiffArtifactExist, ensureReviewArtifactDir, writeDiffArtifact } from '../utils/reviewArtifacts'
 
 interface CachedDiff {
   content: string
@@ -53,69 +53,6 @@ function stripSurroundingQuotes(text: string): string {
 
 function normalizeToolString(text: string): string {
   return normalizeEscapedNewlines(stripSurroundingQuotes(text))
-}
-
-function normalizeUniqueStrings(entries: string[] | undefined): string[] {
-  const seen = new Set<string>()
-  const normalized: string[] = []
-
-  for (const entry of entries ?? []) {
-    const value = normalizeToolString(entry).trim()
-    if (!value || seen.has(value)) {
-      continue
-    }
-
-    seen.add(value)
-    normalized.push(value)
-  }
-
-  return normalized
-}
-
-export function buildReviewScratchpadContent(input: {
-  repository: string
-  pullRequestNumber: number
-  diffPath: string
-  changedFiles: string[]
-}): string {
-  const changedFiles = normalizeUniqueStrings(input.changedFiles)
-
-  return [
-    '# clank8y review scratchpad',
-    '',
-    `repository: ${input.repository}`,
-    `pull_request: #${input.pullRequestNumber}`,
-    `diff_path: ${input.diffPath}`,
-    '',
-    'Instructions:',
-    '- Keep this file updated during the review.',
-    '- Mark a file as reviewed by changing `[ ]` to `[x]`.',
-    '- After each file or file group, add at least one note before continuing.',
-    '- Record only strong, evidence-backed findings.',
-    '- Use `Suspected Patterns To Expand` for hypotheses that still need expansion or proof.',
-    '- Use `Learned / Verified Context` to capture docs-backed conclusions you want to remember later in the run.',
-    '- Every Angular MCP or Codex MCP lookup should leave a short note in `Learned / Verified Context`.',
-    '- Before submitting the review, confirm all intentionally skipped files are explained in `Notes`.',
-    '',
-    '## Changed Files',
-    ...changedFiles.map((file) => `- [ ] ${file}`),
-    '',
-    '## Suspected Patterns To Expand',
-    '- None yet.',
-    '',
-    '## Learned / Verified Context',
-    '- None yet. Add one line per Angular MCP or Codex MCP verification.',
-    '',
-    '## Validated Findings',
-    '- None yet.',
-    '',
-    '## Open Questions',
-    '- None yet.',
-    '',
-    '## Notes',
-    '- None yet. If a file group produced no finding, record that explicitly.',
-    '',
-  ].join('\n')
 }
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
@@ -350,19 +287,9 @@ const preparePullRequestReviewTool = defineTool({
 
     const artifactPaths = await ensureReviewArtifactDir()
 
-    // only write file if not already present
     if (!(await doesDiffArtifactExist())) {
       const diff = formatFilesWithLineNumbers(files)
       await writeDiffArtifact(diff.content)
-    }
-    if (!(await doesScratchpadArtifactExist())) {
-      const scratchpadContent = buildReviewScratchpadContent({
-        repository: `${pullRequest.owner}/${pullRequest.repo}`,
-        pullRequestNumber: pullRequest.number,
-        diffPath: artifactPaths.diffPath,
-        changedFiles: files.map((file) => file.filename),
-      })
-      await writeScratchpadArtifact(scratchpadContent)
     }
 
     const fileSummaries = files.map((file) => ({
@@ -401,9 +328,7 @@ const preparePullRequestReviewTool = defineTool({
       },
       diff: {
         path: artifactPaths.diffPath,
-      },
-      scratchpad: {
-        path: artifactPaths.scratchpadPath,
+        instructions: 'Read the TOC at the top first to map files to line ranges. Then work through file groups selectively. Use rg or grep on this file to search for repeated patterns.',
       },
     } as any)
   } catch (error) {
