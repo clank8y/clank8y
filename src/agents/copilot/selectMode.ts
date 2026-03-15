@@ -27,7 +27,7 @@ export async function selectCopilotMode(options: {
   const session = await client.createSession({
     model: options.model,
     // tools in github copilot are prefixed with the mcp server name set in the mcpServers object
-    availableTools: [...options.mcp.allowedTools.map((n) => `selectMode-${n}`)],
+    availableTools: options.mcp.allowedTools.map((n) => `selectMode-${n}`),
     onPermissionRequest: (request) => {
       if (request.kind === 'mcp') {
         return {
