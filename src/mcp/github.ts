@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import type { LocalMCPServer } from '.'
 import { Buffer } from 'node:buffer'
-import { mkdir, writeFile } from 'node:fs/promises'
-import path from 'node:path'
 import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
@@ -19,17 +17,11 @@ import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
 import { encode } from '@toon-format/toon'
 import { buildClank8yCommentBody } from '../../shared/comment'
-import process from 'node:process'
+import { doesDiffArtifactExist, doesScratchpadArtifactExist, ensureReviewArtifactDir, writeDiffArtifact, writeScratchpadArtifact } from '../utils/reviewArtifacts'
 
 interface CachedDiff {
   content: string
   toc: string
-}
-
-export interface ReviewArtifactPaths {
-  artifactDir: string
-  diffPath: string
-  scratchpadPath: string
 }
 
 const FILE_CHUNK_DEFAULT_LIMIT = 200
@@ -37,9 +29,6 @@ const FILE_CHUNK_MAX_LIMIT = 400
 const FILE_CHUNK_MAX_CHARS = 30_000
 const FILE_FULL_MAX_LINES = 250
 const FILE_FULL_MAX_CHARS = 20_000
-const CLANK8Y_ARTIFACT_DIR = '.clank8y'
-const DIFF_ARTIFACT_FILE = 'diff.txt'
-const SCRATCHPAD_ARTIFACT_FILE = 'scratchpad.txt'
 
 let _githubMCP: LocalMCPServer | null = null
 
@@ -81,23 +70,6 @@ function normalizeUniqueStrings(entries: string[] | undefined): string[] {
   }
 
   return normalized
-}
-
-export function getReviewArtifactPaths(): ReviewArtifactPaths {
-  const workspaceRoot = process.cwd()
-  const artifactDir = path.join(workspaceRoot, CLANK8Y_ARTIFACT_DIR)
-
-  return {
-    artifactDir,
-    diffPath: path.join(artifactDir, DIFF_ARTIFACT_FILE),
-    scratchpadPath: path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE),
-  }
-}
-
-async function ensureReviewArtifactDir(): Promise<ReviewArtifactPaths> {
-  const artifactPaths = getReviewArtifactPaths()
-  await mkdir(artifactPaths.artifactDir, { recursive: true })
-  return artifactPaths
 }
 
 export function buildReviewScratchpadContent(input: {
@@ -376,19 +348,23 @@ const preparePullRequestReviewTool = defineTool({
       fetchAllPullRequestFiles(),
     ])
 
-    const diff = formatFilesWithLineNumbers(files)
     const artifactPaths = await ensureReviewArtifactDir()
-    const scratchpadContent = buildReviewScratchpadContent({
-      repository: `${pullRequest.owner}/${pullRequest.repo}`,
-      pullRequestNumber: pullRequest.number,
-      diffPath: artifactPaths.diffPath,
-      changedFiles: files.map((file) => file.filename),
-    })
 
-    await writeFile(artifactPaths.diffPath, diff.content, 'utf-8')
-    await writeFile(artifactPaths.scratchpadPath, scratchpadContent, 'utf-8')
+    // only write file if not already present
+    if (!doesDiffArtifactExist()) {
+      const diff = formatFilesWithLineNumbers(files)
+      await writeDiffArtifact(diff.content)
+    }
+    if (!doesScratchpadArtifactExist()) {
+      const scratchpadContent = buildReviewScratchpadContent({
+        repository: `${pullRequest.owner}/${pullRequest.repo}`,
+        pullRequestNumber: pullRequest.number,
+        diffPath: artifactPaths.diffPath,
+        changedFiles: files.map((file) => file.filename),
+      })
+      await writeScratchpadArtifact(scratchpadContent)
+    }
 
-    const totalDiffLines = diff.content.split('\n').length
     const fileSummaries = files.map((file) => ({
       path: file.filename,
       status: file.status,
@@ -425,8 +401,6 @@ const preparePullRequestReviewTool = defineTool({
       },
       diff: {
         path: artifactPaths.diffPath,
-        totalLines: totalDiffLines,
-        toc: diff.toc,
       },
       scratchpad: {
         path: artifactPaths.scratchpadPath,
