@@ -113,7 +113,7 @@ async function ensureCopilotCliInstalled(): Promise<string> {
     throw new Error(`GitHub Copilot CLI ${COPILOT_CLI_VERSION} is required but was not found after installation attempt.`)
   }
 
-  consola.info(`Giub Copilot CLI installed and resolved at: ${cliPath}`)
+  consola.info(`GitHub Copilot CLI installed and resolved at: ${cliPath}`)
   return cliPath
 }
 
