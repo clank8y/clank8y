@@ -4,6 +4,8 @@ import { buildPrompt } from '../prompts'
 import type { DeepOptional } from '../types'
 import { githubCopilotAgent } from './copilot'
 import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
+import type { LocalHTTPMCPServer } from '../mcp'
+import { selectModeMCP } from '../mcp/selectMode'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -64,11 +66,16 @@ export interface Clank8yRunInput {
   prompt: string
 }
 
+export interface SelectModeOptions {
+  prompt: string
+  mcp: LocalHTTPMCPServer
+}
+
 export interface Clank8yAgent {
   name: string
   provider: string
   model: string
-  selectMode: (prompt: string) => Promise<Clank8yModeSelection>
+  selectMode: (options: SelectModeOptions) => Promise<void>
   run: (input: Clank8yRunInput) => Promise<void>
 }
 
@@ -89,7 +96,25 @@ async function getClank8yAgent(options: Clank8yAgentOptions): Promise<Clank8yAge
 
 export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
   const agent = await getClank8yAgent(options)
-  const selection = await agent.selectMode(options.promptContext)
+
+  const {
+    mcp,
+    selection,
+  } = selectModeMCP()
+
+  await mcp.start()
+
+  await agent.selectMode({
+    prompt: options.promptContext,
+    mcp,
+  })
+
+  await mcp.stop()
+
+  if (!selection) {
+    throw new Error('Mode selection failed: the model did not provide a valid clank8y mode selection.')
+  }
+
   const prompt = buildPrompt(selection.mode, options.promptContext)
 
   logAgentMessage({

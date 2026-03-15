@@ -19,4 +19,7 @@ export const clank8yModeSelectionSchema = v.object({
   ),
 })
 
-export type Clank8yModeSelection = v.InferOutput<typeof clank8yModeSelectionSchema>
+export interface Clank8yModeSelection {
+  mode: Clank8yMode
+  reason: string
+}

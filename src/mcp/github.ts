@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import type { LocalMCPServer } from '.'
+import type { LocalHTTPMCPServer } from '.'
 import { Buffer } from 'node:buffer'
 import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
@@ -30,7 +30,7 @@ const FILE_CHUNK_MAX_CHARS = 30_000
 const FILE_FULL_MAX_LINES = 250
 const FILE_FULL_MAX_CHARS = 20_000
 
-let _githubMCP: LocalMCPServer | null = null
+let _githubMCP: LocalHTTPMCPServer | null = null
 
 function normalizeEscapedNewlines(text: string): string {
   return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
@@ -154,14 +154,14 @@ export function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
   }
 }
 
-export function githubMCP(): LocalMCPServer {
+export function githubMCP(): LocalHTTPMCPServer {
   if (!_githubMCP) {
     _githubMCP = createGitHubMCP()
   }
   return _githubMCP
 }
 
-function createGitHubMCP(): LocalMCPServer {
+function createGitHubMCP(): LocalHTTPMCPServer {
   const transport = new HttpTransport(mcp, {
     path: '/mcp',
   })
@@ -179,7 +179,7 @@ function createGitHubMCP(): LocalMCPServer {
     },
   })
 
-  let status: LocalMCPServer['status'] = { state: 'stopped' }
+  let status: LocalHTTPMCPServer['status'] = { state: 'stopped' }
 
   return {
     serverType: 'http' as const,

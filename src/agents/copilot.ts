@@ -18,14 +18,6 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
   const client = await getCopilotClient()
   await ensureCopilotModelAvailable(client, model)
 
-  async function selectMode(prompt: string) {
-    return selectCopilotMode({
-      client,
-      model,
-      prompt,
-    })
-  }
-
   async function runReview(prompt: string): Promise<void> {
     const thoughtStarts = new Map<string, number>()
     const totals: UsageTotals = {
@@ -121,7 +113,13 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
     name: agentName,
     provider: 'GitHub Copilot',
     model,
-    selectMode,
+    selectMode: (selectModeOptions) => selectCopilotMode({
+      client,
+      model,
+      prompt: selectModeOptions.prompt,
+      mcp: selectModeOptions.mcp,
+      timeoutMs: options.tools.maxRuntimeMs,
+    }),
     run: async ({ mode, prompt }) => {
       switch (mode) {
         case 'Review':
