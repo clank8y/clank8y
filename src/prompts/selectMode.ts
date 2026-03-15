@@ -1,8 +1,5 @@
-import { PERSONA } from './prompt'
-
-export const MODE_SELECTION_TOOL_NAME = 'select-clank8y-mode'
-export const MODE_SELECTION_TOOL_TITLE = 'Select clank8y mode'
-export const MODE_SELECTION_TOOL_DESCRIPTION = 'Select the best clank8y execution mode for the current instructions. Call this exactly once with the chosen mode and a concise reason.'
+import { PERSONA } from './base'
+import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME } from '../modeSelection'
 
 const MODE_SELECTION_WORKFLOW = [
   '## Mode selection',
@@ -12,7 +9,6 @@ const MODE_SELECTION_WORKFLOW = [
   `Tool intent: ${MODE_SELECTION_TOOL_DESCRIPTION}`,
   'Choose `Review` when the instructions are about pull request review.',
   'Do not do any other work in this step.',
-
 ].join('\n')
 
 const BASE_MODE_SELECTION_PROMPT = [
@@ -22,14 +18,14 @@ const BASE_MODE_SELECTION_PROMPT = [
 ].join('\n')
 
 export function buildModeSelectionPrompt(promptContext: string): string {
-  const normalizedPromptContext = promptContext.trim()
-  if (!normalizedPromptContext) {
+  const normalized = promptContext.trim()
+  if (!normalized) {
     return BASE_MODE_SELECTION_PROMPT
   }
 
   return [
     BASE_MODE_SELECTION_PROMPT,
     '',
-    normalizedPromptContext,
+    normalized,
   ].join('\n')
 }

@@ -1,10 +1,9 @@
 import { defu } from 'defu'
 import { logAgentMessage } from '../logging'
-import { buildReviewPrompt } from '../prompt'
+import { buildPrompt } from '../prompts'
 import type { DeepOptional } from '../types'
 import { githubCopilotAgent } from './copilot'
-import type { Clank8yMode, Clank8yModeSelection } from './modes'
-import { clearReviewArtifacts } from '../utils/reviewArtifacts'
+import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -88,19 +87,10 @@ async function getClank8yAgent(options: Clank8yAgentOptions): Promise<Clank8yAge
   }
 }
 
-function buildClank8yPrompt(mode: Clank8yMode, promptContext: string): string {
-  switch (mode) {
-    case 'Review':
-      return buildReviewPrompt(promptContext)
-    default:
-      throw new Error(`Unsupported clank8y mode: ${mode satisfies never}`)
-  }
-}
-
 export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
   const agent = await getClank8yAgent(options)
   const selection = await agent.selectMode(options.promptContext)
-  const prompt = buildClank8yPrompt(selection.mode, options.promptContext)
+  const prompt = buildPrompt(selection.mode, options.promptContext)
 
   logAgentMessage({
     agent: agent.provider,
@@ -115,10 +105,6 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     '',
     options.promptContext,
   ])
-
-  if (selection.mode === 'Review') {
-    await clearReviewArtifacts()
-  }
 
   // agent should have different function here for execution so that we can dynamically do pre and post steps more easily per mode
   await agent.run({
