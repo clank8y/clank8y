@@ -122,8 +122,10 @@ function resolveCopilotAgentToken(): string {
 }
 
 export const copilotPermissionHandler: PermissionHandler = (request) => {
-  const canWrite = [path.join(process.cwd(), '.clank8y', 'scratchpad.txt')]
-  const canRead = [...canWrite, path.join(process.cwd(), '.clank8y', 'diff.txt')]
+  const scratchpadPath = path.resolve(process.cwd(), '.clank8y', 'scratchpad.txt')
+  const diffPath = path.resolve(process.cwd(), '.clank8y', 'diff.txt')
+  const canWrite = [scratchpadPath]
+  const canRead = [...canWrite, diffPath]
 
   if (request.kind === 'mcp' || request.kind === 'custom-tool') {
     return {
@@ -132,8 +134,11 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
   }
 
   if (request.kind === 'read') {
-    const targetPath = 'path' in request && typeof request.path === 'string'
+    const rawTargetPath = 'path' in request && typeof request.path === 'string'
       ? request.path
+      : undefined
+    const targetPath = rawTargetPath
+      ? path.resolve(process.cwd(), rawTargetPath)
       : undefined
 
     if (targetPath && canRead.includes(targetPath)) {
@@ -149,8 +154,11 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
   }
 
   if (request.kind === 'write') {
-    const targetPath = 'fileName' in request && typeof request.fileName === 'string'
+    const rawTargetPath = 'fileName' in request && typeof request.fileName === 'string'
       ? request.fileName
+      : undefined
+    const targetPath = rawTargetPath
+      ? path.resolve(process.cwd(), rawTargetPath)
       : undefined
 
     if (targetPath && canWrite.includes(targetPath)) {
