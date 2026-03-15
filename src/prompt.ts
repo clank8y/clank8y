@@ -155,7 +155,7 @@ const REVIEW_WORKFLOW = [
   '',
   '### Step-by-step:',
   '',
-  '1) **Set PR context** via the GitHub MCP tool `set-pull-request-context` using the `owner`, `repository` and `pr_number` from EVENT-LEVEL INSTRUCTIONS.',
+  '1) **Set PR context** via the GitHub MCP tool `set-pull-request-context` using the `repository` (in `owner/repo` form) and `pr_number` from EVENT-LEVEL INSTRUCTIONS.',
   '   - Do not call any other GitHub MCP tool before this.',
   '',
   '2) **Prepare review** via `prepare-pull-request-review` (single entrypoint).',
