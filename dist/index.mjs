@@ -18,9 +18,9 @@ import process$1, { cwd, stdin, stdout } from "node:process";
 import * as tty from "node:tty";
 import { WriteStream } from "node:tty";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
-import f from "node:readline";
+import c from "node:readline";
 import nodeHTTPS from "node:https";
-import { mkdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { existsSync as existsSync$1 } from "node:fs";
 import { spawn } from "node:child_process";
 import { createRequire as createRequire$1 } from "module";
@@ -16698,7 +16698,7 @@ var __awaiter$6 = void 0 && (void 0).__awaiter || function(thisArg, _arguments, 
 		step((generator = generator.apply(thisArg, _arguments || [])).next());
 	});
 };
-const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat: stat$1, symlink, unlink: unlink$1 } = fs.promises;
+const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat: stat$1, symlink, unlink } = fs.promises;
 const IS_WINDOWS$1 = process.platform === "win32";
 const READONLY = fs.constants.O_RDONLY;
 
@@ -20288,7 +20288,7 @@ function logAgentMessage(info, lines) {
 }
 
 //#endregion
-//#region src/prompt.ts
+//#region src/prompts/base.ts
 const PERSONA = [
 	"## Persona",
 	"",
@@ -20304,8 +20304,44 @@ const PERSONA = [
 	"- Adapt to the repository's existing code style and conventions.",
 	"- Use emdashes (—) rather than breaking up sentences with hyphens."
 ].join("\n");
+const KNOWLEDGE_VERIFICATION = [
+	"## Knowledge verification — MANDATORY",
+	"",
+	"Angular evolves rapidly. Your training data may be stale.",
+	"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
+	"",
+	"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
+	"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
+	"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
+	"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
+	"",
+	"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
+	"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
+	"- Use `get_best_practices` to verify the pattern you are evaluating.",
+	"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
+	"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
+	"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
+	"",
+	"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
+	"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
+	"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
+	"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
+	"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
+	"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
+	"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
+	"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
+	"- Specifically check whether the platform already provides what the developer is building or importing.",
+	"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
+	"",
+	"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
+].join("\n");
+
+//#endregion
+//#region src/prompts/review.ts
 const BASE_REVIEW_PROMPT = [
 	PERSONA,
+	"",
+	KNOWLEDGE_VERIFICATION,
 	"",
 	[
 		"## Review scope",
@@ -20329,40 +20365,6 @@ const BASE_REVIEW_PROMPT = [
 		"- Obvious performance anti-patterns (subscriptions never unsubscribed, missing `trackBy`, heavy computation in templates).",
 		"- Dead code, unused imports, or copy-paste errors that clearly slipped through.",
 		"- **Lodash usage** that can be replaced with native JS/TS or `es-toolkit` (see dedicated section below)."
-	].join("\n"),
-	"",
-	[
-		"## Knowledge verification — MANDATORY",
-		"",
-		"Angular evolves rapidly. Your training data may be stale.",
-		"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
-		"",
-		"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
-		"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
-		"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
-		"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
-		"",
-		"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
-		"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
-		"- Use `get_best_practices` to verify the pattern you are evaluating.",
-		"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
-		"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
-		"- Record the verification result in the scratchpad under `Learned / Verified Context` before moving on.",
-		"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
-		"",
-		"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
-		"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
-		"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
-		"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
-		"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
-		"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
-		"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
-		"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
-		"- Specifically check whether the platform already provides what the developer is building or importing.",
-		"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
-		"- Record the verification result in the scratchpad under `Learned / Verified Context` before moving on.",
-		"",
-		"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
 	].join("\n"),
 	"",
 	[
@@ -20440,10 +20442,10 @@ const BASE_REVIEW_PROMPT = [
 		"   - Do not call any other GitHub MCP tool before this.",
 		"",
 		"2) **Prepare review** via `prepare-pull-request-review` (single entrypoint).",
-		"   - This preloads PR metadata, file summary, and diff TOC in one call.",
+		"   - This returns PR metadata, file summary, and a `diff.path` with instructions for how to use it.",
 		"",
 		"3) **Review iteratively** — move back and forth between diff inspection, branch context, and documentation verification.",
-		"   Good review is not \"research first, then review\". It is an alternating loop: inspect change, inspect code context, verify best practice, write notes, continue.",
+		"   Good review is not \"research first, then review\". It is an alternating loop: inspect change, inspect code context, verify best practice, note findings, continue.",
 		"   For Angular or Cumulocity-specific code, documentation verification is not optional.",
 		"   In this codebase, Cumulocity-specific review should lean on Codex MCP heavily.",
 		"   If the change touches `@c8y/*` imports, Cumulocity styles, or platform concepts, Codex MCP should usually be one of your next tool calls.",
@@ -20451,7 +20453,6 @@ const BASE_REVIEW_PROMPT = [
 		"   a) **Start from the diff artifact:**",
 		"      - Read `.clank8y/diff.txt` first and follow the TOC to inspect the changed areas selectively.",
 		"      - Use the diff to decide where to spend review time. Do not blindly read full files first.",
-		"      - For large PRs, work through the diff in manageable groups of files or hunks and keep the scratchpad updated between groups.",
 		"",
 		"   b) **Use branch file content only when the diff is not enough:**",
 		"      - Call `get-pull-request-file-content` when you need surrounding code, implementation details, or data flow that is not visible in the diff.",
@@ -20465,62 +20466,1131 @@ const BASE_REVIEW_PROMPT = [
 		"      - If the changed code is Angular-specific or Cumulocity-specific and you did not verify it with the relevant MCP, assume your review is incomplete.",
 		"      - If the changed code touches `@c8y/*` or another Cumulocity concept and you did not use Codex MCP, assume your review is incomplete.",
 		"      - If the changed code touches Cumulocity styles, CSS classes, tokens, or visual components and you did not use Codex MCP, assume your review is incomplete.",
-		"      - Every time you use Angular MCP or Codex MCP, record a one-line note in `Learned / Verified Context` describing what you verified and what conclusion you reached.",
 		"",
-		"   d) **Keep the scratchpad current during the loop:**",
-		"      - Mark reviewed files in `.clank8y/scratchpad.txt` as you complete them.",
-		"      - After each file or file group, add at least one note: a finding, a verification result, an open question, or an explicit reason that nothing was flagged.",
-		"      - Record possible repeated issues under `Suspected Patterns To Expand` so you remember to check them elsewhere in the diff.",
-		"      - Record docs-backed conclusions under `Learned / Verified Context` so you can reuse them later in the review.",
-		"      - As soon as you have a plausible finding, write it down in the scratchpad before you continue expanding the review.",
-		"      - After each reviewed file or file group, update the scratchpad before moving on.",
-		"      - Move something into `Validated Findings` only when you have enough evidence.",
-		"",
-		"   e) **Expand suspected repeated mistakes from the diff artifact:**",
-		"      - After writing a plausible issue into the scratchpad, use `rg` or `grep` against `.clank8y/diff.txt` to search for repeated occurrences of the same API, token, selector, utility, or code pattern.",
+		"   d) **Expand suspected repeated mistakes from the diff artifact:**",
+		"      - After spotting a plausible issue, use `rg` or `grep` against `.clank8y/diff.txt` to search for repeated occurrences of the same API, token, selector, utility, or code pattern.",
 		"      - Prefer targeted searches with distinctive strings taken from the suspicious diff hunk rather than broad exploratory searches.",
 		"      - Use the results to decide which additional diff sections and changed files deserve follow-up review.",
-		"      - If `rg` or `grep` suggests the issue repeats, confirm each repeated case in diff context or changed-file context before turning it into a validated finding.",
+		"      - If `rg` or `grep` suggests the issue repeats, confirm each repeated case in diff context or changed-file context before including it in the review.",
 		"",
 		"4) **Formulate findings** with severity (high / medium / low):",
 		"   - High: security issues, incorrect API usage that would cause runtime errors, broken patterns.",
 		"   - Medium: missing platform utilities, non-idiomatic patterns, design system violations.",
 		"   - Low: style nitpicks, minor improvements, suggestions for better alternatives.",
-		"   - If you see a pattern once and it may repeat elsewhere, note it in the scratchpad and deliberately expand the review.",
+		"   - If you see a pattern once and it may repeat elsewhere, search for it in the diff before finalizing.",
 		"",
 		"5) **Submit the review** via `create-pull-request-review`.",
 		"",
 		"### Completion criteria (mandatory):",
 		"- Do not finish without calling `create-pull-request-review`.",
-		"- Before finalizing, read `.clank8y/scratchpad.txt` and confirm every intentionally skipped file is explicitly documented there.",
-		"- For large PRs, do not claim full coverage unless the scratchpad shows what was reviewed, what was skipped, and why.",
-		"- If files or file groups remain unreviewed, record that explicitly in the scratchpad before finalizing.",
-		"- If the PR contains Angular-specific or Cumulocity-specific changes, the scratchpad must contain verification notes from the relevant MCP tools before you finalize.",
-		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, the scratchpad must contain Codex MCP verification notes before you finalize.",
+		"- If the PR contains Angular-specific or Cumulocity-specific changes, confirm you verified the relevant patterns with Angular MCP or Codex MCP before finalizing.",
+		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, confirm you queried Codex MCP before finalizing.",
 		"- If there are issues, include inline comments with concrete fixes and reference the docs where possible.",
 		"- If there are no significant issues, still submit a concise review body stating the code looks good.",
-		"- Prefer findings that are recorded as validated in `.clank8y/scratchpad.txt` over speculative comments.",
+		"- Only include findings you have verified — drop speculative or unconfirmed comments.",
 		"- Mention the user from EVENT-LEVEL INSTRUCTIONS so they are notified.",
 		"",
 		"### Tooling constraints:",
 		"- Use GitHub MCP tools for PR operations.",
 		"- Use Angular MCP to verify Angular patterns — do not rely solely on your training data.",
 		"- Use Codex MCP to verify Cumulocity patterns — the platform has a rich component/service library.",
-		"- Native file tools are allowed only so you can read `.clank8y/diff.txt`, read `.clank8y/scratchpad.txt`, and update `.clank8y/scratchpad.txt`.",
-		"- Use `rg` or `grep` as the only local search tool, and only to search `.clank8y/diff.txt` for repeated patterns related to a finding already recorded in the scratchpad.",
+		"- Native file tools are allowed only so you can read `.clank8y/diff.txt`.",
+		"- Use `rg` or `grep` as the only local search tool, and only to search `.clank8y/diff.txt` for repeated patterns.",
 		"- Do not edit repository source files in review mode.",
 		"- Avoid unrelated shell or local file exploration tools for review logic.",
 		"- Do not use broad workspace search. Keep searches narrowly scoped to `.clank8y/diff.txt` and to patterns you are already investigating."
 	].join("\n")
 ].join("\n");
 function buildReviewPrompt(promptContext) {
-	const normalizedPromptContext = promptContext?.trim();
-	if (!normalizedPromptContext) return BASE_REVIEW_PROMPT;
+	const normalized = promptContext.trim();
+	if (!normalized) return BASE_REVIEW_PROMPT;
 	return [
 		BASE_REVIEW_PROMPT,
 		"",
-		normalizedPromptContext
+		normalized
 	].join("\n");
+}
+
+//#endregion
+//#region src/modeSelection/constants.ts
+const MODE_SELECTION_TOOL_NAME = "select-clank8y-mode";
+const MODE_SELECTION_TOOL_TITLE = "Select clank8y mode";
+const MODE_SELECTION_TOOL_DESCRIPTION = "Select the best clank8y execution mode for the current instructions. Call this exactly once with the chosen mode and a concise reason.";
+
+//#endregion
+//#region node_modules/.pnpm/valibot@1.2.0_typescript@5.9.3/node_modules/valibot/dist/index.mjs
+let store$4;
+/**
+* Returns the global configuration.
+*
+* @param config The config to merge.
+*
+* @returns The configuration.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalConfig(config$1) {
+	return {
+		lang: config$1?.lang ?? store$4?.lang,
+		message: config$1?.message,
+		abortEarly: config$1?.abortEarly ?? store$4?.abortEarly,
+		abortPipeEarly: config$1?.abortPipeEarly ?? store$4?.abortPipeEarly
+	};
+}
+let store$3;
+/**
+* Returns a global error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalMessage(lang) {
+	return store$3?.get(lang);
+}
+let store$2;
+/**
+* Returns a schema error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getSchemaMessage(lang) {
+	return store$2?.get(lang);
+}
+let store$1;
+/**
+* Returns a specific error message.
+*
+* @param reference The identifier reference.
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getSpecificMessage(reference, lang) {
+	return store$1?.get(reference)?.get(lang);
+}
+/**
+* Stringifies an unknown input to a literal or type string.
+*
+* @param input The unknown input.
+*
+* @returns A literal or type string.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _stringify(input) {
+	const type = typeof input;
+	if (type === "string") return `"${input}"`;
+	if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
+	if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
+	return type;
+}
+/**
+* Adds an issue to the dataset.
+*
+* @param context The issue context.
+* @param label The issue label.
+* @param dataset The input dataset.
+* @param config The configuration.
+* @param other The optional props.
+*
+* @internal
+*/
+function _addIssue(context, label, dataset, config$1, other) {
+	const input = other && "input" in other ? other.input : dataset.value;
+	const expected = other?.expected ?? context.expects ?? null;
+	const received = other?.received ?? /* @__PURE__ */ _stringify(input);
+	const issue = {
+		kind: context.kind,
+		type: context.type,
+		input,
+		expected,
+		received,
+		message: `Invalid ${label}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
+		requirement: context.requirement,
+		path: other?.path,
+		issues: other?.issues,
+		lang: config$1.lang,
+		abortEarly: config$1.abortEarly,
+		abortPipeEarly: config$1.abortPipeEarly
+	};
+	const isSchema = context.kind === "schema";
+	const message$1 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
+	if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
+	if (isSchema) dataset.typed = false;
+	if (dataset.issues) dataset.issues.push(issue);
+	else dataset.issues = [issue];
+}
+/**
+* Returns the Standard Schema properties.
+*
+* @param context The schema context.
+*
+* @returns The Standard Schema properties.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getStandardProps(context) {
+	return {
+		version: 1,
+		vendor: "valibot",
+		validate(value$1) {
+			return context["~run"]({ value: value$1 }, /* @__PURE__ */ getGlobalConfig());
+		}
+	};
+}
+/**
+* Disallows inherited object properties and prevents object prototype
+* pollution by disallowing certain keys.
+*
+* @param object The object to check.
+* @param key The key to check.
+*
+* @returns Whether the key is allowed.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _isValidObjectKey(object$1, key) {
+	return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
+}
+/**
+* Joins multiple `expects` values with the given separator.
+*
+* @param values The `expects` values.
+* @param separator The separator.
+*
+* @returns The joined `expects` property.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _joinExpects(values$1, separator) {
+	const list = [...new Set(values$1)];
+	if (list.length > 1) return `(${list.join(` ${separator} `)})`;
+	return list[0] ?? "never";
+}
+/**
+* A Valibot error with useful information.
+*/
+var ValiError = class extends Error {
+	/**
+	* Creates a Valibot error with useful information.
+	*
+	* @param issues The error issues.
+	*/
+	constructor(issues) {
+		super(issues[0].message);
+		this.name = "ValiError";
+		this.issues = issues;
+	}
+};
+/**
+* [Base64](https://en.wikipedia.org/wiki/Base64) regex.
+*/
+const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
+/* @__NO_SIDE_EFFECTS__ */
+function base64(message$1) {
+	return {
+		kind: "validation",
+		type: "base64",
+		reference: base64,
+		async: false,
+		expects: null,
+		requirement: BASE64_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function check(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "check",
+		reference: check,
+		async: false,
+		expects: null,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/**
+* Creates a description metadata action.
+*
+* @param description_ The description text.
+*
+* @returns A description action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function description(description_) {
+	return {
+		kind: "metadata",
+		type: "description",
+		reference: description,
+		description: description_
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function integer(message$1) {
+	return {
+		kind: "validation",
+		type: "integer",
+		reference: integer,
+		async: false,
+		expects: null,
+		requirement: Number.isInteger,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function maxLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_length",
+		reference: maxLength,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function maxValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_value",
+		reference: maxValue,
+		async: false,
+		expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function minLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_length",
+		reference: minLength,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function minValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_value",
+		reference: minValue,
+		async: false,
+		expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function regex$2(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "regex",
+		reference: regex$2,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "format", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function startsWith(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "starts_with",
+		reference: startsWith,
+		async: false,
+		expects: `"${requirement}"`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.startsWith(this.requirement)) _addIssue(this, "start", dataset, config$1, { received: `"${dataset.value.slice(0, this.requirement.length)}"` });
+			return dataset;
+		}
+	};
+}
+/**
+* Creates a trim transformation action.
+*
+* @returns A trim action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function trim() {
+	return {
+		kind: "transformation",
+		type: "trim",
+		reference: trim,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = dataset.value.trim();
+			return dataset;
+		}
+	};
+}
+/**
+* Returns the fallback value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The output dataset if available.
+* @param config The config if available.
+*
+* @returns The fallback value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getFallback(schema, dataset, config$1) {
+	return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
+}
+/**
+* Returns the default value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The input dataset if available.
+* @param config The config if available.
+*
+* @returns The default value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getDefault(schema, dataset, config$1) {
+	return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
+}
+/* @__NO_SIDE_EFFECTS__ */
+function array(item, message$1) {
+	return {
+		kind: "schema",
+		type: "array",
+		reference: array,
+		expects: "Array",
+		async: false,
+		item,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < input.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function boolean(message$1) {
+	return {
+		kind: "schema",
+		type: "boolean",
+		reference: boolean,
+		expects: "boolean",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "boolean") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function literal(literal_, message$1) {
+	return {
+		kind: "schema",
+		type: "literal",
+		reference: literal,
+		expects: /* @__PURE__ */ _stringify(literal_),
+		async: false,
+		literal: literal_,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === this.literal) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function looseObject(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "loose_object",
+		reference: looseObject,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function number(message$1) {
+	return {
+		kind: "schema",
+		type: "number",
+		reference: number,
+		expects: "number",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function object(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "object",
+		reference: object,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function optional(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "optional",
+		reference: optional,
+		expects: `(${wrapped.expects} | undefined)`,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function picklist(options, message$1) {
+	return {
+		kind: "schema",
+		type: "picklist",
+		reference: picklist,
+		expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (this.options.includes(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function record(key, value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "record",
+		reference: record,
+		expects: "Object",
+		async: false,
+		key,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
+					const entryValue = input[entryKey];
+					const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
+					if (keyDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "key",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of keyDataset.issues) {
+							issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = keyDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function strictObject(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "strict_object",
+		reference: strictObject,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (!(key in this.entries)) {
+						_addIssue(this, "key", dataset, config$1, {
+							input: key,
+							expected: "never",
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function string(message$1) {
+	return {
+		kind: "schema",
+		type: "string",
+		reference: string,
+		expects: "string",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "string") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/**
+* Returns the sub issues of the provided datasets for the union issue.
+*
+* @param datasets The datasets.
+*
+* @returns The sub issues.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _subIssues(datasets) {
+	let issues;
+	if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
+	else issues = dataset.issues;
+	return issues;
+}
+/* @__NO_SIDE_EFFECTS__ */
+function union(options, message$1) {
+	return {
+		kind: "schema",
+		type: "union",
+		reference: union,
+		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			let validDataset;
+			let typedDatasets;
+			let untypedDatasets;
+			for (const schema of this.options) {
+				const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
+				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
+				else typedDatasets = [optionDataset];
+				else {
+					validDataset = optionDataset;
+					break;
+				}
+				else if (untypedDatasets) untypedDatasets.push(optionDataset);
+				else untypedDatasets = [optionDataset];
+			}
+			if (validDataset) return validDataset;
+			if (typedDatasets) {
+				if (typedDatasets.length === 1) return typedDatasets[0];
+				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
+				dataset.typed = true;
+			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
+			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
+			return dataset;
+		}
+	};
+}
+/**
+* Creates a unknown schema.
+*
+* @returns A unknown schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function unknown() {
+	return {
+		kind: "schema",
+		type: "unknown",
+		reference: unknown,
+		expects: "unknown",
+		async: false,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset) {
+			dataset.typed = true;
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function variant(key, options, message$1) {
+	return {
+		kind: "schema",
+		type: "variant",
+		reference: variant,
+		expects: "Object",
+		async: false,
+		key,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				let outputDataset;
+				let maxDiscriminatorPriority = 0;
+				let invalidDiscriminatorKey = this.key;
+				let expectedDiscriminators = [];
+				const parseOptions = (variant$1, allKeys) => {
+					for (const schema of variant$1.options) {
+						if (schema.type === "variant") parseOptions(schema, new Set(allKeys).add(schema.key));
+						else {
+							let keysAreValid = true;
+							let currentPriority = 0;
+							for (const currentKey of allKeys) {
+								const discriminatorSchema = schema.entries[currentKey];
+								if (currentKey in input ? discriminatorSchema["~run"]({
+									typed: false,
+									value: input[currentKey]
+								}, { abortEarly: true }).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
+									keysAreValid = false;
+									if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
+										maxDiscriminatorPriority = currentPriority;
+										invalidDiscriminatorKey = currentKey;
+										expectedDiscriminators = [];
+									}
+									if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
+									break;
+								}
+								currentPriority++;
+							}
+							if (keysAreValid) {
+								const optionDataset = schema["~run"]({ value: input }, config$1);
+								if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
+							}
+						}
+						if (outputDataset && !outputDataset.issues) break;
+					}
+				};
+				parseOptions(this, new Set([this.key]));
+				if (outputDataset) return outputDataset;
+				_addIssue(this, "type", dataset, config$1, {
+					input: input[invalidDiscriminatorKey],
+					expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
+					path: [{
+						type: "object",
+						origin: "value",
+						input,
+						key: invalidDiscriminatorKey,
+						value: input[invalidDiscriminatorKey]
+					}]
+				});
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parsed input.
+*/
+function parse(schema, input, config$1) {
+	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	if (dataset.issues) throw new ValiError(dataset.issues);
+	return dataset.value;
+}
+/* @__NO_SIDE_EFFECTS__ */
+function pipe(...pipe$1) {
+	return {
+		...pipe$1[0],
+		pipe: pipe$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			for (const item of pipe$1) if (item.kind !== "metadata") {
+				if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
+					dataset.typed = false;
+					break;
+				}
+				if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = item["~run"](dataset, config$1);
+			}
+			return dataset;
+		}
+	};
+}
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parse result.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function safeParse(schema, input, config$1) {
+	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	return {
+		typed: dataset.typed,
+		success: !dataset.issues,
+		output: dataset.value,
+		issues: dataset.issues
+	};
+}
+
+//#endregion
+//#region src/modeSelection/schema.ts
+const CLANK8Y_MODES = ["Review"];
+const clank8yModeSchema = pipe(picklist(CLANK8Y_MODES), description("The execution mode selected for the current clank8y run."));
+const clank8yModeSelectionSchema = object({
+	mode: clank8yModeSchema,
+	reason: pipe(string(), trim(), minLength(1, "Mode selection reason is required."), description("A concise explanation for why this mode fits the current run."))
+});
+
+//#endregion
+//#region src/prompts/selectMode.ts
+const BASE_MODE_SELECTION_PROMPT = [
+	PERSONA,
+	"",
+	[
+		"## Mode selection",
+		"",
+		"You are choosing the best clank8y execution mode for this run.",
+		`Call \`${MODE_SELECTION_TOOL_NAME}\` exactly once with a valid mode and a concise reason.`,
+		`Tool intent: ${MODE_SELECTION_TOOL_DESCRIPTION}`,
+		"Choose `Review` when the instructions are about pull request review.",
+		"Do not do any other work in this step."
+	].join("\n")
+].join("\n");
+function buildModeSelectionPrompt(promptContext) {
+	const normalized = promptContext.trim();
+	if (!normalized) return BASE_MODE_SELECTION_PROMPT;
+	return [
+		BASE_MODE_SELECTION_PROMPT,
+		"",
+		normalized
+	].join("\n");
+}
+
+//#endregion
+//#region src/prompts/index.ts
+function buildPrompt(mode, promptContext) {
+	switch (mode) {
+		case "Review": return buildReviewPrompt(promptContext);
+		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
+	}
 }
 
 //#endregion
@@ -21215,7 +22285,7 @@ function G$2(t, u, F) {
 `);
 }
 function k$1(t, u) {
-	if (typeof t == "string") return c$1.aliases.get(t) === u;
+	if (typeof t == "string") return c$2.aliases.get(t) === u;
 	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
 	return false;
 }
@@ -21280,7 +22350,7 @@ async function prompt(message, opts = {}) {
 	}).then(handleCancel);
 	throw new Error(`Unknown prompt type: ${opts.type}`);
 }
-var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$1, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
+var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$2, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
 var init_prompt = __esmMin((() => {
 	;
 	;
@@ -21439,7 +22509,7 @@ var init_prompt = __esmMin((() => {
 		}
 		return e;
 	};
-	c$1 = {
+	c$2 = {
 		actions: new Set([
 			"up",
 			"down",
@@ -21504,13 +22574,13 @@ var init_prompt = __esmMin((() => {
 				const e = new WriteStream(0);
 				e._write = (s, i, D) => {
 					this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
-				}, this.input.pipe(e), this.rl = f.createInterface({
+				}, this.input.pipe(e), this.rl = c.createInterface({
 					input: this.input,
 					output: e,
 					tabSize: 2,
 					prompt: "",
 					escapeCodeTimeout: 50
-				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
+				}), c.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
 				}), this.once("cancel", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$2);
@@ -21518,7 +22588,7 @@ var init_prompt = __esmMin((() => {
 			});
 		}
 		onKeypress(u, F) {
-			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
+			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$2.aliases.has(F.name) && this.emit("cursor", c$2.aliases.get(F.name)), c$2.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
 				if (this.opts.validate) {
 					const e = this.opts.validate(this.value);
 					e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
@@ -21840,7 +22910,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		const e = i(true);
 		return Object.keys(e);
 	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
 	["APPVEYOR"],
 	[
 		"AWS_AMPLIFY",
@@ -21932,7 +23002,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 	]
 ];
 function b$1() {
-	if (globalThis.process?.env) for (const e of f$2) {
+	if (globalThis.process?.env) for (const e of f$1) {
 		const s = e[1] || e[0];
 		if (globalThis.process?.env[s]) return {
 			name: e[0].toLowerCase(),
@@ -21964,14 +23034,14 @@ new Proxy(y$1, { get(e, s) {
 	if (s in e) return e[s];
 	if (s in _$1) return _$1[s];
 } });
-const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
+const c$1 = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
 	[S$1, "netlify"],
 	[u$1, "edge-light"],
 	[N$1, "workerd"],
 	[L, "fastly"],
 	[D$1, "deno"],
 	[O$1, "bun"],
-	[c, "node"]
+	[c$1, "node"]
 ];
 function G$1() {
 	const e = F$1.find((s) => s[0]);
@@ -24367,1041 +25437,8 @@ var UriTemplateMatcher = class {
 };
 
 //#endregion
-//#region node_modules/.pnpm/valibot@1.2.0_typescript@5.9.3/node_modules/valibot/dist/index.mjs
-var import_dist = require_dist();
-let store$4;
-/**
-* Returns the global configuration.
-*
-* @param config The config to merge.
-*
-* @returns The configuration.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getGlobalConfig(config$1) {
-	return {
-		lang: config$1?.lang ?? store$4?.lang,
-		message: config$1?.message,
-		abortEarly: config$1?.abortEarly ?? store$4?.abortEarly,
-		abortPipeEarly: config$1?.abortPipeEarly ?? store$4?.abortPipeEarly
-	};
-}
-let store$3;
-/**
-* Returns a global error message.
-*
-* @param lang The language of the message.
-*
-* @returns The error message.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getGlobalMessage(lang) {
-	return store$3?.get(lang);
-}
-let store$2;
-/**
-* Returns a schema error message.
-*
-* @param lang The language of the message.
-*
-* @returns The error message.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getSchemaMessage(lang) {
-	return store$2?.get(lang);
-}
-let store$1;
-/**
-* Returns a specific error message.
-*
-* @param reference The identifier reference.
-* @param lang The language of the message.
-*
-* @returns The error message.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getSpecificMessage(reference, lang) {
-	return store$1?.get(reference)?.get(lang);
-}
-/**
-* Stringifies an unknown input to a literal or type string.
-*
-* @param input The unknown input.
-*
-* @returns A literal or type string.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _stringify(input) {
-	const type = typeof input;
-	if (type === "string") return `"${input}"`;
-	if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
-	if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
-	return type;
-}
-/**
-* Adds an issue to the dataset.
-*
-* @param context The issue context.
-* @param label The issue label.
-* @param dataset The input dataset.
-* @param config The configuration.
-* @param other The optional props.
-*
-* @internal
-*/
-function _addIssue(context, label, dataset, config$1, other) {
-	const input = other && "input" in other ? other.input : dataset.value;
-	const expected = other?.expected ?? context.expects ?? null;
-	const received = other?.received ?? /* @__PURE__ */ _stringify(input);
-	const issue = {
-		kind: context.kind,
-		type: context.type,
-		input,
-		expected,
-		received,
-		message: `Invalid ${label}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
-		requirement: context.requirement,
-		path: other?.path,
-		issues: other?.issues,
-		lang: config$1.lang,
-		abortEarly: config$1.abortEarly,
-		abortPipeEarly: config$1.abortPipeEarly
-	};
-	const isSchema = context.kind === "schema";
-	const message$1 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
-	if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
-	if (isSchema) dataset.typed = false;
-	if (dataset.issues) dataset.issues.push(issue);
-	else dataset.issues = [issue];
-}
-/**
-* Returns the Standard Schema properties.
-*
-* @param context The schema context.
-*
-* @returns The Standard Schema properties.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _getStandardProps(context) {
-	return {
-		version: 1,
-		vendor: "valibot",
-		validate(value$1) {
-			return context["~run"]({ value: value$1 }, /* @__PURE__ */ getGlobalConfig());
-		}
-	};
-}
-/**
-* Disallows inherited object properties and prevents object prototype
-* pollution by disallowing certain keys.
-*
-* @param object The object to check.
-* @param key The key to check.
-*
-* @returns Whether the key is allowed.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _isValidObjectKey(object$1, key) {
-	return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
-}
-/**
-* Joins multiple `expects` values with the given separator.
-*
-* @param values The `expects` values.
-* @param separator The separator.
-*
-* @returns The joined `expects` property.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _joinExpects(values$1, separator) {
-	const list = [...new Set(values$1)];
-	if (list.length > 1) return `(${list.join(` ${separator} `)})`;
-	return list[0] ?? "never";
-}
-/**
-* A Valibot error with useful information.
-*/
-var ValiError = class extends Error {
-	/**
-	* Creates a Valibot error with useful information.
-	*
-	* @param issues The error issues.
-	*/
-	constructor(issues) {
-		super(issues[0].message);
-		this.name = "ValiError";
-		this.issues = issues;
-	}
-};
-/**
-* [Base64](https://en.wikipedia.org/wiki/Base64) regex.
-*/
-const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
-/* @__NO_SIDE_EFFECTS__ */
-function base64(message$1) {
-	return {
-		kind: "validation",
-		type: "base64",
-		reference: base64,
-		async: false,
-		expects: null,
-		requirement: BASE64_REGEX,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function check(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "check",
-		reference: check,
-		async: false,
-		expects: null,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Creates a description metadata action.
-*
-* @param description_ The description text.
-*
-* @returns A description action.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function description(description_) {
-	return {
-		kind: "metadata",
-		type: "description",
-		reference: description,
-		description: description_
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function integer(message$1) {
-	return {
-		kind: "validation",
-		type: "integer",
-		reference: integer,
-		async: false,
-		expects: null,
-		requirement: Number.isInteger,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function maxLength(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "max_length",
-		reference: maxLength,
-		async: false,
-		expects: `<=${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function maxValue(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "max_value",
-		reference: maxValue,
-		async: false,
-		expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function minLength(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "min_length",
-		reference: minLength,
-		async: false,
-		expects: `>=${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function minValue(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "min_value",
-		reference: minValue,
-		async: false,
-		expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function regex$2(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "regex",
-		reference: regex$2,
-		async: false,
-		expects: `${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "format", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function startsWith(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "starts_with",
-		reference: startsWith,
-		async: false,
-		expects: `"${requirement}"`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !dataset.value.startsWith(this.requirement)) _addIssue(this, "start", dataset, config$1, { received: `"${dataset.value.slice(0, this.requirement.length)}"` });
-			return dataset;
-		}
-	};
-}
-/**
-* Creates a trim transformation action.
-*
-* @returns A trim action.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function trim() {
-	return {
-		kind: "transformation",
-		type: "trim",
-		reference: trim,
-		async: false,
-		"~run"(dataset) {
-			dataset.value = dataset.value.trim();
-			return dataset;
-		}
-	};
-}
-/**
-* Returns the fallback value of the schema.
-*
-* @param schema The schema to get it from.
-* @param dataset The output dataset if available.
-* @param config The config if available.
-*
-* @returns The fallback value.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getFallback(schema, dataset, config$1) {
-	return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
-}
-/**
-* Returns the default value of the schema.
-*
-* @param schema The schema to get it from.
-* @param dataset The input dataset if available.
-* @param config The config if available.
-*
-* @returns The default value.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getDefault(schema, dataset, config$1) {
-	return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function array(item, message$1) {
-	return {
-		kind: "schema",
-		type: "array",
-		reference: array,
-		expects: "Array",
-		async: false,
-		item,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (Array.isArray(input)) {
-				dataset.typed = true;
-				dataset.value = [];
-				for (let key = 0; key < input.length; key++) {
-					const value$1 = input[key];
-					const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
-					if (itemDataset.issues) {
-						const pathItem = {
-							type: "array",
-							origin: "value",
-							input,
-							key,
-							value: value$1
-						};
-						for (const issue of itemDataset.issues) {
-							if (issue.path) issue.path.unshift(pathItem);
-							else issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = itemDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					if (!itemDataset.typed) dataset.typed = false;
-					dataset.value.push(itemDataset.value);
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function boolean(message$1) {
-	return {
-		kind: "schema",
-		type: "boolean",
-		reference: boolean,
-		expects: "boolean",
-		async: false,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (typeof dataset.value === "boolean") dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function literal(literal_, message$1) {
-	return {
-		kind: "schema",
-		type: "literal",
-		reference: literal,
-		expects: /* @__PURE__ */ _stringify(literal_),
-		async: false,
-		literal: literal_,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (dataset.value === this.literal) dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function looseObject(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "loose_object",
-		reference: looseObject,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-				if (!dataset.issues || !config$1.abortEarly) {
-					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function number(message$1) {
-	return {
-		kind: "schema",
-		type: "number",
-		reference: number,
-		expects: "number",
-		async: false,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function object(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "object",
-		reference: object,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function optional(wrapped, default_) {
-	return {
-		kind: "schema",
-		type: "optional",
-		reference: optional,
-		expects: `(${wrapped.expects} | undefined)`,
-		async: false,
-		wrapped,
-		default: default_,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (dataset.value === void 0) {
-				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
-				if (dataset.value === void 0) {
-					dataset.typed = true;
-					return dataset;
-				}
-			}
-			return this.wrapped["~run"](dataset, config$1);
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function picklist(options, message$1) {
-	return {
-		kind: "schema",
-		type: "picklist",
-		reference: picklist,
-		expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
-		async: false,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (this.options.includes(dataset.value)) dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function record(key, value$1, message$1) {
-	return {
-		kind: "schema",
-		type: "record",
-		reference: record,
-		expects: "Object",
-		async: false,
-		key,
-		value: value$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
-					const entryValue = input[entryKey];
-					const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
-					if (keyDataset.issues) {
-						const pathItem = {
-							type: "object",
-							origin: "key",
-							input,
-							key: entryKey,
-							value: entryValue
-						};
-						for (const issue of keyDataset.issues) {
-							issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = keyDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
-					if (valueDataset.issues) {
-						const pathItem = {
-							type: "object",
-							origin: "value",
-							input,
-							key: entryKey,
-							value: entryValue
-						};
-						for (const issue of valueDataset.issues) {
-							if (issue.path) issue.path.unshift(pathItem);
-							else issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = valueDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
-					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function strictObject(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "strict_object",
-		reference: strictObject,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-				if (!dataset.issues || !config$1.abortEarly) {
-					for (const key in input) if (!(key in this.entries)) {
-						_addIssue(this, "key", dataset, config$1, {
-							input: key,
-							expected: "never",
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						break;
-					}
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function string(message$1) {
-	return {
-		kind: "schema",
-		type: "string",
-		reference: string,
-		expects: "string",
-		async: false,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (typeof dataset.value === "string") dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Returns the sub issues of the provided datasets for the union issue.
-*
-* @param datasets The datasets.
-*
-* @returns The sub issues.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _subIssues(datasets) {
-	let issues;
-	if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
-	else issues = dataset.issues;
-	return issues;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function union(options, message$1) {
-	return {
-		kind: "schema",
-		type: "union",
-		reference: union,
-		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
-		async: false,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			let validDataset;
-			let typedDatasets;
-			let untypedDatasets;
-			for (const schema of this.options) {
-				const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
-				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
-				else typedDatasets = [optionDataset];
-				else {
-					validDataset = optionDataset;
-					break;
-				}
-				else if (untypedDatasets) untypedDatasets.push(optionDataset);
-				else untypedDatasets = [optionDataset];
-			}
-			if (validDataset) return validDataset;
-			if (typedDatasets) {
-				if (typedDatasets.length === 1) return typedDatasets[0];
-				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
-				dataset.typed = true;
-			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
-			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
-			return dataset;
-		}
-	};
-}
-/**
-* Creates a unknown schema.
-*
-* @returns A unknown schema.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function unknown() {
-	return {
-		kind: "schema",
-		type: "unknown",
-		reference: unknown,
-		expects: "unknown",
-		async: false,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset) {
-			dataset.typed = true;
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function variant(key, options, message$1) {
-	return {
-		kind: "schema",
-		type: "variant",
-		reference: variant,
-		expects: "Object",
-		async: false,
-		key,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				let outputDataset;
-				let maxDiscriminatorPriority = 0;
-				let invalidDiscriminatorKey = this.key;
-				let expectedDiscriminators = [];
-				const parseOptions = (variant$1, allKeys) => {
-					for (const schema of variant$1.options) {
-						if (schema.type === "variant") parseOptions(schema, new Set(allKeys).add(schema.key));
-						else {
-							let keysAreValid = true;
-							let currentPriority = 0;
-							for (const currentKey of allKeys) {
-								const discriminatorSchema = schema.entries[currentKey];
-								if (currentKey in input ? discriminatorSchema["~run"]({
-									typed: false,
-									value: input[currentKey]
-								}, { abortEarly: true }).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
-									keysAreValid = false;
-									if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
-										maxDiscriminatorPriority = currentPriority;
-										invalidDiscriminatorKey = currentKey;
-										expectedDiscriminators = [];
-									}
-									if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
-									break;
-								}
-								currentPriority++;
-							}
-							if (keysAreValid) {
-								const optionDataset = schema["~run"]({ value: input }, config$1);
-								if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
-							}
-						}
-						if (outputDataset && !outputDataset.issues) break;
-					}
-				};
-				parseOptions(this, new Set([this.key]));
-				if (outputDataset) return outputDataset;
-				_addIssue(this, "type", dataset, config$1, {
-					input: input[invalidDiscriminatorKey],
-					expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
-					path: [{
-						type: "object",
-						origin: "value",
-						input,
-						key: invalidDiscriminatorKey,
-						value: input[invalidDiscriminatorKey]
-					}]
-				});
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Parses an unknown input based on a schema.
-*
-* @param schema The schema to be used.
-* @param input The input to be parsed.
-* @param config The parse configuration.
-*
-* @returns The parsed input.
-*/
-function parse(schema, input, config$1) {
-	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
-	if (dataset.issues) throw new ValiError(dataset.issues);
-	return dataset.value;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function pipe(...pipe$1) {
-	return {
-		...pipe$1[0],
-		pipe: pipe$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			for (const item of pipe$1) if (item.kind !== "metadata") {
-				if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
-					dataset.typed = false;
-					break;
-				}
-				if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = item["~run"](dataset, config$1);
-			}
-			return dataset;
-		}
-	};
-}
-/**
-* Parses an unknown input based on a schema.
-*
-* @param schema The schema to be used.
-* @param input The input to be parsed.
-* @param config The parse configuration.
-*
-* @returns The parse result.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function safeParse(schema, input, config$1) {
-	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
-	return {
-		typed: dataset.typed,
-		success: !dataset.issues,
-		output: dataset.value,
-		issues: dataset.issues
-	};
-}
-
-//#endregion
 //#region node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/validation/index.js
+var import_dist = require_dist();
 const JSONRPC_VERSION = "2.0";
 var McpError = class extends Error {
 	/**
@@ -33534,14 +33571,12 @@ function buildClank8yCommentBody(rawBody, options) {
 //#region src/utils/reviewArtifacts.ts
 const CLANK8Y_ARTIFACT_DIR = ".clank8y";
 const DIFF_ARTIFACT_FILE = "diff.txt";
-const SCRATCHPAD_ARTIFACT_FILE = "scratchpad.txt";
 function getReviewArtifactPaths() {
 	const workspaceRoot = process$1.cwd();
 	const artifactDir = path.join(workspaceRoot, CLANK8Y_ARTIFACT_DIR);
 	return {
 		artifactDir,
-		diffPath: path.join(artifactDir, DIFF_ARTIFACT_FILE),
-		scratchpadPath: path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)
+		diffPath: path.join(artifactDir, DIFF_ARTIFACT_FILE)
 	};
 }
 async function ensureReviewArtifactDir() {
@@ -33549,28 +33584,14 @@ async function ensureReviewArtifactDir() {
 	await mkdir(artifactPaths.artifactDir, { recursive: true });
 	return artifactPaths;
 }
-async function clearReviewArtifacts() {
-	const { artifactDir } = getReviewArtifactPaths();
-	await unlink(path.join(artifactDir, DIFF_ARTIFACT_FILE)).catch(() => null);
-	await unlink(path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)).catch(() => null);
-}
 async function doesDiffArtifactExist() {
 	const { diffPath } = getReviewArtifactPaths();
 	return (await stat(diffPath).catch(() => null))?.isFile() ?? false;
-}
-async function doesScratchpadArtifactExist() {
-	const { scratchpadPath } = getReviewArtifactPaths();
-	return (await stat(scratchpadPath).catch(() => null))?.isFile() ?? false;
 }
 async function writeDiffArtifact(content) {
 	const { diffPath } = getReviewArtifactPaths();
 	await mkdir(path.dirname(diffPath), { recursive: true });
 	await writeFile(diffPath, content, "utf-8");
-}
-async function writeScratchpadArtifact(content) {
-	const { scratchpadPath } = getReviewArtifactPaths();
-	await mkdir(path.dirname(scratchpadPath), { recursive: true });
-	await writeFile(scratchpadPath, content, "utf-8");
 }
 
 //#endregion
@@ -33595,56 +33616,6 @@ function stripSurroundingQuotes(text) {
 }
 function normalizeToolString(text) {
 	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
-}
-function normalizeUniqueStrings(entries) {
-	const seen = /* @__PURE__ */ new Set();
-	const normalized = [];
-	for (const entry of entries ?? []) {
-		const value = normalizeToolString(entry).trim();
-		if (!value || seen.has(value)) continue;
-		seen.add(value);
-		normalized.push(value);
-	}
-	return normalized;
-}
-function buildReviewScratchpadContent(input) {
-	const changedFiles = normalizeUniqueStrings(input.changedFiles);
-	return [
-		"# clank8y review scratchpad",
-		"",
-		`repository: ${input.repository}`,
-		`pull_request: #${input.pullRequestNumber}`,
-		`diff_path: ${input.diffPath}`,
-		"",
-		"Instructions:",
-		"- Keep this file updated during the review.",
-		"- Mark a file as reviewed by changing `[ ]` to `[x]`.",
-		"- After each file or file group, add at least one note before continuing.",
-		"- Record only strong, evidence-backed findings.",
-		"- Use `Suspected Patterns To Expand` for hypotheses that still need expansion or proof.",
-		"- Use `Learned / Verified Context` to capture docs-backed conclusions you want to remember later in the run.",
-		"- Every Angular MCP or Codex MCP lookup should leave a short note in `Learned / Verified Context`.",
-		"- Before submitting the review, confirm all intentionally skipped files are explained in `Notes`.",
-		"",
-		"## Changed Files",
-		...changedFiles.map((file) => `- [ ] ${file}`),
-		"",
-		"## Suspected Patterns To Expand",
-		"- None yet.",
-		"",
-		"## Learned / Verified Context",
-		"- None yet. Add one line per Angular MCP or Codex MCP verification.",
-		"",
-		"## Validated Findings",
-		"- None yet.",
-		"",
-		"## Open Questions",
-		"- None yet.",
-		"",
-		"## Notes",
-		"- None yet. If a file group produced no finding, record that explicitly.",
-		""
-	].join("\n");
 }
 async function fetchAllPullRequestFiles() {
 	const octokit = await getOctokit();
@@ -33830,12 +33801,6 @@ const preparePullRequestReviewTool = defineTool$1({
 		}), fetchAllPullRequestFiles()]);
 		const artifactPaths = await ensureReviewArtifactDir();
 		if (!await doesDiffArtifactExist()) await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
-		if (!await doesScratchpadArtifactExist()) await writeScratchpadArtifact(buildReviewScratchpadContent({
-			repository: `${pullRequest.owner}/${pullRequest.repo}`,
-			pullRequestNumber: pullRequest.number,
-			diffPath: artifactPaths.diffPath,
-			changedFiles: files.map((file) => file.filename)
-		}));
 		const fileSummaries = files.map((file) => ({
 			path: file.filename,
 			status: file.status,
@@ -33869,8 +33834,10 @@ const preparePullRequestReviewTool = defineTool$1({
 				count: fileSummaries.length,
 				summary: fileSummaries
 			},
-			diff: { path: artifactPaths.diffPath },
-			scratchpad: { path: artifactPaths.scratchpadPath }
+			diff: {
+				path: artifactPaths.diffPath,
+				instructions: "Read the TOC at the top first to map files to line ranges. Then work through file groups selectively. Use rg or grep on this file to search for repeated patterns."
+			}
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -38595,12 +38562,12 @@ function defineTool(name, config) {
 var l = Object.create;
 var u = Object.defineProperty;
 var d = Object.getOwnPropertyDescriptor;
-var f$1 = Object.getOwnPropertyNames;
+var f = Object.getOwnPropertyNames;
 var p = Object.getPrototypeOf;
 var m = Object.prototype.hasOwnProperty;
 var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
 var g = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f(t), a = 0, o = i.length, s; a < o; a++) {
 		s = i[a];
 		if (!m.call(e, s) && s !== n) u(e, s, {
 			get: ((e) => t[e]).bind(null, s),
@@ -39129,7 +39096,7 @@ var G = class {
 		if (this._streamErr) t.push(this._streamErr);
 		if (this._streamOut) t.push(this._streamOut);
 		const n = w(t);
-		const r = f.createInterface({ input: n });
+		const r = c.createInterface({ input: n });
 		for await (const e of r) yield e.toString();
 		await this._processClosed;
 		e.removeAllListeners();
@@ -39342,43 +39309,6 @@ async function ensureCopilotModelAvailable(client, model) {
 }
 
 //#endregion
-//#region src/agents/modes.ts
-const CLANK8Y_MODES = ["Review"];
-const clank8yModeSchema = pipe(picklist(CLANK8Y_MODES), description("The execution mode selected for the current clank8y run."));
-const clank8yModeSelectionSchema = object({
-	mode: clank8yModeSchema,
-	reason: pipe(string(), trim(), minLength(1, "Mode selection reason is required."), description("A concise explanation for why this mode fits the current run."))
-});
-
-//#endregion
-//#region src/modeSelection.ts
-const MODE_SELECTION_TOOL_NAME = "select-clank8y-mode";
-const MODE_SELECTION_TOOL_TITLE = "Select clank8y mode";
-const MODE_SELECTION_TOOL_DESCRIPTION = "Select the best clank8y execution mode for the current instructions. Call this exactly once with the chosen mode and a concise reason.";
-const BASE_MODE_SELECTION_PROMPT = [
-	PERSONA,
-	"",
-	[
-		"## Mode selection",
-		"",
-		"You are choosing the best clank8y execution mode for this run.",
-		`Call \`${MODE_SELECTION_TOOL_NAME}\` exactly once with a valid mode and a concise reason.`,
-		`Tool intent: ${MODE_SELECTION_TOOL_DESCRIPTION}`,
-		"Choose `Review` when the instructions are about pull request review.",
-		"Do not do any other work in this step."
-	].join("\n")
-].join("\n");
-function buildModeSelectionPrompt(promptContext) {
-	const normalizedPromptContext = promptContext.trim();
-	if (!normalizedPromptContext) return BASE_MODE_SELECTION_PROMPT;
-	return [
-		BASE_MODE_SELECTION_PROMPT,
-		"",
-		normalizedPromptContext
-	].join("\n");
-}
-
-//#endregion
 //#region src/agents/copilot/selectMode.ts
 const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
 	...COPILOT_REVIEW_EXCLUDED_TOOLS,
@@ -39536,16 +39466,10 @@ async function getClank8yAgent(options) {
 		default: throw new Error(`Unsupported agent: ${agent}`);
 	}
 }
-function buildClank8yPrompt(mode, promptContext) {
-	switch (mode) {
-		case "Review": return buildReviewPrompt(promptContext);
-		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
-	}
-}
 async function executeClank8yAgent(options) {
 	const agent = await getClank8yAgent(options);
 	const selection = await agent.selectMode(options.promptContext);
-	const prompt = buildClank8yPrompt(selection.mode, options.promptContext);
+	const prompt = buildPrompt(selection.mode, options.promptContext);
 	logAgentMessage({
 		agent: agent.provider,
 		model: agent.model
@@ -39558,7 +39482,6 @@ async function executeClank8yAgent(options) {
 		"",
 		options.promptContext
 	]);
-	if (selection.mode === "Review") await clearReviewArtifacts();
 	await agent.run({
 		mode: selection.mode,
 		prompt
