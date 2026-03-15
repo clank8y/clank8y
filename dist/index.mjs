@@ -18,9 +18,9 @@ import process$1, { cwd, stdin, stdout } from "node:process";
 import * as tty from "node:tty";
 import { WriteStream } from "node:tty";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
-import f from "node:readline";
-import { mkdir, writeFile } from "node:fs/promises";
+import c from "node:readline";
 import nodeHTTPS from "node:https";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { existsSync as existsSync$1 } from "node:fs";
 import { spawn } from "node:child_process";
 import { createRequire as createRequire$1 } from "module";
@@ -16698,7 +16698,7 @@ var __awaiter$6 = void 0 && (void 0).__awaiter || function(thisArg, _arguments, 
 		step((generator = generator.apply(thisArg, _arguments || [])).next());
 	});
 };
-const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat, symlink, unlink } = fs.promises;
+const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat: stat$1, symlink, unlink } = fs.promises;
 const IS_WINDOWS$1 = process.platform === "win32";
 const READONLY = fs.constants.O_RDONLY;
 
@@ -20441,11 +20441,6 @@ const BASE_REVIEW_PROMPT = [
 		"",
 		"2) **Prepare review** via `prepare-pull-request-review` (single entrypoint).",
 		"   - This preloads PR metadata, file summary, and diff TOC in one call.",
-		"   - It also writes the formatted diff to `.clank8y/diff.txt` and returns `diff.path`.",
-		"   - It also creates `.clank8y/scratchpad.txt` and returns `scratchpad.path`.",
-		"   - Read the file list to understand what areas of the codebase are touched.",
-		"   - After this, use native file read/edit tools on `.clank8y/diff.txt` and `.clank8y/scratchpad.txt` only.",
-		"   - For large PRs, review the diff in batches. Do not try to hold the whole PR in working memory at once.",
 		"",
 		"3) **Review iteratively** — move back and forth between diff inspection, branch context, and documentation verification.",
 		"   Good review is not \"research first, then review\". It is an alternating loop: inspect change, inspect code context, verify best practice, write notes, continue.",
@@ -21220,7 +21215,7 @@ function G$2(t, u, F) {
 `);
 }
 function k$1(t, u) {
-	if (typeof t == "string") return c$1.aliases.get(t) === u;
+	if (typeof t == "string") return c$2.aliases.get(t) === u;
 	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
 	return false;
 }
@@ -21285,7 +21280,7 @@ async function prompt(message, opts = {}) {
 	}).then(handleCancel);
 	throw new Error(`Unknown prompt type: ${opts.type}`);
 }
-var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$1, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
+var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$2, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
 var init_prompt = __esmMin((() => {
 	;
 	;
@@ -21444,7 +21439,7 @@ var init_prompt = __esmMin((() => {
 		}
 		return e;
 	};
-	c$1 = {
+	c$2 = {
 		actions: new Set([
 			"up",
 			"down",
@@ -21509,13 +21504,13 @@ var init_prompt = __esmMin((() => {
 				const e = new WriteStream(0);
 				e._write = (s, i, D) => {
 					this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
-				}, this.input.pipe(e), this.rl = f.createInterface({
+				}, this.input.pipe(e), this.rl = c.createInterface({
 					input: this.input,
 					output: e,
 					tabSize: 2,
 					prompt: "",
 					escapeCodeTimeout: 50
-				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
+				}), c.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
 				}), this.once("cancel", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$2);
@@ -21523,7 +21518,7 @@ var init_prompt = __esmMin((() => {
 			});
 		}
 		onKeypress(u, F) {
-			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
+			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$2.aliases.has(F.name) && this.emit("cursor", c$2.aliases.get(F.name)), c$2.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
 				if (this.opts.validate) {
 					const e = this.opts.validate(this.value);
 					e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
@@ -21845,7 +21840,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		const e = i(true);
 		return Object.keys(e);
 	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
 	["APPVEYOR"],
 	[
 		"AWS_AMPLIFY",
@@ -21937,7 +21932,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 	]
 ];
 function b$1() {
-	if (globalThis.process?.env) for (const e of f$2) {
+	if (globalThis.process?.env) for (const e of f$1) {
 		const s = e[1] || e[0];
 		if (globalThis.process?.env[s]) return {
 			name: e[0].toLowerCase(),
@@ -21969,14 +21964,14 @@ new Proxy(y$1, { get(e, s) {
 	if (s in e) return e[s];
 	if (s in _$1) return _$1[s];
 } });
-const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
+const c$1 = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
 	[S$1, "netlify"],
 	[u$1, "edge-light"],
 	[N$1, "workerd"],
 	[L, "fastly"],
 	[D$1, "deno"],
 	[O$1, "bun"],
-	[c, "node"]
+	[c$1, "node"]
 ];
 function G$1() {
 	const e = F$1.find((s) => s[0]);
@@ -33536,15 +33531,54 @@ function buildClank8yCommentBody(rawBody, options) {
 }
 
 //#endregion
+//#region src/utils/reviewArtifacts.ts
+const CLANK8Y_ARTIFACT_DIR = ".clank8y";
+const DIFF_ARTIFACT_FILE = "diff.txt";
+const SCRATCHPAD_ARTIFACT_FILE = "scratchpad.txt";
+function getReviewArtifactPaths() {
+	const workspaceRoot = process$1.cwd();
+	const artifactDir = path.join(workspaceRoot, CLANK8Y_ARTIFACT_DIR);
+	return {
+		artifactDir,
+		diffPath: path.join(artifactDir, DIFF_ARTIFACT_FILE),
+		scratchpadPath: path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)
+	};
+}
+async function ensureReviewArtifactDir() {
+	const artifactPaths = getReviewArtifactPaths();
+	await mkdir(artifactPaths.artifactDir, { recursive: true });
+	return artifactPaths;
+}
+async function clearReviewArtifacts() {
+	const { artifactDir } = getReviewArtifactPaths();
+	await mkdir(artifactDir, { recursive: true });
+}
+async function doesDiffArtifactExist() {
+	const { diffPath } = getReviewArtifactPaths();
+	return (await stat(diffPath).catch(() => null))?.isFile() ?? false;
+}
+async function doesScratchpadArtifactExist() {
+	const { scratchpadPath } = getReviewArtifactPaths();
+	return (await stat(scratchpadPath).catch(() => null))?.isFile() ?? false;
+}
+async function writeDiffArtifact(content) {
+	const { diffPath } = getReviewArtifactPaths();
+	await mkdir(path.dirname(diffPath), { recursive: true });
+	await writeFile(diffPath, content, "utf-8");
+}
+async function writeScratchpadArtifact(content) {
+	const { scratchpadPath } = getReviewArtifactPaths();
+	await mkdir(path.dirname(scratchpadPath), { recursive: true });
+	await writeFile(scratchpadPath, content, "utf-8");
+}
+
+//#endregion
 //#region src/mcp/github.ts
 const FILE_CHUNK_DEFAULT_LIMIT = 200;
 const FILE_CHUNK_MAX_LIMIT = 400;
 const FILE_CHUNK_MAX_CHARS = 3e4;
 const FILE_FULL_MAX_LINES = 250;
 const FILE_FULL_MAX_CHARS = 2e4;
-const CLANK8Y_ARTIFACT_DIR = ".clank8y";
-const DIFF_ARTIFACT_FILE = "diff.txt";
-const SCRATCHPAD_ARTIFACT_FILE = "scratchpad.txt";
 let _githubMCP = null;
 function normalizeEscapedNewlines(text) {
 	return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
@@ -33571,20 +33605,6 @@ function normalizeUniqueStrings(entries) {
 		normalized.push(value);
 	}
 	return normalized;
-}
-function getReviewArtifactPaths() {
-	const workspaceRoot = process$1.cwd();
-	const artifactDir = path.join(workspaceRoot, CLANK8Y_ARTIFACT_DIR);
-	return {
-		artifactDir,
-		diffPath: path.join(artifactDir, DIFF_ARTIFACT_FILE),
-		scratchpadPath: path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)
-	};
-}
-async function ensureReviewArtifactDir() {
-	const artifactPaths = getReviewArtifactPaths();
-	await mkdir(artifactPaths.artifactDir, { recursive: true });
-	return artifactPaths;
 }
 function buildReviewScratchpadContent(input) {
 	const changedFiles = normalizeUniqueStrings(input.changedFiles);
@@ -33807,17 +33827,14 @@ const preparePullRequestReviewTool = defineTool$1({
 			repo: pullRequest.repo,
 			pull_number: pullRequest.number
 		}), fetchAllPullRequestFiles()]);
-		const diff = formatFilesWithLineNumbers(files);
 		const artifactPaths = await ensureReviewArtifactDir();
-		const scratchpadContent = buildReviewScratchpadContent({
+		if (!doesDiffArtifactExist()) await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
+		if (!doesScratchpadArtifactExist()) await writeScratchpadArtifact(buildReviewScratchpadContent({
 			repository: `${pullRequest.owner}/${pullRequest.repo}`,
 			pullRequestNumber: pullRequest.number,
 			diffPath: artifactPaths.diffPath,
 			changedFiles: files.map((file) => file.filename)
-		});
-		await writeFile(artifactPaths.diffPath, diff.content, "utf-8");
-		await writeFile(artifactPaths.scratchpadPath, scratchpadContent, "utf-8");
-		const totalDiffLines = diff.content.split("\n").length;
+		}));
 		const fileSummaries = files.map((file) => ({
 			path: file.filename,
 			status: file.status,
@@ -33851,11 +33868,7 @@ const preparePullRequestReviewTool = defineTool$1({
 				count: fileSummaries.length,
 				summary: fileSummaries
 			},
-			diff: {
-				path: artifactPaths.diffPath,
-				totalLines: totalDiffLines,
-				toc: diff.toc
-			},
+			diff: { path: artifactPaths.diffPath },
 			scratchpad: { path: artifactPaths.scratchpadPath }
 		});
 	} catch (error) {
@@ -38581,12 +38594,12 @@ function defineTool(name, config) {
 var l = Object.create;
 var u = Object.defineProperty;
 var d = Object.getOwnPropertyDescriptor;
-var f$1 = Object.getOwnPropertyNames;
+var f = Object.getOwnPropertyNames;
 var p = Object.getPrototypeOf;
 var m = Object.prototype.hasOwnProperty;
 var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
 var g = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f(t), a = 0, o = i.length, s; a < o; a++) {
 		s = i[a];
 		if (!m.call(e, s) && s !== n) u(e, s, {
 			get: ((e) => t[e]).bind(null, s),
@@ -39115,7 +39128,7 @@ var G = class {
 		if (this._streamErr) t.push(this._streamErr);
 		if (this._streamOut) t.push(this._streamOut);
 		const n = w(t);
-		const r = f.createInterface({ input: n });
+		const r = c.createInterface({ input: n });
 		for await (const e of r) yield e.toString();
 		await this._processClosed;
 		e.removeAllListeners();
@@ -39544,6 +39557,7 @@ async function executeClank8yAgent(options) {
 		"",
 		options.promptContext
 	]);
+	if (selection.mode === "Review") await clearReviewArtifacts();
 	await agent.run({
 		mode: selection.mode,
 		prompt
