@@ -20,7 +20,7 @@ import { WriteStream } from "node:tty";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
 import c from "node:readline";
 import nodeHTTPS from "node:https";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, stat, unlink, writeFile } from "node:fs/promises";
 import { existsSync as existsSync$1 } from "node:fs";
 import { spawn } from "node:child_process";
 import { createRequire as createRequire$1 } from "module";
@@ -16698,7 +16698,7 @@ var __awaiter$6 = void 0 && (void 0).__awaiter || function(thisArg, _arguments, 
 		step((generator = generator.apply(thisArg, _arguments || [])).next());
 	});
 };
-const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat: stat$1, symlink, unlink } = fs.promises;
+const { chmod, copyFile, lstat, mkdir: mkdir$1, open, readdir, rename, rm, rmdir, stat: stat$1, symlink, unlink: unlink$1 } = fs.promises;
 const IS_WINDOWS$1 = process.platform === "win32";
 const READONLY = fs.constants.O_RDONLY;
 
@@ -33551,7 +33551,8 @@ async function ensureReviewArtifactDir() {
 }
 async function clearReviewArtifacts() {
 	const { artifactDir } = getReviewArtifactPaths();
-	await mkdir(artifactDir, { recursive: true });
+	await unlink(path.join(artifactDir, DIFF_ARTIFACT_FILE)).catch(() => null);
+	await unlink(path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)).catch(() => null);
 }
 async function doesDiffArtifactExist() {
 	const { diffPath } = getReviewArtifactPaths();
@@ -33828,8 +33829,8 @@ const preparePullRequestReviewTool = defineTool$1({
 			pull_number: pullRequest.number
 		}), fetchAllPullRequestFiles()]);
 		const artifactPaths = await ensureReviewArtifactDir();
-		if (!doesDiffArtifactExist()) await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
-		if (!doesScratchpadArtifactExist()) await writeScratchpadArtifact(buildReviewScratchpadContent({
+		if (!await doesDiffArtifactExist()) await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
+		if (!await doesScratchpadArtifactExist()) await writeScratchpadArtifact(buildReviewScratchpadContent({
 			repository: `${pullRequest.owner}/${pullRequest.repo}`,
 			pullRequestNumber: pullRequest.number,
 			diffPath: artifactPaths.diffPath,
