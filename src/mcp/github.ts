@@ -351,11 +351,11 @@ const preparePullRequestReviewTool = defineTool({
     const artifactPaths = await ensureReviewArtifactDir()
 
     // only write file if not already present
-    if (!doesDiffArtifactExist()) {
+    if (!(await doesDiffArtifactExist())) {
       const diff = formatFilesWithLineNumbers(files)
       await writeDiffArtifact(diff.content)
     }
-    if (!doesScratchpadArtifactExist()) {
+    if (!(await doesScratchpadArtifactExist())) {
       const scratchpadContent = buildReviewScratchpadContent({
         repository: `${pullRequest.owner}/${pullRequest.repo}`,
         pullRequestNumber: pullRequest.number,

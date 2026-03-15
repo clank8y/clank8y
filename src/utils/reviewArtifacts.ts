@@ -1,6 +1,6 @@
 import process from 'node:process'
 import path from 'node:path'
-import { mkdir, stat, writeFile } from 'node:fs/promises'
+import { mkdir, stat, unlink, writeFile } from 'node:fs/promises'
 
 export interface ReviewArtifactPaths {
   artifactDir: string
@@ -31,7 +31,8 @@ export async function ensureReviewArtifactDir(): Promise<ReviewArtifactPaths> {
 
 export async function clearReviewArtifacts(): Promise<void> {
   const { artifactDir } = getReviewArtifactPaths()
-  await mkdir(artifactDir, { recursive: true })
+  await unlink(path.join(artifactDir, DIFF_ARTIFACT_FILE)).catch(() => null)
+  await unlink(path.join(artifactDir, SCRATCHPAD_ARTIFACT_FILE)).catch(() => null)
 }
 
 export async function doesDiffArtifactExist(): Promise<boolean> {
