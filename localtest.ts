@@ -123,7 +123,7 @@ async function main(): Promise<void> {
       githubToken: resolveGithubToken(),
       copilotToken: requireEnv('COPILOT_GITHUB_TOKEN'),
     },
-    model: 'claude-sonnet-4.6',
+    model: 'claude-sonnet-4.5',
     timeOutMs,
   })
 }

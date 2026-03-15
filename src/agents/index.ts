@@ -4,6 +4,7 @@ import { buildReviewPrompt } from '../prompt'
 import type { DeepOptional } from '../types'
 import { githubCopilotAgent } from './copilot'
 import type { Clank8yMode, Clank8yModeSelection } from './modes'
+import { clearReviewArtifacts } from '../utils/reviewArtifacts'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -115,6 +116,11 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     options.promptContext,
   ])
 
+  if (selection.mode === 'Review') {
+    await clearReviewArtifacts()
+  }
+
+  // agent should have different function here for execution so that we can dynamically do pre and post steps more easily per mode
   await agent.run({
     mode: selection.mode,
     prompt,

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { CopilotClient } from '@github/copilot-sdk'
+import type { PermissionHandler } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import { x } from 'tinyexec'
 import { getClank8yRuntimeContext } from '../../setup'
@@ -11,13 +12,12 @@ const COPILOT_CLI_VERSION = '1.0.2'
 
 // allowed built in tools: report_intent, task
 // ! allowedTools array does not seem to work as expected currently
-export const COPILOT_EXCLUDED_TOOLS = [
+export const COPILOT_REVIEW_EXCLUDED_TOOLS = [
   'bash',
   'create',
-  'edit',
   'github-say-hello',
   'glob',
-  'grep',
+  // 'grep',
   'list_agents',
   'list_bash',
   'read_agent',
@@ -25,10 +25,9 @@ export const COPILOT_EXCLUDED_TOOLS = [
   'sql',
   'stop_bash',
   'task',
-  'view',
   'web_fetch',
   'write_bash',
-  'rg',
+  // 'rg',
 ]
 
 function prependPath(entries: string[]): string {
@@ -122,9 +121,27 @@ function resolveCopilotAgentToken(): string {
   return getClank8yRuntimeContext().auth.copilotToken
 }
 
-export function createCopilotPermissionHandler() {
-  return async (request: { kind: string }) => {
-    if (request.kind === 'mcp' || request.kind === 'custom-tool' || request.kind === 'read') {
+export const copilotPermissionHandler: PermissionHandler = (request) => {
+  const scratchpadPath = path.resolve(process.cwd(), '.clank8y', 'scratchpad.txt')
+  const diffPath = path.resolve(process.cwd(), '.clank8y', 'diff.txt')
+  const canWrite = [scratchpadPath]
+  const canRead = [...canWrite, diffPath]
+
+  if (request.kind === 'mcp' || request.kind === 'custom-tool') {
+    return {
+      kind: 'approved' as const,
+    }
+  }
+
+  if (request.kind === 'read') {
+    const rawTargetPath = 'path' in request && typeof request.path === 'string'
+      ? request.path
+      : undefined
+    const targetPath = rawTargetPath
+      ? path.resolve(process.cwd(), rawTargetPath)
+      : undefined
+
+    if (targetPath && canRead.includes(targetPath)) {
       return {
         kind: 'approved' as const,
       }
@@ -132,8 +149,33 @@ export function createCopilotPermissionHandler() {
 
     return {
       kind: 'denied-by-rules' as const,
-      rules: ['Only MCP, custom-tool, and read tool permissions are allowed.'],
+      rules: ['Review mode may only read .clank8y/diff.txt and .clank8y/scratchpad.txt via native file tools.'],
     }
+  }
+
+  if (request.kind === 'write') {
+    const rawTargetPath = 'fileName' in request && typeof request.fileName === 'string'
+      ? request.fileName
+      : undefined
+    const targetPath = rawTargetPath
+      ? path.resolve(process.cwd(), rawTargetPath)
+      : undefined
+
+    if (targetPath && canWrite.includes(targetPath)) {
+      return {
+        kind: 'approved' as const,
+      }
+    }
+
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['Review mode may only write .clank8y/scratchpad.txt via native file tools.'],
+    }
+  }
+
+  return {
+    kind: 'denied-by-rules' as const,
+    rules: ['Only MCP, mode selection, reading .clank8y artifacts, searching .clank8y/diff.txt via rg, and writing .clank8y/scratchpad.txt are allowed in review mode.'],
   }
 }
 

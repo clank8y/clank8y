@@ -8,6 +8,7 @@ import { getOctokit } from '../gh'
 import {
   getActivePullRequestContext,
   getClank8yRuntimeContext,
+  setPullRequestContext,
 } from '../setup'
 import type { PRFiles } from '../types'
 import { tool } from 'tmcp/utils'
@@ -16,15 +17,13 @@ import { HttpTransport } from '@tmcp/transport-http'
 import { defineTool } from 'tmcp/tool'
 import { encode } from '@toon-format/toon'
 import { buildClank8yCommentBody } from '../../shared/comment'
+import { doesDiffArtifactExist, doesScratchpadArtifactExist, ensureReviewArtifactDir, writeDiffArtifact, writeScratchpadArtifact } from '../utils/reviewArtifacts'
 
 interface CachedDiff {
   content: string
   toc: string
 }
 
-const DIFF_CHUNK_DEFAULT_LIMIT = 200
-const DIFF_CHUNK_MAX_LIMIT = 400
-const DIFF_CHUNK_MAX_CHARS = 30_000
 const FILE_CHUNK_DEFAULT_LIMIT = 200
 const FILE_CHUNK_MAX_LIMIT = 400
 const FILE_CHUNK_MAX_CHARS = 30_000
@@ -32,16 +31,6 @@ const FILE_FULL_MAX_LINES = 250
 const FILE_FULL_MAX_CHARS = 20_000
 
 let _githubMCP: LocalMCPServer | null = null
-const prDiffCache = new Map<string, CachedDiff>()
-
-async function getDiffCacheKey(): Promise<string> {
-  const pullRequest = getActivePullRequestContext()
-  return `${pullRequest.owner}/${pullRequest.repo}#${pullRequest.number}:${pullRequest.headSha}`
-}
-
-function padNum(n: number): string {
-  return n.toString().padStart(4, ' ')
-}
 
 function normalizeEscapedNewlines(text: string): string {
   return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
@@ -64,6 +53,69 @@ function stripSurroundingQuotes(text: string): string {
 
 function normalizeToolString(text: string): string {
   return normalizeEscapedNewlines(stripSurroundingQuotes(text))
+}
+
+function normalizeUniqueStrings(entries: string[] | undefined): string[] {
+  const seen = new Set<string>()
+  const normalized: string[] = []
+
+  for (const entry of entries ?? []) {
+    const value = normalizeToolString(entry).trim()
+    if (!value || seen.has(value)) {
+      continue
+    }
+
+    seen.add(value)
+    normalized.push(value)
+  }
+
+  return normalized
+}
+
+export function buildReviewScratchpadContent(input: {
+  repository: string
+  pullRequestNumber: number
+  diffPath: string
+  changedFiles: string[]
+}): string {
+  const changedFiles = normalizeUniqueStrings(input.changedFiles)
+
+  return [
+    '# clank8y review scratchpad',
+    '',
+    `repository: ${input.repository}`,
+    `pull_request: #${input.pullRequestNumber}`,
+    `diff_path: ${input.diffPath}`,
+    '',
+    'Instructions:',
+    '- Keep this file updated during the review.',
+    '- Mark a file as reviewed by changing `[ ]` to `[x]`.',
+    '- After each file or file group, add at least one note before continuing.',
+    '- Record only strong, evidence-backed findings.',
+    '- Use `Suspected Patterns To Expand` for hypotheses that still need expansion or proof.',
+    '- Use `Learned / Verified Context` to capture docs-backed conclusions you want to remember later in the run.',
+    '- Every Angular MCP or Codex MCP lookup should leave a short note in `Learned / Verified Context`.',
+    '- Before submitting the review, confirm all intentionally skipped files are explained in `Notes`.',
+    '',
+    '## Changed Files',
+    ...changedFiles.map((file) => `- [ ] ${file}`),
+    '',
+    '## Suspected Patterns To Expand',
+    '- None yet.',
+    '',
+    '## Learned / Verified Context',
+    '- None yet. Add one line per Angular MCP or Codex MCP verification.',
+    '',
+    '## Validated Findings',
+    '- None yet.',
+    '',
+    '## Open Questions',
+    '- None yet.',
+    '',
+    '## Notes',
+    '- None yet. If a file group produced no finding, record that explicitly.',
+    '',
+  ].join('\n')
 }
 
 async function fetchAllPullRequestFiles(): Promise<PRFiles> {
@@ -93,7 +145,7 @@ async function fetchAllPullRequestFiles(): Promise<PRFiles> {
   return allFiles
 }
 
-function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
+export function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
   const output: string[] = []
   const tocEntries: string[] = []
   let currentLine = 1
@@ -137,13 +189,13 @@ function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
       const code = line.slice(1)
 
       if (marker === '-') {
-        output.push(`| ${padNum(oldLine)} | ---- | - | ${code}`)
+        output.push(`|${oldLine}|-|${code}`)
         oldLine += 1
       } else if (marker === '+') {
-        output.push(`| ---- | ${padNum(newLine)} | + | ${code}`)
+        output.push(`|${newLine}|+|${code}`)
         newLine += 1
       } else {
-        output.push(`| ${padNum(oldLine)} | ${padNum(newLine)} |   | ${code}`)
+        output.push(`|${oldLine}|${newLine}||${code}`)
         oldLine += 1
         newLine += 1
       }
@@ -163,19 +215,6 @@ function formatFilesWithLineNumbers(files: PRFiles): CachedDiff {
     content,
     toc,
   }
-}
-
-async function getOrBuildPullRequestDiff(): Promise<CachedDiff> {
-  const cacheKey = await getDiffCacheKey()
-  const cachedDiff = prDiffCache.get(cacheKey)
-  if (cachedDiff) {
-    return cachedDiff
-  }
-
-  const files = await fetchAllPullRequestFiles()
-  const diff = formatFilesWithLineNumbers(files)
-  prDiffCache.set(cacheKey, diff)
-  return diff
 }
 
 export function githubMCP(): LocalMCPServer {
@@ -243,6 +282,54 @@ export const mcp = new McpServer({
   },
 })
 
+const setPullRequestContextTool = defineTool({
+  name: 'set-pull-request-context',
+  description: 'Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.',
+  title: 'Set Pull Request Context',
+  schema: v.pipe(
+    v.object({
+      repository: v.pipe(
+        v.string(),
+        v.description('Repository in owner/repo format for the pull request to review.'),
+      ),
+      pr_number: v.pipe(
+        v.number(),
+        v.description('The pull request number to set as the active review context.'),
+      ),
+    }),
+    v.description('Arguments for selecting the active pull request before any review-specific GitHub MCP tools are used.'),
+  ),
+}, async ({ repository, pr_number }) => {
+  try {
+    const pullRequest = await setPullRequestContext({
+      repository,
+      prNumber: pr_number,
+    })
+
+    return tool.structured({
+      success: true,
+      context: {
+        repository: `${pullRequest.owner}/${pullRequest.repo}`,
+        pullRequestNumber: pullRequest.number,
+        baseRef: pullRequest.baseRef,
+        headRef: pullRequest.headRef,
+      },
+      pullRequest: {
+        number: pullRequest.number,
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        headRef: pullRequest.headRef,
+        headSha: pullRequest.headSha,
+        baseRef: pullRequest.baseRef,
+        baseSha: pullRequest.baseSha,
+      },
+    } as any)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return tool.error(`Failed to set pull request context: ${message}`)
+  }
+})
+
 const preparePullRequestReviewTool = defineTool({
   name: 'prepare-pull-request-review',
   description: 'Single entrypoint for review setup: PR metadata, file summary, and diff TOC with chunk-read instructions',
@@ -261,11 +348,23 @@ const preparePullRequestReviewTool = defineTool({
       fetchAllPullRequestFiles(),
     ])
 
-    const diff = formatFilesWithLineNumbers(files)
-    const cacheKey = await getDiffCacheKey()
-    prDiffCache.set(cacheKey, diff)
+    const artifactPaths = await ensureReviewArtifactDir()
 
-    const totalDiffLines = diff.content.split('\n').length
+    // only write file if not already present
+    if (!(await doesDiffArtifactExist())) {
+      const diff = formatFilesWithLineNumbers(files)
+      await writeDiffArtifact(diff.content)
+    }
+    if (!(await doesScratchpadArtifactExist())) {
+      const scratchpadContent = buildReviewScratchpadContent({
+        repository: `${pullRequest.owner}/${pullRequest.repo}`,
+        pullRequestNumber: pullRequest.number,
+        diffPath: artifactPaths.diffPath,
+        changedFiles: files.map((file) => file.filename),
+      })
+      await writeScratchpadArtifact(scratchpadContent)
+    }
+
     const fileSummaries = files.map((file) => ({
       path: file.filename,
       status: file.status,
@@ -301,14 +400,11 @@ const preparePullRequestReviewTool = defineTool({
         summary: fileSummaries,
       },
       diff: {
-        totalLines: totalDiffLines,
-        toc: diff.toc,
+        path: artifactPaths.diffPath,
       },
-      nextSteps: [
-        'Use read-pull-request-diff-chunk with small offset/limit windows, guided by TOC line ranges.',
-        'Use get-pull-request-file-content with offset/limit for relevant files only; avoid full=true unless required.',
-        'Submit findings with create-pull-request-review.',
-      ],
+      scratchpad: {
+        path: artifactPaths.scratchpadPath,
+      },
     } as any)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -452,52 +548,6 @@ const createPullRequestReviewTool = defineTool({
   }
 })
 
-const readPullRequestDiffChunkTool = defineTool({
-  name: 'read-pull-request-diff-chunk',
-  description: 'Read a line range from the cached pull request diff',
-  title: 'Read Pull Request Diff Chunk',
-  schema: v.pipe(
-    v.object({
-      offset: v.optional(v.pipe(
-        v.number(),
-        v.description('1-based starting line number in the cached formatted diff. Defaults to 1.'),
-      )),
-      limit: v.optional(v.pipe(
-        v.number(),
-        v.description('Maximum number of lines to return. Defaults to 200 and is capped at 400.'),
-      )),
-    }),
-    v.description('Chunk selection arguments for reading the cached pull request diff.'),
-  ),
-}, async ({ offset, limit }) => {
-  try {
-    const diff = await getOrBuildPullRequestDiff()
-    const lines = diff.content.split('\n')
-    const totalLines = lines.length
-
-    const requestedOffset = offset ?? 1
-    const startLine = Math.max(1, requestedOffset)
-    const requestedLimit = limit ?? DIFF_CHUNK_DEFAULT_LIMIT
-    const normalizedLimit = Math.max(1, Math.min(DIFF_CHUNK_MAX_LIMIT, requestedLimit))
-    const endLine = Math.min(totalLines, startLine + normalizedLimit - 1)
-
-    const rawChunk = lines.slice(startLine - 1, endLine).join('\n')
-    const chunk = rawChunk.length > DIFF_CHUNK_MAX_CHARS
-      ? `${rawChunk.slice(0, DIFF_CHUNK_MAX_CHARS)}\n\n[truncated: chunk exceeded ${DIFF_CHUNK_MAX_CHARS} characters]`
-      : rawChunk
-
-    return tool.text([
-      `Diff chunk ${startLine}-${endLine} of ${totalLines}`,
-      `Remaining lines after this chunk: ${Math.max(0, totalLines - endLine)}`,
-      '',
-      chunk,
-    ].join('\n'))
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return tool.error(`Failed to read pull request diff chunk: ${message}`)
-  }
-})
-
 const getPullRequestFileContentTool = defineTool({
   name: 'get-pull-request-file-content',
   description: 'Get content for a changed pull request file, with chunked reads by default',
@@ -590,9 +640,9 @@ const getPullRequestFileContentTool = defineTool({
 })
 
 export const githubMcpTools = [
+  setPullRequestContextTool,
   preparePullRequestReviewTool,
   createPullRequestReviewTool,
-  readPullRequestDiffChunkTool,
   getPullRequestFileContentTool,
 ]
 
