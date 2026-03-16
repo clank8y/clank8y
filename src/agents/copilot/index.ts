@@ -9,6 +9,7 @@ import {
   copilotPermissionHandler,
   ensureCopilotModelAvailable,
   getCopilotClient,
+  resetCopilotClient,
 } from './../copilot/client'
 import { selectCopilotMode } from './../copilot/selectMode'
 
@@ -112,7 +113,6 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
     provider: 'GitHub Copilot',
     model,
     selectMode: (selectModeOptions) => selectCopilotMode({
-      client,
       model,
       prompt: selectModeOptions.prompt,
       mcp: selectModeOptions.mcp,
@@ -128,7 +128,12 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
       }
     },
     cleanup: async () => {
-      await client.stop()
+      const client = await getCopilotClient()
+      try {
+        await client.stop()
+      } finally {
+        resetCopilotClient()
+      }
     },
   }
 

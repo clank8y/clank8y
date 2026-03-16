@@ -10,6 +10,9 @@ import { getClank8yRuntimeContext } from '../../setup'
 const COPILOT_CLI_PACKAGE = '@github/copilot'
 const COPILOT_CLI_VERSION = '1.0.2'
 
+let copilotClient: CopilotClient | undefined
+let copilotClientPromise: Promise<CopilotClient> | undefined
+
 // allowed built in tools: report_intent, task
 // ! allowedTools array does not seem to work as expected currently
 export const COPILOT_REVIEW_EXCLUDED_TOOLS = [
@@ -121,6 +124,11 @@ function resolveCopilotAgentToken(): string {
   return getClank8yRuntimeContext().auth.copilotToken
 }
 
+export function resetCopilotClient(): void {
+  copilotClient = undefined
+  copilotClientPromise = undefined
+}
+
 export const copilotPermissionHandler: PermissionHandler = (request) => {
   const scratchpadPath = path.resolve(process.cwd(), '.clank8y', 'scratchpad.txt')
   const diffPath = path.resolve(process.cwd(), '.clank8y', 'diff.txt')
@@ -180,25 +188,41 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
 }
 
 export async function getCopilotClient(): Promise<CopilotClient> {
-  consola.info('Preparing GitHub Copilot review agent')
-  const cliPath = await ensureCopilotCliInstalled()
-  const copilotAgentToken = resolveCopilotAgentToken()
-  consola.info('Using explicit GitHub token for Copilot SDK authentication')
-
-  const client = new CopilotClient({
-    cliPath,
-    githubToken: copilotAgentToken,
-    useLoggedInUser: false,
-  })
-
-  await client.start()
-
-  const authStatus = await client.getAuthStatus()
-  if (!authStatus.isAuthenticated) {
-    throw new Error('Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.')
+  if (copilotClient) {
+    return copilotClient
   }
 
-  return client
+  if (!copilotClientPromise) {
+    copilotClientPromise = (async () => {
+      consola.info('Preparing GitHub Copilot review agent')
+      const cliPath = await ensureCopilotCliInstalled()
+      const copilotAgentToken = resolveCopilotAgentToken()
+      consola.info('Using explicit GitHub token for Copilot SDK authentication')
+
+      const client = new CopilotClient({
+        cliPath,
+        githubToken: copilotAgentToken,
+        useLoggedInUser: false,
+      })
+
+      await client.start()
+
+      const authStatus = await client.getAuthStatus()
+      if (!authStatus.isAuthenticated) {
+        throw new Error('Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.')
+      }
+
+      return client
+    })()
+  }
+
+  try {
+    copilotClient = await copilotClientPromise
+    return copilotClient
+  } catch (error) {
+    resetCopilotClient()
+    throw error
+  }
 }
 
 export async function getCopilotModelIds(client: CopilotClient): Promise<string[]> {

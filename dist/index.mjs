@@ -39216,6 +39216,8 @@ const q = K;
 //#region src/agents/copilot/client.ts
 const COPILOT_CLI_PACKAGE = "@github/copilot";
 const COPILOT_CLI_VERSION = "1.0.2";
+let copilotClient;
+let copilotClientPromise;
 const COPILOT_REVIEW_EXCLUDED_TOOLS = [
 	"bash",
 	"create",
@@ -39291,6 +39293,10 @@ async function ensureCopilotCliInstalled() {
 function resolveCopilotAgentToken() {
 	return getClank8yRuntimeContext().auth.copilotToken;
 }
+function resetCopilotClient() {
+	copilotClient = void 0;
+	copilotClientPromise = void 0;
+}
 const copilotPermissionHandler = (request) => {
 	const scratchpadPath = path.resolve(process$1.cwd(), ".clank8y", "scratchpad.txt");
 	const diffPath = path.resolve(process$1.cwd(), ".clank8y", "diff.txt");
@@ -39321,18 +39327,28 @@ const copilotPermissionHandler = (request) => {
 	};
 };
 async function getCopilotClient() {
-	consola.info("Preparing GitHub Copilot review agent");
-	const cliPath = await ensureCopilotCliInstalled();
-	const copilotAgentToken = resolveCopilotAgentToken();
-	consola.info("Using explicit GitHub token for Copilot SDK authentication");
-	const client = new CopilotClient({
-		cliPath,
-		githubToken: copilotAgentToken,
-		useLoggedInUser: false
-	});
-	await client.start();
-	if (!(await client.getAuthStatus()).isAuthenticated) throw new Error("Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.");
-	return client;
+	if (copilotClient) return copilotClient;
+	if (!copilotClientPromise) copilotClientPromise = (async () => {
+		consola.info("Preparing GitHub Copilot review agent");
+		const cliPath = await ensureCopilotCliInstalled();
+		const copilotAgentToken = resolveCopilotAgentToken();
+		consola.info("Using explicit GitHub token for Copilot SDK authentication");
+		const client = new CopilotClient({
+			cliPath,
+			githubToken: copilotAgentToken,
+			useLoggedInUser: false
+		});
+		await client.start();
+		if (!(await client.getAuthStatus()).isAuthenticated) throw new Error("Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.");
+		return client;
+	})();
+	try {
+		copilotClient = await copilotClientPromise;
+		return copilotClient;
+	} catch (error) {
+		resetCopilotClient();
+		throw error;
+	}
 }
 async function getCopilotModelIds(client) {
 	const modelIds = (await client.listModels()).map((model) => model.id);
@@ -39355,7 +39371,8 @@ const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
 ];
 async function selectCopilotMode(options) {
 	if (options.mcp.status.state !== "running") throw new Error("Select mode MCP server must be started before mode selection.");
-	const session = await options.client.createSession({
+	const client = await getCopilotClient();
+	const session = await client.createSession({
 		model: options.model,
 		availableTools: options.mcp.allowedTools.map((n) => `selectMode-${n}`),
 		onPermissionRequest: (request) => {
@@ -39375,7 +39392,7 @@ async function selectCopilotMode(options) {
 	try {
 		await session.sendAndWait({ prompt: options.prompt });
 	} finally {
-		await options.client.deleteSession(session.sessionId);
+		await client.deleteSession(session.sessionId);
 	}
 }
 
@@ -39457,7 +39474,6 @@ const githubCopilotAgent = async (options) => {
 		provider: "GitHub Copilot",
 		model,
 		selectMode: (selectModeOptions) => selectCopilotMode({
-			client,
 			model,
 			prompt: selectModeOptions.prompt,
 			mcp: selectModeOptions.mcp,
@@ -39472,7 +39488,12 @@ const githubCopilotAgent = async (options) => {
 			}
 		},
 		cleanup: async () => {
-			await client.stop();
+			const client = await getCopilotClient();
+			try {
+				await client.stop();
+			} finally {
+				resetCopilotClient();
+			}
 		}
 	};
 };
