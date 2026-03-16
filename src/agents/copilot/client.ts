@@ -220,6 +220,7 @@ export async function getCopilotClient(): Promise<CopilotClient> {
     copilotClient = await copilotClientPromise
     return copilotClient
   } catch (error) {
+    // allow a later call to retry initialization after a failed start/auth attempt
     resetCopilotClient()
     throw error
   }
