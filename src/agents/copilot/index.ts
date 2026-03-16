@@ -129,7 +129,18 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
     cleanup: async () => {
       // ensure any running sessions are cleaned up
       const client = await getCopilotClient()
-      await client.stop()
+      // If normal stop hangs, force stop
+      const stopPromise = client.stop()
+      const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      })
+
+      try {
+        await Promise.race([stopPromise, timeout])
+      } catch {
+        consola.warn('Normal stop timed out, forcing stop...')
+        await client.forceStop()
+      }
     },
   }
 
