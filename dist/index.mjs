@@ -39320,7 +39320,9 @@ const copilotPermissionHandler = (request) => {
 		rules: ["Only MCP, mode selection, reading .clank8y artifacts, searching .clank8y/diff.txt via rg, and writing .clank8y/scratchpad.txt are allowed in review mode."]
 	};
 };
+let _client = null;
 async function getCopilotClient() {
+	if (_client) return _client;
 	consola.info("Preparing GitHub Copilot review agent");
 	const cliPath = await ensureCopilotCliInstalled();
 	const copilotAgentToken = resolveCopilotAgentToken();
@@ -39332,6 +39334,7 @@ async function getCopilotClient() {
 	});
 	await client.start();
 	if (!(await client.getAuthStatus()).isAuthenticated) throw new Error("Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.");
+	_client = client;
 	return client;
 }
 async function getCopilotModelIds(client) {
@@ -39469,7 +39472,17 @@ const githubCopilotAgent = async (options) => {
 			}
 		},
 		cleanup: async () => {
-			await (await getCopilotClient()).stop();
+			const client = await getCopilotClient();
+			const stopPromise = client.stop();
+			const timeout = new Promise((_, reject) => {
+				setTimeout(() => reject(/* @__PURE__ */ new Error("Timeout")), 5e3);
+			});
+			try {
+				await Promise.race([stopPromise, timeout]);
+			} catch {
+				consola.warn("Normal stop timed out, forcing stop...");
+				await client.forceStop();
+			}
 		}
 	};
 };
