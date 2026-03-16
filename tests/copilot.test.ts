@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { LocalHTTPMCPServer } from '../src/mcp'
 
 const {
   client,
@@ -32,6 +33,20 @@ vi.mock('../src/agents/copilot/selectMode', () => ({
 describe('githubCopilotAgent', () => {
   it('reuses a single Copilot client across mode selection and cleanup', async () => {
     const { githubCopilotAgent } = await import('../src/agents/copilot')
+    const mcp: LocalHTTPMCPServer = {
+      allowedTools: [],
+      serverType: 'http',
+      start: vi.fn(async () => ({
+        toolNames: [],
+        url: 'http://127.0.0.1:3000',
+      })),
+      status: {
+        state: 'running',
+        url: 'http://127.0.0.1:3000',
+      },
+      stop: vi.fn(async () => {}),
+    }
+
     const agent = await githubCopilotAgent({
       model: 'test-model',
       timeOutMs: 1_000,
@@ -43,7 +58,7 @@ describe('githubCopilotAgent', () => {
 
     await agent.selectMode({
       prompt: 'select a mode',
-      mcp: {} as never,
+      mcp,
     })
 
     await agent.cleanup?.()
@@ -52,7 +67,7 @@ describe('githubCopilotAgent', () => {
     expect(ensureCopilotModelAvailableMock).toHaveBeenCalledWith(client, 'test-model')
     expect(selectCopilotModeMock).toHaveBeenCalledWith(expect.objectContaining({
       client,
-      mcp: {},
+      mcp,
       model: 'test-model',
       prompt: 'select a mode',
       timeoutMs: 2_000,
