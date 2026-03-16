@@ -129,11 +129,8 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
     },
     cleanup: async () => {
       const client = await getCopilotClient()
-      try {
-        await client.stop()
-      } finally {
-        resetCopilotClient()
-      }
+      await client.stop()
+      resetCopilotClient()
     },
   }
 
