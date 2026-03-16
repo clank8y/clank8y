@@ -1,7 +1,7 @@
+import type { CopilotClient } from '@github/copilot-sdk'
 import type { LocalHTTPMCPServer } from '../../mcp'
 import {
   COPILOT_REVIEW_EXCLUDED_TOOLS,
-  getCopilotClient,
 } from './client'
 
 export const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
@@ -13,6 +13,7 @@ export const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
 ]
 
 export async function selectCopilotMode(options: {
+  client: CopilotClient
   model: string
   prompt: string
   mcp: LocalHTTPMCPServer
@@ -22,9 +23,7 @@ export async function selectCopilotMode(options: {
     throw new Error('Select mode MCP server must be started before mode selection.')
   }
 
-  const client = await getCopilotClient()
-
-  const session = await client.createSession({
+  const session = await options.client.createSession({
     model: options.model,
     // tools in github copilot are prefixed with the mcp server name set in the mcpServers object
     availableTools: options.mcp.allowedTools.map((n) => `selectMode-${n}`),
@@ -50,9 +49,11 @@ export async function selectCopilotMode(options: {
     },
   })
 
-  await session.sendAndWait({
-    prompt: options.prompt,
-  })
-
-  await client.deleteSession(session.sessionId)
+  try {
+    await session.sendAndWait({
+      prompt: options.prompt,
+    })
+  } finally {
+    await options.client.deleteSession(session.sessionId)
+  }
 }

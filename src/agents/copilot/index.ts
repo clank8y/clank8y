@@ -112,6 +112,7 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
     provider: 'GitHub Copilot',
     model,
     selectMode: (selectModeOptions) => selectCopilotMode({
+      client,
       model,
       prompt: selectModeOptions.prompt,
       mcp: selectModeOptions.mcp,
@@ -127,8 +128,6 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (options) => {
       }
     },
     cleanup: async () => {
-      // ensure any running sessions are cleaned up
-      const client = await getCopilotClient()
       await client.stop()
     },
   }

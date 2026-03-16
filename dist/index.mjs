@@ -39355,8 +39355,7 @@ const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
 ];
 async function selectCopilotMode(options) {
 	if (options.mcp.status.state !== "running") throw new Error("Select mode MCP server must be started before mode selection.");
-	const client = await getCopilotClient();
-	const session = await client.createSession({
+	const session = await options.client.createSession({
 		model: options.model,
 		availableTools: options.mcp.allowedTools.map((n) => `selectMode-${n}`),
 		onPermissionRequest: (request) => {
@@ -39373,8 +39372,11 @@ async function selectCopilotMode(options) {
 			timeout: options.timeoutMs ?? 6e4
 		} }
 	});
-	await session.sendAndWait({ prompt: options.prompt });
-	await client.deleteSession(session.sessionId);
+	try {
+		await session.sendAndWait({ prompt: options.prompt });
+	} finally {
+		await options.client.deleteSession(session.sessionId);
+	}
 }
 
 //#endregion
@@ -39455,6 +39457,7 @@ const githubCopilotAgent = async (options) => {
 		provider: "GitHub Copilot",
 		model,
 		selectMode: (selectModeOptions) => selectCopilotMode({
+			client,
 			model,
 			prompt: selectModeOptions.prompt,
 			mcp: selectModeOptions.mcp,
@@ -39469,7 +39472,7 @@ const githubCopilotAgent = async (options) => {
 			}
 		},
 		cleanup: async () => {
-			await (await getCopilotClient()).stop();
+			await client.stop();
 		}
 	};
 };
