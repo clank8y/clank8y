@@ -179,7 +179,12 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
   }
 }
 
+let _client: CopilotClient | null = null
+
 export async function getCopilotClient(): Promise<CopilotClient> {
+  if (_client) {
+    return _client
+  }
   consola.info('Preparing GitHub Copilot review agent')
   const cliPath = await ensureCopilotCliInstalled()
   const copilotAgentToken = resolveCopilotAgentToken()
@@ -197,6 +202,8 @@ export async function getCopilotClient(): Promise<CopilotClient> {
   if (!authStatus.isAuthenticated) {
     throw new Error('Copilot SDK is not authenticated. Ensure the token is a Copilot-entitled user token (github_pat_/gho_/ghu_) and provided via COPILOT_GITHUB_TOKEN.')
   }
+
+  _client = client
 
   return client
 }
