@@ -39472,7 +39472,17 @@ const githubCopilotAgent = async (options) => {
 			}
 		},
 		cleanup: async () => {
-			await (await getCopilotClient()).stop();
+			const client = await getCopilotClient();
+			const stopPromise = client.stop();
+			const timeout = new Promise((_, reject) => {
+				setTimeout(() => reject(/* @__PURE__ */ new Error("Timeout")), 5e3);
+			});
+			try {
+				await Promise.race([stopPromise, timeout]);
+			} catch {
+				consola.warn("Normal stop timed out, forcing stop...");
+				await client.forceStop();
+			}
 		}
 	};
 };
