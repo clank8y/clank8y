@@ -6,29 +6,10 @@ import type { PermissionHandler } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import { x } from 'tinyexec'
 import { getClank8yRuntimeContext } from '../../setup'
+import { isWithinClank8yArtifacts } from '../../utils/artifacts'
 
 const COPILOT_CLI_PACKAGE = '@github/copilot'
 const COPILOT_CLI_VERSION = '1.0.2'
-
-// allowed built in tools: report_intent, task
-// ! allowedTools array does not seem to work as expected currently
-export const COPILOT_REVIEW_EXCLUDED_TOOLS = [
-  'bash',
-  'create',
-  'github-say-hello',
-  'glob',
-  // 'grep',
-  'list_agents',
-  'list_bash',
-  'read_agent',
-  'read_bash',
-  'sql',
-  'stop_bash',
-  'task',
-  'web_fetch',
-  'write_bash',
-  // 'rg',
-]
 
 function prependPath(entries: string[]): string {
   const current = process.env.PATH ?? ''
@@ -121,12 +102,13 @@ function resolveCopilotAgentToken(): string {
   return getClank8yRuntimeContext().auth.copilotToken
 }
 
-export const copilotPermissionHandler: PermissionHandler = (request) => {
-  const scratchpadPath = path.resolve(process.cwd(), '.clank8y', 'scratchpad.txt')
-  const diffPath = path.resolve(process.cwd(), '.clank8y', 'diff.txt')
-  const canWrite = [scratchpadPath]
-  const canRead = [...canWrite, diffPath]
+function resolveRequestPath(rawPath: string | undefined): string | undefined {
+  return rawPath
+    ? path.resolve(process.cwd(), rawPath)
+    : undefined
+}
 
+export const copilotPermissionHandler: PermissionHandler = (request) => {
   if (request.kind === 'mcp' || request.kind === 'custom-tool') {
     return {
       kind: 'approved' as const,
@@ -137,11 +119,9 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
     const rawTargetPath = 'path' in request && typeof request.path === 'string'
       ? request.path
       : undefined
-    const targetPath = rawTargetPath
-      ? path.resolve(process.cwd(), rawTargetPath)
-      : undefined
+    const targetPath = resolveRequestPath(rawTargetPath)
 
-    if (targetPath && canRead.includes(targetPath)) {
+    if (targetPath && isWithinClank8yArtifacts(targetPath)) {
       return {
         kind: 'approved' as const,
       }
@@ -149,7 +129,7 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
 
     return {
       kind: 'denied-by-rules' as const,
-      rules: ['Review mode may only read .clank8y/diff.txt and .clank8y/scratchpad.txt via native file tools.'],
+      rules: ['Native file reads are only allowed inside .clank8y.'],
     }
   }
 
@@ -157,11 +137,9 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
     const rawTargetPath = 'fileName' in request && typeof request.fileName === 'string'
       ? request.fileName
       : undefined
-    const targetPath = rawTargetPath
-      ? path.resolve(process.cwd(), rawTargetPath)
-      : undefined
+    const targetPath = resolveRequestPath(rawTargetPath)
 
-    if (targetPath && canWrite.includes(targetPath)) {
+    if (targetPath && isWithinClank8yArtifacts(targetPath)) {
       return {
         kind: 'approved' as const,
       }
@@ -169,13 +147,27 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
 
     return {
       kind: 'denied-by-rules' as const,
-      rules: ['Review mode may only write .clank8y/scratchpad.txt via native file tools.'],
+      rules: ['Native file writes are only allowed inside .clank8y.'],
+    }
+  }
+
+  if (request.kind === 'shell') {
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['Shell is currently disabled. When enabled for a mode later, commands must stay scoped to .clank8y.'],
+    }
+  }
+
+  if (request.kind === 'url') {
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['URL access is disabled.'],
     }
   }
 
   return {
     kind: 'denied-by-rules' as const,
-    rules: ['Only MCP, mode selection, reading .clank8y artifacts, searching .clank8y/diff.txt via rg, and writing .clank8y/scratchpad.txt are allowed in review mode.'],
+    rules: ['Only MCP, mode selection, and native file access inside .clank8y are allowed.'],
   }
 }
 
@@ -185,7 +177,7 @@ export async function getCopilotClient(): Promise<CopilotClient> {
   if (_client) {
     return _client
   }
-  consola.info('Preparing GitHub Copilot review agent')
+  consola.info('Preparing GitHub Copilot agent')
   const cliPath = await ensureCopilotCliInstalled()
   const copilotAgentToken = resolveCopilotAgentToken()
   consola.info('Using explicit GitHub token for Copilot SDK authentication')
@@ -208,7 +200,8 @@ export async function getCopilotClient(): Promise<CopilotClient> {
   return client
 }
 
-export async function getCopilotModelIds(client: CopilotClient): Promise<string[]> {
+export async function getCopilotModelIds(): Promise<string[]> {
+  const client = await getCopilotClient()
   const models = await client.listModels()
   const modelIds = models.map((model) => model.id)
 
@@ -219,8 +212,8 @@ export async function getCopilotModelIds(client: CopilotClient): Promise<string[
   return modelIds
 }
 
-export async function ensureCopilotModelAvailable(client: CopilotClient, model: string): Promise<void> {
-  const modelIds = await getCopilotModelIds(client)
+export async function ensureCopilotModelAvailable(model: string): Promise<void> {
+  const modelIds = await getCopilotModelIds()
   if (!modelIds.includes(model)) {
     throw new Error(`Configured model '${model}' is not available for this token/account in the GitHub Copilot CLI. Available models: ${modelIds.join(', ')}.`)
   }

@@ -6,6 +6,8 @@ import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
 import type { LocalHTTPMCPServer } from '../mcp'
 import { selectModeMCP } from '../mcp/selectMode'
 import { githubCopilotAgent } from './copilot'
+import { resetClank8yArtifacts } from '../utils/artifacts'
+import consola from 'consola'
 
 export type Models
   = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
@@ -73,30 +75,39 @@ export interface SelectModeOptions {
 
 export interface Clank8yAgent {
   name: string
-  provider: string
-  model: string
   selectMode: (options: SelectModeOptions) => Promise<void>
   run: (input: Clank8yRunInput) => Promise<void>
   cleanup?: () => Promise<void>
 }
 
-export type Clank8yAgentFactory = (options: Omit<Clank8yAgentConfiguration, 'agent'>) => Clank8yAgent | Promise<Clank8yAgent>
+export type Clank8yProfile = Omit<Clank8yAgentConfiguration, 'agent'>
 
-async function getClank8yAgent(options: Clank8yAgentOptions): Promise<Clank8yAgent> {
+export type Clank8yAgentFactory = (options: Clank8yProfile) => Clank8yAgent | Promise<Clank8yAgent>
+
+async function getClank8y(options: Clank8yAgentOptions): Promise<{ agent: Clank8yAgent, profile: Clank8yProfile }> {
   const config = defu<Clank8yAgentConfiguration, [Clank8yAgentOptions]>(options, DEFAULT_CONFIGURATION) as Clank8yAgentConfiguration
 
-  const { agent, ...profile } = config
+  const { agent: agentName, ...profile } = config
 
-  switch (agent) {
+  let agent: Clank8yAgent | Promise<Clank8yAgent>
+  switch (agentName) {
     case 'github-copilot':
-      return githubCopilotAgent(profile)
+      agent = githubCopilotAgent(profile)
+      break
     default:
-      throw new Error(`Unsupported agent: ${agent}`)
+      throw new Error(`Unsupported agent: ${agentName}`)
+  }
+
+  agent = await agent
+
+  return {
+    agent,
+    profile,
   }
 }
 
 export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
-  const agent = await getClank8yAgent(options)
+  const { agent, profile } = await getClank8y(options)
 
   const {
     mcp,
@@ -121,18 +132,21 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
   const prompt = buildPrompt(selection.mode, options.promptContext)
 
   logAgentMessage({
-    agent: agent.provider,
-    model: agent.model,
+    agent: agent.name,
+    model: profile.model,
   }, `Selected mode: ${selection.mode}\nMode selection reason: ${selection.reason}`)
 
   logAgentMessage({
-    agent: agent.provider,
-    model: agent.model,
+    agent: agent.name,
+    model: profile.model,
   }, [
     `mode: ${selection.mode}`,
     '',
     options.promptContext,
   ])
+
+  await resetClank8yArtifacts()
+  consola.success('Reset .clank8y artifacts directory.')
 
   // agent should have different function here for execution so that we can dynamically do pre and post steps more easily per mode
   await agent.run({

@@ -10,10 +10,11 @@
 src/
 ├── index.ts            # Main action entrypoint
 ├── setup.ts            # Action inputs + PR context assembly
+├── modes/              # Mode definitions: prompt/runtime policy per execution mode
 ├── prompts/            # Prompt builders split by shared and per-mode concerns
 ├── modeSelection/      # Shared mode-selection metadata and schemas
 ├── agents/             # Review agent runtime and orchestration helpers
-│   └── copilot/        # Shared Copilot client/bootstrap helpers and selector runtime
+│   └── copilot/        # Shared Copilot client/bootstrap helpers plus per-mode runtime files
 └── mcp/                # MCP servers + protocol adapters
     ├── index.ts        # Interfaces (MCPServer, LocalHTTPMCPServer, LocalStdioMCPServer), startAll/stopAll, mcpServers()
     ├── github.ts       # In-process HTTP MCP server (tmcp + srvx)
@@ -171,6 +172,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
 - Keep shared prompt sections in `src/prompts/base.ts` and build mode-specific prompts from `src/prompts/<mode>.ts` via `src/prompts/index.ts`.
+- Keep shared modes agent-agnostic. Agent-specific runtime policy such as Copilot excluded tools belongs in the agent runtime layer, not in shared `src/modes/` definitions.
 - Keep mode-selection prompt text in `src/prompts/selectMode.ts` and shared mode-selection metadata/schema in `src/modeSelection/` so runtimes and MCP tools reuse the same contract.
 - Prefer dedicated MCP tools over Copilot custom tools when the capability should be reusable across agent runtimes.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
@@ -184,6 +186,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Each MCP server declares its own `allowedTools` (exact tool name allowlist, or `['*']` for all). The per-agent adapter (`src/mcp/adapters/copilot.ts`) reads `allowedTools` and maps it to the SDK's per-server `tools` field.
 - Stdio MCP servers (e.g. Angular) are spawned by the Copilot SDK CLI process; `start()` is a state change + returns `{ command, args }` only — no spawning in clank8y code.
 - Add new agent adapters in `src/mcp/adapters/<agent>.ts`, not in `src/agents/`. MCP-to-SDK translation belongs to the MCP layer.
+- In review mode, previous PR feedback should be materialized into one stable artifact at `.clank8y/review-comments.md` during `prepare-pull-request-review`; do not shard it per review ID unless a later non-review workflow requires that.
 
 ### Common Mistakes to Avoid
 

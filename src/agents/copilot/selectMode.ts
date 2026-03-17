@@ -1,8 +1,6 @@
 import type { LocalHTTPMCPServer } from '../../mcp'
-import {
-  COPILOT_REVIEW_EXCLUDED_TOOLS,
-  getCopilotClient,
-} from './client'
+import { getCopilotClient } from './client'
+import { COPILOT_REVIEW_EXCLUDED_TOOLS } from './review'
 
 export const COPILOT_SELECT_MODE_EXCLUDED_TOOLS = [
   ...COPILOT_REVIEW_EXCLUDED_TOOLS,
