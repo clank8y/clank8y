@@ -20490,14 +20490,17 @@ const BASE_REVIEW_PROMPT = [
 		"   - **No prior comment → keep the finding.**",
 		"   This step is not optional. If you skip it, your review will contain duplicate noise that degrades trust.",
 		"",
-		"6) **Submit the review** via `create-pull-request-review`.",
+		"6) **Submit results:**",
+		"   - **If you have inline findings** → call `create-pull-request-review` with your comments and a short summary body.",
+		"   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call `create-pull-request-comment` instead. Briefly explain why no review was submitted (e.g. \"No new issues found — all previous feedback is still open and covers the current diff.\").",
+		"   You must call exactly one of these two tools before finishing. Never finish without submitting.",
 		"",
 		"### Completion criteria (mandatory):",
-		"- Do not finish without calling `create-pull-request-review`.",
+		"- Do not finish without calling either `create-pull-request-review` (when you have findings) or `create-pull-request-comment` (when you have none).",
 		"- If the PR contains Angular-specific or Cumulocity-specific changes, confirm you verified the relevant patterns with Angular MCP or Codex MCP before finalizing.",
 		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, confirm you queried Codex MCP before finalizing.",
-		"- If there are issues, include inline comments with concrete fixes and reference the docs where possible.",
-		"- If there are no significant issues, still submit a concise review body stating the code looks good.",
+		"- If there are findings, submit a review with inline comments containing concrete fixes and reference the docs where possible.",
+		"- If there are no findings, post a comment. Do not submit an empty review.",
 		"- Only include findings you have verified — drop speculative or unconfirmed comments.",
 		"- Confirm you completed the open-comment cross-check (step 5) and dropped any findings already covered by open, unresolved review comments.",
 		"- Mention the user from EVENT-LEVEL INSTRUCTIONS so they are notified.",
@@ -39456,10 +39459,38 @@ const getPullRequestFileContentTool = defineTool({
 		return tool.error(`Failed to load PR file content: ${message}`);
 	}
 });
+const createPullRequestCommentTool = defineTool({
+	name: "create-pull-request-comment",
+	description: "Post a simple comment on the pull request. Use this instead of create-pull-request-review when you have no inline review findings to submit — for example when the diff is clean or all issues are already covered by open review comments.",
+	title: "Create Pull Request Comment",
+	schema: pipe(object({ body: pipe(string(), description("The comment body. Briefly explain why no review was submitted (e.g. no issues found, all issues already covered by open comments). Do not wrap the value in quotation marks.")) }), description("Payload for posting a simple PR comment without a formal review."))
+}, async ({ body }) => {
+	try {
+		const octokit = await getOctokit();
+		const runtimeContext = getClank8yRuntimeContext();
+		const pullRequest = getActivePullRequestContext();
+		const commentBody = buildClank8yCommentBody(normalizeToolString(body), { workflowRunUrl: runtimeContext.runInfo?.url ?? null });
+		const result = await octokit.rest.issues.createComment({
+			owner: pullRequest.owner,
+			repo: pullRequest.repo,
+			issue_number: pullRequest.number,
+			body: commentBody
+		});
+		return tool.text(encode({
+			success: true,
+			comment_id: result.data.id,
+			url: result.data.html_url
+		}));
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return tool.error(`Failed to create pull request comment: ${message}`);
+	}
+});
 const githubMcpTools = [
 	setPullRequestContextTool,
 	preparePullRequestReviewTool,
 	createPullRequestReviewTool,
+	createPullRequestCommentTool,
 	getPullRequestFileContentTool
 ];
 mcp.tools(githubMcpTools);
