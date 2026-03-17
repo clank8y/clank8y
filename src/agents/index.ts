@@ -109,6 +109,9 @@ async function getClank8y(options: Clank8yAgentOptions): Promise<{ agent: Clank8
 export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
   const { agent, profile } = await getClank8y(options)
 
+  await resetClank8yArtifacts()
+  consola.success('Reset .clank8y artifacts directory.')
+
   const {
     mcp,
     getSelection,
@@ -144,9 +147,6 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     '',
     options.promptContext,
   ])
-
-  await resetClank8yArtifacts()
-  consola.success('Reset .clank8y artifacts directory.')
 
   // agent should have different function here for execution so that we can dynamically do pre and post steps more easily per mode
   await agent.run({
