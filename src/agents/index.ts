@@ -1,10 +1,9 @@
 import { defu } from 'defu'
 import { logAgentMessage } from '../logging'
-import { buildModeSelectionPrompt, buildPrompt } from '../prompts'
 import type { DeepOptional } from '../types'
 import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
-import type { LocalHTTPMCPServer } from '../mcp'
-import { selectModeMCP } from '../mcp/selectMode'
+import type { Clank8yMCPServers, LocalHTTPMCPServer } from '../mcp'
+import { getModeRuntime, getSelectModeRuntime } from '../modes'
 import { githubCopilotAgent } from './copilot'
 import { resetClank8yArtifacts } from '../utils/artifacts'
 import consola from 'consola'
@@ -66,6 +65,7 @@ export type Clank8yAgentOptions = DeepOptional<Omit<Clank8yAgentConfiguration, '
 export interface Clank8yRunInput {
   mode: Clank8yMode
   prompt: string
+  mcps: Clank8yMCPServers
 }
 
 export interface SelectModeOptions {
@@ -115,12 +115,13 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
   const {
     mcp,
     getSelection,
-  } = selectModeMCP()
+    prompt: selectModePrompt,
+  } = getSelectModeRuntime(options.promptContext)
 
   await mcp.start()
 
   await agent.selectMode({
-    prompt: buildModeSelectionPrompt(options.promptContext),
+    prompt: selectModePrompt,
     mcp,
   })
 
@@ -132,7 +133,7 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     throw new Error('Mode selection failed: the model did not provide a valid clank8y mode selection.')
   }
 
-  const prompt = buildPrompt(selection.mode, options.promptContext)
+  const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext)
 
   logAgentMessage({
     agent: agent.name,
@@ -148,10 +149,12 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     options.promptContext,
   ])
 
-  // agent should have different function here for execution so that we can dynamically do pre and post steps more easily per mode
+  // TODO: refactor to pass in mcps depending on the mode so that the different agent runners "mostly" run the same (maybe internal differnt tools etc but real logic via prompts and mcp servers are given per mode)
+
   await agent.run({
     mode: selection.mode,
     prompt,
+    mcps,
   })
 
   await agent.cleanup?.()

@@ -1,7 +1,3 @@
-import { angularMCP } from './angular'
-import { codexMCP } from './codex'
-import { githubMCP } from './github'
-
 // ─── Base interface ────────────────────────────────────────────────────────────
 
 export interface MCPServer {
@@ -52,6 +48,8 @@ export interface LocalStdioMCPServer extends MCPServer {
 
 export type Clank8yMCPServer = LocalHTTPMCPServer | RemoteHTTPMCPServer | LocalStdioMCPServer
 
+export type Clank8yMCPServers = Record<string, Clank8yMCPServer>
+
 // ─── Discriminated start results ──────────────────────────────────────────────
 
 export interface HTTPStartResult {
@@ -94,14 +92,4 @@ export async function startAll<T extends MCPServerMap>(servers: T): Promise<MCPS
 
 export async function stopAll(servers: MCPServerMap): Promise<void> {
   await Promise.all(Object.values(servers).map((s) => s.stop()))
-}
-
-// ─── Server registry ──────────────────────────────────────────────────────────
-
-export function mcpServers() {
-  return {
-    github: githubMCP(),
-    codex: codexMCP(),
-    angular: angularMCP(),
-  }
 }

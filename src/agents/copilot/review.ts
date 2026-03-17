@@ -1,7 +1,8 @@
 import { consola } from 'consola'
 import type { UsageTotals } from '../../logging'
 import { logAgentMessage, logUsageSummary } from '../../logging'
-import { mcpServers, startAll, stopAll } from '../../mcp'
+import type { Clank8yMCPServers } from '../../mcp'
+import { startAll, stopAll } from '../../mcp'
 import { toCopilotMCPServersConfig } from '../../mcp/adapters/copilot'
 import { copilotPermissionHandler, getCopilotClient } from './client'
 import type { Clank8yProfile } from '..'
@@ -27,7 +28,7 @@ export const COPILOT_REVIEW_EXCLUDED_TOOLS = [
   // 'rg',
 ]
 
-export async function runCopilotReview(prompt: string, profile: Clank8yProfile): Promise<void> {
+export async function runCopilotReview(prompt: string, profile: Clank8yProfile, mcps: Clank8yMCPServers): Promise<void> {
   const client = await getCopilotClient()
 
   const thoughtStarts = new Map<string, number>()
@@ -39,7 +40,7 @@ export async function runCopilotReview(prompt: string, profile: Clank8yProfile):
     cost: 0,
   }
 
-  const servers = mcpServers()
+  const servers = mcps
   const startResults = await startAll(servers)
 
   try {

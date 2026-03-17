@@ -1,16 +1,19 @@
 import type { Clank8yMode } from '../modeSelection'
-import { buildReviewModePrompt } from './review'
+import type { Clank8yMCPServers } from '../mcp'
+import { getReviewModeRuntime } from './review'
+import { getSelectModeRuntime } from './selectMode'
 
-export interface Clank8yModeDefinition {
-  buildPrompt: (promptContext: string) => string
+export interface Clank8yModeRuntime {
+  prompt: string
+  mcps: Clank8yMCPServers
 }
 
-export function getModeDefinition(mode: Clank8yMode): Clank8yModeDefinition {
+export { getSelectModeRuntime }
+
+export function getModeRuntime(mode: Clank8yMode, promptContext: string): Clank8yModeRuntime {
   switch (mode) {
     case 'Review':
-      return {
-        buildPrompt: buildReviewModePrompt,
-      }
+      return getReviewModeRuntime(promptContext)
     default:
       throw new Error(`Unsupported clank8y mode: ${mode satisfies never}`)
   }

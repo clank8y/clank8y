@@ -1,14 +1,19 @@
-import type { LocalHTTPMCPServer } from '.'
-import { FastResponse, serve } from 'srvx'
-import { HttpTransport } from '@tmcp/transport-http'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
+import { HttpTransport } from '@tmcp/transport-http'
+import { FastResponse, serve } from 'srvx'
 import { McpServer } from 'tmcp'
 import { defineTool } from 'tmcp/tool'
 import { tool } from 'tmcp/utils'
-import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME, MODE_SELECTION_TOOL_TITLE, clank8yModeSelectionSchema } from '../modeSelection'
-import type { Clank8yModeSelection } from '../modeSelection'
+import type { LocalHTTPMCPServer } from '../../../mcp'
+import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME, MODE_SELECTION_TOOL_TITLE, clank8yModeSelectionSchema } from '../../../modeSelection'
+import type { Clank8yModeSelection } from '../../../modeSelection'
 
-export function selectModeMCP(): { mcp: LocalHTTPMCPServer, getSelection: () => Clank8yModeSelection | null } {
+export interface SelectModeMCPRuntime {
+  mcp: LocalHTTPMCPServer
+  getSelection: () => Clank8yModeSelection | null
+}
+
+export function createSelectModeMCPRuntime(): SelectModeMCPRuntime {
   let selection: Clank8yModeSelection | null = null
 
   const mcp = new McpServer({
@@ -56,32 +61,30 @@ export function selectModeMCP(): { mcp: LocalHTTPMCPServer, getSelection: () => 
 
   let status: LocalHTTPMCPServer['status'] = { state: 'stopped' }
 
-  const localMcp: LocalHTTPMCPServer = {
-    serverType: 'http',
-    allowedTools: [MODE_SELECTION_TOOL_NAME],
-    get status() {
-      return status
-    },
-    start: async () => {
-      await server.serve()
-      const { url } = await server.ready()
-      if (!url) {
-        await server.close(true)
-        throw new Error('Failed to start select mode MCP server')
-      }
-
-      const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
-      status = { state: 'running', url: actualUrl }
-      return { url: actualUrl, toolNames: [MODE_SELECTION_TOOL_NAME] }
-    },
-    stop: async () => {
-      await server.close(true)
-      status = { state: 'stopped' }
-    },
-  }
-
   return {
-    mcp: localMcp,
+    mcp: {
+      serverType: 'http',
+      allowedTools: [MODE_SELECTION_TOOL_NAME],
+      get status() {
+        return status
+      },
+      start: async () => {
+        await server.serve()
+        const { url } = await server.ready()
+        if (!url) {
+          await server.close(true)
+          throw new Error('Failed to start select mode MCP server')
+        }
+
+        const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
+        status = { state: 'running', url: actualUrl }
+        return { url: actualUrl, toolNames: [MODE_SELECTION_TOOL_NAME] }
+      },
+      stop: async () => {
+        await server.close(true)
+        status = { state: 'stopped' }
+      },
+    },
     getSelection: () => selection,
   }
 }

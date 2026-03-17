@@ -1,7 +1,14 @@
 import {
   KNOWLEDGE_VERIFICATION,
   PERSONA,
-} from './base'
+} from '../basePrompts'
+import {
+  CREATE_PULL_REQUEST_COMMENT_TOOL_NAME,
+  CREATE_PULL_REQUEST_REVIEW_TOOL_NAME,
+  GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME,
+  PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME,
+  SET_PULL_REQUEST_CONTEXT_TOOL_NAME,
+} from './mcps/github'
 
 const REVIEW_SCOPE = [
   '## Review scope',
@@ -98,10 +105,10 @@ const REVIEW_WORKFLOW = [
   '',
   '### Step-by-step:',
   '',
-  '1) **Set PR context** via the GitHub MCP tool `set-pull-request-context` using the `repository` (in `owner/repo` form) and `pr_number` from EVENT-LEVEL INSTRUCTIONS.',
+  `1) **Set PR context** via the GitHub MCP tool \`${SET_PULL_REQUEST_CONTEXT_TOOL_NAME}\` using the \`repository\` (in \`owner/repo\` form) and \`pr_number\` from EVENT-LEVEL INSTRUCTIONS.`,
   '   - Do not call any other GitHub MCP tool before this.',
   '',
-  '2) **Prepare review** via `prepare-pull-request-review` (single entrypoint).',
+  `2) **Prepare review** via \`${PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (single entrypoint).`,
   '   - This returns PR metadata, file summary, a `diff.path`, and a separate `previousReviews.path` artifact with previous review bodies and inline comment history.',
   '',
   '3) **Review iteratively** — move back and forth between diff inspection, branch context, and documentation verification.',
@@ -117,7 +124,7 @@ const REVIEW_WORKFLOW = [
   '      - Treat open (unresolved) review comments as active — do not resubmit a finding that an existing open comment already covers.',
   '',
   '   b) **Use branch file content only when the diff is not enough:**',
-  '      - Call `get-pull-request-file-content` when you need surrounding code, implementation details, or data flow that is not visible in the diff.',
+  `      - Call \`${GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME}\` when you need surrounding code, implementation details, or data flow that is not visible in the diff.`,
   '      - Prefer targeted reads of specific changed files over broad full-file reads.',
   '',
   '   c) **Verify best practice when something looks questionable or unfamiliar:**',
@@ -151,12 +158,12 @@ const REVIEW_WORKFLOW = [
   '   This step is not optional. If you skip it, your review will contain duplicate noise that degrades trust.',
   '',
   '6) **Submit results:**',
-  '   - **If you have inline findings** → call `create-pull-request-review` with your comments and a short summary body.',
-  '   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call `create-pull-request-comment` instead. Briefly explain why no review was submitted (e.g. "No new issues found — all previous feedback is still open and covers the current diff.").',
+  `   - **If you have inline findings** → call \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` with your comments and a short summary body.`,
+  `   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` instead. Briefly explain why no review was submitted (e.g. "No new issues found — all previous feedback is still open and covers the current diff.").`,
   '   You must call exactly one of these two tools before finishing. Never finish without submitting.',
   '',
   '### Completion criteria (mandatory):',
-  '- Do not finish without calling either `create-pull-request-review` (when you have findings) or `create-pull-request-comment` (when you have none).',
+  `- Do not finish without calling either \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (when you have findings) or \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` (when you have none).`,
   '- If the PR contains Angular-specific or Cumulocity-specific changes, confirm you verified the relevant patterns with Angular MCP or Codex MCP before finalizing.',
   '- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, confirm you queried Codex MCP before finalizing.',
   '- If there are findings, submit a review with inline comments containing concrete fixes and reference the docs where possible.',
