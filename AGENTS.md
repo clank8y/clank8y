@@ -9,7 +9,7 @@
 ```
 src/
 ├── index.ts            # Main action entrypoint
-├── setup.ts            # Action inputs + PR context assembly
+├── setup.ts            # Action inputs + runtime context (PR context in modes/review/context.ts)
 ├── formatters/         # Reusable pure formatting helpers shared across MCPs
 ├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
 │   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
