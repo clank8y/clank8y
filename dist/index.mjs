@@ -20,7 +20,7 @@ import { WriteStream } from "node:tty";
 import nodeHTTPS from "node:https";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import f from "node:readline";
+import c from "node:readline";
 import { existsSync as existsSync$1 } from "node:fs";
 import { spawn } from "node:child_process";
 import { createRequire as createRequire$1 } from "module";
@@ -33362,7 +33362,7 @@ function G$2(t, u, F) {
 `);
 }
 function k$1(t, u) {
-	if (typeof t == "string") return c$1.aliases.get(t) === u;
+	if (typeof t == "string") return c$2.aliases.get(t) === u;
 	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
 	return false;
 }
@@ -33427,7 +33427,7 @@ async function prompt(message, opts = {}) {
 	}).then(handleCancel);
 	throw new Error(`Unknown prompt type: ${opts.type}`);
 }
-var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$1, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
+var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$2, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
 var init_prompt = __esmMin((() => {
 	;
 	;
@@ -33586,7 +33586,7 @@ var init_prompt = __esmMin((() => {
 		}
 		return e;
 	};
-	c$1 = {
+	c$2 = {
 		actions: new Set([
 			"up",
 			"down",
@@ -33651,13 +33651,13 @@ var init_prompt = __esmMin((() => {
 				const e = new WriteStream(0);
 				e._write = (s, i, D) => {
 					this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
-				}, this.input.pipe(e), this.rl = f.createInterface({
+				}, this.input.pipe(e), this.rl = c.createInterface({
 					input: this.input,
 					output: e,
 					tabSize: 2,
 					prompt: "",
 					escapeCodeTimeout: 50
-				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
+				}), c.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
 				}), this.once("cancel", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$2);
@@ -33665,7 +33665,7 @@ var init_prompt = __esmMin((() => {
 			});
 		}
 		onKeypress(u, F) {
-			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
+			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$2.aliases.has(F.name) && this.emit("cursor", c$2.aliases.get(F.name)), c$2.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
 				if (this.opts.validate) {
 					const e = this.opts.validate(this.value);
 					e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
@@ -33987,7 +33987,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		const e = i(true);
 		return Object.keys(e);
 	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
 	["APPVEYOR"],
 	[
 		"AWS_AMPLIFY",
@@ -34079,7 +34079,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 	]
 ];
 function b$1() {
-	if (globalThis.process?.env) for (const e of f$2) {
+	if (globalThis.process?.env) for (const e of f$1) {
 		const s = e[1] || e[0];
 		if (globalThis.process?.env[s]) return {
 			name: e[0].toLowerCase(),
@@ -34111,14 +34111,14 @@ new Proxy(y$1, { get(e, s) {
 	if (s in e) return e[s];
 	if (s in _$1) return _$1[s];
 } });
-const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
+const c$1 = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
 	[S$1, "netlify"],
 	[u$1, "edge-light"],
 	[N$1, "workerd"],
 	[L, "fastly"],
 	[D$1, "deno"],
 	[O$1, "bun"],
-	[c, "node"]
+	[c$1, "node"]
 ];
 function G$1() {
 	const e = F$1.find((s) => s[0]);
@@ -38774,12 +38774,12 @@ stderr: ${stderrOutput}`));
 var l = Object.create;
 var u = Object.defineProperty;
 var d = Object.getOwnPropertyDescriptor;
-var f$1 = Object.getOwnPropertyNames;
+var f = Object.getOwnPropertyNames;
 var p = Object.getPrototypeOf;
 var m = Object.prototype.hasOwnProperty;
 var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
 var g = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f(t), a = 0, o = i.length, s; a < o; a++) {
 		s = i[a];
 		if (!m.call(e, s) && s !== n) u(e, s, {
 			get: ((e) => t[e]).bind(null, s),
@@ -39308,7 +39308,7 @@ var G = class {
 		if (this._streamErr) t.push(this._streamErr);
 		if (this._streamOut) t.push(this._streamOut);
 		const n = w(t);
-		const r = f.createInterface({ input: n });
+		const r = c.createInterface({ input: n });
 		for await (const e of r) yield e.toString();
 		await this._processClosed;
 		e.removeAllListeners();
