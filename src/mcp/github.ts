@@ -802,10 +802,52 @@ const getPullRequestFileContentTool = defineTool({
   }
 })
 
+const createPullRequestCommentTool = defineTool({
+  name: 'create-pull-request-comment',
+  description: 'Post a simple comment on the pull request. Use this instead of create-pull-request-review when you have no inline review findings to submit — for example when the diff is clean or all issues are already covered by open review comments.',
+  title: 'Create Pull Request Comment',
+  schema: v.pipe(
+    v.object({
+      body: v.pipe(
+        v.string(),
+        v.description('The comment body. Briefly explain why no review was submitted (e.g. no issues found, all issues already covered by open comments). Do not wrap the value in quotation marks.'),
+      ),
+    }),
+    v.description('Payload for posting a simple PR comment without a formal review.'),
+  ),
+}, async ({ body }) => {
+  try {
+    const octokit = await getOctokit()
+    const runtimeContext = getClank8yRuntimeContext()
+    const pullRequest = getActivePullRequestContext()
+    const commentBody = buildClank8yCommentBody(
+      normalizeToolString(body),
+      { workflowRunUrl: runtimeContext.runInfo?.url ?? null },
+    )
+
+    const result = await octokit.rest.issues.createComment({
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      issue_number: pullRequest.number,
+      body: commentBody,
+    })
+
+    return tool.text(encode({
+      success: true,
+      comment_id: result.data.id,
+      url: result.data.html_url,
+    }))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return tool.error(`Failed to create pull request comment: ${message}`)
+  }
+})
+
 export const githubMcpTools = [
   setPullRequestContextTool,
   preparePullRequestReviewTool,
   createPullRequestReviewTool,
+  createPullRequestCommentTool,
   getPullRequestFileContentTool,
 ]
 
