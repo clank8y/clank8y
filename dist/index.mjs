@@ -20453,7 +20453,8 @@ const BASE_REVIEW_PROMPT = [
 		"   a) **Start from the diff artifact:**",
 		"      - Read `.clank8y/diff.txt` first and follow the TOC to inspect the changed areas selectively.",
 		"      - Use the diff to decide where to spend review time. Do not blindly read full files first.",
-		"      - Read `.clank8y/review-comments.md` early to understand what feedback was already given on this PR and avoid repeating unchanged feedback.",
+		"      - Read `.clank8y/review-comments.md` early to understand what feedback was already given on this PR.",
+		"      - Treat open (unresolved) review comments as active — do not resubmit a finding that an existing open comment already covers.",
 		"",
 		"   b) **Use branch file content only when the diff is not enough:**",
 		"      - Call `get-pull-request-file-content` when you need surrounding code, implementation details, or data flow that is not visible in the diff.",
@@ -20479,7 +20480,9 @@ const BASE_REVIEW_PROMPT = [
 		"   - Medium: missing platform utilities, non-idiomatic patterns, design system violations.",
 		"   - Low: style nitpicks, minor improvements, suggestions for better alternatives.",
 		"   - If you see a pattern once and it may repeat elsewhere, search for it in the diff before finalizing.",
-		"   - Do not repeat prior feedback already present in `.clank8y/review-comments.md` unless the new diff introduces a fresh instance that still needs to be called out.",
+		"   - Do not resubmit findings that already have an open (unresolved) review comment — the existing comment is still active and visible to the author.",
+		"   - Only re-raise a previously commented issue if the new diff introduces a distinct, fresh instance of the same problem in different code.",
+		"   - If a prior comment was resolved but the underlying issue persists in the new diff, it is appropriate to flag it again.",
 		"",
 		"5) **Submit the review** via `create-pull-request-review`.",
 		"",
@@ -39720,6 +39723,8 @@ async function getClank8y(options) {
 }
 async function executeClank8yAgent(options) {
 	const { agent, profile } = await getClank8y(options);
+	await resetClank8yArtifacts();
+	consola.success("Reset .clank8y artifacts directory.");
 	const { mcp, getSelection } = selectModeMCP();
 	await mcp.start();
 	await agent.selectMode({
@@ -39742,8 +39747,6 @@ async function executeClank8yAgent(options) {
 		"",
 		options.promptContext
 	]);
-	await resetClank8yArtifacts();
-	consola.success("Reset .clank8y artifacts directory.");
 	await agent.run({
 		mode: selection.mode,
 		prompt
