@@ -149,8 +149,6 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     options.promptContext,
   ])
 
-  // TODO: refactor to pass in mcps depending on the mode so that the different agent runners "mostly" run the same (maybe internal differnt tools etc but real logic via prompts and mcp servers are given per mode)
-
   await agent.run({
     mode: selection.mode,
     prompt,
