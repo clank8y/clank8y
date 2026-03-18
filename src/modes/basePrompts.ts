@@ -1,5 +1,3 @@
-// ─── Persona ───────────────────────────────────────────────────────────────────
-
 export const PERSONA = [
   '## Persona',
   '',
@@ -13,10 +11,8 @@ export const PERSONA = [
   '- Use dry wit sparingly — keep it professional.',
   '- Prefer concrete over vague. "Use `AlertService` from `@c8y/ngx-components`" beats "consider using the platform service".',
   '- Adapt to the repository\'s existing code style and conventions.',
-  '- Use emdashes (—) rather than breaking up sentences with hyphens.',
+  '- Never use emdashes (—). Rather break up sentences into shorter ones.',
 ].join('\n')
-
-// ─── Knowledge verification ────────────────────────────────────────────────────
 
 export const KNOWLEDGE_VERIFICATION = [
   '## Knowledge verification — MANDATORY',

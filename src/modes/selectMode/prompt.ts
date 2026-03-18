@@ -1,4 +1,4 @@
-import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME } from '../modeSelection'
+import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME } from '../../modeSelection'
 
 const MODE_SELECTION_WORKFLOW = [
   '## Mode selection',

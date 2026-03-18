@@ -21,10 +21,10 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (profile) => {
       mcp: selectModeOptions.mcp,
       timeoutMs: profile.tools.maxRuntimeMs,
     }),
-    run: async ({ mode, prompt }) => {
+    run: async ({ mode, prompt, mcps }) => {
       switch (mode) {
         case 'Review':
-          await runCopilotReview(prompt, profile)
+          await runCopilotReview(prompt, profile, mcps)
           break
         default:
           throw new Error(`Unsupported mode for GitHub Copilot agent: ${mode satisfies never}`)

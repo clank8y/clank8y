@@ -19,11 +19,11 @@ import * as tty from "node:tty";
 import { WriteStream } from "node:tty";
 import nodeHTTPS from "node:https";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
-import f from "node:readline";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import c from "node:readline";
 import { existsSync as existsSync$1 } from "node:fs";
 import { spawn } from "node:child_process";
 import { createRequire as createRequire$1 } from "module";
-import { mkdir, rm, writeFile } from "node:fs/promises";
 
 //#region \0rolldown/runtime.js
 var __create = Object.create;
@@ -20288,264 +20288,3746 @@ function logAgentMessage(info, lines) {
 }
 
 //#endregion
-//#region src/prompts/base.ts
-const PERSONA = [
-	"## Persona",
-	"",
-	"You are **clank8y** — a precise, sharp-eyed code review bot for Cumulocity IoT frontend applications.",
-	"You speak with mechanical confidence: direct, concise, no fluff.",
-	"You are friendly but never waste words — every sentence carries signal.",
-	"When you are unsure, you say so honestly instead of guessing.",
-	"",
-	"Tone guidelines:",
-	"- Be constructive, not condescending. You are a teammate, not a gatekeeper.",
-	"- Use dry wit sparingly — keep it professional.",
-	"- Prefer concrete over vague. \"Use `AlertService` from `@c8y/ngx-components`\" beats \"consider using the platform service\".",
-	"- Adapt to the repository's existing code style and conventions.",
-	"- Use emdashes (—) rather than breaking up sentences with hyphens."
-].join("\n");
-const KNOWLEDGE_VERIFICATION = [
-	"## Knowledge verification — MANDATORY",
-	"",
-	"Angular evolves rapidly. Your training data may be stale.",
-	"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
-	"",
-	"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
-	"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
-	"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
-	"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
-	"",
-	"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
-	"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
-	"- Use `get_best_practices` to verify the pattern you are evaluating.",
-	"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
-	"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
-	"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
-	"",
-	"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
-	"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
-	"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
-	"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
-	"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
-	"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
-	"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
-	"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
-	"- Specifically check whether the platform already provides what the developer is building or importing.",
-	"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
-	"",
-	"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
-].join("\n");
-
-//#endregion
-//#region src/prompts/review.ts
-const BASE_REVIEW_PROMPT = [
-	PERSONA,
-	"",
-	KNOWLEDGE_VERIFICATION,
-	"",
-	[
-		"## Review scope",
-		"",
-		"You specialize in **Cumulocity IoT frontend application code** — Angular apps built with `@c8y/ngx-components`.",
-		"This is your primary domain. Generic backend, infrastructure, or non-frontend code is out of scope unless it has critical issues.",
-		"",
-		"Primary focus (Cumulocity + Angular):",
-		"- Correct usage of `@c8y/ngx-components` components, services, pipes, directives, and hooks.",
-		"- Angular best practices: modern control flow (`@if`, `@for`, `@switch`), signals, standalone components, proper dependency injection, `input()`, `output()`, `model()`.",
-		"- **Signals over RxJS** — this is a high-priority review axis (see dedicated section below).",
-		"- Cumulocity design system compliance: CSS utility classes, design tokens, color tokens — flag hardcoded colors/spacing when platform tokens exist.",
-		"- Use of platform-provided services over custom implementations (e.g. `AlertService`, `AppStateService`, `RealtimeService`, `UserPreferencesService`).",
-		"- Proper usage of extension points and hooks (function `hook*` providers, widget hooks, navigator hooks, action bar hooks).",
-		"- Internationalization: `translate` pipe/directive usage, missing translation keys.",
-		"- Widget development patterns: `HOOK_COMPONENTS`, widget config, `OnBeforeSave` lifecycle.",
-		"- Microfrontend patterns and module federation considerations.",
-		"",
-		"Secondary focus (always flag regardless of scope):",
-		"- Critical security issues (XSS, injection, credential leaks, unsafe `innerHTML`).",
-		"- Obvious performance anti-patterns (subscriptions never unsubscribed, missing `trackBy`, heavy computation in templates).",
-		"- Dead code, unused imports, or copy-paste errors that clearly slipped through.",
-		"- **Lodash usage** that can be replaced with native JS/TS or `es-toolkit` (see dedicated section below)."
-	].join("\n"),
-	"",
-	[
-		"## Signals over RxJS — high priority",
-		"",
-		"Angular signals (`signal`, `computed`, `effect`, `input`, `output`, `model`, `linkedSignal`) are the modern reactive primitive.",
-		"Review RxJS usage with extra scrutiny — many patterns that previously required RxJS are now cleaner with signals.",
-		"",
-		"### What to flag:",
-		"- **Decorator-based `@Input()` and `@Output()`** → replace with signal-based `input()`, `input.required()`, `output()`, and `model()` functions.",
-		"- Overly complex RxJS chains (`.pipe(switchMap, map, tap, catchError, ...)`) that could be a simple `computed()` or `effect()`.",
-		"- `BehaviorSubject` used as local component state → replace with `signal()`.",
-		"- `combineLatest` + `map` just to derive a value from other observables → replace with `computed()` when inputs are signals.",
-		"- Manual `.subscribe()` for side effects that could be an `effect()`.",
-		"- `@Input() set ...` + manual change tracking → replace with `input()` signal + `computed()`.",
-		"- `@Output() event = new EventEmitter()` → replace with `output()` or `output<Type>()`.",
-		"- `async` pipe in templates chaining multiple observables → consider signal-based approach with `toSignal()`.",
-		"- `takeUntil(destroy$)` / `takeUntilDestroyed()` patterns that exist only because of manual subscriptions — signals eliminate the need.",
-		"",
-		"### What NOT to flag:",
-		"- RxJS for genuinely stream-based scenarios (WebSocket, real-time event streams, complex debounce/throttle/retry/backoff).",
-		"- `HttpClient` calls — these return observables and that is fine; no need to wrap in `toSignal()` unless it simplifies the component.",
-		"- Cumulocity services that return observables by design (e.g. `RealtimeService`) — these are stream-native.",
-		"",
-		"### How to suggest replacements:",
-		"- Show a concrete before/after: the RxJS version and the equivalent signals version.",
-		"- Reference Angular's interop utilities: `toSignal()`, `toObservable()`, `outputToObservable()`, `outputFromObservable()`.",
-		"- Point the developer to the **Angular MCP** docs: \"Check `search_documentation` or `get_best_practices` on Angular signals and RxJS interop for migration guidance.\"",
-		"- When in doubt, verify via Angular MCP that the signal utility you are recommending actually exists before suggesting it.",
-		"",
-		"### Severity:",
-		"- **Medium** for unnecessarily complex RxJS that has a straightforward signal equivalent.",
-		"- **Low** for cases where RxJS works but signals would be marginally cleaner.",
-		"- Do NOT flag as **High** — working RxJS is not a bug, just a modernization opportunity."
-	].join("\n"),
-	"",
-	[
-		"## Lodash & utility libraries",
-		"",
-		"Lodash (`lodash`) is widely used in the Cumulocity ecosystem but is often unnecessary in modern TypeScript.",
-		"",
-		"### Review strategy:",
-		"- For each lodash import, ask: does native JS/TS cover this?",
-		"- Many lodash functions have direct native equivalents: `_.map` → `Array.map`, `_.filter` → `Array.filter`, `_.find` → `Array.find`, `_.includes` → `Array.includes` / `Set.has`, `_.keys` → `Object.keys`, `_.values` → `Object.values`, `_.assign` → spread / `Object.assign`, `_.isNil` → `== null`, `_.isEmpty` on arrays → `.length === 0`.",
-		"- `_.get(obj, \"a.b.c\")` → optional chaining `obj?.a?.b?.c`.",
-		"- `_.cloneDeep` → `structuredClone()` (available in all modern runtimes).",
-		"- `_.uniq` → `[...new Set(arr)]`. `_.uniqBy` → slightly more involved but still doable natively.",
-		"",
-		"### When lodash IS justified:",
-		"- Complex deep operations with no clean native equivalent (e.g. `_.merge` with deep recursive merge, `_.debounce` with specific options — though Angular has `rxjs/debounceTime` or signal-based alternatives).",
-		"- Performance-critical hot paths where lodash's optimized implementation matters (rare in UI code).",
-		"",
-		"### When suggesting removal:",
-		"- If the import is for a trivially replaceable function, suggest the native equivalent inline.",
-		"- If the project uses many lodash utilities and native replacement is clean, recommend [`es-toolkit`](https://es-toolkit.dev/) as a modern, tree-shakeable, zero-dependency alternative.",
-		"- `es-toolkit` provides lodash-compatible APIs with smaller bundle size and better TypeScript types.",
-		"",
-		"### Severity:",
-		"- **Medium** for lodash usage that has a trivial native equivalent (unnecessary dependency weight).",
-		"- **Low** for lodash usage that works but could be replaced with `es-toolkit` or a slightly more verbose native approach.",
-		"- Do not flag lodash usage that genuinely has no clean native/es-toolkit equivalent."
-	].join("\n"),
-	"",
-	[
-		"## Required workflow",
-		"",
-		"You have three MCP servers available:",
-		"- **GitHub MCP** — PR metadata, diffs, file content, and review submission.",
-		"- **Angular MCP** — Angular documentation, best practices, and code examples.",
-		"- **Codex MCP** — Cumulocity Web SDK documentation: components, services, design system, hooks, pipes, CSS utilities.",
-		"",
-		"### Step-by-step:",
-		"",
-		"1) **Set PR context** via the GitHub MCP tool `set-pull-request-context` using the `repository` (in `owner/repo` form) and `pr_number` from EVENT-LEVEL INSTRUCTIONS.",
-		"   - Do not call any other GitHub MCP tool before this.",
-		"",
-		"2) **Prepare review** via `prepare-pull-request-review` (single entrypoint).",
-		"   - This returns PR metadata, file summary, a `diff.path`, and a separate `previousReviews.path` artifact with previous review bodies and inline comment history.",
-		"",
-		"3) **Review iteratively** — move back and forth between diff inspection, branch context, and documentation verification.",
-		"   Good review is not \"research first, then review\". It is an alternating loop: inspect change, inspect code context, verify best practice, note findings, continue.",
-		"   For Angular or Cumulocity-specific code, documentation verification is not optional.",
-		"   In this codebase, Cumulocity-specific review should lean on Codex MCP heavily.",
-		"   If the change touches `@c8y/*` imports, Cumulocity styles, or platform concepts, Codex MCP should usually be one of your next tool calls.",
-		"",
-		"   a) **Start from the diff artifact:**",
-		"      - Read `.clank8y/diff.txt` first and follow the TOC to inspect the changed areas selectively.",
-		"      - Use the diff to decide where to spend review time. Do not blindly read full files first.",
-		"      - Read `.clank8y/review-comments.md` early to understand what feedback was already given on this PR.",
-		"      - Treat open (unresolved) review comments as active — do not resubmit a finding that an existing open comment already covers.",
-		"",
-		"   b) **Use branch file content only when the diff is not enough:**",
-		"      - Call `get-pull-request-file-content` when you need surrounding code, implementation details, or data flow that is not visible in the diff.",
-		"      - Prefer targeted reads of specific changed files over broad full-file reads.",
-		"",
-		"   c) **Verify best practice when something looks questionable or unfamiliar:**",
-		"      - For Angular patterns, use `get_best_practices`, `find_examples`, and `search_documentation`.",
-		"      - For Cumulocity APIs, components, hooks, widgets, CSS utilities, and design tokens, use `query-codex` and `get-codex-documents`.",
-		"      - If both Angular and Codex could apply, start with Codex for Cumulocity-specific code and then use Angular MCP for Angular-only concerns.",
-		"      - Research is part of the review loop. Do it as soon as the diff or file context raises a framework- or platform-specific question.",
-		"      - If the changed code is Angular-specific or Cumulocity-specific and you did not verify it with the relevant MCP, assume your review is incomplete.",
-		"      - If the changed code touches `@c8y/*` or another Cumulocity concept and you did not use Codex MCP, assume your review is incomplete.",
-		"      - If the changed code touches Cumulocity styles, CSS classes, tokens, or visual components and you did not use Codex MCP, assume your review is incomplete.",
-		"",
-		"   d) **Expand suspected repeated mistakes from the diff artifact:**",
-		"      - After spotting a plausible issue, use `rg` or `grep` against `.clank8y/diff.txt` to search for repeated occurrences of the same API, token, selector, utility, or code pattern.",
-		"      - Prefer targeted searches with distinctive strings taken from the suspicious diff hunk rather than broad exploratory searches.",
-		"      - Use the results to decide which additional diff sections and changed files deserve follow-up review.",
-		"      - If `rg` or `grep` suggests the issue repeats, confirm each repeated case in diff context or changed-file context before including it in the review.",
-		"",
-		"4) **Formulate findings** with severity (high / medium / low):",
-		"   - High: security issues, incorrect API usage that would cause runtime errors, broken patterns.",
-		"   - Medium: missing platform utilities, non-idiomatic patterns, design system violations.",
-		"   - Low: style nitpicks, minor improvements, suggestions for better alternatives.",
-		"   - If you see a pattern once and it may repeat elsewhere, search for it in the diff before finalizing.",
-		"",
-		"5) **Cross-check against open review comments (mandatory gate)**",
-		"   Before submitting, compare every finding you intend to include against the open (unresolved) comments in `.clank8y/review-comments.md`.",
-		"   For each finding, ask: does an open, unresolved comment already exist that covers this exact issue on the same code location?",
-		"   - **Yes, open comment exists → drop the finding.** The existing comment is still active and visible to the author. Resubmitting it creates noise.",
-		"   - **Open comment exists but the new diff introduces a distinct, fresh instance in different code → keep the finding.** Reference the prior comment for context.",
-		"   - **Prior comment was resolved but the underlying issue persists in the new diff → keep the finding.** It is appropriate to re-raise resolved issues when the code still has the problem.",
-		"   - **No prior comment → keep the finding.**",
-		"   This step is not optional. If you skip it, your review will contain duplicate noise that degrades trust.",
-		"",
-		"6) **Submit results:**",
-		"   - **If you have inline findings** → call `create-pull-request-review` with your comments and a short summary body.",
-		"   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call `create-pull-request-comment` instead. Briefly explain why no review was submitted (e.g. \"No new issues found — all previous feedback is still open and covers the current diff.\").",
-		"   You must call exactly one of these two tools before finishing. Never finish without submitting.",
-		"",
-		"### Completion criteria (mandatory):",
-		"- Do not finish without calling either `create-pull-request-review` (when you have findings) or `create-pull-request-comment` (when you have none).",
-		"- If the PR contains Angular-specific or Cumulocity-specific changes, confirm you verified the relevant patterns with Angular MCP or Codex MCP before finalizing.",
-		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, confirm you queried Codex MCP before finalizing.",
-		"- If there are findings, submit a review with inline comments containing concrete fixes and reference the docs where possible.",
-		"- If there are no findings, post a comment. Do not submit an empty review.",
-		"- Only include findings you have verified — drop speculative or unconfirmed comments.",
-		"- Confirm you completed the open-comment cross-check (step 5) and dropped any findings already covered by open, unresolved review comments.",
-		"- Mention the user from EVENT-LEVEL INSTRUCTIONS so they are notified.",
-		"",
-		"### Tooling constraints:",
-		"- Use GitHub MCP tools for PR operations.",
-		"- Use Angular MCP to verify Angular patterns — do not rely solely on your training data.",
-		"- Use Codex MCP to verify Cumulocity patterns — the platform has a rich component/service library.",
-		"- Native file tools are allowed only so you can read `.clank8y/diff.txt` and `.clank8y/review-comments.md`.",
-		"- Use `rg` or `grep` as the only local search tool, and only to search `.clank8y/diff.txt` or `.clank8y/review-comments.md` for patterns you are already investigating.",
-		"- Do not edit repository source files in review mode.",
-		"- Avoid unrelated shell or local file exploration tools for review logic.",
-		"- Do not use broad workspace search. Keep searches narrowly scoped to `.clank8y/diff.txt`, `.clank8y/review-comments.md`, and to patterns you are already investigating."
-	].join("\n")
-].join("\n");
-function buildReviewPrompt(promptContext) {
-	const normalized = promptContext.trim();
-	if (!normalized) return BASE_REVIEW_PROMPT;
-	return [
-		BASE_REVIEW_PROMPT,
-		"",
-		normalized
-	].join("\n");
+//#region node_modules/.pnpm/@octokit+plugin-paginate-graphql@6.0.0_@octokit+core@7.0.6/node_modules/@octokit/plugin-paginate-graphql/dist-bundle/index.js
+var generateMessage = (path, cursorValue) => `The cursor at "${path.join(",")}" did not change its value "${cursorValue}" after a page transition. Please make sure your that your query is set up correctly.`;
+var MissingCursorChange = class extends Error {
+	constructor(pageInfo, cursorValue) {
+		super(generateMessage(pageInfo.pathInQuery, cursorValue));
+		this.pageInfo = pageInfo;
+		this.cursorValue = cursorValue;
+		if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
+	}
+	name = "MissingCursorChangeError";
+};
+var MissingPageInfo = class extends Error {
+	constructor(response) {
+		super(`No pageInfo property found in response. Please make sure to specify the pageInfo in your query. Response-Data: ${JSON.stringify(response, null, 2)}`);
+		this.response = response;
+		if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
+	}
+	name = "MissingPageInfo";
+};
+var isObject = (value) => Object.prototype.toString.call(value) === "[object Object]";
+function findPaginatedResourcePath(responseData) {
+	const paginatedResourcePath = deepFindPathToProperty(responseData, "pageInfo");
+	if (paginatedResourcePath.length === 0) throw new MissingPageInfo(responseData);
+	return paginatedResourcePath;
+}
+var deepFindPathToProperty = (object, searchProp, path = []) => {
+	for (const key of Object.keys(object)) {
+		const currentPath = [...path, key];
+		const currentValue = object[key];
+		if (isObject(currentValue)) {
+			if (currentValue.hasOwnProperty(searchProp)) return currentPath;
+			const result = deepFindPathToProperty(currentValue, searchProp, currentPath);
+			if (result.length > 0) return result;
+		}
+	}
+	return [];
+};
+var get$1 = (object, path) => {
+	return path.reduce((current, nextProperty) => current[nextProperty], object);
+};
+var set$1 = (object, path, mutator) => {
+	const lastProperty = path[path.length - 1];
+	const parent = get$1(object, [...path].slice(0, -1));
+	if (typeof mutator === "function") parent[lastProperty] = mutator(parent[lastProperty]);
+	else parent[lastProperty] = mutator;
+};
+var extractPageInfos = (responseData) => {
+	const pageInfoPath = findPaginatedResourcePath(responseData);
+	return {
+		pathInQuery: pageInfoPath,
+		pageInfo: get$1(responseData, [...pageInfoPath, "pageInfo"])
+	};
+};
+var isForwardSearch = (givenPageInfo) => {
+	return givenPageInfo.hasOwnProperty("hasNextPage");
+};
+var getCursorFrom = (pageInfo) => isForwardSearch(pageInfo) ? pageInfo.endCursor : pageInfo.startCursor;
+var hasAnotherPage = (pageInfo) => isForwardSearch(pageInfo) ? pageInfo.hasNextPage : pageInfo.hasPreviousPage;
+var createIterator = (octokit) => {
+	return (query, initialParameters = {}) => {
+		let nextPageExists = true;
+		let parameters = { ...initialParameters };
+		return { [Symbol.asyncIterator]: () => ({ async next() {
+			if (!nextPageExists) return {
+				done: true,
+				value: {}
+			};
+			const response = await octokit.graphql(query, parameters);
+			const pageInfoContext = extractPageInfos(response);
+			const nextCursorValue = getCursorFrom(pageInfoContext.pageInfo);
+			nextPageExists = hasAnotherPage(pageInfoContext.pageInfo);
+			if (nextPageExists && nextCursorValue === parameters.cursor) throw new MissingCursorChange(pageInfoContext, nextCursorValue);
+			parameters = {
+				...parameters,
+				cursor: nextCursorValue
+			};
+			return {
+				done: false,
+				value: response
+			};
+		} }) };
+	};
+};
+var mergeResponses = (response1, response2) => {
+	if (Object.keys(response1).length === 0) return Object.assign(response1, response2);
+	const path = findPaginatedResourcePath(response1);
+	const nodesPath = [...path, "nodes"];
+	const newNodes = get$1(response2, nodesPath);
+	if (newNodes) set$1(response1, nodesPath, (values) => {
+		return [...values, ...newNodes];
+	});
+	const edgesPath = [...path, "edges"];
+	const newEdges = get$1(response2, edgesPath);
+	if (newEdges) set$1(response1, edgesPath, (values) => {
+		return [...values, ...newEdges];
+	});
+	const pageInfoPath = [...path, "pageInfo"];
+	set$1(response1, pageInfoPath, get$1(response2, pageInfoPath));
+	return response1;
+};
+var createPaginate = (octokit) => {
+	const iterator = createIterator(octokit);
+	return async (query, initialParameters = {}) => {
+		let mergedResponse = {};
+		for await (const response of iterator(query, initialParameters)) mergedResponse = mergeResponses(mergedResponse, response);
+		return mergedResponse;
+	};
+};
+function paginateGraphQL(octokit) {
+	return { graphql: Object.assign(octokit.graphql, { paginate: Object.assign(createPaginate(octokit), { iterator: createIterator(octokit) }) }) };
 }
 
 //#endregion
-//#region src/modes/review.ts
-function buildReviewModePrompt(promptContext) {
-	return buildReviewPrompt(promptContext);
+//#region node_modules/.pnpm/bottleneck@2.19.5/node_modules/bottleneck/light.js
+var require_light = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	/**
+	* This file contains the Bottleneck library (MIT), compiled to ES2017, and without Clustering support.
+	* https://github.com/SGrondin/bottleneck
+	*/
+	(function(global, factory) {
+		typeof exports === "object" && typeof module !== "undefined" ? module.exports = factory() : typeof define === "function" && define.amd ? define(factory) : global.Bottleneck = factory();
+	})(exports, (function() {
+		"use strict";
+		var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
+		function getCjsExportFromNamespace(n) {
+			return n && n["default"] || n;
+		}
+		var load = function(received, defaults, onto = {}) {
+			var k, ref, v;
+			for (k in defaults) {
+				v = defaults[k];
+				onto[k] = (ref = received[k]) != null ? ref : v;
+			}
+			return onto;
+		};
+		var overwrite = function(received, defaults, onto = {}) {
+			var k, v;
+			for (k in received) {
+				v = received[k];
+				if (defaults[k] !== void 0) onto[k] = v;
+			}
+			return onto;
+		};
+		var parser = {
+			load,
+			overwrite
+		};
+		var DLList_1 = class DLList {
+			constructor(incr, decr) {
+				this.incr = incr;
+				this.decr = decr;
+				this._first = null;
+				this._last = null;
+				this.length = 0;
+			}
+			push(value) {
+				var node;
+				this.length++;
+				if (typeof this.incr === "function") this.incr();
+				node = {
+					value,
+					prev: this._last,
+					next: null
+				};
+				if (this._last != null) {
+					this._last.next = node;
+					this._last = node;
+				} else this._first = this._last = node;
+			}
+			shift() {
+				var value;
+				if (this._first == null) return;
+				else {
+					this.length--;
+					if (typeof this.decr === "function") this.decr();
+				}
+				value = this._first.value;
+				if ((this._first = this._first.next) != null) this._first.prev = null;
+				else this._last = null;
+				return value;
+			}
+			first() {
+				if (this._first != null) return this._first.value;
+			}
+			getArray() {
+				var node = this._first, ref, results = [];
+				while (node != null) results.push((ref = node, node = node.next, ref.value));
+				return results;
+			}
+			forEachShift(cb) {
+				var node = this.shift();
+				while (node != null) cb(node), node = this.shift();
+			}
+			debug() {
+				var node = this._first, ref, ref1, ref2, results = [];
+				while (node != null) results.push((ref = node, node = node.next, {
+					value: ref.value,
+					prev: (ref1 = ref.prev) != null ? ref1.value : void 0,
+					next: (ref2 = ref.next) != null ? ref2.value : void 0
+				}));
+				return results;
+			}
+		};
+		var Events_1 = class Events {
+			constructor(instance) {
+				this.instance = instance;
+				this._events = {};
+				if (this.instance.on != null || this.instance.once != null || this.instance.removeAllListeners != null) throw new Error("An Emitter already exists for this object");
+				this.instance.on = (name, cb) => {
+					return this._addListener(name, "many", cb);
+				};
+				this.instance.once = (name, cb) => {
+					return this._addListener(name, "once", cb);
+				};
+				this.instance.removeAllListeners = (name = null) => {
+					if (name != null) return delete this._events[name];
+					else return this._events = {};
+				};
+			}
+			_addListener(name, status, cb) {
+				var base;
+				if ((base = this._events)[name] == null) base[name] = [];
+				this._events[name].push({
+					cb,
+					status
+				});
+				return this.instance;
+			}
+			listenerCount(name) {
+				if (this._events[name] != null) return this._events[name].length;
+				else return 0;
+			}
+			async trigger(name, ...args) {
+				var e, promises;
+				try {
+					if (name !== "debug") this.trigger("debug", `Event triggered: ${name}`, args);
+					if (this._events[name] == null) return;
+					this._events[name] = this._events[name].filter(function(listener) {
+						return listener.status !== "none";
+					});
+					promises = this._events[name].map(async (listener) => {
+						var e, returned;
+						if (listener.status === "none") return;
+						if (listener.status === "once") listener.status = "none";
+						try {
+							returned = typeof listener.cb === "function" ? listener.cb(...args) : void 0;
+							if (typeof (returned != null ? returned.then : void 0) === "function") return await returned;
+							else return returned;
+						} catch (error) {
+							e = error;
+							this.trigger("error", e);
+							return null;
+						}
+					});
+					return (await Promise.all(promises)).find(function(x) {
+						return x != null;
+					});
+				} catch (error) {
+					e = error;
+					this.trigger("error", e);
+					return null;
+				}
+			}
+		};
+		var DLList$1 = DLList_1, Events$1 = Events_1;
+		var Queues_1 = class Queues {
+			constructor(num_priorities) {
+				this.Events = new Events$1(this);
+				this._length = 0;
+				this._lists = (function() {
+					var j, ref, results = [];
+					for (j = 1, ref = num_priorities; 1 <= ref ? j <= ref : j >= ref; 1 <= ref ? ++j : --j) results.push(new DLList$1((() => {
+						return this.incr();
+					}), (() => {
+						return this.decr();
+					})));
+					return results;
+				}).call(this);
+			}
+			incr() {
+				if (this._length++ === 0) return this.Events.trigger("leftzero");
+			}
+			decr() {
+				if (--this._length === 0) return this.Events.trigger("zero");
+			}
+			push(job) {
+				return this._lists[job.options.priority].push(job);
+			}
+			queued(priority) {
+				if (priority != null) return this._lists[priority].length;
+				else return this._length;
+			}
+			shiftAll(fn) {
+				return this._lists.forEach(function(list) {
+					return list.forEachShift(fn);
+				});
+			}
+			getFirst(arr = this._lists) {
+				var j, len, list;
+				for (j = 0, len = arr.length; j < len; j++) {
+					list = arr[j];
+					if (list.length > 0) return list;
+				}
+				return [];
+			}
+			shiftLastFrom(priority) {
+				return this.getFirst(this._lists.slice(priority).reverse()).shift();
+			}
+		};
+		var BottleneckError_1 = class BottleneckError extends Error {};
+		var BottleneckError$1, DEFAULT_PRIORITY, Job, NUM_PRIORITIES = 10, parser$1;
+		DEFAULT_PRIORITY = 5;
+		parser$1 = parser;
+		BottleneckError$1 = BottleneckError_1;
+		Job = class Job {
+			constructor(task, args, options, jobDefaults, rejectOnDrop, Events, _states, Promise) {
+				this.task = task;
+				this.args = args;
+				this.rejectOnDrop = rejectOnDrop;
+				this.Events = Events;
+				this._states = _states;
+				this.Promise = Promise;
+				this.options = parser$1.load(options, jobDefaults);
+				this.options.priority = this._sanitizePriority(this.options.priority);
+				if (this.options.id === jobDefaults.id) this.options.id = `${this.options.id}-${this._randomIndex()}`;
+				this.promise = new this.Promise((_resolve, _reject) => {
+					this._resolve = _resolve;
+					this._reject = _reject;
+				});
+				this.retryCount = 0;
+			}
+			_sanitizePriority(priority) {
+				var sProperty = ~~priority !== priority ? DEFAULT_PRIORITY : priority;
+				if (sProperty < 0) return 0;
+				else if (sProperty > NUM_PRIORITIES - 1) return NUM_PRIORITIES - 1;
+				else return sProperty;
+			}
+			_randomIndex() {
+				return Math.random().toString(36).slice(2);
+			}
+			doDrop({ error, message = "This job has been dropped by Bottleneck" } = {}) {
+				if (this._states.remove(this.options.id)) {
+					if (this.rejectOnDrop) this._reject(error != null ? error : new BottleneckError$1(message));
+					this.Events.trigger("dropped", {
+						args: this.args,
+						options: this.options,
+						task: this.task,
+						promise: this.promise
+					});
+					return true;
+				} else return false;
+			}
+			_assertStatus(expected) {
+				var status = this._states.jobStatus(this.options.id);
+				if (!(status === expected || expected === "DONE" && status === null)) throw new BottleneckError$1(`Invalid job status ${status}, expected ${expected}. Please open an issue at https://github.com/SGrondin/bottleneck/issues`);
+			}
+			doReceive() {
+				this._states.start(this.options.id);
+				return this.Events.trigger("received", {
+					args: this.args,
+					options: this.options
+				});
+			}
+			doQueue(reachedHWM, blocked) {
+				this._assertStatus("RECEIVED");
+				this._states.next(this.options.id);
+				return this.Events.trigger("queued", {
+					args: this.args,
+					options: this.options,
+					reachedHWM,
+					blocked
+				});
+			}
+			doRun() {
+				if (this.retryCount === 0) {
+					this._assertStatus("QUEUED");
+					this._states.next(this.options.id);
+				} else this._assertStatus("EXECUTING");
+				return this.Events.trigger("scheduled", {
+					args: this.args,
+					options: this.options
+				});
+			}
+			async doExecute(chained, clearGlobalState, run, free) {
+				var error, eventInfo, passed;
+				if (this.retryCount === 0) {
+					this._assertStatus("RUNNING");
+					this._states.next(this.options.id);
+				} else this._assertStatus("EXECUTING");
+				eventInfo = {
+					args: this.args,
+					options: this.options,
+					retryCount: this.retryCount
+				};
+				this.Events.trigger("executing", eventInfo);
+				try {
+					passed = await (chained != null ? chained.schedule(this.options, this.task, ...this.args) : this.task(...this.args));
+					if (clearGlobalState()) {
+						this.doDone(eventInfo);
+						await free(this.options, eventInfo);
+						this._assertStatus("DONE");
+						return this._resolve(passed);
+					}
+				} catch (error1) {
+					error = error1;
+					return this._onFailure(error, eventInfo, clearGlobalState, run, free);
+				}
+			}
+			doExpire(clearGlobalState, run, free) {
+				var error, eventInfo;
+				if (this._states.jobStatus(this.options.id === "RUNNING")) this._states.next(this.options.id);
+				this._assertStatus("EXECUTING");
+				eventInfo = {
+					args: this.args,
+					options: this.options,
+					retryCount: this.retryCount
+				};
+				error = new BottleneckError$1(`This job timed out after ${this.options.expiration} ms.`);
+				return this._onFailure(error, eventInfo, clearGlobalState, run, free);
+			}
+			async _onFailure(error, eventInfo, clearGlobalState, run, free) {
+				var retry, retryAfter;
+				if (clearGlobalState()) {
+					retry = await this.Events.trigger("failed", error, eventInfo);
+					if (retry != null) {
+						retryAfter = ~~retry;
+						this.Events.trigger("retry", `Retrying ${this.options.id} after ${retryAfter} ms`, eventInfo);
+						this.retryCount++;
+						return run(retryAfter);
+					} else {
+						this.doDone(eventInfo);
+						await free(this.options, eventInfo);
+						this._assertStatus("DONE");
+						return this._reject(error);
+					}
+				}
+			}
+			doDone(eventInfo) {
+				this._assertStatus("EXECUTING");
+				this._states.next(this.options.id);
+				return this.Events.trigger("done", eventInfo);
+			}
+		};
+		var Job_1 = Job;
+		var BottleneckError$2, LocalDatastore, parser$2 = parser;
+		BottleneckError$2 = BottleneckError_1;
+		LocalDatastore = class LocalDatastore {
+			constructor(instance, storeOptions, storeInstanceOptions) {
+				this.instance = instance;
+				this.storeOptions = storeOptions;
+				this.clientId = this.instance._randomIndex();
+				parser$2.load(storeInstanceOptions, storeInstanceOptions, this);
+				this._nextRequest = this._lastReservoirRefresh = this._lastReservoirIncrease = Date.now();
+				this._running = 0;
+				this._done = 0;
+				this._unblockTime = 0;
+				this.ready = this.Promise.resolve();
+				this.clients = {};
+				this._startHeartbeat();
+			}
+			_startHeartbeat() {
+				var base;
+				if (this.heartbeat == null && (this.storeOptions.reservoirRefreshInterval != null && this.storeOptions.reservoirRefreshAmount != null || this.storeOptions.reservoirIncreaseInterval != null && this.storeOptions.reservoirIncreaseAmount != null)) return typeof (base = this.heartbeat = setInterval(() => {
+					var amount, incr, maximum, now = Date.now(), reservoir;
+					if (this.storeOptions.reservoirRefreshInterval != null && now >= this._lastReservoirRefresh + this.storeOptions.reservoirRefreshInterval) {
+						this._lastReservoirRefresh = now;
+						this.storeOptions.reservoir = this.storeOptions.reservoirRefreshAmount;
+						this.instance._drainAll(this.computeCapacity());
+					}
+					if (this.storeOptions.reservoirIncreaseInterval != null && now >= this._lastReservoirIncrease + this.storeOptions.reservoirIncreaseInterval) {
+						({reservoirIncreaseAmount: amount, reservoirIncreaseMaximum: maximum, reservoir} = this.storeOptions);
+						this._lastReservoirIncrease = now;
+						incr = maximum != null ? Math.min(amount, maximum - reservoir) : amount;
+						if (incr > 0) {
+							this.storeOptions.reservoir += incr;
+							return this.instance._drainAll(this.computeCapacity());
+						}
+					}
+				}, this.heartbeatInterval)).unref === "function" ? base.unref() : void 0;
+				else return clearInterval(this.heartbeat);
+			}
+			async __publish__(message) {
+				await this.yieldLoop();
+				return this.instance.Events.trigger("message", message.toString());
+			}
+			async __disconnect__(flush) {
+				await this.yieldLoop();
+				clearInterval(this.heartbeat);
+				return this.Promise.resolve();
+			}
+			yieldLoop(t = 0) {
+				return new this.Promise(function(resolve, reject) {
+					return setTimeout(resolve, t);
+				});
+			}
+			computePenalty() {
+				var ref;
+				return (ref = this.storeOptions.penalty) != null ? ref : 15 * this.storeOptions.minTime || 5e3;
+			}
+			async __updateSettings__(options) {
+				await this.yieldLoop();
+				parser$2.overwrite(options, options, this.storeOptions);
+				this._startHeartbeat();
+				this.instance._drainAll(this.computeCapacity());
+				return true;
+			}
+			async __running__() {
+				await this.yieldLoop();
+				return this._running;
+			}
+			async __queued__() {
+				await this.yieldLoop();
+				return this.instance.queued();
+			}
+			async __done__() {
+				await this.yieldLoop();
+				return this._done;
+			}
+			async __groupCheck__(time) {
+				await this.yieldLoop();
+				return this._nextRequest + this.timeout < time;
+			}
+			computeCapacity() {
+				var maxConcurrent, reservoir;
+				({maxConcurrent, reservoir} = this.storeOptions);
+				if (maxConcurrent != null && reservoir != null) return Math.min(maxConcurrent - this._running, reservoir);
+				else if (maxConcurrent != null) return maxConcurrent - this._running;
+				else if (reservoir != null) return reservoir;
+				else return null;
+			}
+			conditionsCheck(weight) {
+				var capacity = this.computeCapacity();
+				return capacity == null || weight <= capacity;
+			}
+			async __incrementReservoir__(incr) {
+				var reservoir;
+				await this.yieldLoop();
+				reservoir = this.storeOptions.reservoir += incr;
+				this.instance._drainAll(this.computeCapacity());
+				return reservoir;
+			}
+			async __currentReservoir__() {
+				await this.yieldLoop();
+				return this.storeOptions.reservoir;
+			}
+			isBlocked(now) {
+				return this._unblockTime >= now;
+			}
+			check(weight, now) {
+				return this.conditionsCheck(weight) && this._nextRequest - now <= 0;
+			}
+			async __check__(weight) {
+				var now;
+				await this.yieldLoop();
+				now = Date.now();
+				return this.check(weight, now);
+			}
+			async __register__(index, weight, expiration) {
+				var now, wait;
+				await this.yieldLoop();
+				now = Date.now();
+				if (this.conditionsCheck(weight)) {
+					this._running += weight;
+					if (this.storeOptions.reservoir != null) this.storeOptions.reservoir -= weight;
+					wait = Math.max(this._nextRequest - now, 0);
+					this._nextRequest = now + wait + this.storeOptions.minTime;
+					return {
+						success: true,
+						wait,
+						reservoir: this.storeOptions.reservoir
+					};
+				} else return { success: false };
+			}
+			strategyIsBlock() {
+				return this.storeOptions.strategy === 3;
+			}
+			async __submit__(queueLength, weight) {
+				var blocked, now, reachedHWM;
+				await this.yieldLoop();
+				if (this.storeOptions.maxConcurrent != null && weight > this.storeOptions.maxConcurrent) throw new BottleneckError$2(`Impossible to add a job having a weight of ${weight} to a limiter having a maxConcurrent setting of ${this.storeOptions.maxConcurrent}`);
+				now = Date.now();
+				reachedHWM = this.storeOptions.highWater != null && queueLength === this.storeOptions.highWater && !this.check(weight, now);
+				blocked = this.strategyIsBlock() && (reachedHWM || this.isBlocked(now));
+				if (blocked) {
+					this._unblockTime = now + this.computePenalty();
+					this._nextRequest = this._unblockTime + this.storeOptions.minTime;
+					this.instance._dropAllQueued();
+				}
+				return {
+					reachedHWM,
+					blocked,
+					strategy: this.storeOptions.strategy
+				};
+			}
+			async __free__(index, weight) {
+				await this.yieldLoop();
+				this._running -= weight;
+				this._done += weight;
+				this.instance._drainAll(this.computeCapacity());
+				return { running: this._running };
+			}
+		};
+		var LocalDatastore_1 = LocalDatastore;
+		var BottleneckError$3 = BottleneckError_1;
+		var States_1 = class States {
+			constructor(status1) {
+				this.status = status1;
+				this._jobs = {};
+				this.counts = this.status.map(function() {
+					return 0;
+				});
+			}
+			next(id) {
+				var current = this._jobs[id], next = current + 1;
+				if (current != null && next < this.status.length) {
+					this.counts[current]--;
+					this.counts[next]++;
+					return this._jobs[id]++;
+				} else if (current != null) {
+					this.counts[current]--;
+					return delete this._jobs[id];
+				}
+			}
+			start(id) {
+				var initial = 0;
+				this._jobs[id] = initial;
+				return this.counts[initial]++;
+			}
+			remove(id) {
+				var current = this._jobs[id];
+				if (current != null) {
+					this.counts[current]--;
+					delete this._jobs[id];
+				}
+				return current != null;
+			}
+			jobStatus(id) {
+				var ref;
+				return (ref = this.status[this._jobs[id]]) != null ? ref : null;
+			}
+			statusJobs(status) {
+				var k, pos, ref, results, v;
+				if (status != null) {
+					pos = this.status.indexOf(status);
+					if (pos < 0) throw new BottleneckError$3(`status must be one of ${this.status.join(", ")}`);
+					ref = this._jobs;
+					results = [];
+					for (k in ref) {
+						v = ref[k];
+						if (v === pos) results.push(k);
+					}
+					return results;
+				} else return Object.keys(this._jobs);
+			}
+			statusCounts() {
+				return this.counts.reduce(((acc, v, i) => {
+					acc[this.status[i]] = v;
+					return acc;
+				}), {});
+			}
+		};
+		var DLList$2 = DLList_1;
+		var Sync_1 = class Sync {
+			constructor(name, Promise) {
+				this.schedule = this.schedule.bind(this);
+				this.name = name;
+				this.Promise = Promise;
+				this._running = 0;
+				this._queue = new DLList$2();
+			}
+			isEmpty() {
+				return this._queue.length === 0;
+			}
+			async _tryToRun() {
+				var args, cb, error, reject, resolve, returned, task;
+				if (this._running < 1 && this._queue.length > 0) {
+					this._running++;
+					({task, args, resolve, reject} = this._queue.shift());
+					cb = await (async function() {
+						try {
+							returned = await task(...args);
+							return function() {
+								return resolve(returned);
+							};
+						} catch (error1) {
+							error = error1;
+							return function() {
+								return reject(error);
+							};
+						}
+					})();
+					this._running--;
+					this._tryToRun();
+					return cb();
+				}
+			}
+			schedule(task, ...args) {
+				var promise, reject, resolve = reject = null;
+				promise = new this.Promise(function(_resolve, _reject) {
+					resolve = _resolve;
+					return reject = _reject;
+				});
+				this._queue.push({
+					task,
+					args,
+					resolve,
+					reject
+				});
+				this._tryToRun();
+				return promise;
+			}
+		};
+		var version = "2.19.5";
+		var version$1 = { version };
+		var version$2 = /* @__PURE__ */ Object.freeze({
+			version,
+			default: version$1
+		});
+		var require$$2 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
+		var require$$3 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
+		var require$$4 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
+		var Events$2, Group, IORedisConnection$1, RedisConnection$1, Scripts$1, parser$3 = parser;
+		Events$2 = Events_1;
+		RedisConnection$1 = require$$2;
+		IORedisConnection$1 = require$$3;
+		Scripts$1 = require$$4;
+		Group = (function() {
+			class Group {
+				constructor(limiterOptions = {}) {
+					this.deleteKey = this.deleteKey.bind(this);
+					this.limiterOptions = limiterOptions;
+					parser$3.load(this.limiterOptions, this.defaults, this);
+					this.Events = new Events$2(this);
+					this.instances = {};
+					this.Bottleneck = Bottleneck_1;
+					this._startAutoCleanup();
+					this.sharedConnection = this.connection != null;
+					if (this.connection == null) {
+						if (this.limiterOptions.datastore === "redis") this.connection = new RedisConnection$1(Object.assign({}, this.limiterOptions, { Events: this.Events }));
+						else if (this.limiterOptions.datastore === "ioredis") this.connection = new IORedisConnection$1(Object.assign({}, this.limiterOptions, { Events: this.Events }));
+					}
+				}
+				key(key = "") {
+					var ref;
+					return (ref = this.instances[key]) != null ? ref : (() => {
+						var limiter = this.instances[key] = new this.Bottleneck(Object.assign(this.limiterOptions, {
+							id: `${this.id}-${key}`,
+							timeout: this.timeout,
+							connection: this.connection
+						}));
+						this.Events.trigger("created", limiter, key);
+						return limiter;
+					})();
+				}
+				async deleteKey(key = "") {
+					var deleted, instance = this.instances[key];
+					if (this.connection) deleted = await this.connection.__runCommand__(["del", ...Scripts$1.allKeys(`${this.id}-${key}`)]);
+					if (instance != null) {
+						delete this.instances[key];
+						await instance.disconnect();
+					}
+					return instance != null || deleted > 0;
+				}
+				limiters() {
+					var k, ref = this.instances, results = [], v;
+					for (k in ref) {
+						v = ref[k];
+						results.push({
+							key: k,
+							limiter: v
+						});
+					}
+					return results;
+				}
+				keys() {
+					return Object.keys(this.instances);
+				}
+				async clusterKeys() {
+					var cursor, end, found, i, k, keys, len, next, start;
+					if (this.connection == null) return this.Promise.resolve(this.keys());
+					keys = [];
+					cursor = null;
+					start = `b_${this.id}-`.length;
+					end = 9;
+					while (cursor !== 0) {
+						[next, found] = await this.connection.__runCommand__([
+							"scan",
+							cursor != null ? cursor : 0,
+							"match",
+							`b_${this.id}-*_settings`,
+							"count",
+							1e4
+						]);
+						cursor = ~~next;
+						for (i = 0, len = found.length; i < len; i++) {
+							k = found[i];
+							keys.push(k.slice(start, -end));
+						}
+					}
+					return keys;
+				}
+				_startAutoCleanup() {
+					var base;
+					clearInterval(this.interval);
+					return typeof (base = this.interval = setInterval(async () => {
+						var e, k, ref, results, time = Date.now(), v;
+						ref = this.instances;
+						results = [];
+						for (k in ref) {
+							v = ref[k];
+							try {
+								if (await v._store.__groupCheck__(time)) results.push(this.deleteKey(k));
+								else results.push(void 0);
+							} catch (error) {
+								e = error;
+								results.push(v.Events.trigger("error", e));
+							}
+						}
+						return results;
+					}, this.timeout / 2)).unref === "function" ? base.unref() : void 0;
+				}
+				updateSettings(options = {}) {
+					parser$3.overwrite(options, this.defaults, this);
+					parser$3.overwrite(options, options, this.limiterOptions);
+					if (options.timeout != null) return this._startAutoCleanup();
+				}
+				disconnect(flush = true) {
+					var ref;
+					if (!this.sharedConnection) return (ref = this.connection) != null ? ref.disconnect(flush) : void 0;
+				}
+			}
+			Group.prototype.defaults = {
+				timeout: 1e3 * 60 * 5,
+				connection: null,
+				Promise,
+				id: "group-key"
+			};
+			return Group;
+		}).call(commonjsGlobal);
+		var Group_1 = Group;
+		var Batcher, Events$3, parser$4 = parser;
+		Events$3 = Events_1;
+		Batcher = (function() {
+			class Batcher {
+				constructor(options = {}) {
+					this.options = options;
+					parser$4.load(this.options, this.defaults, this);
+					this.Events = new Events$3(this);
+					this._arr = [];
+					this._resetPromise();
+					this._lastFlush = Date.now();
+				}
+				_resetPromise() {
+					return this._promise = new this.Promise((res, rej) => {
+						return this._resolve = res;
+					});
+				}
+				_flush() {
+					clearTimeout(this._timeout);
+					this._lastFlush = Date.now();
+					this._resolve();
+					this.Events.trigger("batch", this._arr);
+					this._arr = [];
+					return this._resetPromise();
+				}
+				add(data) {
+					var ret;
+					this._arr.push(data);
+					ret = this._promise;
+					if (this._arr.length === this.maxSize) this._flush();
+					else if (this.maxTime != null && this._arr.length === 1) this._timeout = setTimeout(() => {
+						return this._flush();
+					}, this.maxTime);
+					return ret;
+				}
+			}
+			Batcher.prototype.defaults = {
+				maxTime: null,
+				maxSize: null,
+				Promise
+			};
+			return Batcher;
+		}).call(commonjsGlobal);
+		var Batcher_1 = Batcher;
+		var require$$4$1 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
+		var require$$8 = getCjsExportFromNamespace(version$2);
+		var Bottleneck, DEFAULT_PRIORITY$1, Events$4, Job$1, LocalDatastore$1, NUM_PRIORITIES$1, Queues$1, RedisDatastore$1, States$1, Sync$1, parser$5, splice = [].splice;
+		NUM_PRIORITIES$1 = 10;
+		DEFAULT_PRIORITY$1 = 5;
+		parser$5 = parser;
+		Queues$1 = Queues_1;
+		Job$1 = Job_1;
+		LocalDatastore$1 = LocalDatastore_1;
+		RedisDatastore$1 = require$$4$1;
+		Events$4 = Events_1;
+		States$1 = States_1;
+		Sync$1 = Sync_1;
+		Bottleneck = (function() {
+			class Bottleneck {
+				constructor(options = {}, ...invalid) {
+					var storeInstanceOptions, storeOptions;
+					this._addToQueue = this._addToQueue.bind(this);
+					this._validateOptions(options, invalid);
+					parser$5.load(options, this.instanceDefaults, this);
+					this._queues = new Queues$1(NUM_PRIORITIES$1);
+					this._scheduled = {};
+					this._states = new States$1([
+						"RECEIVED",
+						"QUEUED",
+						"RUNNING",
+						"EXECUTING"
+					].concat(this.trackDoneStatus ? ["DONE"] : []));
+					this._limiter = null;
+					this.Events = new Events$4(this);
+					this._submitLock = new Sync$1("submit", this.Promise);
+					this._registerLock = new Sync$1("register", this.Promise);
+					storeOptions = parser$5.load(options, this.storeDefaults, {});
+					this._store = (function() {
+						if (this.datastore === "redis" || this.datastore === "ioredis" || this.connection != null) {
+							storeInstanceOptions = parser$5.load(options, this.redisStoreDefaults, {});
+							return new RedisDatastore$1(this, storeOptions, storeInstanceOptions);
+						} else if (this.datastore === "local") {
+							storeInstanceOptions = parser$5.load(options, this.localStoreDefaults, {});
+							return new LocalDatastore$1(this, storeOptions, storeInstanceOptions);
+						} else throw new Bottleneck.prototype.BottleneckError(`Invalid datastore type: ${this.datastore}`);
+					}).call(this);
+					this._queues.on("leftzero", () => {
+						var ref;
+						return (ref = this._store.heartbeat) != null ? typeof ref.ref === "function" ? ref.ref() : void 0 : void 0;
+					});
+					this._queues.on("zero", () => {
+						var ref;
+						return (ref = this._store.heartbeat) != null ? typeof ref.unref === "function" ? ref.unref() : void 0 : void 0;
+					});
+				}
+				_validateOptions(options, invalid) {
+					if (!(options != null && typeof options === "object" && invalid.length === 0)) throw new Bottleneck.prototype.BottleneckError("Bottleneck v2 takes a single object argument. Refer to https://github.com/SGrondin/bottleneck#upgrading-to-v2 if you're upgrading from Bottleneck v1.");
+				}
+				ready() {
+					return this._store.ready;
+				}
+				clients() {
+					return this._store.clients;
+				}
+				channel() {
+					return `b_${this.id}`;
+				}
+				channel_client() {
+					return `b_${this.id}_${this._store.clientId}`;
+				}
+				publish(message) {
+					return this._store.__publish__(message);
+				}
+				disconnect(flush = true) {
+					return this._store.__disconnect__(flush);
+				}
+				chain(_limiter) {
+					this._limiter = _limiter;
+					return this;
+				}
+				queued(priority) {
+					return this._queues.queued(priority);
+				}
+				clusterQueued() {
+					return this._store.__queued__();
+				}
+				empty() {
+					return this.queued() === 0 && this._submitLock.isEmpty();
+				}
+				running() {
+					return this._store.__running__();
+				}
+				done() {
+					return this._store.__done__();
+				}
+				jobStatus(id) {
+					return this._states.jobStatus(id);
+				}
+				jobs(status) {
+					return this._states.statusJobs(status);
+				}
+				counts() {
+					return this._states.statusCounts();
+				}
+				_randomIndex() {
+					return Math.random().toString(36).slice(2);
+				}
+				check(weight = 1) {
+					return this._store.__check__(weight);
+				}
+				_clearGlobalState(index) {
+					if (this._scheduled[index] != null) {
+						clearTimeout(this._scheduled[index].expiration);
+						delete this._scheduled[index];
+						return true;
+					} else return false;
+				}
+				async _free(index, job, options, eventInfo) {
+					var e, running;
+					try {
+						({running} = await this._store.__free__(index, options.weight));
+						this.Events.trigger("debug", `Freed ${options.id}`, eventInfo);
+						if (running === 0 && this.empty()) return this.Events.trigger("idle");
+					} catch (error1) {
+						e = error1;
+						return this.Events.trigger("error", e);
+					}
+				}
+				_run(index, job, wait) {
+					var clearGlobalState, free, run;
+					job.doRun();
+					clearGlobalState = this._clearGlobalState.bind(this, index);
+					run = this._run.bind(this, index, job);
+					free = this._free.bind(this, index, job);
+					return this._scheduled[index] = {
+						timeout: setTimeout(() => {
+							return job.doExecute(this._limiter, clearGlobalState, run, free);
+						}, wait),
+						expiration: job.options.expiration != null ? setTimeout(function() {
+							return job.doExpire(clearGlobalState, run, free);
+						}, wait + job.options.expiration) : void 0,
+						job
+					};
+				}
+				_drainOne(capacity) {
+					return this._registerLock.schedule(() => {
+						var args, index, next, options, queue;
+						if (this.queued() === 0) return this.Promise.resolve(null);
+						queue = this._queues.getFirst();
+						({options, args} = next = queue.first());
+						if (capacity != null && options.weight > capacity) return this.Promise.resolve(null);
+						this.Events.trigger("debug", `Draining ${options.id}`, {
+							args,
+							options
+						});
+						index = this._randomIndex();
+						return this._store.__register__(index, options.weight, options.expiration).then(({ success, wait, reservoir }) => {
+							var empty;
+							this.Events.trigger("debug", `Drained ${options.id}`, {
+								success,
+								args,
+								options
+							});
+							if (success) {
+								queue.shift();
+								empty = this.empty();
+								if (empty) this.Events.trigger("empty");
+								if (reservoir === 0) this.Events.trigger("depleted", empty);
+								this._run(index, next, wait);
+								return this.Promise.resolve(options.weight);
+							} else return this.Promise.resolve(null);
+						});
+					});
+				}
+				_drainAll(capacity, total = 0) {
+					return this._drainOne(capacity).then((drained) => {
+						var newCapacity;
+						if (drained != null) {
+							newCapacity = capacity != null ? capacity - drained : capacity;
+							return this._drainAll(newCapacity, total + drained);
+						} else return this.Promise.resolve(total);
+					}).catch((e) => {
+						return this.Events.trigger("error", e);
+					});
+				}
+				_dropAllQueued(message) {
+					return this._queues.shiftAll(function(job) {
+						return job.doDrop({ message });
+					});
+				}
+				stop(options = {}) {
+					var done, waitForExecuting;
+					options = parser$5.load(options, this.stopDefaults);
+					waitForExecuting = (at) => {
+						var finished = () => {
+							var counts = this._states.counts;
+							return counts[0] + counts[1] + counts[2] + counts[3] === at;
+						};
+						return new this.Promise((resolve, reject) => {
+							if (finished()) return resolve();
+							else return this.on("done", () => {
+								if (finished()) {
+									this.removeAllListeners("done");
+									return resolve();
+								}
+							});
+						});
+					};
+					done = options.dropWaitingJobs ? (this._run = function(index, next) {
+						return next.doDrop({ message: options.dropErrorMessage });
+					}, this._drainOne = () => {
+						return this.Promise.resolve(null);
+					}, this._registerLock.schedule(() => {
+						return this._submitLock.schedule(() => {
+							var k, ref = this._scheduled, v;
+							for (k in ref) {
+								v = ref[k];
+								if (this.jobStatus(v.job.options.id) === "RUNNING") {
+									clearTimeout(v.timeout);
+									clearTimeout(v.expiration);
+									v.job.doDrop({ message: options.dropErrorMessage });
+								}
+							}
+							this._dropAllQueued(options.dropErrorMessage);
+							return waitForExecuting(0);
+						});
+					})) : this.schedule({
+						priority: NUM_PRIORITIES$1 - 1,
+						weight: 0
+					}, () => {
+						return waitForExecuting(1);
+					});
+					this._receive = function(job) {
+						return job._reject(new Bottleneck.prototype.BottleneckError(options.enqueueErrorMessage));
+					};
+					this.stop = () => {
+						return this.Promise.reject(new Bottleneck.prototype.BottleneckError("stop() has already been called"));
+					};
+					return done;
+				}
+				async _addToQueue(job) {
+					var args, blocked, error, options, reachedHWM, shifted, strategy;
+					({args, options} = job);
+					try {
+						({reachedHWM, blocked, strategy} = await this._store.__submit__(this.queued(), options.weight));
+					} catch (error1) {
+						error = error1;
+						this.Events.trigger("debug", `Could not queue ${options.id}`, {
+							args,
+							options,
+							error
+						});
+						job.doDrop({ error });
+						return false;
+					}
+					if (blocked) {
+						job.doDrop();
+						return true;
+					} else if (reachedHWM) {
+						shifted = strategy === Bottleneck.prototype.strategy.LEAK ? this._queues.shiftLastFrom(options.priority) : strategy === Bottleneck.prototype.strategy.OVERFLOW_PRIORITY ? this._queues.shiftLastFrom(options.priority + 1) : strategy === Bottleneck.prototype.strategy.OVERFLOW ? job : void 0;
+						if (shifted != null) shifted.doDrop();
+						if (shifted == null || strategy === Bottleneck.prototype.strategy.OVERFLOW) {
+							if (shifted == null) job.doDrop();
+							return reachedHWM;
+						}
+					}
+					job.doQueue(reachedHWM, blocked);
+					this._queues.push(job);
+					await this._drainAll();
+					return reachedHWM;
+				}
+				_receive(job) {
+					if (this._states.jobStatus(job.options.id) != null) {
+						job._reject(new Bottleneck.prototype.BottleneckError(`A job with the same id already exists (id=${job.options.id})`));
+						return false;
+					} else {
+						job.doReceive();
+						return this._submitLock.schedule(this._addToQueue, job);
+					}
+				}
+				submit(...args) {
+					var cb, fn, job, options, ref, ref1, task;
+					if (typeof args[0] === "function") {
+						ref = args, [fn, ...args] = ref, [cb] = splice.call(args, -1);
+						options = parser$5.load({}, this.jobDefaults);
+					} else {
+						ref1 = args, [options, fn, ...args] = ref1, [cb] = splice.call(args, -1);
+						options = parser$5.load(options, this.jobDefaults);
+					}
+					task = (...args) => {
+						return new this.Promise(function(resolve, reject) {
+							return fn(...args, function(...args) {
+								return (args[0] != null ? reject : resolve)(args);
+							});
+						});
+					};
+					job = new Job$1(task, args, options, this.jobDefaults, this.rejectOnDrop, this.Events, this._states, this.Promise);
+					job.promise.then(function(args) {
+						return typeof cb === "function" ? cb(...args) : void 0;
+					}).catch(function(args) {
+						if (Array.isArray(args)) return typeof cb === "function" ? cb(...args) : void 0;
+						else return typeof cb === "function" ? cb(args) : void 0;
+					});
+					return this._receive(job);
+				}
+				schedule(...args) {
+					var job, options, task;
+					if (typeof args[0] === "function") {
+						[task, ...args] = args;
+						options = {};
+					} else [options, task, ...args] = args;
+					job = new Job$1(task, args, options, this.jobDefaults, this.rejectOnDrop, this.Events, this._states, this.Promise);
+					this._receive(job);
+					return job.promise;
+				}
+				wrap(fn) {
+					var schedule = this.schedule.bind(this), wrapped = function(...args) {
+						return schedule(fn.bind(this), ...args);
+					};
+					wrapped.withOptions = function(options, ...args) {
+						return schedule(options, fn, ...args);
+					};
+					return wrapped;
+				}
+				async updateSettings(options = {}) {
+					await this._store.__updateSettings__(parser$5.overwrite(options, this.storeDefaults));
+					parser$5.overwrite(options, this.instanceDefaults, this);
+					return this;
+				}
+				currentReservoir() {
+					return this._store.__currentReservoir__();
+				}
+				incrementReservoir(incr = 0) {
+					return this._store.__incrementReservoir__(incr);
+				}
+			}
+			Bottleneck.default = Bottleneck;
+			Bottleneck.Events = Events$4;
+			Bottleneck.version = Bottleneck.prototype.version = require$$8.version;
+			Bottleneck.strategy = Bottleneck.prototype.strategy = {
+				LEAK: 1,
+				OVERFLOW: 2,
+				OVERFLOW_PRIORITY: 4,
+				BLOCK: 3
+			};
+			Bottleneck.BottleneckError = Bottleneck.prototype.BottleneckError = BottleneckError_1;
+			Bottleneck.Group = Bottleneck.prototype.Group = Group_1;
+			Bottleneck.RedisConnection = Bottleneck.prototype.RedisConnection = require$$2;
+			Bottleneck.IORedisConnection = Bottleneck.prototype.IORedisConnection = require$$3;
+			Bottleneck.Batcher = Bottleneck.prototype.Batcher = Batcher_1;
+			Bottleneck.prototype.jobDefaults = {
+				priority: DEFAULT_PRIORITY$1,
+				weight: 1,
+				expiration: null,
+				id: "<no-id>"
+			};
+			Bottleneck.prototype.storeDefaults = {
+				maxConcurrent: null,
+				minTime: 0,
+				highWater: null,
+				strategy: Bottleneck.prototype.strategy.LEAK,
+				penalty: null,
+				reservoir: null,
+				reservoirRefreshInterval: null,
+				reservoirRefreshAmount: null,
+				reservoirIncreaseInterval: null,
+				reservoirIncreaseAmount: null,
+				reservoirIncreaseMaximum: null
+			};
+			Bottleneck.prototype.localStoreDefaults = {
+				Promise,
+				timeout: null,
+				heartbeatInterval: 250
+			};
+			Bottleneck.prototype.redisStoreDefaults = {
+				Promise,
+				timeout: null,
+				heartbeatInterval: 5e3,
+				clientTimeout: 1e4,
+				Redis: null,
+				clientOptions: {},
+				clusterNodes: null,
+				clearDatastore: false,
+				connection: null
+			};
+			Bottleneck.prototype.instanceDefaults = {
+				datastore: "local",
+				connection: null,
+				id: "<no-id>",
+				rejectOnDrop: true,
+				trackDoneStatus: false,
+				Promise
+			};
+			Bottleneck.prototype.stopDefaults = {
+				enqueueErrorMessage: "This limiter has been stopped and cannot accept new jobs.",
+				dropWaitingJobs: true,
+				dropErrorMessage: "This limiter has been stopped."
+			};
+			return Bottleneck;
+		}).call(commonjsGlobal);
+		var Bottleneck_1 = Bottleneck;
+		return Bottleneck_1;
+	}));
+}));
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+plugin-retry@8.1.0_@octokit+core@7.0.6/node_modules/@octokit/plugin-retry/dist-bundle/index.js
+var import_light = /* @__PURE__ */ __toESM(require_light(), 1);
+var VERSION$9 = "0.0.0-development";
+function isRequestError(error) {
+	return error.request !== void 0;
+}
+async function errorRequest(state, octokit, error, options) {
+	if (!isRequestError(error) || !error?.request.request) throw error;
+	if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
+		const retries = options.request.retries != null ? options.request.retries : state.retries;
+		const retryAfter = Math.pow((options.request.retryCount || 0) + 1, 2);
+		throw octokit.retry.retryRequest(error, retries, retryAfter);
+	}
+	throw error;
+}
+async function wrapRequest$1(state, octokit, request, options) {
+	const limiter = new import_light.default();
+	limiter.on("failed", function(error, info) {
+		const maxRetries = ~~error.request.request?.retries;
+		const after = ~~error.request.request?.retryAfter;
+		options.request.retryCount = info.retryCount + 1;
+		if (maxRetries > info.retryCount) return after * state.retryAfterBaseValue;
+	});
+	return limiter.schedule(requestWithGraphqlErrorHandling.bind(null, state, octokit, request), options);
+}
+async function requestWithGraphqlErrorHandling(state, octokit, request, options) {
+	const response = await request(options);
+	if (response.data && response.data.errors && response.data.errors.length > 0 && /Something went wrong while executing your query/.test(response.data.errors[0].message)) return errorRequest(state, octokit, new RequestError(response.data.errors[0].message, 500, {
+		request: options,
+		response
+	}), options);
+	return response;
+}
+function retry(octokit, octokitOptions) {
+	const state = Object.assign({
+		enabled: true,
+		retryAfterBaseValue: 1e3,
+		doNotRetry: [
+			400,
+			401,
+			403,
+			404,
+			410,
+			422,
+			451
+		],
+		retries: 3
+	}, octokitOptions.retry);
+	const retryPlugin = { retry: { retryRequest: (error, retries, retryAfter) => {
+		error.request.request = Object.assign({}, error.request.request, {
+			retries,
+			retryAfter
+		});
+		return error;
+	} } };
+	if (state.enabled) {
+		octokit.hook.error("request", errorRequest.bind(null, state, retryPlugin));
+		octokit.hook.wrap("request", wrapRequest$1.bind(null, state, retryPlugin));
+	}
+	return retryPlugin;
+}
+retry.VERSION = VERSION$9;
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+plugin-throttling@11.0.3_@octokit+core@7.0.6/node_modules/@octokit/plugin-throttling/dist-bundle/index.js
+var VERSION$8 = "0.0.0-development";
+var noop = () => Promise.resolve();
+function wrapRequest(state, request, options) {
+	return state.retryLimiter.schedule(doRequest, state, request, options);
+}
+async function doRequest(state, request, options) {
+	const { pathname } = new URL(options.url, "http://github.test");
+	const isAuth = isAuthRequest(options.method, pathname);
+	const isWrite = !isAuth && options.method !== "GET" && options.method !== "HEAD";
+	const isSearch = options.method === "GET" && pathname.startsWith("/search/");
+	const isGraphQL = pathname.startsWith("/graphql");
+	const jobOptions = ~~request.retryCount > 0 ? {
+		priority: 0,
+		weight: 0
+	} : {};
+	if (state.clustering) jobOptions.expiration = 1e3 * 60;
+	if (isWrite || isGraphQL) await state.write.key(state.id).schedule(jobOptions, noop);
+	if (isWrite && state.triggersNotification(pathname)) await state.notifications.key(state.id).schedule(jobOptions, noop);
+	if (isSearch) await state.search.key(state.id).schedule(jobOptions, noop);
+	const req = (isAuth ? state.auth : state.global).key(state.id).schedule(jobOptions, request, options);
+	if (isGraphQL) {
+		const res = await req;
+		if (res.data.errors != null && res.data.errors.some((error) => error.type === "RATE_LIMITED")) throw Object.assign(/* @__PURE__ */ new Error("GraphQL Rate Limit Exceeded"), {
+			response: res,
+			data: res.data
+		});
+	}
+	return req;
+}
+function isAuthRequest(method, pathname) {
+	return method === "PATCH" && /^\/applications\/[^/]+\/token\/scoped$/.test(pathname) || method === "POST" && (/^\/applications\/[^/]+\/token$/.test(pathname) || /^\/app\/installations\/[^/]+\/access_tokens$/.test(pathname) || pathname === "/login/oauth/access_token");
+}
+var triggers_notification_paths_default = [
+	"/orgs/{org}/invitations",
+	"/orgs/{org}/invitations/{invitation_id}",
+	"/orgs/{org}/teams/{team_slug}/discussions",
+	"/orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments",
+	"/repos/{owner}/{repo}/collaborators/{username}",
+	"/repos/{owner}/{repo}/commits/{commit_sha}/comments",
+	"/repos/{owner}/{repo}/issues",
+	"/repos/{owner}/{repo}/issues/{issue_number}/comments",
+	"/repos/{owner}/{repo}/issues/{issue_number}/sub_issue",
+	"/repos/{owner}/{repo}/issues/{issue_number}/sub_issues/priority",
+	"/repos/{owner}/{repo}/pulls",
+	"/repos/{owner}/{repo}/pulls/{pull_number}/comments",
+	"/repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies",
+	"/repos/{owner}/{repo}/pulls/{pull_number}/merge",
+	"/repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
+	"/repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+	"/repos/{owner}/{repo}/releases",
+	"/teams/{team_id}/discussions",
+	"/teams/{team_id}/discussions/{discussion_number}/comments"
+];
+function routeMatcher$1(paths) {
+	const regex2 = `^(?:${paths.map((path) => path.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")).map((r) => `(?:${r})`).join("|")})[^/]*$`;
+	return new RegExp(regex2, "i");
+}
+var regex$1 = routeMatcher$1(triggers_notification_paths_default);
+var triggersNotification = regex$1.test.bind(regex$1);
+var groups = {};
+var createGroups = function(Bottleneck, common) {
+	groups.global = new Bottleneck.Group({
+		id: "octokit-global",
+		maxConcurrent: 10,
+		...common
+	});
+	groups.auth = new Bottleneck.Group({
+		id: "octokit-auth",
+		maxConcurrent: 1,
+		...common
+	});
+	groups.search = new Bottleneck.Group({
+		id: "octokit-search",
+		maxConcurrent: 1,
+		minTime: 2e3,
+		...common
+	});
+	groups.write = new Bottleneck.Group({
+		id: "octokit-write",
+		maxConcurrent: 1,
+		minTime: 1e3,
+		...common
+	});
+	groups.notifications = new Bottleneck.Group({
+		id: "octokit-notifications",
+		maxConcurrent: 1,
+		minTime: 3e3,
+		...common
+	});
+};
+function throttling(octokit, octokitOptions) {
+	const { enabled = true, Bottleneck = import_light.default, id = "no-id", timeout = 1e3 * 60 * 2, connection } = octokitOptions.throttle || {};
+	if (!enabled) return {};
+	const common = { timeout };
+	if (typeof connection !== "undefined") common.connection = connection;
+	if (groups.global == null) createGroups(Bottleneck, common);
+	const state = Object.assign({
+		clustering: connection != null,
+		triggersNotification,
+		fallbackSecondaryRateRetryAfter: 60,
+		retryAfterBaseValue: 1e3,
+		retryLimiter: new Bottleneck(),
+		id,
+		...groups
+	}, octokitOptions.throttle);
+	if (typeof state.onSecondaryRateLimit !== "function" || typeof state.onRateLimit !== "function") throw new Error(`octokit/plugin-throttling error:
+        You must pass the onSecondaryRateLimit and onRateLimit error handlers.
+        See https://octokit.github.io/rest.js/#throttling
+
+        const octokit = new Octokit({
+          throttle: {
+            onSecondaryRateLimit: (retryAfter, options) => {/* ... */},
+            onRateLimit: (retryAfter, options) => {/* ... */}
+          }
+        })
+    `);
+	const events = {};
+	const emitter = new Bottleneck.Events(events);
+	events.on("secondary-limit", state.onSecondaryRateLimit);
+	events.on("rate-limit", state.onRateLimit);
+	events.on("error", (e) => octokit.log.warn("Error in throttling-plugin limit handler", e));
+	state.retryLimiter.on("failed", async function(error, info) {
+		const [state2, request, options] = info.args;
+		const { pathname } = new URL(options.url, "http://github.test");
+		if (!(pathname.startsWith("/graphql") && error.status !== 401 || error.status === 403 || error.status === 429)) return;
+		const retryCount = ~~request.retryCount;
+		request.retryCount = retryCount;
+		options.request.retryCount = retryCount;
+		const { wantRetry, retryAfter = 0 } = await (async function() {
+			if (/\bsecondary rate\b/i.test(error.message)) {
+				const retryAfter2 = Number(error.response.headers["retry-after"]) || state2.fallbackSecondaryRateRetryAfter;
+				return {
+					wantRetry: await emitter.trigger("secondary-limit", retryAfter2, options, octokit, retryCount),
+					retryAfter: retryAfter2
+				};
+			}
+			if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0" || (error.response.data?.errors ?? []).some((error2) => error2.type === "RATE_LIMITED")) {
+				const rateLimitReset = (/* @__PURE__ */ new Date(~~error.response.headers["x-ratelimit-reset"] * 1e3)).getTime();
+				const retryAfter2 = Math.max(Math.ceil((rateLimitReset - Date.now()) / 1e3) + 1, 0);
+				return {
+					wantRetry: await emitter.trigger("rate-limit", retryAfter2, options, octokit, retryCount),
+					retryAfter: retryAfter2
+				};
+			}
+			return {};
+		})();
+		if (wantRetry) {
+			request.retryCount++;
+			return retryAfter * state2.retryAfterBaseValue;
+		}
+	});
+	octokit.hook.wrap("request", wrapRequest.bind(null, state));
+	return {};
+}
+throttling.VERSION = VERSION$8;
+throttling.triggersNotification = triggersNotification;
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+oauth-authorization-url@8.0.0/node_modules/@octokit/oauth-authorization-url/dist-src/index.js
+function oauthAuthorizationUrl(options) {
+	const clientType = options.clientType || "oauth-app";
+	const baseUrl = options.baseUrl || "https://github.com";
+	const result = {
+		clientType,
+		allowSignup: options.allowSignup === false ? false : true,
+		clientId: options.clientId,
+		login: options.login || null,
+		redirectUrl: options.redirectUrl || null,
+		state: options.state || Math.random().toString(36).substr(2),
+		url: ""
+	};
+	if (clientType === "oauth-app") {
+		const scopes = "scopes" in options ? options.scopes : [];
+		result.scopes = typeof scopes === "string" ? scopes.split(/[,\s]+/).filter(Boolean) : scopes;
+	}
+	result.url = urlBuilderAuthorize(`${baseUrl}/login/oauth/authorize`, result);
+	return result;
+}
+function urlBuilderAuthorize(base, options) {
+	const map = {
+		allowSignup: "allow_signup",
+		clientId: "client_id",
+		login: "login",
+		redirectUrl: "redirect_uri",
+		scopes: "scope",
+		state: "state"
+	};
+	let url = base;
+	Object.keys(map).filter((k) => options[k] !== null).filter((k) => {
+		if (k !== "scopes") return true;
+		if (options.clientType === "github-app") return false;
+		return !Array.isArray(options[k]) || options[k].length > 0;
+	}).map((key) => [map[key], `${options[key]}`]).forEach(([key, value], index) => {
+		url += index === 0 ? `?` : "&";
+		url += `${key}=${encodeURIComponent(value)}`;
+	});
+	return url;
 }
 
 //#endregion
-//#region src/modes/index.ts
-function getModeDefinition(mode) {
-	switch (mode) {
-		case "Review": return { buildPrompt: buildReviewModePrompt };
-		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
+//#region node_modules/.pnpm/@octokit+oauth-methods@6.0.2/node_modules/@octokit/oauth-methods/dist-bundle/index.js
+function requestToOAuthBaseUrl(request) {
+	const endpointDefaults = request.endpoint.DEFAULTS;
+	return /^https:\/\/(api\.)?github\.com$/.test(endpointDefaults.baseUrl) ? "https://github.com" : endpointDefaults.baseUrl.replace("/api/v3", "");
+}
+async function oauthRequest(request, route, parameters) {
+	const withOAuthParameters = {
+		baseUrl: requestToOAuthBaseUrl(request),
+		headers: { accept: "application/json" },
+		...parameters
+	};
+	const response = await request(route, withOAuthParameters);
+	if ("error" in response.data) {
+		const error = new RequestError(`${response.data.error_description} (${response.data.error}, ${response.data.error_uri})`, 400, { request: request.endpoint.merge(route, withOAuthParameters) });
+		error.response = response;
+		throw error;
+	}
+	return response;
+}
+function getWebFlowAuthorizationUrl({ request: request$4 = request, ...options }) {
+	const baseUrl = requestToOAuthBaseUrl(request$4);
+	return oauthAuthorizationUrl({
+		...options,
+		baseUrl
+	});
+}
+async function exchangeWebFlowCode(options) {
+	const response = await oauthRequest(options.request || request, "POST /login/oauth/access_token", {
+		client_id: options.clientId,
+		client_secret: options.clientSecret,
+		code: options.code,
+		redirect_uri: options.redirectUrl
+	});
+	const authentication = {
+		clientType: options.clientType,
+		clientId: options.clientId,
+		clientSecret: options.clientSecret,
+		token: response.data.access_token,
+		scopes: response.data.scope.split(/\s+/).filter(Boolean)
+	};
+	if (options.clientType === "github-app") {
+		if ("refresh_token" in response.data) {
+			const apiTimeInMs = new Date(response.headers.date).getTime();
+			authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp(apiTimeInMs, response.data.refresh_token_expires_in);
+		}
+		delete authentication.scopes;
+	}
+	return {
+		...response,
+		authentication
+	};
+}
+function toTimestamp(apiTimeInMs, expirationInSeconds) {
+	return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
+}
+async function createDeviceCode(options) {
+	const request$5 = options.request || request;
+	const parameters = { client_id: options.clientId };
+	if ("scopes" in options && Array.isArray(options.scopes)) parameters.scope = options.scopes.join(" ");
+	return oauthRequest(request$5, "POST /login/device/code", parameters);
+}
+async function exchangeDeviceCode(options) {
+	const response = await oauthRequest(options.request || request, "POST /login/oauth/access_token", {
+		client_id: options.clientId,
+		device_code: options.code,
+		grant_type: "urn:ietf:params:oauth:grant-type:device_code"
+	});
+	const authentication = {
+		clientType: options.clientType,
+		clientId: options.clientId,
+		token: response.data.access_token,
+		scopes: response.data.scope.split(/\s+/).filter(Boolean)
+	};
+	if ("clientSecret" in options) authentication.clientSecret = options.clientSecret;
+	if (options.clientType === "github-app") {
+		if ("refresh_token" in response.data) {
+			const apiTimeInMs = new Date(response.headers.date).getTime();
+			authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp2(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp2(apiTimeInMs, response.data.refresh_token_expires_in);
+		}
+		delete authentication.scopes;
+	}
+	return {
+		...response,
+		authentication
+	};
+}
+function toTimestamp2(apiTimeInMs, expirationInSeconds) {
+	return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
+}
+async function checkToken(options) {
+	const response = await (options.request || request)("POST /applications/{client_id}/token", {
+		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
+		client_id: options.clientId,
+		access_token: options.token
+	});
+	const authentication = {
+		clientType: options.clientType,
+		clientId: options.clientId,
+		clientSecret: options.clientSecret,
+		token: options.token,
+		scopes: response.data.scopes
+	};
+	if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
+	if (options.clientType === "github-app") delete authentication.scopes;
+	return {
+		...response,
+		authentication
+	};
+}
+async function refreshToken(options) {
+	const response = await oauthRequest(options.request || request, "POST /login/oauth/access_token", {
+		client_id: options.clientId,
+		client_secret: options.clientSecret,
+		grant_type: "refresh_token",
+		refresh_token: options.refreshToken
+	});
+	const apiTimeInMs = new Date(response.headers.date).getTime();
+	const authentication = {
+		clientType: "github-app",
+		clientId: options.clientId,
+		clientSecret: options.clientSecret,
+		token: response.data.access_token,
+		refreshToken: response.data.refresh_token,
+		expiresAt: toTimestamp3(apiTimeInMs, response.data.expires_in),
+		refreshTokenExpiresAt: toTimestamp3(apiTimeInMs, response.data.refresh_token_expires_in)
+	};
+	return {
+		...response,
+		authentication
+	};
+}
+function toTimestamp3(apiTimeInMs, expirationInSeconds) {
+	return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
+}
+async function scopeToken(options) {
+	const { request: optionsRequest, clientType, clientId, clientSecret, token, ...requestOptions } = options;
+	const response = await (options.request || request)("POST /applications/{client_id}/token/scoped", {
+		headers: { authorization: `basic ${btoa(`${clientId}:${clientSecret}`)}` },
+		client_id: clientId,
+		access_token: token,
+		...requestOptions
+	});
+	const authentication = Object.assign({
+		clientType,
+		clientId,
+		clientSecret,
+		token: response.data.token
+	}, response.data.expires_at ? { expiresAt: response.data.expires_at } : {});
+	return {
+		...response,
+		authentication
+	};
+}
+async function resetToken(options) {
+	const response = await (options.request || request)("PATCH /applications/{client_id}/token", {
+		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
+		client_id: options.clientId,
+		access_token: options.token
+	});
+	const authentication = {
+		clientType: options.clientType,
+		clientId: options.clientId,
+		clientSecret: options.clientSecret,
+		token: response.data.token,
+		scopes: response.data.scopes
+	};
+	if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
+	if (options.clientType === "github-app") delete authentication.scopes;
+	return {
+		...response,
+		authentication
+	};
+}
+async function deleteToken(options) {
+	return (options.request || request)("DELETE /applications/{client_id}/token", {
+		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
+		client_id: options.clientId,
+		access_token: options.token
+	});
+}
+async function deleteAuthorization(options) {
+	return (options.request || request)("DELETE /applications/{client_id}/grant", {
+		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
+		client_id: options.clientId,
+		access_token: options.token
+	});
+}
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+auth-oauth-device@8.0.3/node_modules/@octokit/auth-oauth-device/dist-bundle/index.js
+async function getOAuthAccessToken(state, options) {
+	const cachedAuthentication = getCachedAuthentication(state, options.auth);
+	if (cachedAuthentication) return cachedAuthentication;
+	const { data: verification } = await createDeviceCode({
+		clientType: state.clientType,
+		clientId: state.clientId,
+		request: options.request || state.request,
+		scopes: options.auth.scopes || state.scopes
+	});
+	await state.onVerification(verification);
+	const authentication = await waitForAccessToken(options.request || state.request, state.clientId, state.clientType, verification);
+	state.authentication = authentication;
+	return authentication;
+}
+function getCachedAuthentication(state, auth2) {
+	if (auth2.refresh === true) return false;
+	if (!state.authentication) return false;
+	if (state.clientType === "github-app") return state.authentication;
+	const authentication = state.authentication;
+	return ("scopes" in auth2 && auth2.scopes || state.scopes).join(" ") === authentication.scopes.join(" ") ? authentication : false;
+}
+async function wait(seconds) {
+	await new Promise((resolve) => setTimeout(resolve, seconds * 1e3));
+}
+async function waitForAccessToken(request, clientId, clientType, verification) {
+	try {
+		const options = {
+			clientId,
+			request,
+			code: verification.device_code
+		};
+		const { authentication } = clientType === "oauth-app" ? await exchangeDeviceCode({
+			...options,
+			clientType: "oauth-app"
+		}) : await exchangeDeviceCode({
+			...options,
+			clientType: "github-app"
+		});
+		return {
+			type: "token",
+			tokenType: "oauth",
+			...authentication
+		};
+	} catch (error) {
+		if (!error.response) throw error;
+		const errorType = error.response.data.error;
+		if (errorType === "authorization_pending") {
+			await wait(verification.interval);
+			return waitForAccessToken(request, clientId, clientType, verification);
+		}
+		if (errorType === "slow_down") {
+			await wait(verification.interval + 7);
+			return waitForAccessToken(request, clientId, clientType, verification);
+		}
+		throw error;
 	}
 }
+async function auth$4(state, authOptions) {
+	return getOAuthAccessToken(state, { auth: authOptions });
+}
+async function hook$4(state, request, route, parameters) {
+	let endpoint = request.endpoint.merge(route, parameters);
+	if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) return request(endpoint);
+	const { token } = await getOAuthAccessToken(state, {
+		request,
+		auth: { type: "oauth" }
+	});
+	endpoint.headers.authorization = `token ${token}`;
+	return request(endpoint);
+}
+var VERSION$7 = "0.0.0-development";
+function createOAuthDeviceAuth(options) {
+	const requestWithDefaults = options.request || request.defaults({ headers: { "user-agent": `octokit-auth-oauth-device.js/${VERSION$7} ${getUserAgent()}` } });
+	const { request: request$3 = requestWithDefaults, ...otherOptions } = options;
+	const state = options.clientType === "github-app" ? {
+		...otherOptions,
+		clientType: "github-app",
+		request: request$3
+	} : {
+		...otherOptions,
+		clientType: "oauth-app",
+		request: request$3,
+		scopes: options.scopes || []
+	};
+	if (!options.clientId) throw new Error("[@octokit/auth-oauth-device] \"clientId\" option must be set (https://github.com/octokit/auth-oauth-device.js#usage)");
+	if (!options.onVerification) throw new Error("[@octokit/auth-oauth-device] \"onVerification\" option must be a function (https://github.com/octokit/auth-oauth-device.js#usage)");
+	return Object.assign(auth$4.bind(null, state), { hook: hook$4.bind(null, state) });
+}
 
 //#endregion
-//#region src/modeSelection/constants.ts
-const MODE_SELECTION_TOOL_NAME = "select-clank8y-mode";
-const MODE_SELECTION_TOOL_TITLE = "Select clank8y mode";
-const MODE_SELECTION_TOOL_DESCRIPTION = "Select the best clank8y execution mode for the current instructions. Call this exactly once with the chosen mode and a concise reason.";
+//#region node_modules/.pnpm/@octokit+auth-oauth-user@6.0.2/node_modules/@octokit/auth-oauth-user/dist-bundle/index.js
+var VERSION$6 = "0.0.0-development";
+async function getAuthentication(state) {
+	if ("code" in state.strategyOptions) {
+		const { authentication } = await exchangeWebFlowCode({
+			clientId: state.clientId,
+			clientSecret: state.clientSecret,
+			clientType: state.clientType,
+			onTokenCreated: state.onTokenCreated,
+			...state.strategyOptions,
+			request: state.request
+		});
+		return {
+			type: "token",
+			tokenType: "oauth",
+			...authentication
+		};
+	}
+	if ("onVerification" in state.strategyOptions) {
+		const authentication = await createOAuthDeviceAuth({
+			clientType: state.clientType,
+			clientId: state.clientId,
+			onTokenCreated: state.onTokenCreated,
+			...state.strategyOptions,
+			request: state.request
+		})({ type: "oauth" });
+		return {
+			clientSecret: state.clientSecret,
+			...authentication
+		};
+	}
+	if ("token" in state.strategyOptions) return {
+		type: "token",
+		tokenType: "oauth",
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		clientType: state.clientType,
+		onTokenCreated: state.onTokenCreated,
+		...state.strategyOptions
+	};
+	throw new Error("[@octokit/auth-oauth-user] Invalid strategy options");
+}
+async function auth$3(state, options = {}) {
+	if (!state.authentication) state.authentication = state.clientType === "oauth-app" ? await getAuthentication(state) : await getAuthentication(state);
+	if (state.authentication.invalid) throw new Error("[@octokit/auth-oauth-user] Token is invalid");
+	const currentAuthentication = state.authentication;
+	if ("expiresAt" in currentAuthentication) {
+		if (options.type === "refresh" || new Date(currentAuthentication.expiresAt) < /* @__PURE__ */ new Date()) {
+			const { authentication } = await refreshToken({
+				clientType: "github-app",
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				refreshToken: currentAuthentication.refreshToken,
+				request: state.request
+			});
+			state.authentication = {
+				tokenType: "oauth",
+				type: "token",
+				...authentication
+			};
+		}
+	}
+	if (options.type === "refresh") {
+		if (state.clientType === "oauth-app") throw new Error("[@octokit/auth-oauth-user] OAuth Apps do not support expiring tokens");
+		if (!currentAuthentication.hasOwnProperty("expiresAt")) throw new Error("[@octokit/auth-oauth-user] Refresh token missing");
+		await state.onTokenCreated?.(state.authentication, { type: options.type });
+	}
+	if (options.type === "check" || options.type === "reset") {
+		const method = options.type === "check" ? checkToken : resetToken;
+		try {
+			const { authentication } = await method({
+				clientType: state.clientType,
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				token: state.authentication.token,
+				request: state.request
+			});
+			state.authentication = {
+				tokenType: "oauth",
+				type: "token",
+				...authentication
+			};
+			if (options.type === "reset") await state.onTokenCreated?.(state.authentication, { type: options.type });
+			return state.authentication;
+		} catch (error) {
+			if (error.status === 404) {
+				error.message = "[@octokit/auth-oauth-user] Token is invalid";
+				state.authentication.invalid = true;
+			}
+			throw error;
+		}
+	}
+	if (options.type === "delete" || options.type === "deleteAuthorization") {
+		const method = options.type === "delete" ? deleteToken : deleteAuthorization;
+		try {
+			await method({
+				clientType: state.clientType,
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				token: state.authentication.token,
+				request: state.request
+			});
+		} catch (error) {
+			if (error.status !== 404) throw error;
+		}
+		state.authentication.invalid = true;
+		return state.authentication;
+	}
+	return state.authentication;
+}
+var ROUTES_REQUIRING_BASIC_AUTH = /\/applications\/[^/]+\/(token|grant)s?/;
+function requiresBasicAuth(url) {
+	return url && ROUTES_REQUIRING_BASIC_AUTH.test(url);
+}
+async function hook$3(state, request, route, parameters = {}) {
+	const endpoint = request.endpoint.merge(route, parameters);
+	if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) return request(endpoint);
+	if (requiresBasicAuth(endpoint.url)) {
+		const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
+		endpoint.headers.authorization = `basic ${credentials}`;
+		return request(endpoint);
+	}
+	const { token } = state.clientType === "oauth-app" ? await auth$3({
+		...state,
+		request
+	}) : await auth$3({
+		...state,
+		request
+	});
+	endpoint.headers.authorization = "token " + token;
+	return request(endpoint);
+}
+function createOAuthUserAuth({ clientId, clientSecret, clientType = "oauth-app", request: request$2 = request.defaults({ headers: { "user-agent": `octokit-auth-oauth-app.js/${VERSION$6} ${getUserAgent()}` } }), onTokenCreated, ...strategyOptions }) {
+	const state = Object.assign({
+		clientType,
+		clientId,
+		clientSecret,
+		onTokenCreated,
+		strategyOptions,
+		request: request$2
+	});
+	return Object.assign(auth$3.bind(null, state), { hook: hook$3.bind(null, state) });
+}
+createOAuthUserAuth.VERSION = VERSION$6;
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+auth-oauth-app@9.0.3/node_modules/@octokit/auth-oauth-app/dist-bundle/index.js
+async function auth$2(state, authOptions) {
+	if (authOptions.type === "oauth-app") return {
+		type: "oauth-app",
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		clientType: state.clientType,
+		headers: { authorization: `basic ${btoa(`${state.clientId}:${state.clientSecret}`)}` }
+	};
+	if ("factory" in authOptions) {
+		const { type, ...options } = {
+			...authOptions,
+			...state
+		};
+		return authOptions.factory(options);
+	}
+	const common = {
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.request,
+		...authOptions
+	};
+	return (state.clientType === "oauth-app" ? await createOAuthUserAuth({
+		...common,
+		clientType: state.clientType
+	}) : await createOAuthUserAuth({
+		...common,
+		clientType: state.clientType
+	}))();
+}
+async function hook$2(state, request2, route, parameters) {
+	let endpoint = request2.endpoint.merge(route, parameters);
+	if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) return request2(endpoint);
+	if (state.clientType === "github-app" && !requiresBasicAuth(endpoint.url)) throw new Error(`[@octokit/auth-oauth-app] GitHub Apps cannot use their client ID/secret for basic authentication for endpoints other than "/applications/{client_id}/**". "${endpoint.method} ${endpoint.url}" is not supported.`);
+	const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
+	endpoint.headers.authorization = `basic ${credentials}`;
+	try {
+		return await request2(endpoint);
+	} catch (error) {
+		if (error.status !== 401) throw error;
+		error.message = `[@octokit/auth-oauth-app] "${endpoint.method} ${endpoint.url}" does not support clientId/clientSecret basic authentication.`;
+		throw error;
+	}
+}
+var VERSION$5 = "0.0.0-development";
+function createOAuthAppAuth(options) {
+	const state = Object.assign({
+		request: request.defaults({ headers: { "user-agent": `octokit-auth-oauth-app.js/${VERSION$5} ${getUserAgent()}` } }),
+		clientType: "oauth-app"
+	}, options);
+	return Object.assign(auth$2.bind(null, state), { hook: hook$2.bind(null, state) });
+}
+
+//#endregion
+//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/lib/utils.js
+/**
+* @param {string} privateKey
+* @returns {boolean}
+*/
+function isPkcs1(privateKey) {
+	return privateKey.includes("-----BEGIN RSA PRIVATE KEY-----");
+}
+/**
+* @param {string} privateKey
+* @returns {boolean}
+*/
+function isOpenSsh(privateKey) {
+	return privateKey.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
+}
+/**
+* @param {string} str
+* @returns {ArrayBuffer}
+*/
+function string2ArrayBuffer(str) {
+	const buf = new ArrayBuffer(str.length);
+	const bufView = new Uint8Array(buf);
+	for (let i = 0, strLen = str.length; i < strLen; i++) bufView[i] = str.charCodeAt(i);
+	return buf;
+}
+/**
+* @param {string} pem
+* @returns {ArrayBuffer}
+*/
+function getDERfromPEM(pem) {
+	const pemB64 = pem.trim().split("\n").slice(1, -1).join("");
+	return string2ArrayBuffer(atob(pemB64));
+}
+/**
+* @param {import('../internals').Header} header
+* @param {import('../internals').Payload} payload
+* @returns {string}
+*/
+function getEncodedMessage(header, payload) {
+	return `${base64encodeJSON(header)}.${base64encodeJSON(payload)}`;
+}
+/**
+* @param {ArrayBuffer} buffer
+* @returns {string}
+*/
+function base64encode(buffer) {
+	var binary = "";
+	var bytes = new Uint8Array(buffer);
+	var len = bytes.byteLength;
+	for (var i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+	return fromBase64(btoa(binary));
+}
+/**
+* @param {string} base64
+* @returns {string}
+*/
+function fromBase64(base64) {
+	return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+/**
+* @param {Record<string,unknown>} obj
+* @returns {string}
+*/
+function base64encodeJSON(obj) {
+	return fromBase64(btoa(JSON.stringify(obj)));
+}
+
+//#endregion
+//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/lib/crypto-node.js
+function convertPrivateKey(privateKey) {
+	if (!isPkcs1(privateKey)) return privateKey;
+	return createPrivateKey(privateKey).export({
+		type: "pkcs8",
+		format: "pem"
+	});
+}
+
+//#endregion
+//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/lib/get-token.js
+/**
+* @param {import('../internals').GetTokenOptions} options
+* @returns {Promise<string>}
+*/
+async function getToken({ privateKey, payload }) {
+	const convertedPrivateKey = convertPrivateKey(privateKey);
+	/* c8 ignore start */
+	if (isPkcs1(convertedPrivateKey)) throw new Error("[universal-github-app-jwt] Private Key is in PKCS#1 format, but only PKCS#8 is supported. See https://github.com/gr2m/universal-github-app-jwt#private-key-formats");
+	/* c8 ignore stop */
+	if (isOpenSsh(convertedPrivateKey)) throw new Error("[universal-github-app-jwt] Private Key is in OpenSSH format, but only PKCS#8 is supported. See https://github.com/gr2m/universal-github-app-jwt#private-key-formats");
+	const algorithm = {
+		name: "RSASSA-PKCS1-v1_5",
+		hash: { name: "SHA-256" }
+	};
+	/** @type {import('../internals').Header} */
+	const header = {
+		alg: "RS256",
+		typ: "JWT"
+	};
+	const privateKeyDER = getDERfromPEM(convertedPrivateKey);
+	const importedKey = await subtle.importKey("pkcs8", privateKeyDER, algorithm, false, ["sign"]);
+	const encodedMessage = getEncodedMessage(header, payload);
+	const encodedMessageArrBuf = string2ArrayBuffer(encodedMessage);
+	return `${encodedMessage}.${base64encode(await subtle.sign(algorithm.name, importedKey, encodedMessageArrBuf))}`;
+}
+
+//#endregion
+//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/index.js
+/**
+* @param {import(".").Options} options
+* @returns {Promise<import(".").Result>}
+*/
+async function githubAppJwt({ id, privateKey, now = Math.floor(Date.now() / 1e3) }) {
+	const privateKeyWithNewlines = privateKey.replace(/\\n/g, "\n");
+	const nowWithSafetyMargin = now - 30;
+	const expiration = nowWithSafetyMargin + 600;
+	return {
+		appId: id,
+		expiration,
+		token: await getToken({
+			privateKey: privateKeyWithNewlines,
+			payload: {
+				iat: nowWithSafetyMargin,
+				exp: expiration,
+				iss: id
+			}
+		})
+	};
+}
+
+//#endregion
+//#region node_modules/.pnpm/toad-cache@3.7.0/node_modules/toad-cache/dist/toad-cache.mjs
+var LruObject = class {
+	constructor(max = 1e3, ttlInMsecs = 0) {
+		if (isNaN(max) || max < 0) throw new Error("Invalid max value");
+		if (isNaN(ttlInMsecs) || ttlInMsecs < 0) throw new Error("Invalid ttl value");
+		this.first = null;
+		this.items = Object.create(null);
+		this.last = null;
+		this.size = 0;
+		this.max = max;
+		this.ttl = ttlInMsecs;
+	}
+	bumpLru(item) {
+		if (this.last === item) return;
+		const last = this.last;
+		const next = item.next;
+		const prev = item.prev;
+		if (this.first === item) this.first = next;
+		item.next = null;
+		item.prev = last;
+		last.next = item;
+		if (prev !== null) prev.next = next;
+		if (next !== null) next.prev = prev;
+		this.last = item;
+	}
+	clear() {
+		this.items = Object.create(null);
+		this.first = null;
+		this.last = null;
+		this.size = 0;
+	}
+	delete(key) {
+		if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+			const item = this.items[key];
+			delete this.items[key];
+			this.size--;
+			if (item.prev !== null) item.prev.next = item.next;
+			if (item.next !== null) item.next.prev = item.prev;
+			if (this.first === item) this.first = item.next;
+			if (this.last === item) this.last = item.prev;
+		}
+	}
+	deleteMany(keys) {
+		for (var i = 0; i < keys.length; i++) this.delete(keys[i]);
+	}
+	evict() {
+		if (this.size > 0) {
+			const item = this.first;
+			delete this.items[item.key];
+			if (--this.size === 0) {
+				this.first = null;
+				this.last = null;
+			} else {
+				this.first = item.next;
+				this.first.prev = null;
+			}
+		}
+	}
+	expiresAt(key) {
+		if (Object.prototype.hasOwnProperty.call(this.items, key)) return this.items[key].expiry;
+	}
+	get(key) {
+		if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+			const item = this.items[key];
+			if (this.ttl > 0 && item.expiry <= Date.now()) {
+				this.delete(key);
+				return;
+			}
+			this.bumpLru(item);
+			return item.value;
+		}
+	}
+	getMany(keys) {
+		const result = [];
+		for (var i = 0; i < keys.length; i++) result.push(this.get(keys[i]));
+		return result;
+	}
+	keys() {
+		return Object.keys(this.items);
+	}
+	set(key, value) {
+		if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+			const item = this.items[key];
+			item.value = value;
+			item.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
+			if (this.last !== item) this.bumpLru(item);
+			return;
+		}
+		if (this.max > 0 && this.size === this.max) this.evict();
+		const item = {
+			expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
+			key,
+			prev: this.last,
+			next: null,
+			value
+		};
+		this.items[key] = item;
+		if (++this.size === 1) this.first = item;
+		else this.last.next = item;
+		this.last = item;
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+auth-app@8.2.0/node_modules/@octokit/auth-app/dist-node/index.js
+async function getAppAuthentication({ appId, privateKey, timeDifference, createJwt }) {
+	try {
+		if (createJwt) {
+			const { jwt, expiresAt } = await createJwt(appId, timeDifference);
+			return {
+				type: "app",
+				token: jwt,
+				appId,
+				expiresAt
+			};
+		}
+		const authOptions = {
+			id: appId,
+			privateKey
+		};
+		if (timeDifference) Object.assign(authOptions, { now: Math.floor(Date.now() / 1e3) + timeDifference });
+		const appAuthentication = await githubAppJwt(authOptions);
+		return {
+			type: "app",
+			token: appAuthentication.token,
+			appId: appAuthentication.appId,
+			expiresAt: (/* @__PURE__ */ new Date(appAuthentication.expiration * 1e3)).toISOString()
+		};
+	} catch (error) {
+		if (privateKey === "-----BEGIN RSA PRIVATE KEY-----") throw new Error("The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'");
+		else throw error;
+	}
+}
+function getCache() {
+	return new LruObject(15e3, 1e3 * 60 * 59);
+}
+async function get(cache, options) {
+	const cacheKey = optionsToCacheKey(options);
+	const result = await cache.get(cacheKey);
+	if (!result) return;
+	const [token, createdAt, expiresAt, repositorySelection, permissionsString, singleFileName] = result.split("|");
+	return {
+		token,
+		createdAt,
+		expiresAt,
+		permissions: options.permissions || permissionsString.split(/,/).reduce((permissions2, string) => {
+			if (/!$/.test(string)) permissions2[string.slice(0, -1)] = "write";
+			else permissions2[string] = "read";
+			return permissions2;
+		}, {}),
+		repositoryIds: options.repositoryIds,
+		repositoryNames: options.repositoryNames,
+		singleFileName,
+		repositorySelection
+	};
+}
+async function set(cache, options, data) {
+	const key = optionsToCacheKey(options);
+	const permissionsString = options.permissions ? "" : Object.keys(data.permissions).map((name) => `${name}${data.permissions[name] === "write" ? "!" : ""}`).join(",");
+	const value = [
+		data.token,
+		data.createdAt,
+		data.expiresAt,
+		data.repositorySelection,
+		permissionsString,
+		data.singleFileName
+	].join("|");
+	await cache.set(key, value);
+}
+function optionsToCacheKey({ installationId, permissions = {}, repositoryIds = [], repositoryNames = [] }) {
+	const permissionsString = Object.keys(permissions).sort().map((name) => permissions[name] === "read" ? name : `${name}!`).join(",");
+	return [
+		installationId,
+		repositoryIds.sort().join(","),
+		repositoryNames.join(","),
+		permissionsString
+	].filter(Boolean).join("|");
+}
+function toTokenAuthentication({ installationId, token, createdAt, expiresAt, repositorySelection, permissions, repositoryIds, repositoryNames, singleFileName }) {
+	return Object.assign({
+		type: "token",
+		tokenType: "installation",
+		token,
+		installationId,
+		permissions,
+		createdAt,
+		expiresAt,
+		repositorySelection
+	}, repositoryIds ? { repositoryIds } : null, repositoryNames ? { repositoryNames } : null, singleFileName ? { singleFileName } : null);
+}
+async function getInstallationAuthentication(state, options, customRequest) {
+	const installationId = Number(options.installationId || state.installationId);
+	if (!installationId) throw new Error("[@octokit/auth-app] installationId option is required for installation authentication.");
+	if (options.factory) {
+		const { type, factory, oauthApp, ...factoryAuthOptions } = {
+			...state,
+			...options
+		};
+		return factory(factoryAuthOptions);
+	}
+	const request = customRequest || state.request;
+	return getInstallationAuthenticationConcurrently(state, {
+		...options,
+		installationId
+	}, request);
+}
+var pendingPromises = /* @__PURE__ */ new Map();
+function getInstallationAuthenticationConcurrently(state, options, request) {
+	const cacheKey = optionsToCacheKey(options);
+	if (pendingPromises.has(cacheKey)) return pendingPromises.get(cacheKey);
+	const promise = getInstallationAuthenticationImpl(state, options, request).finally(() => pendingPromises.delete(cacheKey));
+	pendingPromises.set(cacheKey, promise);
+	return promise;
+}
+async function getInstallationAuthenticationImpl(state, options, request) {
+	if (!options.refresh) {
+		const result = await get(state.cache, options);
+		if (result) {
+			const { token: token2, createdAt: createdAt2, expiresAt: expiresAt2, permissions: permissions2, repositoryIds: repositoryIds2, repositoryNames: repositoryNames2, singleFileName: singleFileName2, repositorySelection: repositorySelection2 } = result;
+			return toTokenAuthentication({
+				installationId: options.installationId,
+				token: token2,
+				createdAt: createdAt2,
+				expiresAt: expiresAt2,
+				permissions: permissions2,
+				repositorySelection: repositorySelection2,
+				repositoryIds: repositoryIds2,
+				repositoryNames: repositoryNames2,
+				singleFileName: singleFileName2
+			});
+		}
+	}
+	const appAuthentication = await getAppAuthentication(state);
+	const payload = {
+		installation_id: options.installationId,
+		mediaType: { previews: ["machine-man"] },
+		headers: { authorization: `bearer ${appAuthentication.token}` }
+	};
+	if (options.repositoryIds) Object.assign(payload, { repository_ids: options.repositoryIds });
+	if (options.repositoryNames) Object.assign(payload, { repositories: options.repositoryNames });
+	if (options.permissions) Object.assign(payload, { permissions: options.permissions });
+	const { data: { token, expires_at: expiresAt, repositories, permissions: permissionsOptional, repository_selection: repositorySelectionOptional, single_file: singleFileName } } = await request("POST /app/installations/{installation_id}/access_tokens", payload);
+	const permissions = permissionsOptional || {};
+	const repositorySelection = repositorySelectionOptional || "all";
+	const repositoryIds = repositories ? repositories.map((r) => r.id) : void 0;
+	const repositoryNames = repositories ? repositories.map((repo) => repo.name) : void 0;
+	const createdAt = (/* @__PURE__ */ new Date()).toISOString();
+	const cacheOptions = {
+		token,
+		createdAt,
+		expiresAt,
+		repositorySelection,
+		permissions,
+		repositoryIds,
+		repositoryNames
+	};
+	if (singleFileName) Object.assign(payload, { singleFileName });
+	await set(state.cache, options, cacheOptions);
+	const cacheData = {
+		installationId: options.installationId,
+		token,
+		createdAt,
+		expiresAt,
+		repositorySelection,
+		permissions,
+		repositoryIds,
+		repositoryNames
+	};
+	if (singleFileName) Object.assign(cacheData, { singleFileName });
+	return toTokenAuthentication(cacheData);
+}
+async function auth$1(state, authOptions) {
+	switch (authOptions.type) {
+		case "app": return getAppAuthentication(state);
+		case "oauth-app": return state.oauthApp({ type: "oauth-app" });
+		case "installation": return getInstallationAuthentication(state, {
+			...authOptions,
+			type: "installation"
+		});
+		case "oauth-user": return state.oauthApp(authOptions);
+		default: throw new Error(`Invalid auth type: ${authOptions.type}`);
+	}
+}
+var PATHS = [
+	"/app",
+	"/app/hook/config",
+	"/app/hook/deliveries",
+	"/app/hook/deliveries/{delivery_id}",
+	"/app/hook/deliveries/{delivery_id}/attempts",
+	"/app/installations",
+	"/app/installations/{installation_id}",
+	"/app/installations/{installation_id}/access_tokens",
+	"/app/installations/{installation_id}/suspended",
+	"/app/installation-requests",
+	"/marketplace_listing/accounts/{account_id}",
+	"/marketplace_listing/plan",
+	"/marketplace_listing/plans",
+	"/marketplace_listing/plans/{plan_id}/accounts",
+	"/marketplace_listing/stubbed/accounts/{account_id}",
+	"/marketplace_listing/stubbed/plan",
+	"/marketplace_listing/stubbed/plans",
+	"/marketplace_listing/stubbed/plans/{plan_id}/accounts",
+	"/orgs/{org}/installation",
+	"/repos/{owner}/{repo}/installation",
+	"/users/{username}/installation",
+	"/enterprises/{enterprise}/installation"
+];
+function routeMatcher(paths) {
+	const regex = `^(?:${paths.map((p) => p.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")).map((r) => `(?:${r})`).join("|")})$`;
+	return new RegExp(regex, "i");
+}
+var REGEX = routeMatcher(PATHS);
+function requiresAppAuth(url) {
+	return !!url && REGEX.test(url.split("?")[0]);
+}
+var FIVE_SECONDS_IN_MS = 5 * 1e3;
+function isNotTimeSkewError(error) {
+	return !(error.message.match(/'Expiration time' claim \('exp'\) is too far in the future/) || error.message.match(/'Expiration time' claim \('exp'\) must be a numeric value representing the future time at which the assertion expires/) || error.message.match(/'Issued at' claim \('iat'\) must be an Integer representing the time that the assertion was issued/));
+}
+async function hook$1(state, request, route, parameters) {
+	const endpoint = request.endpoint.merge(route, parameters);
+	const url = endpoint.url;
+	if (/\/login\/oauth\/access_token$/.test(url)) return request(endpoint);
+	if (requiresAppAuth(url.replace(request.endpoint.DEFAULTS.baseUrl, ""))) {
+		const { token: token2 } = await getAppAuthentication(state);
+		endpoint.headers.authorization = `bearer ${token2}`;
+		let response;
+		try {
+			response = await request(endpoint);
+		} catch (error) {
+			if (isNotTimeSkewError(error)) throw error;
+			if (typeof error.response.headers.date === "undefined") throw error;
+			const diff = Math.floor((Date.parse(error.response.headers.date) - Date.parse((/* @__PURE__ */ new Date()).toString())) / 1e3);
+			state.log.warn(error.message);
+			state.log.warn(`[@octokit/auth-app] GitHub API time and system time are different by ${diff} seconds. Retrying request with the difference accounted for.`);
+			const { token: token3 } = await getAppAuthentication({
+				...state,
+				timeDifference: diff
+			});
+			endpoint.headers.authorization = `bearer ${token3}`;
+			return request(endpoint);
+		}
+		return response;
+	}
+	if (requiresBasicAuth(url)) {
+		const authentication = await state.oauthApp({ type: "oauth-app" });
+		endpoint.headers.authorization = authentication.headers.authorization;
+		return request(endpoint);
+	}
+	const { token, createdAt } = await getInstallationAuthentication(state, {}, request.defaults({ baseUrl: endpoint.baseUrl }));
+	endpoint.headers.authorization = `token ${token}`;
+	return sendRequestWithRetries(state, request, endpoint, createdAt);
+}
+async function sendRequestWithRetries(state, request, options, createdAt, retries = 0) {
+	const timeSinceTokenCreationInMs = +/* @__PURE__ */ new Date() - +new Date(createdAt);
+	try {
+		return await request(options);
+	} catch (error) {
+		if (error.status !== 401) throw error;
+		if (timeSinceTokenCreationInMs >= FIVE_SECONDS_IN_MS) {
+			if (retries > 0) error.message = `After ${retries} retries within ${timeSinceTokenCreationInMs / 1e3}s of creating the installation access token, the response remains 401. At this point, the cause may be an authentication problem or a system outage. Please check https://www.githubstatus.com for status information`;
+			throw error;
+		}
+		++retries;
+		const awaitTime = retries * 1e3;
+		state.log.warn(`[@octokit/auth-app] Retrying after 401 response to account for token replication delay (retry: ${retries}, wait: ${awaitTime / 1e3}s)`);
+		await new Promise((resolve) => setTimeout(resolve, awaitTime));
+		return sendRequestWithRetries(state, request, options, createdAt, retries);
+	}
+}
+var VERSION$4 = "8.2.0";
+function createAppAuth(options) {
+	if (!options.appId) throw new Error("[@octokit/auth-app] appId option is required");
+	if (!options.privateKey && !options.createJwt) throw new Error("[@octokit/auth-app] privateKey option is required");
+	else if (options.privateKey && options.createJwt) throw new Error("[@octokit/auth-app] privateKey and createJwt options are mutually exclusive");
+	if ("installationId" in options && !options.installationId) throw new Error("[@octokit/auth-app] installationId is set to a falsy value");
+	const log = options.log || {};
+	if (typeof log.warn !== "function") log.warn = console.warn.bind(console);
+	const request$1 = options.request || request.defaults({ headers: { "user-agent": `octokit-auth-app.js/${VERSION$4} ${getUserAgent()}` } });
+	const state = Object.assign({
+		request: request$1,
+		cache: getCache()
+	}, options, options.installationId ? { installationId: Number(options.installationId) } : {}, {
+		log,
+		oauthApp: createOAuthAppAuth({
+			clientType: "github-app",
+			clientId: options.clientId || "",
+			clientSecret: options.clientSecret || "",
+			request: request$1
+		})
+	});
+	return Object.assign(auth$1.bind(null, state), { hook: hook$1.bind(null, state) });
+}
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+auth-unauthenticated@7.0.3/node_modules/@octokit/auth-unauthenticated/dist-node/index.js
+async function auth(reason) {
+	return {
+		type: "unauthenticated",
+		reason
+	};
+}
+function isRateLimitError(error) {
+	if (error.status !== 403) return false;
+	if (!error.response) return false;
+	return error.response.headers["x-ratelimit-remaining"] === "0";
+}
+var REGEX_ABUSE_LIMIT_MESSAGE = /\babuse\b/i;
+function isAbuseLimitError(error) {
+	if (error.status !== 403) return false;
+	return REGEX_ABUSE_LIMIT_MESSAGE.test(error.message);
+}
+async function hook(reason, request, route, parameters) {
+	const endpoint = request.endpoint.merge(route, parameters);
+	return request(endpoint).catch((error) => {
+		if (error.status === 404) {
+			error.message = `Not found. May be due to lack of authentication. Reason: ${reason}`;
+			throw error;
+		}
+		if (isRateLimitError(error)) {
+			error.message = `API rate limit exceeded. This maybe caused by the lack of authentication. Reason: ${reason}`;
+			throw error;
+		}
+		if (isAbuseLimitError(error)) {
+			error.message = `You have triggered an abuse detection mechanism. This maybe caused by the lack of authentication. Reason: ${reason}`;
+			throw error;
+		}
+		if (error.status === 401) {
+			error.message = `Unauthorized. "${endpoint.method} ${endpoint.url}" failed most likely due to lack of authentication. Reason: ${reason}`;
+			throw error;
+		}
+		if (error.status >= 400 && error.status < 500) error.message = error.message.replace(/\.?$/, `. May be caused by lack of authentication (${reason}).`);
+		throw error;
+	});
+}
+var createUnauthenticatedAuth = function createUnauthenticatedAuth2(options) {
+	if (!options || !options.reason) throw new Error("[@octokit/auth-unauthenticated] No reason passed to createUnauthenticatedAuth");
+	return Object.assign(auth.bind(null, options.reason), { hook: hook.bind(null, options.reason) });
+};
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+oauth-app@8.0.3/node_modules/@octokit/oauth-app/dist-node/index.js
+var VERSION$3 = "8.0.3";
+function addEventHandler(state, eventName, eventHandler) {
+	if (Array.isArray(eventName)) {
+		for (const singleEventName of eventName) addEventHandler(state, singleEventName, eventHandler);
+		return;
+	}
+	if (!state.eventHandlers[eventName]) state.eventHandlers[eventName] = [];
+	state.eventHandlers[eventName].push(eventHandler);
+}
+var OAuthAppOctokit = Octokit$1.defaults({ userAgent: `octokit-oauth-app.js/${VERSION$3} ${getUserAgent()}` });
+async function emitEvent(state, context) {
+	const { name, action } = context;
+	if (state.eventHandlers[`${name}.${action}`]) for (const eventHandler of state.eventHandlers[`${name}.${action}`]) await eventHandler(context);
+	if (state.eventHandlers[name]) for (const eventHandler of state.eventHandlers[name]) await eventHandler(context);
+}
+async function getUserOctokitWithState(state, options) {
+	return state.octokit.auth({
+		type: "oauth-user",
+		...options,
+		async factory(options2) {
+			const octokit = new state.Octokit({
+				authStrategy: createOAuthUserAuth,
+				auth: options2
+			});
+			const authentication = await octokit.auth({ type: "get" });
+			await emitEvent(state, {
+				name: "token",
+				action: "created",
+				token: authentication.token,
+				scopes: authentication.scopes,
+				authentication,
+				octokit
+			});
+			return octokit;
+		}
+	});
+}
+function getWebFlowAuthorizationUrlWithState(state, options) {
+	const optionsWithDefaults = {
+		clientId: state.clientId,
+		request: state.octokit.request,
+		...options,
+		allowSignup: state.allowSignup ?? options.allowSignup,
+		redirectUrl: options.redirectUrl ?? state.redirectUrl,
+		scopes: options.scopes ?? state.defaultScopes
+	};
+	return getWebFlowAuthorizationUrl({
+		clientType: state.clientType,
+		...optionsWithDefaults
+	});
+}
+async function createTokenWithState(state, options) {
+	const authentication = await state.octokit.auth({
+		type: "oauth-user",
+		...options
+	});
+	await emitEvent(state, {
+		name: "token",
+		action: "created",
+		token: authentication.token,
+		scopes: authentication.scopes,
+		authentication,
+		octokit: new state.Octokit({
+			authStrategy: createOAuthUserAuth,
+			auth: {
+				clientType: state.clientType,
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				token: authentication.token,
+				scopes: authentication.scopes,
+				refreshToken: authentication.refreshToken,
+				expiresAt: authentication.expiresAt,
+				refreshTokenExpiresAt: authentication.refreshTokenExpiresAt
+			}
+		})
+	});
+	return { authentication };
+}
+async function checkTokenWithState(state, options) {
+	const result = await checkToken({
+		clientType: state.clientType,
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.octokit.request,
+		...options
+	});
+	Object.assign(result.authentication, {
+		type: "token",
+		tokenType: "oauth"
+	});
+	return result;
+}
+async function resetTokenWithState(state, options) {
+	const optionsWithDefaults = {
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.octokit.request,
+		...options
+	};
+	if (state.clientType === "oauth-app") {
+		const response2 = await resetToken({
+			clientType: "oauth-app",
+			...optionsWithDefaults
+		});
+		const authentication2 = Object.assign(response2.authentication, {
+			type: "token",
+			tokenType: "oauth"
+		});
+		await emitEvent(state, {
+			name: "token",
+			action: "reset",
+			token: response2.authentication.token,
+			scopes: response2.authentication.scopes || void 0,
+			authentication: authentication2,
+			octokit: new state.Octokit({
+				authStrategy: createOAuthUserAuth,
+				auth: {
+					clientType: state.clientType,
+					clientId: state.clientId,
+					clientSecret: state.clientSecret,
+					token: response2.authentication.token,
+					scopes: response2.authentication.scopes
+				}
+			})
+		});
+		return {
+			...response2,
+			authentication: authentication2
+		};
+	}
+	const response = await resetToken({
+		clientType: "github-app",
+		...optionsWithDefaults
+	});
+	const authentication = Object.assign(response.authentication, {
+		type: "token",
+		tokenType: "oauth"
+	});
+	await emitEvent(state, {
+		name: "token",
+		action: "reset",
+		token: response.authentication.token,
+		authentication,
+		octokit: new state.Octokit({
+			authStrategy: createOAuthUserAuth,
+			auth: {
+				clientType: state.clientType,
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				token: response.authentication.token
+			}
+		})
+	});
+	return {
+		...response,
+		authentication
+	};
+}
+async function refreshTokenWithState(state, options) {
+	if (state.clientType === "oauth-app") throw new Error("[@octokit/oauth-app] app.refreshToken() is not supported for OAuth Apps");
+	const response = await refreshToken({
+		clientType: "github-app",
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.octokit.request,
+		refreshToken: options.refreshToken
+	});
+	const authentication = Object.assign(response.authentication, {
+		type: "token",
+		tokenType: "oauth"
+	});
+	await emitEvent(state, {
+		name: "token",
+		action: "refreshed",
+		token: response.authentication.token,
+		authentication,
+		octokit: new state.Octokit({
+			authStrategy: createOAuthUserAuth,
+			auth: {
+				clientType: state.clientType,
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				token: response.authentication.token
+			}
+		})
+	});
+	return {
+		...response,
+		authentication
+	};
+}
+async function scopeTokenWithState(state, options) {
+	if (state.clientType === "oauth-app") throw new Error("[@octokit/oauth-app] app.scopeToken() is not supported for OAuth Apps");
+	const response = await scopeToken({
+		clientType: "github-app",
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.octokit.request,
+		...options
+	});
+	const authentication = Object.assign(response.authentication, {
+		type: "token",
+		tokenType: "oauth"
+	});
+	await emitEvent(state, {
+		name: "token",
+		action: "scoped",
+		token: response.authentication.token,
+		authentication,
+		octokit: new state.Octokit({
+			authStrategy: createOAuthUserAuth,
+			auth: {
+				clientType: state.clientType,
+				clientId: state.clientId,
+				clientSecret: state.clientSecret,
+				token: response.authentication.token
+			}
+		})
+	});
+	return {
+		...response,
+		authentication
+	};
+}
+async function deleteTokenWithState(state, options) {
+	const optionsWithDefaults = {
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.octokit.request,
+		...options
+	};
+	const response = state.clientType === "oauth-app" ? await deleteToken({
+		clientType: "oauth-app",
+		...optionsWithDefaults
+	}) : await deleteToken({
+		clientType: "github-app",
+		...optionsWithDefaults
+	});
+	await emitEvent(state, {
+		name: "token",
+		action: "deleted",
+		token: options.token,
+		octokit: new state.Octokit({
+			authStrategy: createUnauthenticatedAuth,
+			auth: { reason: `Handling "token.deleted" event. The access for the token has been revoked.` }
+		})
+	});
+	return response;
+}
+async function deleteAuthorizationWithState(state, options) {
+	const optionsWithDefaults = {
+		clientId: state.clientId,
+		clientSecret: state.clientSecret,
+		request: state.octokit.request,
+		...options
+	};
+	const response = state.clientType === "oauth-app" ? await deleteAuthorization({
+		clientType: "oauth-app",
+		...optionsWithDefaults
+	}) : await deleteAuthorization({
+		clientType: "github-app",
+		...optionsWithDefaults
+	});
+	await emitEvent(state, {
+		name: "token",
+		action: "deleted",
+		token: options.token,
+		octokit: new state.Octokit({
+			authStrategy: createUnauthenticatedAuth,
+			auth: { reason: `Handling "token.deleted" event. The access for the token has been revoked.` }
+		})
+	});
+	await emitEvent(state, {
+		name: "authorization",
+		action: "deleted",
+		token: options.token,
+		octokit: new state.Octokit({
+			authStrategy: createUnauthenticatedAuth,
+			auth: { reason: `Handling "authorization.deleted" event. The access for the app has been revoked.` }
+		})
+	});
+	return response;
+}
+var OAuthApp$1 = class {
+	static VERSION = VERSION$3;
+	static defaults(defaults) {
+		const OAuthAppWithDefaults = class extends this {
+			constructor(...args) {
+				super({
+					...defaults,
+					...args[0]
+				});
+			}
+		};
+		return OAuthAppWithDefaults;
+	}
+	constructor(options) {
+		const Octokit2 = options.Octokit || OAuthAppOctokit;
+		this.type = options.clientType || "oauth-app";
+		const octokit = new Octokit2({
+			authStrategy: createOAuthAppAuth,
+			auth: {
+				clientType: this.type,
+				clientId: options.clientId,
+				clientSecret: options.clientSecret
+			}
+		});
+		const state = {
+			clientType: this.type,
+			clientId: options.clientId,
+			clientSecret: options.clientSecret,
+			defaultScopes: options.defaultScopes || [],
+			allowSignup: options.allowSignup,
+			baseUrl: options.baseUrl,
+			redirectUrl: options.redirectUrl,
+			log: options.log,
+			Octokit: Octokit2,
+			octokit,
+			eventHandlers: {}
+		};
+		this.on = addEventHandler.bind(null, state);
+		this.octokit = octokit;
+		this.getUserOctokit = getUserOctokitWithState.bind(null, state);
+		this.getWebFlowAuthorizationUrl = getWebFlowAuthorizationUrlWithState.bind(null, state);
+		this.createToken = createTokenWithState.bind(null, state);
+		this.checkToken = checkTokenWithState.bind(null, state);
+		this.resetToken = resetTokenWithState.bind(null, state);
+		this.refreshToken = refreshTokenWithState.bind(null, state);
+		this.scopeToken = scopeTokenWithState.bind(null, state);
+		this.deleteToken = deleteTokenWithState.bind(null, state);
+		this.deleteAuthorization = deleteAuthorizationWithState.bind(null, state);
+	}
+	type;
+	on;
+	octokit;
+	getUserOctokit;
+	getWebFlowAuthorizationUrl;
+	createToken;
+	checkToken;
+	resetToken;
+	refreshToken;
+	scopeToken;
+	deleteToken;
+	deleteAuthorization;
+};
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+webhooks-methods@6.0.0/node_modules/@octokit/webhooks-methods/dist-node/index.js
+var VERSION$2 = "6.0.0";
+async function sign(secret, payload) {
+	if (!secret || !payload) throw new TypeError("[@octokit/webhooks-methods] secret & payload required for sign()");
+	if (typeof payload !== "string") throw new TypeError("[@octokit/webhooks-methods] payload must be a string");
+	const algorithm = "sha256";
+	return `${algorithm}=${createHmac(algorithm, secret).update(payload).digest("hex")}`;
+}
+sign.VERSION = VERSION$2;
+async function verify(secret, eventPayload, signature) {
+	if (!secret || !eventPayload || !signature) throw new TypeError("[@octokit/webhooks-methods] secret, eventPayload & signature required");
+	if (typeof eventPayload !== "string") throw new TypeError("[@octokit/webhooks-methods] eventPayload must be a string");
+	const signatureBuffer = Buffer$1.from(signature);
+	const verificationBuffer = Buffer$1.from(await sign(secret, eventPayload));
+	if (signatureBuffer.length !== verificationBuffer.length) return false;
+	return timingSafeEqual(signatureBuffer, verificationBuffer);
+}
+verify.VERSION = VERSION$2;
+async function verifyWithFallback(secret, payload, signature, additionalSecrets) {
+	if (await verify(secret, payload, signature)) return true;
+	if (additionalSecrets !== void 0) for (const s of additionalSecrets) {
+		const v = await verify(s, payload, signature);
+		if (v) return v;
+	}
+	return false;
+}
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+webhooks@14.2.0/node_modules/@octokit/webhooks/dist-bundle/index.js
+var createLogger = (logger = {}) => {
+	if (typeof logger.debug !== "function") logger.debug = () => {};
+	if (typeof logger.info !== "function") logger.info = () => {};
+	if (typeof logger.warn !== "function") logger.warn = console.warn.bind(console);
+	if (typeof logger.error !== "function") logger.error = console.error.bind(console);
+	return logger;
+};
+var emitterEventNames = [
+	"branch_protection_configuration",
+	"branch_protection_configuration.disabled",
+	"branch_protection_configuration.enabled",
+	"branch_protection_rule",
+	"branch_protection_rule.created",
+	"branch_protection_rule.deleted",
+	"branch_protection_rule.edited",
+	"check_run",
+	"check_run.completed",
+	"check_run.created",
+	"check_run.requested_action",
+	"check_run.rerequested",
+	"check_suite",
+	"check_suite.completed",
+	"check_suite.requested",
+	"check_suite.rerequested",
+	"code_scanning_alert",
+	"code_scanning_alert.appeared_in_branch",
+	"code_scanning_alert.closed_by_user",
+	"code_scanning_alert.created",
+	"code_scanning_alert.fixed",
+	"code_scanning_alert.reopened",
+	"code_scanning_alert.reopened_by_user",
+	"commit_comment",
+	"commit_comment.created",
+	"create",
+	"custom_property",
+	"custom_property.created",
+	"custom_property.deleted",
+	"custom_property.promote_to_enterprise",
+	"custom_property.updated",
+	"custom_property_values",
+	"custom_property_values.updated",
+	"delete",
+	"dependabot_alert",
+	"dependabot_alert.auto_dismissed",
+	"dependabot_alert.auto_reopened",
+	"dependabot_alert.created",
+	"dependabot_alert.dismissed",
+	"dependabot_alert.fixed",
+	"dependabot_alert.reintroduced",
+	"dependabot_alert.reopened",
+	"deploy_key",
+	"deploy_key.created",
+	"deploy_key.deleted",
+	"deployment",
+	"deployment.created",
+	"deployment_protection_rule",
+	"deployment_protection_rule.requested",
+	"deployment_review",
+	"deployment_review.approved",
+	"deployment_review.rejected",
+	"deployment_review.requested",
+	"deployment_status",
+	"deployment_status.created",
+	"discussion",
+	"discussion.answered",
+	"discussion.category_changed",
+	"discussion.closed",
+	"discussion.created",
+	"discussion.deleted",
+	"discussion.edited",
+	"discussion.labeled",
+	"discussion.locked",
+	"discussion.pinned",
+	"discussion.reopened",
+	"discussion.transferred",
+	"discussion.unanswered",
+	"discussion.unlabeled",
+	"discussion.unlocked",
+	"discussion.unpinned",
+	"discussion_comment",
+	"discussion_comment.created",
+	"discussion_comment.deleted",
+	"discussion_comment.edited",
+	"fork",
+	"github_app_authorization",
+	"github_app_authorization.revoked",
+	"gollum",
+	"installation",
+	"installation.created",
+	"installation.deleted",
+	"installation.new_permissions_accepted",
+	"installation.suspend",
+	"installation.unsuspend",
+	"installation_repositories",
+	"installation_repositories.added",
+	"installation_repositories.removed",
+	"installation_target",
+	"installation_target.renamed",
+	"issue_comment",
+	"issue_comment.created",
+	"issue_comment.deleted",
+	"issue_comment.edited",
+	"issue_dependencies",
+	"issue_dependencies.blocked_by_added",
+	"issue_dependencies.blocked_by_removed",
+	"issue_dependencies.blocking_added",
+	"issue_dependencies.blocking_removed",
+	"issues",
+	"issues.assigned",
+	"issues.closed",
+	"issues.deleted",
+	"issues.demilestoned",
+	"issues.edited",
+	"issues.labeled",
+	"issues.locked",
+	"issues.milestoned",
+	"issues.opened",
+	"issues.pinned",
+	"issues.reopened",
+	"issues.transferred",
+	"issues.typed",
+	"issues.unassigned",
+	"issues.unlabeled",
+	"issues.unlocked",
+	"issues.unpinned",
+	"issues.untyped",
+	"label",
+	"label.created",
+	"label.deleted",
+	"label.edited",
+	"marketplace_purchase",
+	"marketplace_purchase.cancelled",
+	"marketplace_purchase.changed",
+	"marketplace_purchase.pending_change",
+	"marketplace_purchase.pending_change_cancelled",
+	"marketplace_purchase.purchased",
+	"member",
+	"member.added",
+	"member.edited",
+	"member.removed",
+	"membership",
+	"membership.added",
+	"membership.removed",
+	"merge_group",
+	"merge_group.checks_requested",
+	"merge_group.destroyed",
+	"meta",
+	"meta.deleted",
+	"milestone",
+	"milestone.closed",
+	"milestone.created",
+	"milestone.deleted",
+	"milestone.edited",
+	"milestone.opened",
+	"org_block",
+	"org_block.blocked",
+	"org_block.unblocked",
+	"organization",
+	"organization.deleted",
+	"organization.member_added",
+	"organization.member_invited",
+	"organization.member_removed",
+	"organization.renamed",
+	"package",
+	"package.published",
+	"package.updated",
+	"page_build",
+	"personal_access_token_request",
+	"personal_access_token_request.approved",
+	"personal_access_token_request.cancelled",
+	"personal_access_token_request.created",
+	"personal_access_token_request.denied",
+	"ping",
+	"project",
+	"project.closed",
+	"project.created",
+	"project.deleted",
+	"project.edited",
+	"project.reopened",
+	"project_card",
+	"project_card.converted",
+	"project_card.created",
+	"project_card.deleted",
+	"project_card.edited",
+	"project_card.moved",
+	"project_column",
+	"project_column.created",
+	"project_column.deleted",
+	"project_column.edited",
+	"project_column.moved",
+	"projects_v2",
+	"projects_v2.closed",
+	"projects_v2.created",
+	"projects_v2.deleted",
+	"projects_v2.edited",
+	"projects_v2.reopened",
+	"projects_v2_item",
+	"projects_v2_item.archived",
+	"projects_v2_item.converted",
+	"projects_v2_item.created",
+	"projects_v2_item.deleted",
+	"projects_v2_item.edited",
+	"projects_v2_item.reordered",
+	"projects_v2_item.restored",
+	"projects_v2_status_update",
+	"projects_v2_status_update.created",
+	"projects_v2_status_update.deleted",
+	"projects_v2_status_update.edited",
+	"public",
+	"pull_request",
+	"pull_request.assigned",
+	"pull_request.auto_merge_disabled",
+	"pull_request.auto_merge_enabled",
+	"pull_request.closed",
+	"pull_request.converted_to_draft",
+	"pull_request.demilestoned",
+	"pull_request.dequeued",
+	"pull_request.edited",
+	"pull_request.enqueued",
+	"pull_request.labeled",
+	"pull_request.locked",
+	"pull_request.milestoned",
+	"pull_request.opened",
+	"pull_request.ready_for_review",
+	"pull_request.reopened",
+	"pull_request.review_request_removed",
+	"pull_request.review_requested",
+	"pull_request.synchronize",
+	"pull_request.unassigned",
+	"pull_request.unlabeled",
+	"pull_request.unlocked",
+	"pull_request_review",
+	"pull_request_review.dismissed",
+	"pull_request_review.edited",
+	"pull_request_review.submitted",
+	"pull_request_review_comment",
+	"pull_request_review_comment.created",
+	"pull_request_review_comment.deleted",
+	"pull_request_review_comment.edited",
+	"pull_request_review_thread",
+	"pull_request_review_thread.resolved",
+	"pull_request_review_thread.unresolved",
+	"push",
+	"registry_package",
+	"registry_package.published",
+	"registry_package.updated",
+	"release",
+	"release.created",
+	"release.deleted",
+	"release.edited",
+	"release.prereleased",
+	"release.published",
+	"release.released",
+	"release.unpublished",
+	"repository",
+	"repository.archived",
+	"repository.created",
+	"repository.deleted",
+	"repository.edited",
+	"repository.privatized",
+	"repository.publicized",
+	"repository.renamed",
+	"repository.transferred",
+	"repository.unarchived",
+	"repository_advisory",
+	"repository_advisory.published",
+	"repository_advisory.reported",
+	"repository_dispatch",
+	"repository_dispatch.sample.collected",
+	"repository_import",
+	"repository_ruleset",
+	"repository_ruleset.created",
+	"repository_ruleset.deleted",
+	"repository_ruleset.edited",
+	"repository_vulnerability_alert",
+	"repository_vulnerability_alert.create",
+	"repository_vulnerability_alert.dismiss",
+	"repository_vulnerability_alert.reopen",
+	"repository_vulnerability_alert.resolve",
+	"secret_scanning_alert",
+	"secret_scanning_alert.assigned",
+	"secret_scanning_alert.created",
+	"secret_scanning_alert.publicly_leaked",
+	"secret_scanning_alert.reopened",
+	"secret_scanning_alert.resolved",
+	"secret_scanning_alert.unassigned",
+	"secret_scanning_alert.validated",
+	"secret_scanning_alert_location",
+	"secret_scanning_alert_location.created",
+	"secret_scanning_scan",
+	"secret_scanning_scan.completed",
+	"security_advisory",
+	"security_advisory.published",
+	"security_advisory.updated",
+	"security_advisory.withdrawn",
+	"security_and_analysis",
+	"sponsorship",
+	"sponsorship.cancelled",
+	"sponsorship.created",
+	"sponsorship.edited",
+	"sponsorship.pending_cancellation",
+	"sponsorship.pending_tier_change",
+	"sponsorship.tier_changed",
+	"star",
+	"star.created",
+	"star.deleted",
+	"status",
+	"sub_issues",
+	"sub_issues.parent_issue_added",
+	"sub_issues.parent_issue_removed",
+	"sub_issues.sub_issue_added",
+	"sub_issues.sub_issue_removed",
+	"team",
+	"team.added_to_repository",
+	"team.created",
+	"team.deleted",
+	"team.edited",
+	"team.removed_from_repository",
+	"team_add",
+	"watch",
+	"watch.started",
+	"workflow_dispatch",
+	"workflow_job",
+	"workflow_job.completed",
+	"workflow_job.in_progress",
+	"workflow_job.queued",
+	"workflow_job.waiting",
+	"workflow_run",
+	"workflow_run.completed",
+	"workflow_run.in_progress",
+	"workflow_run.requested"
+];
+function validateEventName(eventName, options = {}) {
+	if (typeof eventName !== "string") throw new TypeError("eventName must be of type string");
+	if (eventName === "*") throw new TypeError(`Using the "*" event with the regular Webhooks.on() function is not supported. Please use the Webhooks.onAny() method instead`);
+	if (eventName === "error") throw new TypeError(`Using the "error" event with the regular Webhooks.on() function is not supported. Please use the Webhooks.onError() method instead`);
+	if (options.onUnknownEventName === "ignore") return;
+	if (!emitterEventNames.includes(eventName)) if (options.onUnknownEventName !== "warn") throw new TypeError(`"${eventName}" is not a known webhook name (https://developer.github.com/v3/activity/events/types/)`);
+	else (options.log || console).warn(`"${eventName}" is not a known webhook name (https://developer.github.com/v3/activity/events/types/)`);
+}
+function handleEventHandlers(state, webhookName, handler) {
+	if (!state.hooks[webhookName]) state.hooks[webhookName] = [];
+	state.hooks[webhookName].push(handler);
+}
+function receiverOn(state, webhookNameOrNames, handler) {
+	if (Array.isArray(webhookNameOrNames)) {
+		webhookNameOrNames.forEach((webhookName) => receiverOn(state, webhookName, handler));
+		return;
+	}
+	validateEventName(webhookNameOrNames, {
+		onUnknownEventName: "warn",
+		log: state.log
+	});
+	handleEventHandlers(state, webhookNameOrNames, handler);
+}
+function receiverOnAny(state, handler) {
+	handleEventHandlers(state, "*", handler);
+}
+function receiverOnError(state, handler) {
+	handleEventHandlers(state, "error", handler);
+}
+function wrapErrorHandler(handler, error) {
+	let returnValue;
+	try {
+		returnValue = handler(error);
+	} catch (error2) {
+		console.log("FATAL: Error occurred in \"error\" event handler");
+		console.log(error2);
+	}
+	if (returnValue && returnValue.catch) returnValue.catch((error2) => {
+		console.log("FATAL: Error occurred in \"error\" event handler");
+		console.log(error2);
+	});
+}
+function getHooks(state, eventPayloadAction, eventName) {
+	const hooks = [state.hooks[eventName], state.hooks["*"]];
+	if (eventPayloadAction) hooks.unshift(state.hooks[`${eventName}.${eventPayloadAction}`]);
+	return [].concat(...hooks.filter(Boolean));
+}
+function receiverHandle(state, event) {
+	const errorHandlers = state.hooks.error || [];
+	if (event instanceof Error) {
+		const error = Object.assign(new AggregateError([event], event.message), { event });
+		errorHandlers.forEach((handler) => wrapErrorHandler(handler, error));
+		return Promise.reject(error);
+	}
+	if (!event || !event.name) {
+		const error = /* @__PURE__ */ new Error("Event name not passed");
+		throw new AggregateError([error], error.message);
+	}
+	if (!event.payload) {
+		const error = /* @__PURE__ */ new Error("Event name not passed");
+		throw new AggregateError([error], error.message);
+	}
+	const hooks = getHooks(state, "action" in event.payload ? event.payload.action : null, event.name);
+	if (hooks.length === 0) return Promise.resolve();
+	const errors = [];
+	const promises = hooks.map((handler) => {
+		let promise = Promise.resolve(event);
+		if (state.transform) promise = promise.then(state.transform);
+		return promise.then((event2) => {
+			return handler(event2);
+		}).catch((error) => errors.push(Object.assign(error, { event })));
+	});
+	return Promise.all(promises).then(() => {
+		if (errors.length === 0) return;
+		const error = new AggregateError(errors, errors.map((error2) => error2.message).join("\n"));
+		Object.assign(error, { event });
+		errorHandlers.forEach((handler) => wrapErrorHandler(handler, error));
+		throw error;
+	});
+}
+function removeListener(state, webhookNameOrNames, handler) {
+	if (Array.isArray(webhookNameOrNames)) {
+		webhookNameOrNames.forEach((webhookName) => removeListener(state, webhookName, handler));
+		return;
+	}
+	if (!state.hooks[webhookNameOrNames]) return;
+	for (let i = state.hooks[webhookNameOrNames].length - 1; i >= 0; i--) if (state.hooks[webhookNameOrNames][i] === handler) {
+		state.hooks[webhookNameOrNames].splice(i, 1);
+		return;
+	}
+}
+function createEventHandler(options) {
+	const state = {
+		hooks: {},
+		log: createLogger(options && options.log)
+	};
+	if (options && options.transform) state.transform = options.transform;
+	return {
+		on: receiverOn.bind(null, state),
+		onAny: receiverOnAny.bind(null, state),
+		onError: receiverOnError.bind(null, state),
+		removeListener: removeListener.bind(null, state),
+		receive: receiverHandle.bind(null, state)
+	};
+}
+async function verifyAndReceive(state, event) {
+	if (!await verifyWithFallback(state.secret, event.payload, event.signature, state.additionalSecrets).catch(() => false)) {
+		const error = /* @__PURE__ */ new Error("[@octokit/webhooks] signature does not match event payload and secret");
+		error.event = event;
+		error.status = 400;
+		return state.eventHandler.receive(error);
+	}
+	let payload;
+	try {
+		payload = JSON.parse(event.payload);
+	} catch (error) {
+		error.message = "Invalid JSON";
+		error.status = 400;
+		throw new AggregateError([error], error.message);
+	}
+	return state.eventHandler.receive({
+		id: event.id,
+		name: event.name,
+		payload
+	});
+}
+var textDecoder = new TextDecoder("utf-8", { fatal: false });
+var decode = textDecoder.decode.bind(textDecoder);
+var Webhooks = class {
+	sign;
+	verify;
+	on;
+	onAny;
+	onError;
+	removeListener;
+	receive;
+	verifyAndReceive;
+	constructor(options) {
+		if (!options || !options.secret) throw new Error("[@octokit/webhooks] options.secret required");
+		const state = {
+			eventHandler: createEventHandler(options),
+			secret: options.secret,
+			additionalSecrets: options.additionalSecrets,
+			hooks: {},
+			log: createLogger(options.log)
+		};
+		this.sign = sign.bind(null, options.secret);
+		this.verify = verify.bind(null, options.secret);
+		this.on = state.eventHandler.on;
+		this.onAny = state.eventHandler.onAny;
+		this.onError = state.eventHandler.onError;
+		this.removeListener = state.eventHandler.removeListener;
+		this.receive = state.eventHandler.receive;
+		this.verifyAndReceive = verifyAndReceive.bind(null, state);
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/@octokit+app@16.1.2/node_modules/@octokit/app/dist-node/index.js
+var VERSION$1 = "16.1.2";
+function webhooks(appOctokit, options) {
+	return new Webhooks({
+		secret: options.secret,
+		transform: async (event) => {
+			if (!("installation" in event.payload) || typeof event.payload.installation !== "object") {
+				const octokit2 = new appOctokit.constructor({
+					authStrategy: createUnauthenticatedAuth,
+					auth: { reason: `"installation" key missing in webhook event payload` }
+				});
+				return {
+					...event,
+					octokit: octokit2
+				};
+			}
+			const installationId = event.payload.installation.id;
+			const octokit = await appOctokit.auth({
+				type: "installation",
+				installationId,
+				factory(auth) {
+					return new auth.octokit.constructor({
+						...auth.octokitOptions,
+						authStrategy: createAppAuth,
+						auth: {
+							...auth,
+							installationId
+						}
+					});
+				}
+			});
+			octokit.hook.before("request", (options2) => {
+				options2.headers["x-github-delivery"] = event.id;
+			});
+			return {
+				...event,
+				octokit
+			};
+		}
+	});
+}
+async function getInstallationOctokit(app, installationId) {
+	return app.octokit.auth({
+		type: "installation",
+		installationId,
+		factory(auth) {
+			const options = {
+				...auth.octokitOptions,
+				authStrategy: createAppAuth,
+				auth: {
+					...auth,
+					installationId
+				}
+			};
+			return new auth.octokit.constructor(options);
+		}
+	});
+}
+function eachInstallationFactory(app) {
+	return Object.assign(eachInstallation.bind(null, app), { iterator: eachInstallationIterator.bind(null, app) });
+}
+async function eachInstallation(app, callback) {
+	const i = eachInstallationIterator(app)[Symbol.asyncIterator]();
+	let result = await i.next();
+	while (!result.done) {
+		await callback(result.value);
+		result = await i.next();
+	}
+}
+function eachInstallationIterator(app) {
+	return { async *[Symbol.asyncIterator]() {
+		const iterator = composePaginateRest.iterator(app.octokit, "GET /app/installations");
+		for await (const { data: installations } of iterator) for (const installation of installations) yield {
+			octokit: await getInstallationOctokit(app, installation.id),
+			installation
+		};
+	} };
+}
+function eachRepositoryFactory(app) {
+	return Object.assign(eachRepository.bind(null, app), { iterator: eachRepositoryIterator.bind(null, app) });
+}
+async function eachRepository(app, queryOrCallback, callback) {
+	const i = eachRepositoryIterator(app, callback ? queryOrCallback : void 0)[Symbol.asyncIterator]();
+	let result = await i.next();
+	while (!result.done) {
+		if (callback) await callback(result.value);
+		else await queryOrCallback(result.value);
+		result = await i.next();
+	}
+}
+function singleInstallationIterator(app, installationId) {
+	return { async *[Symbol.asyncIterator]() {
+		yield { octokit: await app.getInstallationOctokit(installationId) };
+	} };
+}
+function eachRepositoryIterator(app, query) {
+	return { async *[Symbol.asyncIterator]() {
+		const iterator = query ? singleInstallationIterator(app, query.installationId) : app.eachInstallation.iterator();
+		for await (const { octokit } of iterator) {
+			const repositoriesIterator = composePaginateRest.iterator(octokit, "GET /installation/repositories");
+			for await (const { data: repositories } of repositoriesIterator) for (const repository of repositories) yield {
+				octokit,
+				repository
+			};
+		}
+	} };
+}
+function getInstallationUrlFactory(app) {
+	let installationUrlBasePromise;
+	return async function getInstallationUrl(options = {}) {
+		if (!installationUrlBasePromise) installationUrlBasePromise = getInstallationUrlBase(app);
+		const installationUrlBase = await installationUrlBasePromise;
+		const installationUrl = new URL(installationUrlBase);
+		if (options.target_id !== void 0) {
+			installationUrl.pathname += "/permissions";
+			installationUrl.searchParams.append("target_id", options.target_id.toFixed());
+		}
+		if (options.state !== void 0) installationUrl.searchParams.append("state", options.state);
+		return installationUrl.href;
+	};
+}
+async function getInstallationUrlBase(app) {
+	const { data: appInfo } = await app.octokit.request("GET /app");
+	if (!appInfo) throw new Error("[@octokit/app] unable to fetch metadata for app");
+	return `${appInfo.html_url}/installations/new`;
+}
+var App$1 = class {
+	static VERSION = VERSION$1;
+	static defaults(defaults) {
+		const AppWithDefaults = class extends this {
+			constructor(...args) {
+				super({
+					...defaults,
+					...args[0]
+				});
+			}
+		};
+		return AppWithDefaults;
+	}
+	octokit;
+	webhooks;
+	oauth;
+	getInstallationOctokit;
+	eachInstallation;
+	eachRepository;
+	getInstallationUrl;
+	log;
+	constructor(options) {
+		const Octokit = options.Octokit || Octokit$1;
+		const octokitOptions = {
+			authStrategy: createAppAuth,
+			auth: Object.assign({
+				appId: options.appId,
+				privateKey: options.privateKey
+			}, options.oauth ? {
+				clientId: options.oauth.clientId,
+				clientSecret: options.oauth.clientSecret
+			} : {})
+		};
+		if ("log" in options && typeof options.log !== "undefined") octokitOptions.log = options.log;
+		this.octokit = new Octokit(octokitOptions);
+		this.log = Object.assign({
+			debug: () => {},
+			info: () => {},
+			warn: console.warn.bind(console),
+			error: console.error.bind(console)
+		}, options.log);
+		if (options.webhooks) this.webhooks = webhooks(this.octokit, options.webhooks);
+		else Object.defineProperty(this, "webhooks", { get() {
+			throw new Error("[@octokit/app] webhooks option not set");
+		} });
+		if (options.oauth) this.oauth = new OAuthApp$1({
+			...options.oauth,
+			clientType: "github-app",
+			Octokit
+		});
+		else Object.defineProperty(this, "oauth", { get() {
+			throw new Error("[@octokit/app] oauth.clientId / oauth.clientSecret options are not set");
+		} });
+		this.getInstallationOctokit = getInstallationOctokit.bind(null, this);
+		this.eachInstallation = eachInstallationFactory(this);
+		this.eachRepository = eachRepositoryFactory(this);
+		this.getInstallationUrl = getInstallationUrlFactory(this);
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/octokit@5.0.5/node_modules/octokit/dist-bundle/index.js
+var VERSION = "0.0.0-development";
+var Octokit = Octokit$1.plugin(restEndpointMethods, paginateRest, paginateGraphQL, retry, throttling).defaults({
+	userAgent: `octokit.js/${VERSION}`,
+	throttle: {
+		onRateLimit,
+		onSecondaryRateLimit
+	}
+});
+function onRateLimit(retryAfter, options, octokit) {
+	octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
+	if (options.request.retryCount === 0) {
+		octokit.log.info(`Retrying after ${retryAfter} seconds!`);
+		return true;
+	}
+}
+function onSecondaryRateLimit(retryAfter, options, octokit) {
+	octokit.log.warn(`SecondaryRateLimit detected for request ${options.method} ${options.url}`);
+	if (options.request.retryCount === 0) {
+		octokit.log.info(`Retrying after ${retryAfter} seconds!`);
+		return true;
+	}
+}
+var App = App$1.defaults({ Octokit });
+var OAuthApp = OAuthApp$1.defaults({ Octokit });
+/* v8 ignore next no need to test internals of the throttle plugin -- @preserve */
+
+//#endregion
+//#region src/setup.ts
+let _runtimeContext = null;
+function requireRuntimeContext() {
+	if (!_runtimeContext) throw new Error("Clank8y runtime context is not initialized. Call setClank8yRuntimeContext first.");
+	return _runtimeContext;
+}
+function normalizeRuntimeContext(context) {
+	if (!context.promptContext.trim()) throw new Error("Clank8y runtime context requires a non-empty promptContext.");
+	if (!context.auth.githubToken.trim()) throw new Error("Clank8y runtime context requires a non-empty auth.githubToken.");
+	if (!context.auth.copilotToken.trim()) throw new Error("Clank8y runtime context requires a non-empty auth.copilotToken.");
+	return {
+		...context,
+		promptContext: context.promptContext.trim(),
+		auth: {
+			githubToken: context.auth.githubToken.trim(),
+			copilotToken: context.auth.copilotToken.trim()
+		}
+	};
+}
+function setClank8yRuntimeContext(context) {
+	_runtimeContext = normalizeRuntimeContext(context);
+}
+function getClank8yRuntimeContext() {
+	return requireRuntimeContext();
+}
+
+//#endregion
+//#region src/gh/octokit-clank8y.ts
+async function clank8yOctokit() {
+	return new Octokit({ auth: getClank8yRuntimeContext().auth.githubToken });
+}
+
+//#endregion
+//#region src/gh/index.ts
+async function getOctokit() {
+	return await clank8yOctokit();
+}
+
+//#endregion
+//#region node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/adapter.js
+/**
+* @import { StandardSchemaV1 } from "@standard-schema/spec";
+* @import { JSONSchema7 } from "json-schema";
+*/
+/**
+* @template {StandardSchemaV1} TSchema
+*/
+var JsonSchemaAdapter = class {
+	/**
+	* @param {TSchema} schema
+	* @returns {Promise<JSONSchema7>}
+	*/
+	toJsonSchema(schema) {
+		throw new Error("toJsonSchema method not implemented");
+	}
+};
 
 //#endregion
 //#region node_modules/.pnpm/valibot@1.2.0_typescript@5.9.3/node_modules/valibot/dist/index.mjs
@@ -21563,40 +25045,1657 @@ function safeParse(schema, input, config$1) {
 }
 
 //#endregion
-//#region src/modeSelection/schema.ts
-const CLANK8Y_MODES = ["Review"];
-const clank8yModeSchema = pipe(picklist(CLANK8Y_MODES), description("The execution mode selected for the current clank8y run."));
-const clank8yModeSelectionSchema = object({
-	mode: clank8yModeSchema,
-	reason: pipe(string(), minLength(1, "Mode selection reason is required."), description("A concise explanation for why this mode fits the current run."))
-});
-
-//#endregion
-//#region src/prompts/selectMode.ts
-const BASE_MODE_SELECTION_PROMPT = [[
-	"## Mode selection",
-	"",
-	"You are an agent for choosing the best clank8y execution mode for this run.",
-	`Call \`${MODE_SELECTION_TOOL_NAME}\` exactly once with a valid mode and a concise reason.`,
-	`Tool intent: ${MODE_SELECTION_TOOL_DESCRIPTION}`,
-	"Choose `Review` when the instructions are about pull request review.",
-	"Do not do any other work in this step."
-].join("\n")].join("\n");
-function buildModeSelectionPrompt(promptContext) {
-	const normalized = promptContext.trim();
-	if (!normalized) return BASE_MODE_SELECTION_PROMPT;
-	return [
-		BASE_MODE_SELECTION_PROMPT,
-		"",
-		"Here is the prompt context for this run:",
-		normalized
-	].join("\n");
+//#region node_modules/.pnpm/@valibot+to-json-schema@1.5.0_valibot@1.2.0_typescript@5.9.3_/node_modules/@valibot/to-json-schema/dist/index.mjs
+/**
+* Adds an error message to the errors array.
+*
+* @param errors The array of error messages.
+* @param message The error message to add.
+*
+* @returns The new errors.
+*/
+function addError(errors, message) {
+	if (errors) {
+		errors.push(message);
+		return errors;
+	}
+	return [message];
+}
+/**
+* Throws an error or logs a warning based on the configuration.
+*
+* @param message The message to throw or log.
+* @param config The conversion configuration.
+*/
+function handleError(message, config) {
+	switch (config?.errorMode) {
+		case "ignore": break;
+		case "warn":
+			console.warn(message);
+			break;
+		default: throw new Error(message);
+	}
+}
+/**
+* Converts any supported Valibot action to the JSON Schema format.
+*
+* @param jsonSchema The JSON Schema object.
+* @param valibotAction The Valibot action object.
+* @param config The conversion configuration.
+*
+* @returns The converted JSON Schema.
+*/
+function convertAction(jsonSchema, valibotAction, config) {
+	if (config?.ignoreActions?.includes(valibotAction.type)) return jsonSchema;
+	let errors;
+	switch (valibotAction.type) {
+		case "base64":
+			jsonSchema.contentEncoding = "base64";
+			break;
+		case "bic":
+		case "cuid2":
+		case "decimal":
+		case "digits":
+		case "emoji":
+		case "hexadecimal":
+		case "hex_color":
+		case "nanoid":
+		case "octal":
+		case "ulid":
+			jsonSchema.pattern = valibotAction.requirement.source;
+			break;
+		case "description":
+			jsonSchema.description = valibotAction.description;
+			break;
+		case "email":
+			jsonSchema.format = "email";
+			break;
+		case "empty":
+			if (jsonSchema.type === "array") jsonSchema.maxItems = 0;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.maxLength = 0;
+			}
+			break;
+		case "entries":
+			jsonSchema.minProperties = valibotAction.requirement;
+			jsonSchema.maxProperties = valibotAction.requirement;
+			break;
+		case "examples":
+			if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.examples];
+			else jsonSchema.examples = valibotAction.examples;
+			break;
+		case "integer":
+			jsonSchema.type = "integer";
+			break;
+		case "ipv4":
+			jsonSchema.format = "ipv4";
+			break;
+		case "ipv6":
+			jsonSchema.format = "ipv6";
+			break;
+		case "iso_date":
+			jsonSchema.format = "date";
+			break;
+		case "iso_date_time":
+		case "iso_timestamp":
+			jsonSchema.format = "date-time";
+			break;
+		case "iso_time":
+			jsonSchema.format = "time";
+			break;
+		case "length":
+			if (jsonSchema.type === "array") {
+				jsonSchema.minItems = valibotAction.requirement;
+				jsonSchema.maxItems = valibotAction.requirement;
+			} else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = valibotAction.requirement;
+				jsonSchema.maxLength = valibotAction.requirement;
+			}
+			break;
+		case "max_entries":
+			jsonSchema.maxProperties = valibotAction.requirement;
+			break;
+		case "max_length":
+			if (jsonSchema.type === "array") jsonSchema.maxItems = valibotAction.requirement;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.maxLength = valibotAction.requirement;
+			}
+			break;
+		case "max_value":
+			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "max_value" action is not supported on type "${jsonSchema.type}".`);
+			jsonSchema.maximum = valibotAction.requirement;
+			break;
+		case "metadata":
+			if (typeof valibotAction.metadata.title === "string") jsonSchema.title = valibotAction.metadata.title;
+			if (typeof valibotAction.metadata.description === "string") jsonSchema.description = valibotAction.metadata.description;
+			if (Array.isArray(valibotAction.metadata.examples)) if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.metadata.examples];
+			else jsonSchema.examples = valibotAction.metadata.examples;
+			break;
+		case "min_entries":
+			jsonSchema.minProperties = valibotAction.requirement;
+			break;
+		case "min_length":
+			if (jsonSchema.type === "array") jsonSchema.minItems = valibotAction.requirement;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = valibotAction.requirement;
+			}
+			break;
+		case "min_value":
+			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "min_value" action is not supported on type "${jsonSchema.type}".`);
+			jsonSchema.minimum = valibotAction.requirement;
+			break;
+		case "multiple_of":
+			jsonSchema.multipleOf = valibotAction.requirement;
+			break;
+		case "non_empty":
+			if (jsonSchema.type === "array") jsonSchema.minItems = 1;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = 1;
+			}
+			break;
+		case "regex":
+			if (valibotAction.requirement.flags) errors = addError(errors, "RegExp flags are not supported by JSON Schema.");
+			jsonSchema.pattern = valibotAction.requirement.source;
+			break;
+		case "title":
+			jsonSchema.title = valibotAction.title;
+			break;
+		case "url":
+			jsonSchema.format = "uri";
+			break;
+		case "uuid":
+			jsonSchema.format = "uuid";
+			break;
+		case "value":
+			jsonSchema.const = valibotAction.requirement;
+			break;
+		default: errors = addError(errors, `The "${valibotAction.type}" action cannot be converted to JSON Schema.`);
+	}
+	if (config?.overrideAction) {
+		const actionOverride = config.overrideAction({
+			valibotAction,
+			jsonSchema,
+			errors
+		});
+		if (actionOverride) return { ...actionOverride };
+	}
+	if (errors) for (const message of errors) handleError(message, config);
+	return jsonSchema;
+}
+/**
+* Flattens a Valibot pipe by recursively expanding nested pipes.
+*
+* @param pipe The pipeline to flatten.
+*
+* @returns A flat pipeline.
+*/
+function flattenPipe(pipe) {
+	return pipe.flatMap((item) => "pipe" in item ? flattenPipe(item.pipe) : item);
+}
+let refCount = 0;
+/**
+* Converts any supported Valibot schema to the JSON Schema format.
+*
+* @param jsonSchema The JSON Schema object.
+* @param valibotSchema The Valibot schema object.
+* @param config The conversion configuration.
+* @param context The conversion context.
+* @param skipRef Whether to skip using a reference.
+*
+* @returns The converted JSON Schema.
+*/
+function convertSchema(jsonSchema, valibotSchema, config, context, skipRef = false) {
+	if (!skipRef) {
+		const referenceId = context.referenceMap.get(valibotSchema);
+		if (referenceId) {
+			jsonSchema.$ref = `#/$defs/${referenceId}`;
+			if (config?.overrideRef) {
+				const refOverride = config.overrideRef({
+					...context,
+					referenceId,
+					valibotSchema,
+					jsonSchema
+				});
+				if (refOverride) jsonSchema.$ref = refOverride;
+			}
+			return jsonSchema;
+		}
+	}
+	if ("pipe" in valibotSchema) {
+		const flatPipe = flattenPipe(valibotSchema.pipe);
+		let startIndex = 0;
+		let stopIndex = flatPipe.length - 1;
+		if (config?.typeMode === "input") {
+			const inputStopIndex = flatPipe.slice(1).findIndex((item) => item.kind === "schema" || item.kind === "transformation" && (item.type === "find_item" || item.type === "parse_json" || item.type === "raw_transform" || item.type === "reduce_items" || item.type === "stringify_json" || item.type === "to_bigint" || item.type === "to_boolean" || item.type === "to_date" || item.type === "to_number" || item.type === "to_string" || item.type === "transform"));
+			if (inputStopIndex !== -1) stopIndex = inputStopIndex;
+		} else if (config?.typeMode === "output") {
+			const outputStartIndex = flatPipe.findLastIndex((item) => item.kind === "schema");
+			if (outputStartIndex !== -1) startIndex = outputStartIndex;
+		}
+		for (let index = startIndex; index <= stopIndex; index++) {
+			const valibotPipeItem = flatPipe[index];
+			if (valibotPipeItem.kind === "schema") {
+				if (index > startIndex) handleError("Set the \"typeMode\" config to \"input\" or \"output\" to convert pipelines with multiple schemas.", config);
+				jsonSchema = convertSchema(jsonSchema, valibotPipeItem, config, context, true);
+			} else jsonSchema = convertAction(jsonSchema, valibotPipeItem, config);
+		}
+		return jsonSchema;
+	}
+	let errors;
+	switch (valibotSchema.type) {
+		case "boolean":
+			jsonSchema.type = "boolean";
+			break;
+		case "null":
+			if (config?.target === "openapi-3.0") jsonSchema.enum = [null];
+			else jsonSchema.type = "null";
+			break;
+		case "number":
+			jsonSchema.type = "number";
+			break;
+		case "string":
+			jsonSchema.type = "string";
+			break;
+		case "array":
+			jsonSchema.type = "array";
+			jsonSchema.items = convertSchema({}, valibotSchema.item, config, context);
+			break;
+		case "tuple":
+		case "tuple_with_rest":
+		case "loose_tuple":
+		case "strict_tuple":
+			jsonSchema.type = "array";
+			if (config?.target === "openapi-3.0") {
+				jsonSchema.items = { anyOf: [] };
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.items.anyOf.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items.anyOf.push(convertSchema({}, valibotSchema.rest, config, context));
+				else if (valibotSchema.type === "strict_tuple" || valibotSchema.type === "tuple") jsonSchema.maxItems = valibotSchema.items.length;
+			} else if (config?.target === "draft-2020-12") {
+				jsonSchema.prefixItems = [];
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.prefixItems.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items = convertSchema({}, valibotSchema.rest, config, context);
+				else if (valibotSchema.type === "strict_tuple") jsonSchema.items = false;
+			} else {
+				jsonSchema.items = [];
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.items.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.additionalItems = convertSchema({}, valibotSchema.rest, config, context);
+				else if (valibotSchema.type === "strict_tuple") jsonSchema.additionalItems = false;
+			}
+			break;
+		case "object":
+		case "object_with_rest":
+		case "loose_object":
+		case "strict_object":
+			jsonSchema.type = "object";
+			jsonSchema.properties = {};
+			jsonSchema.required = [];
+			for (const key in valibotSchema.entries) {
+				const entry = valibotSchema.entries[key];
+				jsonSchema.properties[key] = convertSchema({}, entry, config, context);
+				if (entry.type !== "exact_optional" && entry.type !== "nullish" && entry.type !== "optional") jsonSchema.required.push(key);
+			}
+			if (valibotSchema.type === "object_with_rest") jsonSchema.additionalProperties = convertSchema({}, valibotSchema.rest, config, context);
+			else if (valibotSchema.type === "strict_object") jsonSchema.additionalProperties = false;
+			break;
+		case "record":
+			if (config?.target === "openapi-3.0" && "pipe" in valibotSchema.key) errors = addError(errors, "The \"record\" schema with a schema for the key that contains a \"pipe\" cannot be converted to JSON Schema.");
+			if (valibotSchema.key.type !== "string") errors = addError(errors, `The "record" schema with the "${valibotSchema.key.type}" schema for the key cannot be converted to JSON Schema.`);
+			jsonSchema.type = "object";
+			if (config?.target !== "openapi-3.0") jsonSchema.propertyNames = convertSchema({}, valibotSchema.key, config, context);
+			jsonSchema.additionalProperties = convertSchema({}, valibotSchema.value, config, context);
+			break;
+		case "any":
+		case "unknown": break;
+		case "nullable":
+		case "nullish":
+			if (config?.target === "openapi-3.0") {
+				const innerSchema = convertSchema({}, valibotSchema.wrapped, config, context);
+				Object.assign(jsonSchema, innerSchema);
+				jsonSchema.nullable = true;
+			} else jsonSchema.anyOf = [convertSchema({}, valibotSchema.wrapped, config, context), { type: "null" }];
+			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
+			break;
+		case "exact_optional":
+		case "optional":
+		case "undefinedable":
+			jsonSchema = convertSchema(jsonSchema, valibotSchema.wrapped, config, context);
+			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
+			break;
+		case "literal":
+			if (typeof valibotSchema.literal !== "boolean" && typeof valibotSchema.literal !== "number" && typeof valibotSchema.literal !== "string") errors = addError(errors, "The value of the \"literal\" schema is not JSON compatible.");
+			if (config?.target === "openapi-3.0") jsonSchema.enum = [valibotSchema.literal];
+			else jsonSchema.const = valibotSchema.literal;
+			break;
+		case "enum":
+			jsonSchema.enum = valibotSchema.options;
+			break;
+		case "picklist":
+			if (valibotSchema.options.some((option) => typeof option !== "number" && typeof option !== "string")) errors = addError(errors, "An option of the \"picklist\" schema is not JSON compatible.");
+			jsonSchema.enum = valibotSchema.options;
+			break;
+		case "union":
+			jsonSchema.anyOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "variant":
+			jsonSchema.oneOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "intersect":
+			jsonSchema.allOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "lazy": {
+			let wrappedValibotSchema = context.getterMap.get(valibotSchema.getter);
+			if (!wrappedValibotSchema) {
+				wrappedValibotSchema = valibotSchema.getter(void 0);
+				context.getterMap.set(valibotSchema.getter, wrappedValibotSchema);
+			}
+			let referenceId = context.referenceMap.get(wrappedValibotSchema);
+			if (!referenceId) {
+				referenceId = `${refCount++}`;
+				context.referenceMap.set(wrappedValibotSchema, referenceId);
+				context.definitions[referenceId] = convertSchema({}, wrappedValibotSchema, config, context, true);
+			}
+			jsonSchema.$ref = `#/$defs/${referenceId}`;
+			if (config?.overrideRef) {
+				const refOverride = config.overrideRef({
+					...context,
+					referenceId,
+					valibotSchema: wrappedValibotSchema,
+					jsonSchema
+				});
+				if (refOverride) jsonSchema.$ref = refOverride;
+			}
+			break;
+		}
+		default: errors = addError(errors, `The "${valibotSchema.type}" schema cannot be converted to JSON Schema.`);
+	}
+	if (config?.overrideSchema) {
+		const schemaOverride = config.overrideSchema({
+			...context,
+			referenceId: context.referenceMap.get(valibotSchema),
+			valibotSchema,
+			jsonSchema,
+			errors
+		});
+		if (schemaOverride) return { ...schemaOverride };
+	}
+	if (errors) for (const message of errors) handleError(message, config);
+	return jsonSchema;
+}
+let store;
+/**
+* Returns the current global schema definitions.
+*
+* @returns The schema definitions.
+*
+* @beta
+*/
+function getGlobalDefs() {
+	return store;
+}
+/**
+* Converts a Valibot schema to the JSON Schema format.
+*
+* @param schema The Valibot schema object.
+* @param config The JSON Schema configuration.
+*
+* @returns The converted JSON Schema.
+*/
+function toJsonSchema$1(schema, config) {
+	const context = {
+		definitions: {},
+		referenceMap: /* @__PURE__ */ new Map(),
+		getterMap: /* @__PURE__ */ new Map()
+	};
+	const definitions = config?.definitions ?? getGlobalDefs();
+	if (definitions) {
+		for (const key in definitions) context.referenceMap.set(definitions[key], key);
+		for (const key in definitions) context.definitions[key] = convertSchema({}, definitions[key], config, context, true);
+	}
+	const jsonSchema = convertSchema({}, schema, config, context);
+	const target = config?.target ?? "draft-07";
+	if (target === "draft-2020-12") jsonSchema.$schema = "https://json-schema.org/draft/2020-12/schema";
+	else if (target === "draft-07") jsonSchema.$schema = "http://json-schema.org/draft-07/schema#";
+	if (context.referenceMap.size) jsonSchema.$defs = context.definitions;
+	return jsonSchema;
 }
 
 //#endregion
-//#region src/prompts/index.ts
-function buildPrompt(mode, promptContext) {
-	return getModeDefinition(mode).buildPrompt(promptContext);
+//#region node_modules/.pnpm/@tmcp+adapter-valibot@0.1.5_tmcp@1.19.2_typescript@5.9.3__valibot@1.2.0_typescript@5.9.3_/node_modules/@tmcp/adapter-valibot/src/index.js
+/**
+* @import { GenericSchema } from "valibot";
+*/
+/**
+* Atrocious hack to satisfy the current version of the protocol that for some reason
+* requires `type: string` on enum fields despite JSON Schema spec not requiring it.
+*
+* TODO: Remove this once the protocol is fixed to align with JSON Schema spec.
+* @param {ReturnType<typeof toJsonSchema>} json_schema
+*/
+function add_type_to_enums(json_schema) {
+	for (let key in json_schema) {
+		const property = json_schema[key];
+		if (property != null && typeof property === "object" && !Array.isArray(property)) {
+			if ("enum" in property && !("type" in property)) property.type = "string";
+			add_type_to_enums(property);
+		}
+	}
+	return json_schema;
+}
+/**
+* Valibot adapter for converting Valibot schemas to JSON Schema format
+* @augments {JsonSchemaAdapter<GenericSchema>}
+*/
+var ValibotJsonSchemaAdapter = class extends JsonSchemaAdapter {
+	/**
+	* Converts a Valibot schema to JSON Schema format
+	* @param {GenericSchema} schema - The Valibot schema to convert
+	* @returns {Promise<ReturnType<typeof toJsonSchema>>} - The converted JSON Schema
+	*/
+	async toJsonSchema(schema) {
+		return add_type_to_enums(toJsonSchema$1(schema));
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/@tmcp+session-manager@0.2.1_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/session-manager/src/index.js
+/**
+* @import { Context } from "tmcp";
+*/
+/**
+* @abstract
+*/
+var StreamSessionManager = class {
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {ReadableStreamDefaultController} controller
+	* @returns {void | Promise<void>}
+	*/
+	create(id, controller) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {void | Promise<void>}
+	*/
+	delete(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {boolean | Promise<boolean>}
+	*/
+	has(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string[] | undefined} sessions
+	* @param {string} data
+	* @returns {void | Promise<void>}
+	*/
+	send(sessions, data) {
+		throw new Error("Method not implemented.");
+	}
+};
+var InMemoryStreamSessionManager = class extends StreamSessionManager {
+	/**
+	* @type {Map<string, ReadableStreamDefaultController>}
+	*/
+	#sessions = /* @__PURE__ */ new Map();
+	#text_encoder = new TextEncoder();
+	/**
+	* @param {string} id
+	* @param {ReadableStreamDefaultController} controller
+	*/
+	create(id, controller) {
+		this.#sessions.set(id, controller);
+	}
+	/**
+	* @param {string} id
+	*/
+	delete(id) {
+		const controller = this.#sessions.get(id);
+		if (controller) {
+			this.#sessions.delete(id);
+			try {
+				controller.close();
+			} catch {}
+		}
+	}
+	/**
+	* @param {string} id
+	* @returns {Promise<boolean>}
+	*/
+	async has(id) {
+		return this.#sessions.has(id);
+	}
+	/**
+	* @param {string[] | undefined} sessions
+	* @param {string} data
+	*/
+	send(sessions, data) {
+		for (const [id, controller] of this.#sessions.entries()) if (sessions == null || sessions.includes(id)) controller.enqueue(this.#text_encoder.encode(data));
+	}
+};
+/**
+* @abstract
+*/
+var InfoSessionManager = class {
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientInfo"]>}
+	*/
+	getClientInfo(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {NonNullable<Context["sessionInfo"]>["clientInfo"]} client_info
+	*/
+	setClientInfo(id, client_info) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
+	*/
+	getClientCapabilities(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {NonNullable<Context["sessionInfo"]>["clientCapabilities"]} client_capabilities
+	*/
+	setClientCapabilities(id, client_capabilities) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {Promise<NonNullable<Context["sessionInfo"]>["logLevel"]>}
+	*/
+	getLogLevel(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {NonNullable<Context["sessionInfo"]>["logLevel"]} log_level
+	*/
+	setLogLevel(id, log_level) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} uri
+	* @returns {Promise<string[]>}
+	*/
+	getSubscriptions(uri) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {string} uri
+	*/
+	addSubscription(id, uri) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {string} uri
+	*/
+	removeSubscription(id, uri) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	*/
+	delete(id) {
+		throw new Error("Method not implemented.");
+	}
+};
+var InMemoryInfoSessionManager = class extends InfoSessionManager {
+	/**
+	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientInfo"]>}
+	*/
+	#client_info = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
+	*/
+	#client_capabilities = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, NonNullable<Context["sessionInfo"]>["logLevel"]>}
+	*/
+	#log_level = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, Set<string>>}
+	*/
+	#subscriptions = /* @__PURE__ */ new Map();
+	/**
+	* @param {string} session
+	* @param {string} name
+	* @returns {Promise<never>}
+	*/
+	async #invariant(session, name) {
+		throw new Error(`${name} not found for session ${session}`);
+	}
+	/**
+	* @type {InfoSessionManager["getClientInfo"]}
+	*/
+	getClientInfo(id) {
+		return Promise.resolve(this.#client_info.get(id) ?? this.#invariant(id, "Client info"));
+	}
+	/**
+	* @type {InfoSessionManager["setClientInfo"]}
+	*/
+	setClientInfo(id, client_info) {
+		this.#client_info.set(id, client_info);
+	}
+	/**
+	* @type {InfoSessionManager["getClientCapabilities"]}
+	*/
+	getClientCapabilities(id) {
+		return Promise.resolve(this.#client_capabilities.get(id) ?? this.#invariant(id, "Client capabilities"));
+	}
+	/**
+	* @type {InfoSessionManager["setClientCapabilities"]}
+	*/
+	setClientCapabilities(id, client_capabilities) {
+		this.#client_capabilities.set(id, client_capabilities);
+	}
+	/**
+	* @type {InfoSessionManager["getLogLevel"]}
+	*/
+	getLogLevel(id) {
+		return Promise.resolve(this.#log_level.get(id) ?? this.#invariant(id, "Log Level"));
+	}
+	/**
+	* @type {InfoSessionManager["setLogLevel"]}
+	*/
+	setLogLevel(id, log_level) {
+		this.#log_level.set(id, log_level);
+	}
+	/**
+	* @type {InfoSessionManager["getSubscriptions"]}
+	*/
+	getSubscriptions(uri) {
+		return Promise.resolve([...this.#subscriptions.get(uri) ?? []]);
+	}
+	/**
+	* @type {InfoSessionManager["addSubscription"]}
+	*/
+	addSubscription(id, uri) {
+		let subscriptions = this.#subscriptions.get(uri);
+		if (!subscriptions) {
+			subscriptions = /* @__PURE__ */ new Set();
+			this.#subscriptions.set(uri, subscriptions);
+		}
+		subscriptions.add(id);
+	}
+	/**
+	* @type {InfoSessionManager["removeSubscription"]}
+	*/
+	removeSubscription(id, uri) {
+		let subscriptions = this.#subscriptions.get(uri);
+		if (subscriptions) subscriptions.delete(id);
+	}
+	/**
+	* @type {InfoSessionManager["delete"]}
+	*/
+	delete(id) {
+		this.#subscriptions.delete(id);
+		this.#log_level.delete(id);
+		this.#client_capabilities.delete(id);
+		this.#client_info.delete(id);
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/esm-env@1.2.2/node_modules/esm-env/dev-fallback.js
+const node_env = globalThis.process?.env?.NODE_ENV;
+var dev_fallback_default = node_env && !node_env.toLowerCase().startsWith("prod");
+
+//#endregion
+//#region node_modules/.pnpm/@tmcp+transport-http@0.8.4_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/transport-http/src/index.js
+/**
+* @import { AuthInfo, McpServer } from "tmcp";
+* @import { OAuth  } from "@tmcp/auth";
+* @import { StreamSessionManager, InfoSessionManager } from "@tmcp/session-manager";
+* @import { OptionalizeSessionManager } from "./type-utils.js"
+*/
+/**
+* @typedef {{
+* 	origin?: string | string[] | boolean
+* 	methods?: string[]
+* 	allowedHeaders?: string[]
+* 	exposedHeaders?: string[]
+* 	credentials?: boolean
+* 	maxAge?: number
+* }} CorsConfig
+*/
+/**
+* @typedef {{
+* 	getSessionId?: () => string
+* 	path?: string | null
+* 	oauth?: OAuth<"built">
+* 	cors?: CorsConfig | boolean,
+* 	sessionManager?: { streams?: StreamSessionManager, info?: OptionalizeSessionManager<InfoSessionManager> }
+* 	disableSse?: boolean
+* }} HttpTransportOptions
+*/
+/**
+* @template {Record<string, unknown> | undefined} [TCustom=undefined]
+*/
+var HttpTransport = class {
+	/**
+	* @typedef {NonNullable<Required<Pick<HttpTransportOptions, "sessionManager">["sessionManager"]>>} SessionManager
+	*/
+	/**
+	* @type {McpServer<any, TCustom>}
+	*/
+	#server;
+	/**
+	* @type {Required<Omit<HttpTransportOptions, 'oauth' | 'cors' | 'sessionManager' | 'disableSse'>> & { cors?: CorsConfig | boolean, sessionManager: SessionManager, disableSse?: boolean }}
+	*/
+	#options;
+	/**
+	* @type {string | null}
+	*/
+	#path;
+	/**
+	* @type {AsyncLocalStorage<ReadableStreamDefaultController | undefined>}
+	*/
+	#controller_storage = new AsyncLocalStorage();
+	/**
+	* @type {AsyncLocalStorage<string>}
+	*/
+	#session_id_storage = new AsyncLocalStorage();
+	/**
+	* @type {OAuth<"built"> | undefined}
+	*/
+	#oauth;
+	#text_encoder = new TextEncoder();
+	/**
+	*
+	* @param {McpServer<any, TCustom>} server
+	* @param {HttpTransportOptions} [options]
+	*/
+	constructor(server, options) {
+		this.#server = server;
+		const { getSessionId = () => crypto.randomUUID(), path = "/mcp", oauth, cors, disableSse, sessionManager: _sessionManager = {
+			streams: new InMemoryStreamSessionManager(),
+			info: new InMemoryInfoSessionManager()
+		} } = options ?? { getSessionId: () => crypto.randomUUID() };
+		/**
+		* @type {SessionManager}
+		*/
+		const sessionManager = {
+			streams: _sessionManager.streams ?? new InMemoryStreamSessionManager(),
+			info: _sessionManager.info ?? new InMemoryInfoSessionManager()
+		};
+		if (options?.path === void 0 && dev_fallback_default) console.warn("[tmcp][transport-http] `options.path` is undefined, in future versions passing `undefined` will default to respond on all paths. To keep the current behavior, explicitly set `path` to '/mcp' or your desired path.");
+		if (oauth) this.#oauth = oauth;
+		this.#options = {
+			getSessionId,
+			path,
+			cors,
+			sessionManager,
+			disableSse
+		};
+		this.#path = path;
+		this.#server.on("initialize", ({ capabilities, clientInfo }) => {
+			const sessionId = this.#session_id_storage.getStore();
+			if (!sessionId) return;
+			this.#options.sessionManager.info.setClientCapabilities(sessionId, capabilities);
+			this.#options.sessionManager.info.setClientInfo(sessionId, clientInfo);
+		});
+		this.#server.on("subscription", async ({ uri, action }) => {
+			const sessionId = this.#session_id_storage.getStore();
+			if (!sessionId) return;
+			if (action === "remove") this.#options.sessionManager.info.removeSubscription?.(sessionId, uri);
+			else this.#options.sessionManager.info.addSubscription(sessionId, uri);
+		});
+		this.#server.on("loglevelchange", ({ level }) => {
+			const sessionId = this.#session_id_storage.getStore();
+			if (!sessionId) return;
+			this.#options.sessionManager.info.setLogLevel(sessionId, level);
+		});
+		this.#server.on("broadcast", async ({ request }) => {
+			let sessions = void 0;
+			if (request.method === "notifications/resources/updated") sessions = await this.#options.sessionManager.info.getSubscriptions(request.params.uri);
+			await this.#options.sessionManager.streams.send(sessions, "event: message\ndata: " + JSON.stringify(request) + "\n\n");
+		});
+		this.#server.on("send", async ({ request }) => {
+			const controller = this.#controller_storage.getStore();
+			if (!controller) return;
+			controller.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(request) + "\n\n"));
+		});
+	}
+	/**
+	* Applies CORS headers to a response based on the configuration
+	* @param {Response} response - The response to modify
+	* @param {Request} request - The original request
+	*/
+	#apply_cors_headers(response, request) {
+		const cors_config = this.#options.cors;
+		if (!cors_config) return;
+		if (cors_config === true) {
+			response.headers.set("Access-Control-Allow-Origin", "*");
+			response.headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+			response.headers.set("Access-Control-Allow-Headers", "*");
+			return;
+		}
+		const config = cors_config;
+		const origin = request.headers.get("origin");
+		if (config.origin !== void 0) {
+			if (config.origin === true || config.origin === "*") response.headers.set("Access-Control-Allow-Origin", "*");
+			else if (typeof config.origin === "string") {
+				if (origin === config.origin) response.headers.set("Access-Control-Allow-Origin", config.origin);
+			} else if (Array.isArray(config.origin)) {
+				if (origin && config.origin.includes(origin)) response.headers.set("Access-Control-Allow-Origin", origin);
+			}
+		}
+		const methods = config.methods ?? [
+			"GET",
+			"POST",
+			"DELETE",
+			"OPTIONS"
+		];
+		response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
+		const allowed_headers = config.allowedHeaders ?? "*";
+		if (Array.isArray(allowed_headers)) response.headers.set("Access-Control-Allow-Headers", allowed_headers.join(", "));
+		else response.headers.set("Access-Control-Allow-Headers", allowed_headers);
+		if (config.exposedHeaders) response.headers.set("Access-Control-Expose-Headers", config.exposedHeaders.join(", "));
+		if (config.credentials) response.headers.set("Access-Control-Allow-Credentials", "true");
+		if (config.maxAge !== void 0) response.headers.set("Access-Control-Max-Age", config.maxAge.toString());
+	}
+	/**
+	* @param {string} session_id
+	*/
+	async #handle_delete(session_id) {
+		await this.#options.sessionManager.streams.delete(session_id);
+		await this.#options.sessionManager.info.delete(session_id);
+		return new Response(null, {
+			status: 200,
+			headers: { "mcp-session-id": session_id }
+		});
+	}
+	/**
+	*
+	* @param {string} session_id
+	* @returns
+	*/
+	async #handle_get(session_id) {
+		if (this.#options.disableSse) return new Response(null, {
+			status: 405,
+			headers: { Allow: "POST, DELETE, OPTIONS" }
+		});
+		const sessions = this.#options.sessionManager;
+		const text_encoder = this.#text_encoder;
+		if (await sessions.streams.has(session_id)) return new Response(JSON.stringify({
+			jsonrpc: "2.0",
+			error: {
+				code: -32e3,
+				message: "Conflict: Only one SSE stream is allowed per session"
+			},
+			id: null
+		}), {
+			headers: {
+				"Content-Type": "application/json",
+				"mcp-session-id": session_id
+			},
+			status: 409
+		});
+		const stream = new ReadableStream({
+			async start(controller) {
+				await sessions.streams.create(session_id, controller);
+				controller.enqueue(text_encoder.encode(": connected\n\n"));
+			},
+			async cancel() {
+				await sessions.streams.delete(session_id);
+			}
+		});
+		return new Response(stream, {
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+				"mcp-session-id": session_id
+			},
+			status: 200
+		});
+	}
+	/**
+	*
+	* @param {string} session_id
+	* @param {Request} request
+	* @param {AuthInfo | null} auth_info
+	* @param {TCustom} [ctx]
+	*/
+	async #handle_post(session_id, request, auth_info, ctx) {
+		const content_type = request.headers.get("content-type");
+		if (!content_type || !content_type.includes("application/json")) return new Response(JSON.stringify({
+			jsonrpc: "2.0",
+			error: {
+				code: -32600,
+				message: "Invalid Request",
+				data: "Content-Type must be application/json"
+			}
+		}), {
+			status: 415,
+			headers: {
+				"Content-Type": "application/json",
+				"mcp-session-id": session_id
+			}
+		});
+		try {
+			const body = await request.clone().json();
+			/**
+			* @type {ReadableStreamDefaultController | undefined}
+			*/
+			let controller;
+			const stream = new ReadableStream({ start(_controller) {
+				controller = _controller;
+			} });
+			const session_id_storage = this.#session_id_storage;
+			const handle = async () => {
+				const client_capabilities = await this.#options.sessionManager.info.getClientCapabilities(session_id).catch(() => void 0);
+				const client_info = await this.#options.sessionManager.info.getClientInfo(session_id).catch(() => void 0);
+				const log_level = await this.#options.sessionManager.info.getLogLevel(session_id).catch(() => void 0);
+				const response = await this.#controller_storage.run(controller, () => session_id_storage.run(session_id, () => this.#server.receive(body, {
+					sessionId: session_id,
+					auth: auth_info ?? void 0,
+					sessionInfo: {
+						clientCapabilities: client_capabilities,
+						clientInfo: client_info,
+						logLevel: log_level
+					},
+					custom: ctx
+				})));
+				controller?.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(response) + "\n\n"));
+				controller?.close();
+			};
+			handle();
+			const has_request = (Array.isArray(body) ? body : [body]).some((message) => message.id != null);
+			const status = !has_request ? 202 : 200;
+			return new Response(has_request ? stream : null, {
+				headers: has_request ? {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					connection: "keep-alive",
+					"mcp-session-id": session_id
+				} : void 0,
+				status
+			});
+		} catch (error) {
+			return new Response(JSON.stringify({
+				jsonrpc: "2.0",
+				error: {
+					code: -32700,
+					message: "Parse error",
+					data: error.message
+				}
+			}), {
+				status: 400,
+				headers: {
+					"Content-Type": "application/json",
+					"mcp-session-id": session_id
+				}
+			});
+		}
+	}
+	/**
+	*
+	* @param {string} method
+	* @returns
+	*/
+	#handle_default(method) {
+		return new Response(JSON.stringify({
+			jsonrpc: "2.0",
+			error: {
+				code: -32601,
+				message: "Method not found",
+				data: `HTTP method ${method} not supported`
+			}
+		}), {
+			status: 405,
+			headers: {
+				"Content-Type": "application/json",
+				Allow: "GET, POST, DELETE, OPTIONS"
+			}
+		});
+	}
+	/**
+	*
+	* @param {Request} request
+	* @param {TCustom} [ctx]
+	* @returns {Promise<Response | null>}
+	*/
+	async respond(request, ctx) {
+		const url = new URL(request.url);
+		/**
+		* @type {AuthInfo | null}
+		*/
+		let auth_info = null;
+		if (this.#oauth) {
+			try {
+				const response = await this.#oauth.respond(request);
+				if (response) return response;
+			} catch (error) {
+				return new Response(JSON.stringify({
+					error: "server_error",
+					error_description: error.message
+				}), {
+					status: 500,
+					headers: { "Content-Type": "application/json" }
+				});
+			}
+			auth_info = await this.#oauth.verify(request);
+		}
+		if (url.pathname !== this.#path && this.#path !== null) return null;
+		const method = request.method;
+		const session_id = request.headers.get("mcp-session-id") || this.#options.getSessionId();
+		/**
+		* @type {Response | null}
+		*/
+		let response = null;
+		if (method === "OPTIONS") response = new Response(null, {
+			status: 204,
+			headers: { "Content-Type": "application/json" }
+		});
+		else if (method === "DELETE") response = await this.#handle_delete(session_id);
+		else if (method === "GET") response = await this.#handle_get(session_id);
+		else if (method === "POST") response = await this.#handle_post(session_id, request, auth_info, ctx);
+		else response = this.#handle_default(method);
+		if (response) this.#apply_cors_headers(response, request);
+		return response;
+	}
+};
+
+//#endregion
+//#region node_modules/.pnpm/@toon-format+toon@2.1.0/node_modules/@toon-format/toon/dist/index.mjs
+const LIST_ITEM_MARKER = "-";
+const LIST_ITEM_PREFIX = "- ";
+const COMMA = ",";
+const PIPE = "|";
+const DOT = ".";
+const NULL_LITERAL = "null";
+const TRUE_LITERAL = "true";
+const FALSE_LITERAL = "false";
+const BACKSLASH = "\\";
+const DOUBLE_QUOTE = "\"";
+const TAB = "	";
+const DELIMITERS = {
+	comma: COMMA,
+	tab: TAB,
+	pipe: PIPE
+};
+const DEFAULT_DELIMITER = DELIMITERS.comma;
+/**
+* Escapes special characters in a string for encoding.
+*
+* @remarks
+* Handles backslashes, quotes, newlines, carriage returns, and tabs.
+*/
+function escapeString(value) {
+	return value.replace(/\\/g, `${BACKSLASH}${BACKSLASH}`).replace(/"/g, `${BACKSLASH}${DOUBLE_QUOTE}`).replace(/\n/g, `${BACKSLASH}n`).replace(/\r/g, `${BACKSLASH}r`).replace(/\t/g, `${BACKSLASH}t`);
+}
+function isBooleanOrNullLiteral(token) {
+	return token === TRUE_LITERAL || token === FALSE_LITERAL || token === NULL_LITERAL;
+}
+function normalizeValue(value) {
+	if (value === null) return null;
+	if (typeof value === "object" && value !== null && "toJSON" in value && typeof value.toJSON === "function") {
+		const next = value.toJSON();
+		if (next !== value) return normalizeValue(next);
+	}
+	if (typeof value === "string" || typeof value === "boolean") return value;
+	if (typeof value === "number") {
+		if (Object.is(value, -0)) return 0;
+		if (!Number.isFinite(value)) return null;
+		return value;
+	}
+	if (typeof value === "bigint") {
+		if (value >= Number.MIN_SAFE_INTEGER && value <= Number.MAX_SAFE_INTEGER) return Number(value);
+		return value.toString();
+	}
+	if (value instanceof Date) return value.toISOString();
+	if (Array.isArray(value)) return value.map(normalizeValue);
+	if (value instanceof Set) return Array.from(value).map(normalizeValue);
+	if (value instanceof Map) return Object.fromEntries(Array.from(value, ([k, v]) => [String(k), normalizeValue(v)]));
+	if (isPlainObject$2(value)) {
+		const normalized = {};
+		for (const key in value) if (Object.prototype.hasOwnProperty.call(value, key)) normalized[key] = normalizeValue(value[key]);
+		return normalized;
+	}
+	return null;
+}
+function isJsonPrimitive(value) {
+	return value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+function isJsonArray(value) {
+	return Array.isArray(value);
+}
+function isJsonObject(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function isEmptyObject(value) {
+	return Object.keys(value).length === 0;
+}
+function isPlainObject$2(value) {
+	if (value === null || typeof value !== "object") return false;
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === null || prototype === Object.prototype;
+}
+function isArrayOfPrimitives(value) {
+	return value.length === 0 || value.every((item) => isJsonPrimitive(item));
+}
+function isArrayOfArrays(value) {
+	return value.length === 0 || value.every((item) => isJsonArray(item));
+}
+function isArrayOfObjects(value) {
+	return value.length === 0 || value.every((item) => isJsonObject(item));
+}
+/**
+* Checks if a key can be used without quotes.
+*
+* @remarks
+* Valid unquoted keys must start with a letter or underscore,
+* followed by letters, digits, underscores, or dots.
+*/
+function isValidUnquotedKey(key) {
+	return /^[A-Z_][\w.]*$/i.test(key);
+}
+/**
+* Checks if a key segment is a valid identifier for safe folding/expansion.
+*
+* @remarks
+* Identifier segments are more restrictive than unquoted keys:
+* - Must start with a letter or underscore
+* - Followed only by letters, digits, or underscores (no dots)
+* - Used for safe key folding and path expansion
+*/
+function isIdentifierSegment(key) {
+	return /^[A-Z_]\w*$/i.test(key);
+}
+/**
+* Determines if a string value can be safely encoded without quotes.
+*
+* @remarks
+* A string needs quoting if it:
+* - Is empty
+* - Has leading or trailing whitespace
+* - Could be confused with a literal (boolean, null, number)
+* - Contains structural characters (colons, brackets, braces)
+* - Contains quotes or backslashes (need escaping)
+* - Contains control characters (newlines, tabs, etc.)
+* - Contains the active delimiter
+* - Starts with a list marker (hyphen)
+*/
+function isSafeUnquoted(value, delimiter = DEFAULT_DELIMITER) {
+	if (!value) return false;
+	if (value !== value.trim()) return false;
+	if (isBooleanOrNullLiteral(value) || isNumericLike(value)) return false;
+	if (value.includes(":")) return false;
+	if (value.includes("\"") || value.includes("\\")) return false;
+	if (/[[\]{}]/.test(value)) return false;
+	if (/[\n\r\t]/.test(value)) return false;
+	if (value.includes(delimiter)) return false;
+	if (value.startsWith(LIST_ITEM_MARKER)) return false;
+	return true;
+}
+/**
+* Checks if a string looks like a number.
+*
+* @remarks
+* Match numbers like `42`, `-3.14`, `1e-6`, `05`, etc.
+*/
+function isNumericLike(value) {
+	return /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(value) || /^0\d+$/.test(value);
+}
+/**
+* Attempts to fold a single-key object chain into a dotted path.
+*
+* @remarks
+* Folding traverses nested objects with single keys, collapsing them into a dotted path.
+* It stops when:
+* - A non-single-key object is encountered
+* - An array is encountered (arrays are not "single-key objects")
+* - A primitive value is reached
+* - The flatten depth limit is reached
+* - Any segment fails safe mode validation
+*
+* Safe mode requirements:
+* - `options.keyFolding` must be `'safe'`
+* - Every segment must be a valid identifier (no dots, no special chars)
+* - The folded key must not collide with existing sibling keys
+* - No segment should require quoting
+*
+* @param key - The starting key to fold
+* @param value - The value associated with the key
+* @param siblings - Array of all sibling keys at this level (for collision detection)
+* @param options - Resolved encoding options
+* @returns A FoldResult if folding is possible, undefined otherwise
+*/
+function tryFoldKeyChain(key, value, siblings, options, rootLiteralKeys, pathPrefix, flattenDepth) {
+	if (options.keyFolding !== "safe") return;
+	if (!isJsonObject(value)) return;
+	const { segments, tail, leafValue } = collectSingleKeyChain(key, value, flattenDepth ?? options.flattenDepth);
+	if (segments.length < 2) return;
+	if (!segments.every((seg) => isIdentifierSegment(seg))) return;
+	const foldedKey = buildFoldedKey(segments);
+	const absolutePath = pathPrefix ? `${pathPrefix}${DOT}${foldedKey}` : foldedKey;
+	if (siblings.includes(foldedKey)) return;
+	if (rootLiteralKeys && rootLiteralKeys.has(absolutePath)) return;
+	return {
+		foldedKey,
+		remainder: tail,
+		leafValue,
+		segmentCount: segments.length
+	};
+}
+/**
+* Collects a chain of single-key objects into segments.
+*
+* @remarks
+* Traverses nested objects, collecting keys until:
+* - A non-single-key object is found
+* - An array is encountered
+* - A primitive is reached
+* - An empty object is reached
+* - The depth limit is reached
+*
+* @param startKey - The initial key to start the chain
+* @param startValue - The value to traverse
+* @param maxDepth - Maximum number of segments to collect
+* @returns Object containing segments array, tail value, and leaf value
+*/
+function collectSingleKeyChain(startKey, startValue, maxDepth) {
+	const segments = [startKey];
+	let currentValue = startValue;
+	while (segments.length < maxDepth) {
+		if (!isJsonObject(currentValue)) break;
+		const keys = Object.keys(currentValue);
+		if (keys.length !== 1) break;
+		const nextKey = keys[0];
+		const nextValue = currentValue[nextKey];
+		segments.push(nextKey);
+		currentValue = nextValue;
+	}
+	if (!isJsonObject(currentValue) || isEmptyObject(currentValue)) return {
+		segments,
+		tail: void 0,
+		leafValue: currentValue
+	};
+	return {
+		segments,
+		tail: currentValue,
+		leafValue: currentValue
+	};
+}
+function buildFoldedKey(segments) {
+	return segments.join(DOT);
+}
+function encodePrimitive(value, delimiter) {
+	if (value === null) return NULL_LITERAL;
+	if (typeof value === "boolean") return String(value);
+	if (typeof value === "number") return String(value);
+	return encodeStringLiteral(value, delimiter);
+}
+function encodeStringLiteral(value, delimiter = DEFAULT_DELIMITER) {
+	if (isSafeUnquoted(value, delimiter)) return value;
+	return `${DOUBLE_QUOTE}${escapeString(value)}${DOUBLE_QUOTE}`;
+}
+function encodeKey(key) {
+	if (isValidUnquotedKey(key)) return key;
+	return `${DOUBLE_QUOTE}${escapeString(key)}${DOUBLE_QUOTE}`;
+}
+function encodeAndJoinPrimitives(values, delimiter = DEFAULT_DELIMITER) {
+	return values.map((v) => encodePrimitive(v, delimiter)).join(delimiter);
+}
+function formatHeader(length, options) {
+	const key = options?.key;
+	const fields = options?.fields;
+	const delimiter = options?.delimiter ?? COMMA;
+	let header = "";
+	if (key) header += encodeKey(key);
+	header += `[${length}${delimiter !== DEFAULT_DELIMITER ? delimiter : ""}]`;
+	if (fields) {
+		const quotedFields = fields.map((f) => encodeKey(f));
+		header += `{${quotedFields.join(delimiter)}}`;
+	}
+	header += ":";
+	return header;
+}
+function* encodeJsonValue(value, options, depth) {
+	if (isJsonPrimitive(value)) {
+		const encodedPrimitive = encodePrimitive(value, options.delimiter);
+		if (encodedPrimitive !== "") yield encodedPrimitive;
+		return;
+	}
+	if (isJsonArray(value)) yield* encodeArrayLines(void 0, value, depth, options);
+	else if (isJsonObject(value)) yield* encodeObjectLines(value, depth, options);
+}
+function* encodeObjectLines(value, depth, options, rootLiteralKeys, pathPrefix, remainingDepth) {
+	const keys = Object.keys(value);
+	if (depth === 0 && !rootLiteralKeys) rootLiteralKeys = new Set(keys.filter((k) => k.includes(".")));
+	const effectiveFlattenDepth = remainingDepth ?? options.flattenDepth;
+	for (const [key, val] of Object.entries(value)) yield* encodeKeyValuePairLines(key, val, depth, options, keys, rootLiteralKeys, pathPrefix, effectiveFlattenDepth);
+}
+function* encodeKeyValuePairLines(key, value, depth, options, siblings, rootLiteralKeys, pathPrefix, flattenDepth) {
+	const currentPath = pathPrefix ? `${pathPrefix}${DOT}${key}` : key;
+	const effectiveFlattenDepth = flattenDepth ?? options.flattenDepth;
+	if (options.keyFolding === "safe" && siblings) {
+		const foldResult = tryFoldKeyChain(key, value, siblings, options, rootLiteralKeys, pathPrefix, effectiveFlattenDepth);
+		if (foldResult) {
+			const { foldedKey, remainder, leafValue, segmentCount } = foldResult;
+			const encodedFoldedKey = encodeKey(foldedKey);
+			if (remainder === void 0) {
+				if (isJsonPrimitive(leafValue)) {
+					yield indentedLine(depth, `${encodedFoldedKey}: ${encodePrimitive(leafValue, options.delimiter)}`, options.indent);
+					return;
+				} else if (isJsonArray(leafValue)) {
+					yield* encodeArrayLines(foldedKey, leafValue, depth, options);
+					return;
+				} else if (isJsonObject(leafValue) && isEmptyObject(leafValue)) {
+					yield indentedLine(depth, `${encodedFoldedKey}:`, options.indent);
+					return;
+				}
+			}
+			if (isJsonObject(remainder)) {
+				yield indentedLine(depth, `${encodedFoldedKey}:`, options.indent);
+				const remainingDepth = effectiveFlattenDepth - segmentCount;
+				const foldedPath = pathPrefix ? `${pathPrefix}${DOT}${foldedKey}` : foldedKey;
+				yield* encodeObjectLines(remainder, depth + 1, options, rootLiteralKeys, foldedPath, remainingDepth);
+				return;
+			}
+		}
+	}
+	const encodedKey = encodeKey(key);
+	if (isJsonPrimitive(value)) yield indentedLine(depth, `${encodedKey}: ${encodePrimitive(value, options.delimiter)}`, options.indent);
+	else if (isJsonArray(value)) yield* encodeArrayLines(key, value, depth, options);
+	else if (isJsonObject(value)) {
+		yield indentedLine(depth, `${encodedKey}:`, options.indent);
+		if (!isEmptyObject(value)) yield* encodeObjectLines(value, depth + 1, options, rootLiteralKeys, currentPath, effectiveFlattenDepth);
+	}
+}
+function* encodeArrayLines(key, value, depth, options) {
+	if (value.length === 0) {
+		yield indentedLine(depth, formatHeader(0, {
+			key,
+			delimiter: options.delimiter
+		}), options.indent);
+		return;
+	}
+	if (isArrayOfPrimitives(value)) {
+		yield indentedLine(depth, encodeInlineArrayLine(value, options.delimiter, key), options.indent);
+		return;
+	}
+	if (isArrayOfArrays(value)) {
+		if (value.every((arr) => isArrayOfPrimitives(arr))) {
+			yield* encodeArrayOfArraysAsListItemsLines(key, value, depth, options);
+			return;
+		}
+	}
+	if (isArrayOfObjects(value)) {
+		const header = extractTabularHeader(value);
+		if (header) yield* encodeArrayOfObjectsAsTabularLines(key, value, header, depth, options);
+		else yield* encodeMixedArrayAsListItemsLines(key, value, depth, options);
+		return;
+	}
+	yield* encodeMixedArrayAsListItemsLines(key, value, depth, options);
+}
+function* encodeArrayOfArraysAsListItemsLines(prefix, values, depth, options) {
+	yield indentedLine(depth, formatHeader(values.length, {
+		key: prefix,
+		delimiter: options.delimiter
+	}), options.indent);
+	for (const arr of values) if (isArrayOfPrimitives(arr)) {
+		const arrayLine = encodeInlineArrayLine(arr, options.delimiter);
+		yield indentedListItem(depth + 1, arrayLine, options.indent);
+	}
+}
+function encodeInlineArrayLine(values, delimiter, prefix) {
+	const header = formatHeader(values.length, {
+		key: prefix,
+		delimiter
+	});
+	const joinedValue = encodeAndJoinPrimitives(values, delimiter);
+	if (values.length === 0) return header;
+	return `${header} ${joinedValue}`;
+}
+function* encodeArrayOfObjectsAsTabularLines(prefix, rows, header, depth, options) {
+	yield indentedLine(depth, formatHeader(rows.length, {
+		key: prefix,
+		fields: header,
+		delimiter: options.delimiter
+	}), options.indent);
+	yield* writeTabularRowsLines(rows, header, depth + 1, options);
+}
+function extractTabularHeader(rows) {
+	if (rows.length === 0) return;
+	const firstRow = rows[0];
+	const firstKeys = Object.keys(firstRow);
+	if (firstKeys.length === 0) return;
+	if (isTabularArray(rows, firstKeys)) return firstKeys;
+}
+function isTabularArray(rows, header) {
+	for (const row of rows) {
+		if (Object.keys(row).length !== header.length) return false;
+		for (const key of header) {
+			if (!(key in row)) return false;
+			if (!isJsonPrimitive(row[key])) return false;
+		}
+	}
+	return true;
+}
+function* writeTabularRowsLines(rows, header, depth, options) {
+	for (const row of rows) yield indentedLine(depth, encodeAndJoinPrimitives(header.map((key) => row[key]), options.delimiter), options.indent);
+}
+function* encodeMixedArrayAsListItemsLines(prefix, items, depth, options) {
+	yield indentedLine(depth, formatHeader(items.length, {
+		key: prefix,
+		delimiter: options.delimiter
+	}), options.indent);
+	for (const item of items) yield* encodeListItemValueLines(item, depth + 1, options);
+}
+function* encodeObjectAsListItemLines(obj, depth, options) {
+	if (isEmptyObject(obj)) {
+		yield indentedLine(depth, LIST_ITEM_MARKER, options.indent);
+		return;
+	}
+	const entries = Object.entries(obj);
+	const [firstKey, firstValue] = entries[0];
+	const restEntries = entries.slice(1);
+	if (isJsonArray(firstValue) && isArrayOfObjects(firstValue)) {
+		const header = extractTabularHeader(firstValue);
+		if (header) {
+			yield indentedListItem(depth, formatHeader(firstValue.length, {
+				key: firstKey,
+				fields: header,
+				delimiter: options.delimiter
+			}), options.indent);
+			yield* writeTabularRowsLines(firstValue, header, depth + 2, options);
+			if (restEntries.length > 0) yield* encodeObjectLines(Object.fromEntries(restEntries), depth + 1, options);
+			return;
+		}
+	}
+	const encodedKey = encodeKey(firstKey);
+	if (isJsonPrimitive(firstValue)) yield indentedListItem(depth, `${encodedKey}: ${encodePrimitive(firstValue, options.delimiter)}`, options.indent);
+	else if (isJsonArray(firstValue)) if (firstValue.length === 0) yield indentedListItem(depth, `${encodedKey}${formatHeader(0, { delimiter: options.delimiter })}`, options.indent);
+	else if (isArrayOfPrimitives(firstValue)) yield indentedListItem(depth, `${encodedKey}${encodeInlineArrayLine(firstValue, options.delimiter)}`, options.indent);
+	else {
+		yield indentedListItem(depth, `${encodedKey}${formatHeader(firstValue.length, { delimiter: options.delimiter })}`, options.indent);
+		for (const item of firstValue) yield* encodeListItemValueLines(item, depth + 2, options);
+	}
+	else if (isJsonObject(firstValue)) {
+		yield indentedListItem(depth, `${encodedKey}:`, options.indent);
+		if (!isEmptyObject(firstValue)) yield* encodeObjectLines(firstValue, depth + 2, options);
+	}
+	if (restEntries.length > 0) yield* encodeObjectLines(Object.fromEntries(restEntries), depth + 1, options);
+}
+function* encodeListItemValueLines(value, depth, options) {
+	if (isJsonPrimitive(value)) yield indentedListItem(depth, encodePrimitive(value, options.delimiter), options.indent);
+	else if (isJsonArray(value)) if (isArrayOfPrimitives(value)) yield indentedListItem(depth, encodeInlineArrayLine(value, options.delimiter), options.indent);
+	else {
+		yield indentedListItem(depth, formatHeader(value.length, { delimiter: options.delimiter }), options.indent);
+		for (const item of value) yield* encodeListItemValueLines(item, depth + 1, options);
+	}
+	else if (isJsonObject(value)) yield* encodeObjectAsListItemLines(value, depth, options);
+}
+function indentedLine(depth, content, indentSize) {
+	return " ".repeat(indentSize * depth) + content;
+}
+function indentedListItem(depth, content, indentSize) {
+	return indentedLine(depth, LIST_ITEM_PREFIX + content, indentSize);
+}
+/**
+* Applies a replacer function to a `JsonValue` and all its descendants.
+*
+* The replacer is called for:
+* - The root value (with key='', path=[])
+* - Every object property (with the property name as key)
+* - Every array element (with the string index as key: '0', '1', etc.)
+*
+* @param root - The normalized `JsonValue` to transform
+* @param replacer - The replacer function to apply
+* @returns The transformed `JsonValue`
+*/
+function applyReplacer(root, replacer) {
+	const replacedRoot = replacer("", root, []);
+	if (replacedRoot === void 0) return transformChildren(root, replacer, []);
+	return transformChildren(normalizeValue(replacedRoot), replacer, []);
+}
+/**
+* Recursively transforms the children of a `JsonValue` using the replacer.
+*
+* @param value - The value whose children should be transformed
+* @param replacer - The replacer function to apply
+* @param path - Current path from root
+* @returns The value with transformed children
+*/
+function transformChildren(value, replacer, path) {
+	if (isJsonObject(value)) return transformObject(value, replacer, path);
+	if (isJsonArray(value)) return transformArray(value, replacer, path);
+	return value;
+}
+/**
+* Transforms an object by applying the replacer to each property.
+*
+* @param obj - The object to transform
+* @param replacer - The replacer function to apply
+* @param path - Current path from root
+* @returns A new object with transformed properties
+*/
+function transformObject(obj, replacer, path) {
+	const result = {};
+	for (const [key, value] of Object.entries(obj)) {
+		const childPath = [...path, key];
+		const replacedValue = replacer(key, value, childPath);
+		if (replacedValue === void 0) continue;
+		result[key] = transformChildren(normalizeValue(replacedValue), replacer, childPath);
+	}
+	return result;
+}
+/**
+* Transforms an array by applying the replacer to each element.
+*
+* @param arr - The array to transform
+* @param replacer - The replacer function to apply
+* @param path - Current path from root
+* @returns A new array with transformed elements
+*/
+function transformArray(arr, replacer, path) {
+	const result = [];
+	for (let i = 0; i < arr.length; i++) {
+		const value = arr[i];
+		const childPath = [...path, i];
+		const replacedValue = replacer(String(i), value, childPath);
+		if (replacedValue === void 0) continue;
+		const normalizedValue = normalizeValue(replacedValue);
+		result.push(transformChildren(normalizedValue, replacer, childPath));
+	}
+	return result;
+}
+/**
+* Encodes a JavaScript value into TOON format string.
+*
+* @param input - Any JavaScript value (objects, arrays, primitives)
+* @param options - Optional encoding configuration
+* @returns TOON formatted string
+*
+* @example
+* ```ts
+* encode({ name: 'Alice', age: 30 })
+* // name: Alice
+* // age: 30
+*
+* encode({ users: [{ id: 1 }, { id: 2 }] })
+* // users[]:
+* //   - id: 1
+* //   - id: 2
+*
+* encode(data, { indent: 4, keyFolding: 'safe' })
+* ```
+*/
+function encode(input, options) {
+	return Array.from(encodeLines(input, options)).join("\n");
+}
+/**
+* Encodes a JavaScript value into TOON format as a sequence of lines.
+*
+* This function yields TOON lines one at a time without building the full string,
+* making it suitable for streaming large outputs to files, HTTP responses, or process stdout.
+*
+* @param input - Any JavaScript value (objects, arrays, primitives)
+* @param options - Optional encoding configuration
+* @returns Iterable of TOON lines (without trailing newlines)
+*
+* @example
+* ```ts
+* // Stream to stdout
+* for (const line of encodeLines({ name: 'Alice', age: 30 })) {
+*   console.log(line)
+* }
+*
+* // Collect to array
+* const lines = Array.from(encodeLines(data))
+*
+* // Equivalent to encode()
+* const toonString = Array.from(encodeLines(data, options)).join('\n')
+* ```
+*/
+function encodeLines(input, options) {
+	const normalizedValue = normalizeValue(input);
+	const resolvedOptions = resolveOptions(options);
+	return encodeJsonValue(resolvedOptions.replacer ? applyReplacer(normalizedValue, resolvedOptions.replacer) : normalizedValue, resolvedOptions, 0);
+}
+function resolveOptions(options) {
+	return {
+		indent: options?.indent ?? 2,
+		delimiter: options?.delimiter ?? DEFAULT_DELIMITER,
+		keyFolding: options?.keyFolding ?? "off",
+		flattenDepth: options?.flattenDepth ?? Number.POSITIVE_INFINITY,
+		replacer: options?.replacer
+	};
 }
 
 //#endregion
@@ -22358,1111 +27457,6 @@ var NodeServer = class {
 			if (!server || !server.listening) return resolve();
 			server.close((error) => error ? reject(error) : resolve());
 		})]);
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/@tmcp+session-manager@0.2.1_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/session-manager/src/index.js
-/**
-* @import { Context } from "tmcp";
-*/
-/**
-* @abstract
-*/
-var StreamSessionManager = class {
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {ReadableStreamDefaultController} controller
-	* @returns {void | Promise<void>}
-	*/
-	create(id, controller) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {void | Promise<void>}
-	*/
-	delete(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {boolean | Promise<boolean>}
-	*/
-	has(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string[] | undefined} sessions
-	* @param {string} data
-	* @returns {void | Promise<void>}
-	*/
-	send(sessions, data) {
-		throw new Error("Method not implemented.");
-	}
-};
-var InMemoryStreamSessionManager = class extends StreamSessionManager {
-	/**
-	* @type {Map<string, ReadableStreamDefaultController>}
-	*/
-	#sessions = /* @__PURE__ */ new Map();
-	#text_encoder = new TextEncoder();
-	/**
-	* @param {string} id
-	* @param {ReadableStreamDefaultController} controller
-	*/
-	create(id, controller) {
-		this.#sessions.set(id, controller);
-	}
-	/**
-	* @param {string} id
-	*/
-	delete(id) {
-		const controller = this.#sessions.get(id);
-		if (controller) {
-			this.#sessions.delete(id);
-			try {
-				controller.close();
-			} catch {}
-		}
-	}
-	/**
-	* @param {string} id
-	* @returns {Promise<boolean>}
-	*/
-	async has(id) {
-		return this.#sessions.has(id);
-	}
-	/**
-	* @param {string[] | undefined} sessions
-	* @param {string} data
-	*/
-	send(sessions, data) {
-		for (const [id, controller] of this.#sessions.entries()) if (sessions == null || sessions.includes(id)) controller.enqueue(this.#text_encoder.encode(data));
-	}
-};
-/**
-* @abstract
-*/
-var InfoSessionManager = class {
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientInfo"]>}
-	*/
-	getClientInfo(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["clientInfo"]} client_info
-	*/
-	setClientInfo(id, client_info) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
-	*/
-	getClientCapabilities(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["clientCapabilities"]} client_capabilities
-	*/
-	setClientCapabilities(id, client_capabilities) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["logLevel"]>}
-	*/
-	getLogLevel(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["logLevel"]} log_level
-	*/
-	setLogLevel(id, log_level) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} uri
-	* @returns {Promise<string[]>}
-	*/
-	getSubscriptions(uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {string} uri
-	*/
-	addSubscription(id, uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {string} uri
-	*/
-	removeSubscription(id, uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	*/
-	delete(id) {
-		throw new Error("Method not implemented.");
-	}
-};
-var InMemoryInfoSessionManager = class extends InfoSessionManager {
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientInfo"]>}
-	*/
-	#client_info = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
-	*/
-	#client_capabilities = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["logLevel"]>}
-	*/
-	#log_level = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, Set<string>>}
-	*/
-	#subscriptions = /* @__PURE__ */ new Map();
-	/**
-	* @param {string} session
-	* @param {string} name
-	* @returns {Promise<never>}
-	*/
-	async #invariant(session, name) {
-		throw new Error(`${name} not found for session ${session}`);
-	}
-	/**
-	* @type {InfoSessionManager["getClientInfo"]}
-	*/
-	getClientInfo(id) {
-		return Promise.resolve(this.#client_info.get(id) ?? this.#invariant(id, "Client info"));
-	}
-	/**
-	* @type {InfoSessionManager["setClientInfo"]}
-	*/
-	setClientInfo(id, client_info) {
-		this.#client_info.set(id, client_info);
-	}
-	/**
-	* @type {InfoSessionManager["getClientCapabilities"]}
-	*/
-	getClientCapabilities(id) {
-		return Promise.resolve(this.#client_capabilities.get(id) ?? this.#invariant(id, "Client capabilities"));
-	}
-	/**
-	* @type {InfoSessionManager["setClientCapabilities"]}
-	*/
-	setClientCapabilities(id, client_capabilities) {
-		this.#client_capabilities.set(id, client_capabilities);
-	}
-	/**
-	* @type {InfoSessionManager["getLogLevel"]}
-	*/
-	getLogLevel(id) {
-		return Promise.resolve(this.#log_level.get(id) ?? this.#invariant(id, "Log Level"));
-	}
-	/**
-	* @type {InfoSessionManager["setLogLevel"]}
-	*/
-	setLogLevel(id, log_level) {
-		this.#log_level.set(id, log_level);
-	}
-	/**
-	* @type {InfoSessionManager["getSubscriptions"]}
-	*/
-	getSubscriptions(uri) {
-		return Promise.resolve([...this.#subscriptions.get(uri) ?? []]);
-	}
-	/**
-	* @type {InfoSessionManager["addSubscription"]}
-	*/
-	addSubscription(id, uri) {
-		let subscriptions = this.#subscriptions.get(uri);
-		if (!subscriptions) {
-			subscriptions = /* @__PURE__ */ new Set();
-			this.#subscriptions.set(uri, subscriptions);
-		}
-		subscriptions.add(id);
-	}
-	/**
-	* @type {InfoSessionManager["removeSubscription"]}
-	*/
-	removeSubscription(id, uri) {
-		let subscriptions = this.#subscriptions.get(uri);
-		if (subscriptions) subscriptions.delete(id);
-	}
-	/**
-	* @type {InfoSessionManager["delete"]}
-	*/
-	delete(id) {
-		this.#subscriptions.delete(id);
-		this.#log_level.delete(id);
-		this.#client_capabilities.delete(id);
-		this.#client_info.delete(id);
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/esm-env@1.2.2/node_modules/esm-env/dev-fallback.js
-const node_env = globalThis.process?.env?.NODE_ENV;
-var dev_fallback_default = node_env && !node_env.toLowerCase().startsWith("prod");
-
-//#endregion
-//#region node_modules/.pnpm/@tmcp+transport-http@0.8.4_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/transport-http/src/index.js
-/**
-* @import { AuthInfo, McpServer } from "tmcp";
-* @import { OAuth  } from "@tmcp/auth";
-* @import { StreamSessionManager, InfoSessionManager } from "@tmcp/session-manager";
-* @import { OptionalizeSessionManager } from "./type-utils.js"
-*/
-/**
-* @typedef {{
-* 	origin?: string | string[] | boolean
-* 	methods?: string[]
-* 	allowedHeaders?: string[]
-* 	exposedHeaders?: string[]
-* 	credentials?: boolean
-* 	maxAge?: number
-* }} CorsConfig
-*/
-/**
-* @typedef {{
-* 	getSessionId?: () => string
-* 	path?: string | null
-* 	oauth?: OAuth<"built">
-* 	cors?: CorsConfig | boolean,
-* 	sessionManager?: { streams?: StreamSessionManager, info?: OptionalizeSessionManager<InfoSessionManager> }
-* 	disableSse?: boolean
-* }} HttpTransportOptions
-*/
-/**
-* @template {Record<string, unknown> | undefined} [TCustom=undefined]
-*/
-var HttpTransport = class {
-	/**
-	* @typedef {NonNullable<Required<Pick<HttpTransportOptions, "sessionManager">["sessionManager"]>>} SessionManager
-	*/
-	/**
-	* @type {McpServer<any, TCustom>}
-	*/
-	#server;
-	/**
-	* @type {Required<Omit<HttpTransportOptions, 'oauth' | 'cors' | 'sessionManager' | 'disableSse'>> & { cors?: CorsConfig | boolean, sessionManager: SessionManager, disableSse?: boolean }}
-	*/
-	#options;
-	/**
-	* @type {string | null}
-	*/
-	#path;
-	/**
-	* @type {AsyncLocalStorage<ReadableStreamDefaultController | undefined>}
-	*/
-	#controller_storage = new AsyncLocalStorage();
-	/**
-	* @type {AsyncLocalStorage<string>}
-	*/
-	#session_id_storage = new AsyncLocalStorage();
-	/**
-	* @type {OAuth<"built"> | undefined}
-	*/
-	#oauth;
-	#text_encoder = new TextEncoder();
-	/**
-	*
-	* @param {McpServer<any, TCustom>} server
-	* @param {HttpTransportOptions} [options]
-	*/
-	constructor(server, options) {
-		this.#server = server;
-		const { getSessionId = () => crypto.randomUUID(), path = "/mcp", oauth, cors, disableSse, sessionManager: _sessionManager = {
-			streams: new InMemoryStreamSessionManager(),
-			info: new InMemoryInfoSessionManager()
-		} } = options ?? { getSessionId: () => crypto.randomUUID() };
-		/**
-		* @type {SessionManager}
-		*/
-		const sessionManager = {
-			streams: _sessionManager.streams ?? new InMemoryStreamSessionManager(),
-			info: _sessionManager.info ?? new InMemoryInfoSessionManager()
-		};
-		if (options?.path === void 0 && dev_fallback_default) console.warn("[tmcp][transport-http] `options.path` is undefined, in future versions passing `undefined` will default to respond on all paths. To keep the current behavior, explicitly set `path` to '/mcp' or your desired path.");
-		if (oauth) this.#oauth = oauth;
-		this.#options = {
-			getSessionId,
-			path,
-			cors,
-			sessionManager,
-			disableSse
-		};
-		this.#path = path;
-		this.#server.on("initialize", ({ capabilities, clientInfo }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			this.#options.sessionManager.info.setClientCapabilities(sessionId, capabilities);
-			this.#options.sessionManager.info.setClientInfo(sessionId, clientInfo);
-		});
-		this.#server.on("subscription", async ({ uri, action }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			if (action === "remove") this.#options.sessionManager.info.removeSubscription?.(sessionId, uri);
-			else this.#options.sessionManager.info.addSubscription(sessionId, uri);
-		});
-		this.#server.on("loglevelchange", ({ level }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			this.#options.sessionManager.info.setLogLevel(sessionId, level);
-		});
-		this.#server.on("broadcast", async ({ request }) => {
-			let sessions = void 0;
-			if (request.method === "notifications/resources/updated") sessions = await this.#options.sessionManager.info.getSubscriptions(request.params.uri);
-			await this.#options.sessionManager.streams.send(sessions, "event: message\ndata: " + JSON.stringify(request) + "\n\n");
-		});
-		this.#server.on("send", async ({ request }) => {
-			const controller = this.#controller_storage.getStore();
-			if (!controller) return;
-			controller.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(request) + "\n\n"));
-		});
-	}
-	/**
-	* Applies CORS headers to a response based on the configuration
-	* @param {Response} response - The response to modify
-	* @param {Request} request - The original request
-	*/
-	#apply_cors_headers(response, request) {
-		const cors_config = this.#options.cors;
-		if (!cors_config) return;
-		if (cors_config === true) {
-			response.headers.set("Access-Control-Allow-Origin", "*");
-			response.headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-			response.headers.set("Access-Control-Allow-Headers", "*");
-			return;
-		}
-		const config = cors_config;
-		const origin = request.headers.get("origin");
-		if (config.origin !== void 0) {
-			if (config.origin === true || config.origin === "*") response.headers.set("Access-Control-Allow-Origin", "*");
-			else if (typeof config.origin === "string") {
-				if (origin === config.origin) response.headers.set("Access-Control-Allow-Origin", config.origin);
-			} else if (Array.isArray(config.origin)) {
-				if (origin && config.origin.includes(origin)) response.headers.set("Access-Control-Allow-Origin", origin);
-			}
-		}
-		const methods = config.methods ?? [
-			"GET",
-			"POST",
-			"DELETE",
-			"OPTIONS"
-		];
-		response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
-		const allowed_headers = config.allowedHeaders ?? "*";
-		if (Array.isArray(allowed_headers)) response.headers.set("Access-Control-Allow-Headers", allowed_headers.join(", "));
-		else response.headers.set("Access-Control-Allow-Headers", allowed_headers);
-		if (config.exposedHeaders) response.headers.set("Access-Control-Expose-Headers", config.exposedHeaders.join(", "));
-		if (config.credentials) response.headers.set("Access-Control-Allow-Credentials", "true");
-		if (config.maxAge !== void 0) response.headers.set("Access-Control-Max-Age", config.maxAge.toString());
-	}
-	/**
-	* @param {string} session_id
-	*/
-	async #handle_delete(session_id) {
-		await this.#options.sessionManager.streams.delete(session_id);
-		await this.#options.sessionManager.info.delete(session_id);
-		return new Response(null, {
-			status: 200,
-			headers: { "mcp-session-id": session_id }
-		});
-	}
-	/**
-	*
-	* @param {string} session_id
-	* @returns
-	*/
-	async #handle_get(session_id) {
-		if (this.#options.disableSse) return new Response(null, {
-			status: 405,
-			headers: { Allow: "POST, DELETE, OPTIONS" }
-		});
-		const sessions = this.#options.sessionManager;
-		const text_encoder = this.#text_encoder;
-		if (await sessions.streams.has(session_id)) return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32e3,
-				message: "Conflict: Only one SSE stream is allowed per session"
-			},
-			id: null
-		}), {
-			headers: {
-				"Content-Type": "application/json",
-				"mcp-session-id": session_id
-			},
-			status: 409
-		});
-		const stream = new ReadableStream({
-			async start(controller) {
-				await sessions.streams.create(session_id, controller);
-				controller.enqueue(text_encoder.encode(": connected\n\n"));
-			},
-			async cancel() {
-				await sessions.streams.delete(session_id);
-			}
-		});
-		return new Response(stream, {
-			headers: {
-				"Content-Type": "text/event-stream",
-				"Cache-Control": "no-cache",
-				Connection: "keep-alive",
-				"mcp-session-id": session_id
-			},
-			status: 200
-		});
-	}
-	/**
-	*
-	* @param {string} session_id
-	* @param {Request} request
-	* @param {AuthInfo | null} auth_info
-	* @param {TCustom} [ctx]
-	*/
-	async #handle_post(session_id, request, auth_info, ctx) {
-		const content_type = request.headers.get("content-type");
-		if (!content_type || !content_type.includes("application/json")) return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32600,
-				message: "Invalid Request",
-				data: "Content-Type must be application/json"
-			}
-		}), {
-			status: 415,
-			headers: {
-				"Content-Type": "application/json",
-				"mcp-session-id": session_id
-			}
-		});
-		try {
-			const body = await request.clone().json();
-			/**
-			* @type {ReadableStreamDefaultController | undefined}
-			*/
-			let controller;
-			const stream = new ReadableStream({ start(_controller) {
-				controller = _controller;
-			} });
-			const session_id_storage = this.#session_id_storage;
-			const handle = async () => {
-				const client_capabilities = await this.#options.sessionManager.info.getClientCapabilities(session_id).catch(() => void 0);
-				const client_info = await this.#options.sessionManager.info.getClientInfo(session_id).catch(() => void 0);
-				const log_level = await this.#options.sessionManager.info.getLogLevel(session_id).catch(() => void 0);
-				const response = await this.#controller_storage.run(controller, () => session_id_storage.run(session_id, () => this.#server.receive(body, {
-					sessionId: session_id,
-					auth: auth_info ?? void 0,
-					sessionInfo: {
-						clientCapabilities: client_capabilities,
-						clientInfo: client_info,
-						logLevel: log_level
-					},
-					custom: ctx
-				})));
-				controller?.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(response) + "\n\n"));
-				controller?.close();
-			};
-			handle();
-			const has_request = (Array.isArray(body) ? body : [body]).some((message) => message.id != null);
-			const status = !has_request ? 202 : 200;
-			return new Response(has_request ? stream : null, {
-				headers: has_request ? {
-					"Content-Type": "text/event-stream",
-					"Cache-Control": "no-cache",
-					connection: "keep-alive",
-					"mcp-session-id": session_id
-				} : void 0,
-				status
-			});
-		} catch (error) {
-			return new Response(JSON.stringify({
-				jsonrpc: "2.0",
-				error: {
-					code: -32700,
-					message: "Parse error",
-					data: error.message
-				}
-			}), {
-				status: 400,
-				headers: {
-					"Content-Type": "application/json",
-					"mcp-session-id": session_id
-				}
-			});
-		}
-	}
-	/**
-	*
-	* @param {string} method
-	* @returns
-	*/
-	#handle_default(method) {
-		return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32601,
-				message: "Method not found",
-				data: `HTTP method ${method} not supported`
-			}
-		}), {
-			status: 405,
-			headers: {
-				"Content-Type": "application/json",
-				Allow: "GET, POST, DELETE, OPTIONS"
-			}
-		});
-	}
-	/**
-	*
-	* @param {Request} request
-	* @param {TCustom} [ctx]
-	* @returns {Promise<Response | null>}
-	*/
-	async respond(request, ctx) {
-		const url = new URL(request.url);
-		/**
-		* @type {AuthInfo | null}
-		*/
-		let auth_info = null;
-		if (this.#oauth) {
-			try {
-				const response = await this.#oauth.respond(request);
-				if (response) return response;
-			} catch (error) {
-				return new Response(JSON.stringify({
-					error: "server_error",
-					error_description: error.message
-				}), {
-					status: 500,
-					headers: { "Content-Type": "application/json" }
-				});
-			}
-			auth_info = await this.#oauth.verify(request);
-		}
-		if (url.pathname !== this.#path && this.#path !== null) return null;
-		const method = request.method;
-		const session_id = request.headers.get("mcp-session-id") || this.#options.getSessionId();
-		/**
-		* @type {Response | null}
-		*/
-		let response = null;
-		if (method === "OPTIONS") response = new Response(null, {
-			status: 204,
-			headers: { "Content-Type": "application/json" }
-		});
-		else if (method === "DELETE") response = await this.#handle_delete(session_id);
-		else if (method === "GET") response = await this.#handle_get(session_id);
-		else if (method === "POST") response = await this.#handle_post(session_id, request, auth_info, ctx);
-		else response = this.#handle_default(method);
-		if (response) this.#apply_cors_headers(response, request);
-		return response;
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/adapter.js
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import { JSONSchema7 } from "json-schema";
-*/
-/**
-* @template {StandardSchemaV1} TSchema
-*/
-var JsonSchemaAdapter = class {
-	/**
-	* @param {TSchema} schema
-	* @returns {Promise<JSONSchema7>}
-	*/
-	toJsonSchema(schema) {
-		throw new Error("toJsonSchema method not implemented");
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/@valibot+to-json-schema@1.5.0_valibot@1.2.0_typescript@5.9.3_/node_modules/@valibot/to-json-schema/dist/index.mjs
-/**
-* Adds an error message to the errors array.
-*
-* @param errors The array of error messages.
-* @param message The error message to add.
-*
-* @returns The new errors.
-*/
-function addError(errors, message) {
-	if (errors) {
-		errors.push(message);
-		return errors;
-	}
-	return [message];
-}
-/**
-* Throws an error or logs a warning based on the configuration.
-*
-* @param message The message to throw or log.
-* @param config The conversion configuration.
-*/
-function handleError(message, config) {
-	switch (config?.errorMode) {
-		case "ignore": break;
-		case "warn":
-			console.warn(message);
-			break;
-		default: throw new Error(message);
-	}
-}
-/**
-* Converts any supported Valibot action to the JSON Schema format.
-*
-* @param jsonSchema The JSON Schema object.
-* @param valibotAction The Valibot action object.
-* @param config The conversion configuration.
-*
-* @returns The converted JSON Schema.
-*/
-function convertAction(jsonSchema, valibotAction, config) {
-	if (config?.ignoreActions?.includes(valibotAction.type)) return jsonSchema;
-	let errors;
-	switch (valibotAction.type) {
-		case "base64":
-			jsonSchema.contentEncoding = "base64";
-			break;
-		case "bic":
-		case "cuid2":
-		case "decimal":
-		case "digits":
-		case "emoji":
-		case "hexadecimal":
-		case "hex_color":
-		case "nanoid":
-		case "octal":
-		case "ulid":
-			jsonSchema.pattern = valibotAction.requirement.source;
-			break;
-		case "description":
-			jsonSchema.description = valibotAction.description;
-			break;
-		case "email":
-			jsonSchema.format = "email";
-			break;
-		case "empty":
-			if (jsonSchema.type === "array") jsonSchema.maxItems = 0;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.maxLength = 0;
-			}
-			break;
-		case "entries":
-			jsonSchema.minProperties = valibotAction.requirement;
-			jsonSchema.maxProperties = valibotAction.requirement;
-			break;
-		case "examples":
-			if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.examples];
-			else jsonSchema.examples = valibotAction.examples;
-			break;
-		case "integer":
-			jsonSchema.type = "integer";
-			break;
-		case "ipv4":
-			jsonSchema.format = "ipv4";
-			break;
-		case "ipv6":
-			jsonSchema.format = "ipv6";
-			break;
-		case "iso_date":
-			jsonSchema.format = "date";
-			break;
-		case "iso_date_time":
-		case "iso_timestamp":
-			jsonSchema.format = "date-time";
-			break;
-		case "iso_time":
-			jsonSchema.format = "time";
-			break;
-		case "length":
-			if (jsonSchema.type === "array") {
-				jsonSchema.minItems = valibotAction.requirement;
-				jsonSchema.maxItems = valibotAction.requirement;
-			} else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = valibotAction.requirement;
-				jsonSchema.maxLength = valibotAction.requirement;
-			}
-			break;
-		case "max_entries":
-			jsonSchema.maxProperties = valibotAction.requirement;
-			break;
-		case "max_length":
-			if (jsonSchema.type === "array") jsonSchema.maxItems = valibotAction.requirement;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.maxLength = valibotAction.requirement;
-			}
-			break;
-		case "max_value":
-			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "max_value" action is not supported on type "${jsonSchema.type}".`);
-			jsonSchema.maximum = valibotAction.requirement;
-			break;
-		case "metadata":
-			if (typeof valibotAction.metadata.title === "string") jsonSchema.title = valibotAction.metadata.title;
-			if (typeof valibotAction.metadata.description === "string") jsonSchema.description = valibotAction.metadata.description;
-			if (Array.isArray(valibotAction.metadata.examples)) if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.metadata.examples];
-			else jsonSchema.examples = valibotAction.metadata.examples;
-			break;
-		case "min_entries":
-			jsonSchema.minProperties = valibotAction.requirement;
-			break;
-		case "min_length":
-			if (jsonSchema.type === "array") jsonSchema.minItems = valibotAction.requirement;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = valibotAction.requirement;
-			}
-			break;
-		case "min_value":
-			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "min_value" action is not supported on type "${jsonSchema.type}".`);
-			jsonSchema.minimum = valibotAction.requirement;
-			break;
-		case "multiple_of":
-			jsonSchema.multipleOf = valibotAction.requirement;
-			break;
-		case "non_empty":
-			if (jsonSchema.type === "array") jsonSchema.minItems = 1;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = 1;
-			}
-			break;
-		case "regex":
-			if (valibotAction.requirement.flags) errors = addError(errors, "RegExp flags are not supported by JSON Schema.");
-			jsonSchema.pattern = valibotAction.requirement.source;
-			break;
-		case "title":
-			jsonSchema.title = valibotAction.title;
-			break;
-		case "url":
-			jsonSchema.format = "uri";
-			break;
-		case "uuid":
-			jsonSchema.format = "uuid";
-			break;
-		case "value":
-			jsonSchema.const = valibotAction.requirement;
-			break;
-		default: errors = addError(errors, `The "${valibotAction.type}" action cannot be converted to JSON Schema.`);
-	}
-	if (config?.overrideAction) {
-		const actionOverride = config.overrideAction({
-			valibotAction,
-			jsonSchema,
-			errors
-		});
-		if (actionOverride) return { ...actionOverride };
-	}
-	if (errors) for (const message of errors) handleError(message, config);
-	return jsonSchema;
-}
-/**
-* Flattens a Valibot pipe by recursively expanding nested pipes.
-*
-* @param pipe The pipeline to flatten.
-*
-* @returns A flat pipeline.
-*/
-function flattenPipe(pipe) {
-	return pipe.flatMap((item) => "pipe" in item ? flattenPipe(item.pipe) : item);
-}
-let refCount = 0;
-/**
-* Converts any supported Valibot schema to the JSON Schema format.
-*
-* @param jsonSchema The JSON Schema object.
-* @param valibotSchema The Valibot schema object.
-* @param config The conversion configuration.
-* @param context The conversion context.
-* @param skipRef Whether to skip using a reference.
-*
-* @returns The converted JSON Schema.
-*/
-function convertSchema(jsonSchema, valibotSchema, config, context, skipRef = false) {
-	if (!skipRef) {
-		const referenceId = context.referenceMap.get(valibotSchema);
-		if (referenceId) {
-			jsonSchema.$ref = `#/$defs/${referenceId}`;
-			if (config?.overrideRef) {
-				const refOverride = config.overrideRef({
-					...context,
-					referenceId,
-					valibotSchema,
-					jsonSchema
-				});
-				if (refOverride) jsonSchema.$ref = refOverride;
-			}
-			return jsonSchema;
-		}
-	}
-	if ("pipe" in valibotSchema) {
-		const flatPipe = flattenPipe(valibotSchema.pipe);
-		let startIndex = 0;
-		let stopIndex = flatPipe.length - 1;
-		if (config?.typeMode === "input") {
-			const inputStopIndex = flatPipe.slice(1).findIndex((item) => item.kind === "schema" || item.kind === "transformation" && (item.type === "find_item" || item.type === "parse_json" || item.type === "raw_transform" || item.type === "reduce_items" || item.type === "stringify_json" || item.type === "to_bigint" || item.type === "to_boolean" || item.type === "to_date" || item.type === "to_number" || item.type === "to_string" || item.type === "transform"));
-			if (inputStopIndex !== -1) stopIndex = inputStopIndex;
-		} else if (config?.typeMode === "output") {
-			const outputStartIndex = flatPipe.findLastIndex((item) => item.kind === "schema");
-			if (outputStartIndex !== -1) startIndex = outputStartIndex;
-		}
-		for (let index = startIndex; index <= stopIndex; index++) {
-			const valibotPipeItem = flatPipe[index];
-			if (valibotPipeItem.kind === "schema") {
-				if (index > startIndex) handleError("Set the \"typeMode\" config to \"input\" or \"output\" to convert pipelines with multiple schemas.", config);
-				jsonSchema = convertSchema(jsonSchema, valibotPipeItem, config, context, true);
-			} else jsonSchema = convertAction(jsonSchema, valibotPipeItem, config);
-		}
-		return jsonSchema;
-	}
-	let errors;
-	switch (valibotSchema.type) {
-		case "boolean":
-			jsonSchema.type = "boolean";
-			break;
-		case "null":
-			if (config?.target === "openapi-3.0") jsonSchema.enum = [null];
-			else jsonSchema.type = "null";
-			break;
-		case "number":
-			jsonSchema.type = "number";
-			break;
-		case "string":
-			jsonSchema.type = "string";
-			break;
-		case "array":
-			jsonSchema.type = "array";
-			jsonSchema.items = convertSchema({}, valibotSchema.item, config, context);
-			break;
-		case "tuple":
-		case "tuple_with_rest":
-		case "loose_tuple":
-		case "strict_tuple":
-			jsonSchema.type = "array";
-			if (config?.target === "openapi-3.0") {
-				jsonSchema.items = { anyOf: [] };
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.items.anyOf.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items.anyOf.push(convertSchema({}, valibotSchema.rest, config, context));
-				else if (valibotSchema.type === "strict_tuple" || valibotSchema.type === "tuple") jsonSchema.maxItems = valibotSchema.items.length;
-			} else if (config?.target === "draft-2020-12") {
-				jsonSchema.prefixItems = [];
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.prefixItems.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items = convertSchema({}, valibotSchema.rest, config, context);
-				else if (valibotSchema.type === "strict_tuple") jsonSchema.items = false;
-			} else {
-				jsonSchema.items = [];
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.items.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.additionalItems = convertSchema({}, valibotSchema.rest, config, context);
-				else if (valibotSchema.type === "strict_tuple") jsonSchema.additionalItems = false;
-			}
-			break;
-		case "object":
-		case "object_with_rest":
-		case "loose_object":
-		case "strict_object":
-			jsonSchema.type = "object";
-			jsonSchema.properties = {};
-			jsonSchema.required = [];
-			for (const key in valibotSchema.entries) {
-				const entry = valibotSchema.entries[key];
-				jsonSchema.properties[key] = convertSchema({}, entry, config, context);
-				if (entry.type !== "exact_optional" && entry.type !== "nullish" && entry.type !== "optional") jsonSchema.required.push(key);
-			}
-			if (valibotSchema.type === "object_with_rest") jsonSchema.additionalProperties = convertSchema({}, valibotSchema.rest, config, context);
-			else if (valibotSchema.type === "strict_object") jsonSchema.additionalProperties = false;
-			break;
-		case "record":
-			if (config?.target === "openapi-3.0" && "pipe" in valibotSchema.key) errors = addError(errors, "The \"record\" schema with a schema for the key that contains a \"pipe\" cannot be converted to JSON Schema.");
-			if (valibotSchema.key.type !== "string") errors = addError(errors, `The "record" schema with the "${valibotSchema.key.type}" schema for the key cannot be converted to JSON Schema.`);
-			jsonSchema.type = "object";
-			if (config?.target !== "openapi-3.0") jsonSchema.propertyNames = convertSchema({}, valibotSchema.key, config, context);
-			jsonSchema.additionalProperties = convertSchema({}, valibotSchema.value, config, context);
-			break;
-		case "any":
-		case "unknown": break;
-		case "nullable":
-		case "nullish":
-			if (config?.target === "openapi-3.0") {
-				const innerSchema = convertSchema({}, valibotSchema.wrapped, config, context);
-				Object.assign(jsonSchema, innerSchema);
-				jsonSchema.nullable = true;
-			} else jsonSchema.anyOf = [convertSchema({}, valibotSchema.wrapped, config, context), { type: "null" }];
-			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
-			break;
-		case "exact_optional":
-		case "optional":
-		case "undefinedable":
-			jsonSchema = convertSchema(jsonSchema, valibotSchema.wrapped, config, context);
-			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
-			break;
-		case "literal":
-			if (typeof valibotSchema.literal !== "boolean" && typeof valibotSchema.literal !== "number" && typeof valibotSchema.literal !== "string") errors = addError(errors, "The value of the \"literal\" schema is not JSON compatible.");
-			if (config?.target === "openapi-3.0") jsonSchema.enum = [valibotSchema.literal];
-			else jsonSchema.const = valibotSchema.literal;
-			break;
-		case "enum":
-			jsonSchema.enum = valibotSchema.options;
-			break;
-		case "picklist":
-			if (valibotSchema.options.some((option) => typeof option !== "number" && typeof option !== "string")) errors = addError(errors, "An option of the \"picklist\" schema is not JSON compatible.");
-			jsonSchema.enum = valibotSchema.options;
-			break;
-		case "union":
-			jsonSchema.anyOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "variant":
-			jsonSchema.oneOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "intersect":
-			jsonSchema.allOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "lazy": {
-			let wrappedValibotSchema = context.getterMap.get(valibotSchema.getter);
-			if (!wrappedValibotSchema) {
-				wrappedValibotSchema = valibotSchema.getter(void 0);
-				context.getterMap.set(valibotSchema.getter, wrappedValibotSchema);
-			}
-			let referenceId = context.referenceMap.get(wrappedValibotSchema);
-			if (!referenceId) {
-				referenceId = `${refCount++}`;
-				context.referenceMap.set(wrappedValibotSchema, referenceId);
-				context.definitions[referenceId] = convertSchema({}, wrappedValibotSchema, config, context, true);
-			}
-			jsonSchema.$ref = `#/$defs/${referenceId}`;
-			if (config?.overrideRef) {
-				const refOverride = config.overrideRef({
-					...context,
-					referenceId,
-					valibotSchema: wrappedValibotSchema,
-					jsonSchema
-				});
-				if (refOverride) jsonSchema.$ref = refOverride;
-			}
-			break;
-		}
-		default: errors = addError(errors, `The "${valibotSchema.type}" schema cannot be converted to JSON Schema.`);
-	}
-	if (config?.overrideSchema) {
-		const schemaOverride = config.overrideSchema({
-			...context,
-			referenceId: context.referenceMap.get(valibotSchema),
-			valibotSchema,
-			jsonSchema,
-			errors
-		});
-		if (schemaOverride) return { ...schemaOverride };
-	}
-	if (errors) for (const message of errors) handleError(message, config);
-	return jsonSchema;
-}
-let store;
-/**
-* Returns the current global schema definitions.
-*
-* @returns The schema definitions.
-*
-* @beta
-*/
-function getGlobalDefs() {
-	return store;
-}
-/**
-* Converts a Valibot schema to the JSON Schema format.
-*
-* @param schema The Valibot schema object.
-* @param config The JSON Schema configuration.
-*
-* @returns The converted JSON Schema.
-*/
-function toJsonSchema$1(schema, config) {
-	const context = {
-		definitions: {},
-		referenceMap: /* @__PURE__ */ new Map(),
-		getterMap: /* @__PURE__ */ new Map()
-	};
-	const definitions = config?.definitions ?? getGlobalDefs();
-	if (definitions) {
-		for (const key in definitions) context.referenceMap.set(definitions[key], key);
-		for (const key in definitions) context.definitions[key] = convertSchema({}, definitions[key], config, context, true);
-	}
-	const jsonSchema = convertSchema({}, schema, config, context);
-	const target = config?.target ?? "draft-07";
-	if (target === "draft-2020-12") jsonSchema.$schema = "https://json-schema.org/draft/2020-12/schema";
-	else if (target === "draft-07") jsonSchema.$schema = "http://json-schema.org/draft-07/schema#";
-	if (context.referenceMap.size) jsonSchema.$defs = context.definitions;
-	return jsonSchema;
-}
-
-//#endregion
-//#region node_modules/.pnpm/@tmcp+adapter-valibot@0.1.5_tmcp@1.19.2_typescript@5.9.3__valibot@1.2.0_typescript@5.9.3_/node_modules/@tmcp/adapter-valibot/src/index.js
-/**
-* @import { GenericSchema } from "valibot";
-*/
-/**
-* Atrocious hack to satisfy the current version of the protocol that for some reason
-* requires `type: string` on enum fields despite JSON Schema spec not requiring it.
-*
-* TODO: Remove this once the protocol is fixed to align with JSON Schema spec.
-* @param {ReturnType<typeof toJsonSchema>} json_schema
-*/
-function add_type_to_enums(json_schema) {
-	for (let key in json_schema) {
-		const property = json_schema[key];
-		if (property != null && typeof property === "object" && !Array.isArray(property)) {
-			if ("enum" in property && !("type" in property)) property.type = "string";
-			add_type_to_enums(property);
-		}
-	}
-	return json_schema;
-}
-/**
-* Valibot adapter for converting Valibot schemas to JSON Schema format
-* @augments {JsonSchemaAdapter<GenericSchema>}
-*/
-var ValibotJsonSchemaAdapter = class extends JsonSchemaAdapter {
-	/**
-	* Converts a Valibot schema to JSON Schema format
-	* @param {GenericSchema} schema - The Valibot schema to convert
-	* @returns {Promise<ReturnType<typeof toJsonSchema>>} - The converted JSON Schema
-	*/
-	async toJsonSchema(schema) {
-		return add_type_to_enums(toJsonSchema$1(schema));
 	}
 };
 
@@ -27542,8 +31536,1058 @@ const tool = {
 };
 
 //#endregion
-//#region src/mcp/selectMode.ts
-function selectModeMCP() {
+//#region shared/comment.ts
+const CLANK8Y_REPO_URL = "https://github.com/clank8y/clank8y";
+const CUMULOCITY_URL = "https://cumulocity.com";
+function buildClank8yCommentBody(rawBody, options) {
+	const normalizedBody = (rawBody ?? "").trim();
+	const footerLinks = [{
+		label: "clank8y",
+		url: CLANK8Y_REPO_URL
+	}, {
+		label: "cumulocity",
+		url: CUMULOCITY_URL
+	}];
+	if (options?.workflowRunUrl) footerLinks.push({
+		label: "workflow run",
+		url: options.workflowRunUrl
+	});
+	const footer = footerLinks.map((link) => `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`).join(" | ");
+	return [
+		normalizedBody || "_No summary provided._",
+		"",
+		`<sub>${footer}</sub>`
+	].join("\n");
+}
+
+//#endregion
+//#region src/utils/artifacts.ts
+const CLANK8Y_ARTIFACT_DIR = ".clank8y";
+const DIFF_ARTIFACT_FILE = "diff.txt";
+const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
+function getClank8yArtifactDirPath() {
+	return path.join(process$1.cwd(), CLANK8Y_ARTIFACT_DIR);
+}
+function resolveClank8yArtifactPath(...segments) {
+	return path.join(getClank8yArtifactDirPath(), ...segments);
+}
+function isWithinClank8yArtifacts(targetPath) {
+	const artifactDir = getClank8yArtifactDirPath();
+	const relativePath = path.relative(artifactDir, targetPath);
+	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+}
+function getReviewArtifactPaths() {
+	return {
+		artifactDir: getClank8yArtifactDirPath(),
+		diffPath: resolveClank8yArtifactPath(DIFF_ARTIFACT_FILE),
+		reviewCommentsPath: resolveClank8yArtifactPath(REVIEW_COMMENTS_ARTIFACT_FILE)
+	};
+}
+async function resetClank8yArtifacts() {
+	const artifactPaths = getReviewArtifactPaths();
+	await rm(artifactPaths.artifactDir, {
+		force: true,
+		recursive: true
+	});
+	await mkdir(artifactPaths.artifactDir, { recursive: true });
+	return artifactPaths;
+}
+async function writeDiffArtifact(content) {
+	const { diffPath } = getReviewArtifactPaths();
+	await writeFile(diffPath, content, "utf-8");
+}
+async function writeReviewCommentsArtifact(content) {
+	const { reviewCommentsPath } = getReviewArtifactPaths();
+	await writeFile(reviewCommentsPath, content, "utf-8");
+	return reviewCommentsPath;
+}
+
+//#endregion
+//#region src/formatters/diff.ts
+function formatFilesWithLineNumbers(files) {
+	const output = [];
+	const tocEntries = [];
+	let currentLine = 1;
+	for (const file of files) {
+		const fileStartLine = currentLine;
+		output.push(`## ${file.filename}`);
+		output.push(`status: ${file.status}, +${file.additions}/-${file.deletions}`);
+		currentLine += 2;
+		if (!file.patch) {
+			output.push("(binary file or no textual patch available)");
+			output.push("");
+			currentLine += 2;
+			tocEntries.push(`- ${file.filename} -> lines ${fileStartLine}-${currentLine - 1}`);
+			continue;
+		}
+		const lines = file.patch.split("\n");
+		let oldLine = 0;
+		let newLine = 0;
+		for (const line of lines) {
+			const hunkMatch = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+			if (hunkMatch) {
+				const oldStart = hunkMatch[1];
+				const newStart = hunkMatch[2];
+				if (!oldStart || !newStart) continue;
+				oldLine = Number.parseInt(oldStart, 10);
+				newLine = Number.parseInt(newStart, 10);
+				output.push(line);
+				currentLine += 1;
+				continue;
+			}
+			const marker = line[0] ?? " ";
+			const code = line.slice(1);
+			if (marker === "-") {
+				output.push(`|${oldLine}|-|${code}`);
+				oldLine += 1;
+			} else if (marker === "+") {
+				output.push(`|${newLine}|+|${code}`);
+				newLine += 1;
+			} else {
+				output.push(`|${oldLine}|${newLine}||${code}`);
+				oldLine += 1;
+				newLine += 1;
+			}
+			currentLine += 1;
+		}
+		output.push("");
+		currentLine += 1;
+		tocEntries.push(`- ${file.filename} -> lines ${fileStartLine}-${currentLine - 1}`);
+	}
+	const toc = [
+		"# TOC",
+		...tocEntries,
+		""
+	].join("\n");
+	return {
+		content: `${toc}${output.join("\n")}`,
+		toc
+	};
+}
+
+//#endregion
+//#region src/formatters/reviewComments.ts
+function formatTimestamp(timestamp) {
+	if (!timestamp) return "unknown time";
+	return timestamp;
+}
+function firstNonEmptyValue(...values) {
+	for (const value of values) if (value !== null && value !== void 0) return value;
+	return null;
+}
+function buildReviewHeader(review) {
+	const reviewer = review.user?.login ?? "unknown";
+	const submittedAt = formatTimestamp(review.submitted_at);
+	const state = review.state ?? "UNKNOWN";
+	return `Review ${review.id} by ${reviewer} at ${submittedAt} [${state}]`;
+}
+function buildThreadLocation(comment, rootCommentId) {
+	const path = comment.path ?? "(no file path)";
+	const line = firstNonEmptyValue(comment.line, comment.original_line, comment.start_line, comment.original_start_line);
+	if (line === null) return `${path} [thread ${rootCommentId}]`;
+	return `${path}:${line}`;
+}
+function formatPreviousReviewCommentsArtifact(pullRequestNumber, reviews, comments) {
+	const lines = [];
+	const tocEntries = [];
+	const reviewById = new Map(reviews.map((review) => [review.id, review]));
+	const commentById = new Map(comments.map((comment) => [comment.id, comment]));
+	const threadMap = /* @__PURE__ */ new Map();
+	function getRootCommentId(comment) {
+		let current = comment;
+		let rootId = current.id;
+		const seen = /* @__PURE__ */ new Set();
+		while (current.in_reply_to_id) {
+			if (seen.has(current.id)) break;
+			seen.add(current.id);
+			const parent = commentById.get(current.in_reply_to_id);
+			if (!parent) {
+				rootId = current.in_reply_to_id;
+				break;
+			}
+			current = parent;
+			rootId = current.id;
+		}
+		return rootId;
+	}
+	for (const comment of comments) {
+		const rootCommentId = getRootCommentId(comment);
+		const threadComments = threadMap.get(rootCommentId);
+		if (threadComments) threadComments.push(comment);
+		else threadMap.set(rootCommentId, [comment]);
+	}
+	const threads = [...threadMap.entries()].flatMap(([rootCommentId, threadComments]) => {
+		const sortedComments = [...threadComments].sort((left, right) => {
+			const leftTime = left.created_at ?? "";
+			const rightTime = right.created_at ?? "";
+			return leftTime.localeCompare(rightTime) || left.id - right.id;
+		});
+		const rootComment = sortedComments.find((comment) => comment.id === rootCommentId) ?? sortedComments[0];
+		if (!rootComment) return [];
+		return {
+			rootCommentId,
+			rootComment,
+			comments: sortedComments
+		};
+	}).sort((left, right) => {
+		const leftPath = left.rootComment.path ?? "";
+		const rightPath = right.rootComment.path ?? "";
+		const pathCompare = leftPath.localeCompare(rightPath);
+		if (pathCompare !== 0) return pathCompare;
+		const leftLine = firstNonEmptyValue(left.rootComment.line, left.rootComment.original_line, left.rootComment.start_line, left.rootComment.original_start_line) ?? 0;
+		const rightLine = firstNonEmptyValue(right.rootComment.line, right.rootComment.original_line, right.rootComment.start_line, right.rootComment.original_start_line) ?? 0;
+		if (leftLine !== rightLine) return leftLine - rightLine;
+		return left.rootCommentId - right.rootCommentId;
+	});
+	lines.push(`# Previous Review Comments For PR #${pullRequestNumber}`);
+	lines.push("");
+	lines.push(`reviews: ${reviews.length}`);
+	lines.push(`inline_comments: ${comments.length}`);
+	lines.push("");
+	if (reviews.length > 0) {
+		lines.push("## Reviews");
+		lines.push("");
+		for (const review of [...reviews].sort((left, right) => {
+			const leftTime = left.submitted_at ?? "";
+			const rightTime = right.submitted_at ?? "";
+			return leftTime.localeCompare(rightTime) || left.id - right.id;
+		})) {
+			lines.push(`### ${buildReviewHeader(review)}`);
+			lines.push("");
+			lines.push(review.body?.trim() || "(no review body)");
+			lines.push("");
+		}
+	}
+	if (threads.length > 0) {
+		lines.push("## Thread TOC");
+		lines.push("");
+		for (const thread of threads) tocEntries.push(`- ${buildThreadLocation(thread.rootComment, thread.rootCommentId)}`);
+		lines.push(...tocEntries);
+		lines.push("");
+	}
+	lines.push("---");
+	lines.push("");
+	if (threads.length === 0) {
+		lines.push("No inline review comments found on this pull request yet.");
+		lines.push("");
+	}
+	for (const thread of threads) {
+		const location = buildThreadLocation(thread.rootComment, thread.rootCommentId);
+		const review = thread.rootComment.pull_request_review_id ? reviewById.get(thread.rootComment.pull_request_review_id) ?? null : null;
+		lines.push(`## ${location}`);
+		lines.push("");
+		lines.push(`root_comment_id: ${thread.rootCommentId}`);
+		lines.push(`review_id: ${thread.rootComment.pull_request_review_id ?? "unknown"}`);
+		lines.push(`reviewer: ${review?.user?.login ?? "unknown"}`);
+		lines.push(`review_state: ${review?.state ?? "unknown"}`);
+		lines.push(`thread_comments: ${thread.comments.length}`);
+		lines.push("");
+		if (thread.rootComment.diff_hunk) {
+			lines.push("```diff");
+			lines.push(thread.rootComment.diff_hunk);
+			lines.push("```");
+			lines.push("");
+		}
+		for (const comment of thread.comments) {
+			const author = comment.user?.login ?? "unknown";
+			lines.push(`### ${author} at ${formatTimestamp(comment.created_at)}`);
+			lines.push("");
+			lines.push(`comment_id: ${comment.id}`);
+			lines.push(`reply_to: ${comment.in_reply_to_id ?? "root"}`);
+			lines.push(comment.body?.trim() || "(no comment body)");
+			lines.push("");
+		}
+	}
+	return {
+		toc: tocEntries.join("\n"),
+		content: lines.join("\n")
+	};
+}
+
+//#endregion
+//#region src/formatters/strings.ts
+function normalizeEscapedNewlines(text) {
+	return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
+		if (match === "\\r\\n") return "\r\n";
+		return "\n";
+	});
+}
+function stripSurroundingQuotes(text) {
+	let result = text;
+	if (result.startsWith("\"")) result = result.slice(1);
+	if (result.endsWith("\"")) result = result.slice(0, -1);
+	return result;
+}
+function normalizeToolString(text) {
+	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
+}
+
+//#endregion
+//#region src/modes/review/mcps/github.ts
+const SET_PULL_REQUEST_CONTEXT_TOOL_NAME = "set-pull-request-context";
+const PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME = "prepare-pull-request-review";
+const CREATE_PULL_REQUEST_REVIEW_TOOL_NAME = "create-pull-request-review";
+const GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME = "get-pull-request-file-content";
+const CREATE_PULL_REQUEST_COMMENT_TOOL_NAME = "create-pull-request-comment";
+const FILE_CHUNK_DEFAULT_LIMIT = 200;
+const FILE_CHUNK_MAX_LIMIT = 400;
+const FILE_CHUNK_MAX_CHARS = 3e4;
+const FILE_FULL_MAX_LINES = 250;
+const FILE_FULL_MAX_CHARS = 2e4;
+async function fetchAllPullRequestFiles() {
+	const octokit = await getOctokit();
+	const pullRequest = getActivePullRequestContext();
+	return await octokit.paginate(octokit.rest.pulls.listFiles, {
+		owner: pullRequest.owner,
+		repo: pullRequest.repo,
+		pull_number: pullRequest.number,
+		per_page: 100
+	});
+}
+async function fetchAllPullRequestReviews() {
+	const octokit = await getOctokit();
+	const pullRequest = getActivePullRequestContext();
+	return await octokit.paginate(octokit.rest.pulls.listReviews, {
+		owner: pullRequest.owner,
+		repo: pullRequest.repo,
+		pull_number: pullRequest.number,
+		per_page: 100
+	});
+}
+async function fetchAllPullRequestReviewComments() {
+	const octokit = await getOctokit();
+	const pullRequest = getActivePullRequestContext();
+	return await octokit.paginate(octokit.rest.pulls.listReviewComments, {
+		owner: pullRequest.owner,
+		repo: pullRequest.repo,
+		pull_number: pullRequest.number,
+		per_page: 100
+	});
+}
+function reviewGitHubMCP() {
+	const mcp = new McpServer({
+		name: "clank8y-review-github-mcp",
+		description: "A MCP server that helps you complete pull request reviews",
+		version: "1.0.0"
+	}, {
+		adapter: new ValibotJsonSchemaAdapter(),
+		capabilities: { tools: { listChanged: true } }
+	});
+	const githubMcpTools = [
+		defineTool({
+			name: SET_PULL_REQUEST_CONTEXT_TOOL_NAME,
+			description: "Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.",
+			title: "Set Pull Request Context",
+			schema: pipe(object({
+				repository: pipe(string(), description("Repository in owner/repo format for the pull request to review.")),
+				pr_number: pipe(number(), description("The pull request number to set as the active review context."))
+			}), description("Arguments for selecting the active pull request before any review-specific GitHub MCP tools are used."))
+		}, async ({ repository, pr_number }) => {
+			try {
+				const pullRequest = await setPullRequestContext({
+					repository,
+					prNumber: pr_number
+				});
+				return tool.structured({
+					success: true,
+					context: {
+						repository: `${pullRequest.owner}/${pullRequest.repo}`,
+						pullRequestNumber: pullRequest.number,
+						baseRef: pullRequest.baseRef,
+						headRef: pullRequest.headRef
+					},
+					pullRequest: {
+						number: pullRequest.number,
+						owner: pullRequest.owner,
+						repo: pullRequest.repo,
+						headRef: pullRequest.headRef,
+						headSha: pullRequest.headSha,
+						baseRef: pullRequest.baseRef,
+						baseSha: pullRequest.baseSha
+					}
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to set pull request context: ${message}`);
+			}
+		}),
+		defineTool({
+			name: PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME,
+			description: "Single entrypoint for review setup: PR metadata, file summary, and diff TOC with chunk-read instructions",
+			title: "Prepare Pull Request Review"
+		}, async () => {
+			try {
+				const octokit = await getOctokit();
+				const pullRequest = getActivePullRequestContext();
+				const [{ data: pr }, files, reviews, reviewComments] = await Promise.all([
+					octokit.rest.pulls.get({
+						owner: pullRequest.owner,
+						repo: pullRequest.repo,
+						pull_number: pullRequest.number
+					}),
+					fetchAllPullRequestFiles(),
+					fetchAllPullRequestReviews(),
+					fetchAllPullRequestReviewComments()
+				]);
+				const artifactPaths = getReviewArtifactPaths();
+				await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
+				const previousReviewComments = formatPreviousReviewCommentsArtifact(pr.number, reviews, reviewComments);
+				const reviewCommentsPath = await writeReviewCommentsArtifact(previousReviewComments.content);
+				const fileSummaries = files.map((file) => ({
+					path: file.filename,
+					status: file.status,
+					additions: file.additions,
+					deletions: file.deletions,
+					hasPatch: !!file.patch
+				}));
+				return tool.structured({
+					pullRequest: {
+						number: pr.number,
+						title: pr.title,
+						body: pr.body,
+						url: pr.html_url,
+						state: pr.state,
+						draft: pr.draft,
+						merged: pr.merged,
+						author: pr.user?.login ?? null,
+						base: {
+							ref: pr.base.ref,
+							sha: pr.base.sha
+						},
+						head: {
+							ref: pr.head.ref,
+							sha: pr.head.sha
+						},
+						labels: pr.labels.map((label) => typeof label === "string" ? label : label.name),
+						assignees: pr.assignees?.map((assignee) => assignee.login) ?? [],
+						isFork: pr.head.repo?.full_name !== pr.base.repo.full_name
+					},
+					files: {
+						count: fileSummaries.length,
+						summary: fileSummaries
+					},
+					diff: {
+						path: artifactPaths.diffPath,
+						instructions: "Read the TOC at the top first to map files to line ranges. Then work through file groups selectively. Use rg or grep on this file to search for repeated patterns."
+					},
+					previousReviews: {
+						path: reviewCommentsPath,
+						reviewCount: reviews.length,
+						inlineCommentCount: reviewComments.length,
+						toc: previousReviewComments.toc,
+						instructions: "Read this separate artifact to see previous review bodies and inline comment history, including who wrote what and when. Use it to avoid repeating already-given feedback unless the new diff introduces a new instance of the same problem."
+					}
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to prepare pull request review context: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_PULL_REQUEST_REVIEW_TOOL_NAME,
+			description: "Submit a review for the current pull request with optional inline comments",
+			title: "Create Pull Request Review",
+			schema: pipe(object({
+				body: optional(pipe(string(), description("1-2 sentence summary for the review. Put most actionable feedback in inline comments. Do not wrap the value in quotation marks."))),
+				commit_id: optional(pipe(string(), description("Optional commit SHA for the review. Defaults to current PR head SHA."))),
+				comments: optional(pipe(array(pipe(object({
+					path: pipe(string(), description("Path of the file to comment on, relative to repository root.")),
+					line: pipe(number(), description("End line of the comment range in the diff (new file line numbering).")),
+					start_line: optional(pipe(number(), description("Start line of the comment range. For single-line comments, set equal to line."))),
+					side: optional(pipe(picklist(["LEFT", "RIGHT"]), description("Diff side: LEFT for old/deleted lines, RIGHT for new/unchanged lines. Defaults to RIGHT."))),
+					body: optional(pipe(string(), description("Explanatory comment text. Optional if suggestion is provided."))),
+					suggestion: optional(pipe(string(), description("Replacement code for [start_line, line]. Must preserve indentation.")))
+				}), description("Single inline review comment payload."))), description("Inline review comments. Use these for line-level feedback in the diff.")))
+			}), description("Payload for submitting a pull request review in one API call."))
+		}, async ({ body, commit_id, comments }) => {
+			try {
+				const octokit = await getOctokit();
+				const runtimeContext = getClank8yRuntimeContext();
+				const pullRequest = getActivePullRequestContext();
+				const reviewCommentsInput = comments ?? [];
+				const reviewBody = buildClank8yCommentBody(body === void 0 ? void 0 : normalizeToolString(body), { workflowRunUrl: runtimeContext.runInfo?.url ?? null });
+				let commitSha = commit_id;
+				if (!commitSha) {
+					const { data: pr } = await octokit.rest.pulls.get({
+						owner: pullRequest.owner,
+						repo: pullRequest.repo,
+						pull_number: pullRequest.number
+					});
+					commitSha = pr.head.sha;
+				}
+				const apiComments = reviewCommentsInput.map((comment) => {
+					const side = comment.side ?? "RIGHT";
+					const startLine = comment.start_line ?? comment.line;
+					let commentBody = normalizeToolString(comment.body ?? "");
+					if (comment.suggestion !== void 0) {
+						const suggestionBlock = `\`\`\`suggestion\n${normalizeToolString(comment.suggestion)}\n\`\`\``;
+						commentBody = commentBody ? `${commentBody}\n\n${suggestionBlock}` : suggestionBlock;
+					}
+					return {
+						path: comment.path,
+						line: comment.line,
+						side,
+						body: commentBody,
+						start_line: startLine,
+						start_side: side
+					};
+				});
+				const params = {
+					owner: pullRequest.owner,
+					repo: pullRequest.repo,
+					pull_number: pullRequest.number,
+					event: "COMMENT",
+					commit_id: commitSha
+				};
+				params.body = reviewBody;
+				if (apiComments.length > 0) params.comments = apiComments;
+				const result = await octokit.rest.pulls.createReview(params);
+				return tool.text(encode({
+					success: true,
+					review_id: result.data.id,
+					state: result.data.state,
+					url: result.data.html_url,
+					submitted_at: result.data.submitted_at,
+					comment_count: apiComments.length
+				}));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create pull request review: ${message}`);
+			}
+		}),
+		defineTool({
+			name: GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME,
+			description: "Get content for a changed pull request file, with chunked reads by default",
+			title: "Get Pull Request File Content",
+			schema: pipe(object({
+				filename: pipe(string(), description("Path of a file changed in the current pull request.")),
+				offset: optional(pipe(number(), description("1-based starting line number for chunked file reads. Defaults to 1."))),
+				limit: optional(pipe(number(), description("Maximum number of lines to return for chunked reads. Defaults to 200 and is capped at 400."))),
+				full: optional(pipe(boolean(), description("Return full file content when true. Allowed only for small files (max 250 lines and 20,000 characters).")))
+			}), description("Arguments for fetching the head-version content of a changed pull request file with optional chunking."))
+		}, async ({ filename, offset, limit, full }) => {
+			try {
+				const octokit = await getOctokit();
+				const pullRequest = getActivePullRequestContext();
+				if (!(await fetchAllPullRequestFiles()).find((f) => f.filename === filename)) return tool.error(`File ${filename} not found in pull request`);
+				const { data: content } = await octokit.rest.repos.getContent({
+					owner: pullRequest.owner,
+					repo: pullRequest.repo,
+					path: filename,
+					ref: pullRequest.headSha
+				});
+				if (Array.isArray(content)) return tool.error(`Path ${filename} resolved to a directory, expected a file`);
+				if (!("content" in content) || !content.content) return tool.error(`No textual content available for ${filename}`);
+				const encoding = content.encoding === "base64" ? "base64" : "utf-8";
+				const decodedContent = Buffer$1.from(content.content, encoding).toString("utf-8");
+				const lines = decodedContent.split("\n");
+				const totalLines = lines.length;
+				if (full) {
+					if (totalLines > FILE_FULL_MAX_LINES || decodedContent.length > FILE_FULL_MAX_CHARS) return tool.error([
+						`Refusing full file read for ${filename}.`,
+						`Hard limits: <= ${FILE_FULL_MAX_LINES} lines and <= ${FILE_FULL_MAX_CHARS} characters.`,
+						`Actual: ${totalLines} lines, ${decodedContent.length} characters.`,
+						"Use chunked reads with offset + limit instead."
+					].join(" "));
+					return tool.text(decodedContent);
+				}
+				const requestedOffset = offset ?? 1;
+				const startLine = Math.max(1, requestedOffset);
+				const requestedLimit = limit ?? FILE_CHUNK_DEFAULT_LIMIT;
+				const normalizedLimit = Math.max(1, Math.min(FILE_CHUNK_MAX_LIMIT, requestedLimit));
+				const endLine = Math.min(totalLines, startLine + normalizedLimit - 1);
+				const rawChunk = lines.slice(startLine - 1, endLine).join("\n");
+				const chunk = rawChunk.length > FILE_CHUNK_MAX_CHARS ? `${rawChunk.slice(0, FILE_CHUNK_MAX_CHARS)}\n\n[truncated: chunk exceeded ${FILE_CHUNK_MAX_CHARS} characters]` : rawChunk;
+				return tool.text([
+					`File chunk ${startLine}-${endLine} of ${totalLines} for ${filename}`,
+					`Remaining lines after this chunk: ${Math.max(0, totalLines - endLine)}`,
+					"",
+					chunk
+				].join("\n"));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to load PR file content: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_PULL_REQUEST_COMMENT_TOOL_NAME,
+			description: `Post a simple comment on the pull request. Use this instead of ${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME} when you have no inline review findings to submit — for example when the diff is clean or all issues are already covered by open review comments.`,
+			title: "Create Pull Request Comment",
+			schema: pipe(object({ body: pipe(string(), description("The comment body. Briefly explain why no review was submitted (e.g. no issues found, all issues already covered by open comments). Do not wrap the value in quotation marks.")) }), description("Payload for posting a simple PR comment without a formal review."))
+		}, async ({ body }) => {
+			try {
+				const octokit = await getOctokit();
+				const runtimeContext = getClank8yRuntimeContext();
+				const pullRequest = getActivePullRequestContext();
+				const commentBody = buildClank8yCommentBody(normalizeToolString(body), { workflowRunUrl: runtimeContext.runInfo?.url ?? null });
+				const result = await octokit.rest.issues.createComment({
+					owner: pullRequest.owner,
+					repo: pullRequest.repo,
+					issue_number: pullRequest.number,
+					body: commentBody
+				});
+				return tool.text(encode({
+					success: true,
+					comment_id: result.data.id,
+					url: result.data.html_url
+				}));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create pull request comment: ${message}`);
+			}
+		})
+	];
+	mcp.tools(githubMcpTools);
+	const transport = new HttpTransport(mcp, { path: "/mcp" });
+	const server = serve({
+		manual: true,
+		port: 0,
+		fetch: async (req) => {
+			const response = await transport.respond(req);
+			if (!response) return new NodeResponse("Not found", { status: 404 });
+			return response;
+		}
+	});
+	let status = { state: "stopped" };
+	return {
+		serverType: "http",
+		allowedTools: githubMcpTools.map((tool) => tool.name),
+		get status() {
+			return status;
+		},
+		start: async () => {
+			await server.serve();
+			const { url } = await server.ready();
+			if (!url) {
+				await server.close(true);
+				throw new Error("Failed to start GitHub MCP server");
+			}
+			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
+			status = {
+				state: "running",
+				url: actualUrl
+			};
+			return {
+				url: actualUrl,
+				toolNames: githubMcpTools.map((tool) => tool.name)
+			};
+		},
+		stop: async () => {
+			await server.close(true);
+			status = { state: "stopped" };
+		}
+	};
+}
+
+//#endregion
+//#region src/modes/review/context.ts
+let _activePullRequestContext = null;
+function parseRepository(repository) {
+	const normalizedRepository = repository.trim();
+	if (!normalizedRepository) throw new Error("Repository is required (format: owner/repo).");
+	const segments = normalizedRepository.split("/");
+	const [owner, repo] = segments;
+	if (segments.length !== 2 || !owner || !repo) throw new Error(`Invalid repository value '${normalizedRepository}'. Expected format: owner/repo.`);
+	return {
+		owner,
+		repo
+	};
+}
+function resetPullRequestContext() {
+	_activePullRequestContext = null;
+}
+async function setPullRequestContext(params) {
+	if (!Number.isFinite(params.prNumber) || params.prNumber < 1) throw new Error(`Invalid pull request number '${String(params.prNumber)}'.`);
+	const repository = parseRepository(params.repository);
+	const { data: pr } = await (await getOctokit()).rest.pulls.get({
+		owner: repository.owner,
+		repo: repository.repo,
+		pull_number: params.prNumber
+	});
+	_activePullRequestContext = {
+		owner: repository.owner,
+		repo: repository.repo,
+		number: pr.number,
+		headSha: pr.head.sha,
+		headRef: pr.head.ref,
+		baseSha: pr.base.sha,
+		baseRef: pr.base.ref
+	};
+	return _activePullRequestContext;
+}
+function getActivePullRequestContext() {
+	if (!_activePullRequestContext) throw new Error(`Pull request context is not initialized. Call ${SET_PULL_REQUEST_CONTEXT_TOOL_NAME} first.`);
+	return _activePullRequestContext;
+}
+
+//#endregion
+//#region src/modes/basePrompts.ts
+const PERSONA = [
+	"## Persona",
+	"",
+	"You are **clank8y** — a precise, sharp-eyed code review bot for Cumulocity IoT frontend applications.",
+	"You speak with mechanical confidence: direct, concise, no fluff.",
+	"You are friendly but never waste words — every sentence carries signal.",
+	"When you are unsure, you say so honestly instead of guessing.",
+	"",
+	"Tone guidelines:",
+	"- Be constructive, not condescending. You are a teammate, not a gatekeeper.",
+	"- Use dry wit sparingly — keep it professional.",
+	"- Prefer concrete over vague. \"Use `AlertService` from `@c8y/ngx-components`\" beats \"consider using the platform service\".",
+	"- Adapt to the repository's existing code style and conventions.",
+	"- Never use emdashes (—). Rather break up sentences into shorter ones."
+].join("\n");
+const KNOWLEDGE_VERIFICATION = [
+	"## Knowledge verification — MANDATORY",
+	"",
+	"Angular evolves rapidly. Your training data may be stale.",
+	"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
+	"",
+	"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
+	"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
+	"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
+	"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
+	"",
+	"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
+	"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
+	"- Use `get_best_practices` to verify the pattern you are evaluating.",
+	"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
+	"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
+	"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
+	"",
+	"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
+	"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
+	"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
+	"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
+	"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
+	"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
+	"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
+	"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
+	"- Specifically check whether the platform already provides what the developer is building or importing.",
+	"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
+	"",
+	"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
+].join("\n");
+
+//#endregion
+//#region src/modes/review/prompt.ts
+const BASE_REVIEW_PROMPT = [
+	PERSONA,
+	"",
+	KNOWLEDGE_VERIFICATION,
+	"",
+	[
+		"## Review scope",
+		"",
+		"You specialize in **Cumulocity IoT frontend application code** — Angular apps built with `@c8y/ngx-components`.",
+		"This is your primary domain. Generic backend, infrastructure, or non-frontend code is out of scope unless it has critical issues.",
+		"",
+		"Primary focus (Cumulocity + Angular):",
+		"- Correct usage of `@c8y/ngx-components` components, services, pipes, directives, and hooks.",
+		"- Angular best practices: modern control flow (`@if`, `@for`, `@switch`), signals, standalone components, proper dependency injection, `input()`, `output()`, `model()`.",
+		"- **Signals over RxJS** — this is a high-priority review axis (see dedicated section below).",
+		"- Cumulocity design system compliance: CSS utility classes, design tokens, color tokens — flag hardcoded colors/spacing when platform tokens exist.",
+		"- Use of platform-provided services over custom implementations (e.g. `AlertService`, `AppStateService`, `RealtimeService`, `UserPreferencesService`).",
+		"- Proper usage of extension points and hooks (function `hook*` providers, widget hooks, navigator hooks, action bar hooks).",
+		"- Internationalization: `translate` pipe/directive usage, missing translation keys.",
+		"- Widget development patterns: `HOOK_COMPONENTS`, widget config, `OnBeforeSave` lifecycle.",
+		"- Microfrontend patterns and module federation considerations.",
+		"",
+		"Secondary focus (always flag regardless of scope):",
+		"- Critical security issues (XSS, injection, credential leaks, unsafe `innerHTML`).",
+		"- Obvious performance anti-patterns (subscriptions never unsubscribed, missing `trackBy`, heavy computation in templates).",
+		"- Dead code, unused imports, or copy-paste errors that clearly slipped through.",
+		"- **Lodash usage** that can be replaced with native JS/TS or `es-toolkit` (see dedicated section below)."
+	].join("\n"),
+	"",
+	[
+		"## Signals over RxJS — high priority",
+		"",
+		"Angular signals (`signal`, `computed`, `effect`, `input`, `output`, `model`, `linkedSignal`) are the modern reactive primitive.",
+		"Review RxJS usage with extra scrutiny — many patterns that previously required RxJS are now cleaner with signals.",
+		"",
+		"### What to flag:",
+		"- **Decorator-based `@Input()` and `@Output()`** → replace with signal-based `input()`, `input.required()`, `output()`, and `model()` functions.",
+		"- Overly complex RxJS chains (`.pipe(switchMap, map, tap, catchError, ...)`) that could be a simple `computed()` or `effect()`.",
+		"- `BehaviorSubject` used as local component state → replace with `signal()`.",
+		"- `combineLatest` + `map` just to derive a value from other observables → replace with `computed()` when inputs are signals.",
+		"- Manual `.subscribe()` for side effects that could be an `effect()`.",
+		"- `@Input() set ...` + manual change tracking → replace with `input()` signal + `computed()`.",
+		"- `@Output() event = new EventEmitter()` → replace with `output()` or `output<Type>()`.",
+		"- `async` pipe in templates chaining multiple observables → consider signal-based approach with `toSignal()`.",
+		"- `takeUntil(destroy$)` / `takeUntilDestroyed()` patterns that exist only because of manual subscriptions — signals eliminate the need.",
+		"",
+		"### What NOT to flag:",
+		"- RxJS for genuinely stream-based scenarios (WebSocket, real-time event streams, complex debounce/throttle/retry/backoff).",
+		"- `HttpClient` calls — these return observables and that is fine; no need to wrap in `toSignal()` unless it simplifies the component.",
+		"- Cumulocity services that return observables by design (e.g. `RealtimeService`) — these are stream-native.",
+		"",
+		"### How to suggest replacements:",
+		"- Show a concrete before/after: the RxJS version and the equivalent signals version.",
+		"- Reference Angular's interop utilities: `toSignal()`, `toObservable()`, `outputToObservable()`, `outputFromObservable()`.",
+		"- Point the developer to the **Angular MCP** docs: \"Check `search_documentation` or `get_best_practices` on Angular signals and RxJS interop for migration guidance.\"",
+		"- When in doubt, verify via Angular MCP that the signal utility you are recommending actually exists before suggesting it.",
+		"",
+		"### Severity:",
+		"- **Medium** for unnecessarily complex RxJS that has a straightforward signal equivalent.",
+		"- **Low** for cases where RxJS works but signals would be marginally cleaner.",
+		"- Do NOT flag as **High** — working RxJS is not a bug, just a modernization opportunity."
+	].join("\n"),
+	"",
+	[
+		"## Lodash & utility libraries",
+		"",
+		"Lodash (`lodash`) is widely used in the Cumulocity ecosystem but is often unnecessary in modern TypeScript.",
+		"",
+		"### Review strategy:",
+		"- For each lodash import, ask: does native JS/TS cover this?",
+		"- Many lodash functions have direct native equivalents: `_.map` → `Array.map`, `_.filter` → `Array.filter`, `_.find` → `Array.find`, `_.includes` → `Array.includes` / `Set.has`, `_.keys` → `Object.keys`, `_.values` → `Object.values`, `_.assign` → spread / `Object.assign`, `_.isNil` → `== null`, `_.isEmpty` on arrays → `.length === 0`.",
+		"- `_.get(obj, \"a.b.c\")` → optional chaining `obj?.a?.b?.c`.",
+		"- `_.cloneDeep` → `structuredClone()` (available in all modern runtimes).",
+		"- `_.uniq` → `[...new Set(arr)]`. `_.uniqBy` → slightly more involved but still doable natively.",
+		"",
+		"### When lodash IS justified:",
+		"- Complex deep operations with no clean native equivalent (e.g. `_.merge` with deep recursive merge, `_.debounce` with specific options — though Angular has `rxjs/debounceTime` or signal-based alternatives).",
+		"- Performance-critical hot paths where lodash's optimized implementation matters (rare in UI code).",
+		"",
+		"### When suggesting removal:",
+		"- If the import is for a trivially replaceable function, suggest the native equivalent inline.",
+		"- If the project uses many lodash utilities and native replacement is clean, recommend [`es-toolkit`](https://es-toolkit.dev/) as a modern, tree-shakeable, zero-dependency alternative.",
+		"- `es-toolkit` provides lodash-compatible APIs with smaller bundle size and better TypeScript types.",
+		"",
+		"### Severity:",
+		"- **Medium** for lodash usage that has a trivial native equivalent (unnecessary dependency weight).",
+		"- **Low** for lodash usage that works but could be replaced with `es-toolkit` or a slightly more verbose native approach.",
+		"- Do not flag lodash usage that genuinely has no clean native/es-toolkit equivalent."
+	].join("\n"),
+	"",
+	[
+		"## Required workflow",
+		"",
+		"You have three MCP servers available:",
+		"- **GitHub MCP** — PR metadata, diffs, file content, and review submission.",
+		"- **Angular MCP** — Angular documentation, best practices, and code examples.",
+		"- **Codex MCP** — Cumulocity Web SDK documentation: components, services, design system, hooks, pipes, CSS utilities.",
+		"",
+		"### Step-by-step:",
+		"",
+		`1) **Set PR context** via the GitHub MCP tool \`${SET_PULL_REQUEST_CONTEXT_TOOL_NAME}\` using the \`repository\` (in \`owner/repo\` form) and \`pr_number\` from EVENT-LEVEL INSTRUCTIONS.`,
+		"   - Do not call any other GitHub MCP tool before this.",
+		"",
+		`2) **Prepare review** via \`${PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (single entrypoint).`,
+		"   - This returns PR metadata, file summary, a `diff.path`, and a separate `previousReviews.path` artifact with previous review bodies and inline comment history.",
+		"",
+		"3) **Review iteratively** — move back and forth between diff inspection, branch context, and documentation verification.",
+		"   Good review is not \"research first, then review\". It is an alternating loop: inspect change, inspect code context, verify best practice, note findings, continue.",
+		"   For Angular or Cumulocity-specific code, documentation verification is not optional.",
+		"   In this codebase, Cumulocity-specific review should lean on Codex MCP heavily.",
+		"   If the change touches `@c8y/*` imports, Cumulocity styles, or platform concepts, Codex MCP should usually be one of your next tool calls.",
+		"",
+		"   a) **Start from the diff artifact:**",
+		"      - Read `.clank8y/diff.txt` first and follow the TOC to inspect the changed areas selectively.",
+		"      - Use the diff to decide where to spend review time. Do not blindly read full files first.",
+		"      - Read `.clank8y/review-comments.md` early to understand what feedback was already given on this PR.",
+		"      - Treat open (unresolved) review comments as active — do not resubmit a finding that an existing open comment already covers.",
+		"",
+		"   b) **Use branch file content only when the diff is not enough:**",
+		`      - Call \`${GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME}\` when you need surrounding code, implementation details, or data flow that is not visible in the diff.`,
+		"      - Prefer targeted reads of specific changed files over broad full-file reads.",
+		"",
+		"   c) **Verify best practice when something looks questionable or unfamiliar:**",
+		"      - For Angular patterns, use `get_best_practices`, `find_examples`, and `search_documentation`.",
+		"      - For Cumulocity APIs, components, hooks, widgets, CSS utilities, and design tokens, use `query-codex` and `get-codex-documents`.",
+		"      - If both Angular and Codex could apply, start with Codex for Cumulocity-specific code and then use Angular MCP for Angular-only concerns.",
+		"      - Research is part of the review loop. Do it as soon as the diff or file context raises a framework- or platform-specific question.",
+		"      - If the changed code is Angular-specific or Cumulocity-specific and you did not verify it with the relevant MCP, assume your review is incomplete.",
+		"      - If the changed code touches `@c8y/*` or another Cumulocity concept and you did not use Codex MCP, assume your review is incomplete.",
+		"      - If the changed code touches Cumulocity styles, CSS classes, tokens, or visual components and you did not use Codex MCP, assume your review is incomplete.",
+		"",
+		"   d) **Expand suspected repeated mistakes from the diff artifact:**",
+		"      - After spotting a plausible issue, use `rg` or `grep` against `.clank8y/diff.txt` to search for repeated occurrences of the same API, token, selector, utility, or code pattern.",
+		"      - Prefer targeted searches with distinctive strings taken from the suspicious diff hunk rather than broad exploratory searches.",
+		"      - Use the results to decide which additional diff sections and changed files deserve follow-up review.",
+		"      - If `rg` or `grep` suggests the issue repeats, confirm each repeated case in diff context or changed-file context before including it in the review.",
+		"",
+		"4) **Formulate findings** with severity (high / medium / low):",
+		"   - High: security issues, incorrect API usage that would cause runtime errors, broken patterns.",
+		"   - Medium: missing platform utilities, non-idiomatic patterns, design system violations.",
+		"   - Low: style nitpicks, minor improvements, suggestions for better alternatives.",
+		"   - If you see a pattern once and it may repeat elsewhere, search for it in the diff before finalizing.",
+		"",
+		"5) **Cross-check against open review comments (mandatory gate)**",
+		"   Before submitting, compare every finding you intend to include against the open (unresolved) comments in `.clank8y/review-comments.md`.",
+		"   For each finding, ask: does an open, unresolved comment already exist that covers this exact issue on the same code location?",
+		"   - **Yes, open comment exists → drop the finding.** The existing comment is still active and visible to the author. Resubmitting it creates noise.",
+		"   - **Open comment exists but the new diff introduces a distinct, fresh instance in different code → keep the finding.** Reference the prior comment for context.",
+		"   - **Prior comment was resolved but the underlying issue persists in the new diff → keep the finding.** It is appropriate to re-raise resolved issues when the code still has the problem.",
+		"   - **No prior comment → keep the finding.**",
+		"   This step is not optional. If you skip it, your review will contain duplicate noise that degrades trust.",
+		"",
+		"6) **Submit results:**",
+		`   - **If you have inline findings** → call \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` with your comments and a short summary body.`,
+		`   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` instead. Briefly explain why no review was submitted (e.g. "No new issues found — all previous feedback is still open and covers the current diff.").`,
+		"   You must call exactly one of these two tools before finishing. Never finish without submitting.",
+		"",
+		"### Completion criteria (mandatory):",
+		`- Do not finish without calling either \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (when you have findings) or \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` (when you have none).`,
+		"- If the PR contains Angular-specific or Cumulocity-specific changes, confirm you verified the relevant patterns with Angular MCP or Codex MCP before finalizing.",
+		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, confirm you queried Codex MCP before finalizing.",
+		"- If there are findings, submit a review with inline comments containing concrete fixes and reference the docs where possible.",
+		"- If there are no findings, post a comment. Do not submit an empty review.",
+		"- Only include findings you have verified — drop speculative or unconfirmed comments.",
+		"- Confirm you completed the open-comment cross-check (step 5) and dropped any findings already covered by open, unresolved review comments.",
+		"- Mention the user from EVENT-LEVEL INSTRUCTIONS so they are notified.",
+		"",
+		"### Tooling constraints:",
+		"- Use GitHub MCP tools for PR operations.",
+		"- Use Angular MCP to verify Angular patterns — do not rely solely on your training data.",
+		"- Use Codex MCP to verify Cumulocity patterns — the platform has a rich component/service library.",
+		"- Native file tools are allowed only so you can read `.clank8y/diff.txt` and `.clank8y/review-comments.md`.",
+		"- Use `rg` or `grep` as the only local search tool, and only to search `.clank8y/diff.txt` or `.clank8y/review-comments.md` for patterns you are already investigating.",
+		"- Do not edit repository source files in review mode.",
+		"- Avoid unrelated shell or local file exploration tools for review logic.",
+		"- Do not use broad workspace search. Keep searches narrowly scoped to `.clank8y/diff.txt`, `.clank8y/review-comments.md`, and to patterns you are already investigating."
+	].join("\n")
+].join("\n");
+function buildReviewPrompt(promptContext) {
+	const normalized = promptContext.trim();
+	if (!normalized) return BASE_REVIEW_PROMPT;
+	return [
+		BASE_REVIEW_PROMPT,
+		"",
+		normalized
+	].join("\n");
+}
+
+//#endregion
+//#region src/mcp/angular.ts
+const ANGULAR_MCP_COMMAND = "npx";
+const ANGULAR_MCP_ARGS = [
+	"-y",
+	"@angular/cli",
+	"mcp"
+];
+/**
+* Tools exposed from the Angular CLI MCP server.
+* - `find_examples`       — authoritative Angular code examples (local)
+* - `get_best_practices`  — Angular best practices guide (local)
+* - `search_documentation`— searches angular.dev (remote)
+*/
+const ANGULAR_ALLOWED_TOOLS = [
+	"find_examples",
+	"get_best_practices",
+	"search_documentation"
+];
+let _angularMCP = null;
+function angularMCP() {
+	if (!_angularMCP) _angularMCP = createAngularMCP();
+	return _angularMCP;
+}
+function createAngularMCP() {
+	let status = { state: "stopped" };
+	return {
+		serverType: "stdio",
+		allowedTools: ANGULAR_ALLOWED_TOOLS,
+		get status() {
+			return status;
+		},
+		start: async () => {
+			status = { state: "running" };
+			return {
+				command: ANGULAR_MCP_COMMAND,
+				args: ANGULAR_MCP_ARGS,
+				toolNames: ANGULAR_ALLOWED_TOOLS
+			};
+		},
+		stop: async () => {
+			status = { state: "stopped" };
+		}
+	};
+}
+
+//#endregion
+//#region src/mcp/codex.ts
+const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
+let _codexMCP = null;
+function codexMCP() {
+	if (!_codexMCP) _codexMCP = createCodexMCP();
+	return _codexMCP;
+}
+function createCodexMCP() {
+	return {
+		serverType: "http",
+		allowedTools: ["*"],
+		get status() {
+			return { state: "running" };
+		},
+		start: async () => ({
+			url: CODEX_MCP_URL,
+			toolNames: []
+		}),
+		stop: async () => {}
+	};
+}
+
+//#endregion
+//#region src/modes/review/mcps/index.ts
+function reviewMCPs() {
+	return {
+		github: reviewGitHubMCP(),
+		codex: codexMCP(),
+		angular: angularMCP()
+	};
+}
+
+//#endregion
+//#region src/modes/review/index.ts
+function getReviewModeRuntime(promptContext) {
+	resetPullRequestContext();
+	return {
+		prompt: buildReviewPrompt(promptContext),
+		mcps: reviewMCPs()
+	};
+}
+
+//#endregion
+//#region src/modeSelection/constants.ts
+const MODE_SELECTION_TOOL_NAME = "select-clank8y-mode";
+const MODE_SELECTION_TOOL_TITLE = "Select clank8y mode";
+const MODE_SELECTION_TOOL_DESCRIPTION = "Select the best clank8y execution mode for the current instructions. Call this exactly once with the chosen mode and a concise reason.";
+
+//#endregion
+//#region src/modeSelection/schema.ts
+const CLANK8Y_MODES = ["Review"];
+const clank8yModeSchema = pipe(picklist(CLANK8Y_MODES), description("The execution mode selected for the current clank8y run."));
+const clank8yModeSelectionSchema = object({
+	mode: clank8yModeSchema,
+	reason: pipe(string(), minLength(1, "Mode selection reason is required."), description("A concise explanation for why this mode fits the current run."))
+});
+
+//#endregion
+//#region src/modes/selectMode/prompt.ts
+const BASE_MODE_SELECTION_PROMPT = [[
+	"## Mode selection",
+	"",
+	"You are an agent for choosing the best clank8y execution mode for this run.",
+	`Call \`${MODE_SELECTION_TOOL_NAME}\` exactly once with a valid mode and a concise reason.`,
+	`Tool intent: ${MODE_SELECTION_TOOL_DESCRIPTION}`,
+	"Choose `Review` when the instructions are about pull request review.",
+	"Do not do any other work in this step."
+].join("\n")].join("\n");
+function buildModeSelectionPrompt(promptContext) {
+	const normalized = promptContext.trim();
+	if (!normalized) return BASE_MODE_SELECTION_PROMPT;
+	return [
+		BASE_MODE_SELECTION_PROMPT,
+		"",
+		"Here is the prompt context for this run:",
+		normalized
+	].join("\n");
+}
+
+//#endregion
+//#region src/modes/selectMode/mcps/selectMode.ts
+function createSelectModeMCPRuntime() {
 	let selection = null;
 	const mcp = new McpServer({
 		name: "clank8y-select-mode-mcp",
@@ -27608,6 +32652,25 @@ function selectModeMCP() {
 }
 
 //#endregion
+//#region src/modes/selectMode/index.ts
+function getSelectModeRuntime(promptContext) {
+	const runtime = createSelectModeMCPRuntime();
+	return {
+		prompt: buildModeSelectionPrompt(promptContext),
+		...runtime
+	};
+}
+
+//#endregion
+//#region src/modes/index.ts
+function getModeRuntime(mode, promptContext) {
+	switch (mode) {
+		case "Review": return getReviewModeRuntime(promptContext);
+		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
+	}
+}
+
+//#endregion
 //#region node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/core.mjs
 const LogLevels = {
 	silent: Number.NEGATIVE_INFINITY,
@@ -27667,11 +32730,11 @@ function createDefu(merger) {
 	return (...arguments_) => arguments_.reduce((p, c) => _defu(p, c, "", merger), {});
 }
 const defu = createDefu();
-function isPlainObject$2(obj) {
+function isPlainObject(obj) {
 	return Object.prototype.toString.call(obj) === "[object Object]";
 }
 function isLogObj(arg) {
-	if (!isPlainObject$2(arg)) return false;
+	if (!isPlainObject(arg)) return false;
 	if (!arg.message && !arg.args) return false;
 	if (arg.stack) return false;
 	return true;
@@ -28299,7 +33362,7 @@ function G$2(t, u, F) {
 `);
 }
 function k$1(t, u) {
-	if (typeof t == "string") return c$1.aliases.get(t) === u;
+	if (typeof t == "string") return c$2.aliases.get(t) === u;
 	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
 	return false;
 }
@@ -28364,7 +33427,7 @@ async function prompt(message, opts = {}) {
 	}).then(handleCancel);
 	throw new Error(`Unknown prompt type: ${opts.type}`);
 }
-var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$1, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
+var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$2, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
 var init_prompt = __esmMin((() => {
 	;
 	;
@@ -28523,7 +33586,7 @@ var init_prompt = __esmMin((() => {
 		}
 		return e;
 	};
-	c$1 = {
+	c$2 = {
 		actions: new Set([
 			"up",
 			"down",
@@ -28588,13 +33651,13 @@ var init_prompt = __esmMin((() => {
 				const e = new WriteStream(0);
 				e._write = (s, i, D) => {
 					this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
-				}, this.input.pipe(e), this.rl = f.createInterface({
+				}, this.input.pipe(e), this.rl = c.createInterface({
 					input: this.input,
 					output: e,
 					tabSize: 2,
 					prompt: "",
 					escapeCodeTimeout: 50
-				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
+				}), c.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
 				}), this.once("cancel", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$2);
@@ -28602,7 +33665,7 @@ var init_prompt = __esmMin((() => {
 			});
 		}
 		onKeypress(u, F) {
-			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
+			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$2.aliases.has(F.name) && this.emit("cursor", c$2.aliases.get(F.name)), c$2.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
 				if (this.opts.validate) {
 					const e = this.opts.validate(this.value);
 					e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
@@ -28924,7 +33987,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		const e = i(true);
 		return Object.keys(e);
 	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
 	["APPVEYOR"],
 	[
 		"AWS_AMPLIFY",
@@ -29016,7 +34079,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 	]
 ];
 function b$1() {
-	if (globalThis.process?.env) for (const e of f$2) {
+	if (globalThis.process?.env) for (const e of f$1) {
 		const s = e[1] || e[0];
 		if (globalThis.process?.env[s]) return {
 			name: e[0].toLowerCase(),
@@ -29048,14 +34111,14 @@ new Proxy(y$1, { get(e, s) {
 	if (s in e) return e[s];
 	if (s in _$1) return _$1[s];
 } });
-const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
+const c$1 = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
 	[S$1, "netlify"],
 	[u$1, "edge-light"],
 	[N$1, "workerd"],
 	[L, "fastly"],
 	[D$1, "deno"],
 	[O$1, "bun"],
-	[c, "node"]
+	[c$1, "node"]
 ];
 function G$1() {
 	const e = F$1.find((s) => s[0]);
@@ -29066,10 +34129,10 @@ function ansiRegex({ onlyFirst = false } = {}) {
 	const pattern = [`[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))`, "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
 	return new RegExp(pattern, onlyFirst ? void 0 : "g");
 }
-const regex$1 = ansiRegex();
+const regex = ansiRegex();
 function stripAnsi(string) {
 	if (typeof string !== "string") throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
-	return string.replace(regex$1, "");
+	return string.replace(regex, "");
 }
 function isAmbiguous(x) {
 	return x === 161 || x === 164 || x === 167 || x === 168 || x === 170 || x === 173 || x === 174 || x >= 176 && x <= 180 || x >= 182 && x <= 186 || x >= 188 && x <= 191 || x === 198 || x === 208 || x === 215 || x === 216 || x >= 222 && x <= 225 || x === 230 || x >= 232 && x <= 234 || x === 236 || x === 237 || x === 240 || x === 242 || x === 243 || x >= 247 && x <= 250 || x === 252 || x === 254 || x === 257 || x === 273 || x === 275 || x === 283 || x === 294 || x === 295 || x === 299 || x >= 305 && x <= 307 || x === 312 || x >= 319 && x <= 322 || x === 324 || x >= 328 && x <= 331 || x === 333 || x === 338 || x === 339 || x === 358 || x === 359 || x === 363 || x === 462 || x === 464 || x === 466 || x === 468 || x === 470 || x === 472 || x === 474 || x === 476 || x === 593 || x === 609 || x === 708 || x === 711 || x >= 713 && x <= 715 || x === 717 || x === 720 || x >= 728 && x <= 731 || x === 733 || x === 735 || x >= 768 && x <= 879 || x >= 913 && x <= 929 || x >= 931 && x <= 937 || x >= 945 && x <= 961 || x >= 963 && x <= 969 || x === 1025 || x >= 1040 && x <= 1103 || x === 1105 || x === 8208 || x >= 8211 && x <= 8214 || x === 8216 || x === 8217 || x === 8220 || x === 8221 || x >= 8224 && x <= 8226 || x >= 8228 && x <= 8231 || x === 8240 || x === 8242 || x === 8243 || x === 8245 || x === 8251 || x === 8254 || x === 8308 || x === 8319 || x >= 8321 && x <= 8324 || x === 8364 || x === 8451 || x === 8453 || x === 8457 || x === 8467 || x === 8470 || x === 8481 || x === 8482 || x === 8486 || x === 8491 || x === 8531 || x === 8532 || x >= 8539 && x <= 8542 || x >= 8544 && x <= 8555 || x >= 8560 && x <= 8569 || x === 8585 || x >= 8592 && x <= 8601 || x === 8632 || x === 8633 || x === 8658 || x === 8660 || x === 8679 || x === 8704 || x === 8706 || x === 8707 || x === 8711 || x === 8712 || x === 8715 || x === 8719 || x === 8721 || x === 8725 || x === 8730 || x >= 8733 && x <= 8736 || x === 8739 || x === 8741 || x >= 8743 && x <= 8748 || x === 8750 || x >= 8756 && x <= 8759 || x === 8764 || x === 8765 || x === 8776 || x === 8780 || x === 8786 || x === 8800 || x === 8801 || x >= 8804 && x <= 8807 || x === 8810 || x === 8811 || x === 8814 || x === 8815 || x === 8834 || x === 8835 || x === 8838 || x === 8839 || x === 8853 || x === 8857 || x === 8869 || x === 8895 || x === 8978 || x >= 9312 && x <= 9449 || x >= 9451 && x <= 9547 || x >= 9552 && x <= 9587 || x >= 9600 && x <= 9615 || x >= 9618 && x <= 9621 || x === 9632 || x === 9633 || x >= 9635 && x <= 9641 || x === 9650 || x === 9651 || x === 9654 || x === 9655 || x === 9660 || x === 9661 || x === 9664 || x === 9665 || x >= 9670 && x <= 9672 || x === 9675 || x >= 9678 && x <= 9681 || x >= 9698 && x <= 9701 || x === 9711 || x === 9733 || x === 9734 || x === 9737 || x === 9742 || x === 9743 || x === 9756 || x === 9758 || x === 9792 || x === 9794 || x === 9824 || x === 9825 || x >= 9827 && x <= 9829 || x >= 9831 && x <= 9834 || x === 9836 || x === 9837 || x === 9839 || x === 9886 || x === 9887 || x === 9919 || x >= 9926 && x <= 9933 || x >= 9935 && x <= 9939 || x >= 9941 && x <= 9953 || x === 9955 || x === 9960 || x === 9961 || x >= 9963 && x <= 9969 || x === 9972 || x >= 9974 && x <= 9977 || x === 9979 || x === 9980 || x === 9982 || x === 9983 || x === 10045 || x >= 10102 && x <= 10111 || x >= 11094 && x <= 11097 || x >= 12872 && x <= 12879 || x >= 57344 && x <= 63743 || x >= 65024 && x <= 65039 || x === 65533 || x >= 127232 && x <= 127242 || x >= 127248 && x <= 127277 || x >= 127280 && x <= 127337 || x >= 127344 && x <= 127373 || x === 127375 || x === 127376 || x >= 127387 && x <= 127404 || x >= 917760 && x <= 917999 || x >= 983040 && x <= 1048573 || x >= 1048576 && x <= 1114109;
@@ -33711,12 +38774,12 @@ stderr: ${stderrOutput}`));
 var l = Object.create;
 var u = Object.defineProperty;
 var d = Object.getOwnPropertyDescriptor;
-var f$1 = Object.getOwnPropertyNames;
+var f = Object.getOwnPropertyNames;
 var p = Object.getPrototypeOf;
 var m = Object.prototype.hasOwnProperty;
 var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
 var g = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f(t), a = 0, o = i.length, s; a < o; a++) {
 		s = i[a];
 		if (!m.call(e, s) && s !== n) u(e, s, {
 			get: ((e) => t[e]).bind(null, s),
@@ -34245,7 +39308,7 @@ var G = class {
 		if (this._streamErr) t.push(this._streamErr);
 		if (this._streamOut) t.push(this._streamOut);
 		const n = w(t);
-		const r = f.createInterface({ input: n });
+		const r = c.createInterface({ input: n });
 		for await (const e of r) yield e.toString();
 		await this._processClosed;
 		e.removeAllListeners();
@@ -34324,3807 +39387,6 @@ const K = (e, t, n) => {
 	return r;
 };
 const q = K;
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+plugin-paginate-graphql@6.0.0_@octokit+core@7.0.6/node_modules/@octokit/plugin-paginate-graphql/dist-bundle/index.js
-var generateMessage = (path, cursorValue) => `The cursor at "${path.join(",")}" did not change its value "${cursorValue}" after a page transition. Please make sure your that your query is set up correctly.`;
-var MissingCursorChange = class extends Error {
-	constructor(pageInfo, cursorValue) {
-		super(generateMessage(pageInfo.pathInQuery, cursorValue));
-		this.pageInfo = pageInfo;
-		this.cursorValue = cursorValue;
-		if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
-	}
-	name = "MissingCursorChangeError";
-};
-var MissingPageInfo = class extends Error {
-	constructor(response) {
-		super(`No pageInfo property found in response. Please make sure to specify the pageInfo in your query. Response-Data: ${JSON.stringify(response, null, 2)}`);
-		this.response = response;
-		if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
-	}
-	name = "MissingPageInfo";
-};
-var isObject = (value) => Object.prototype.toString.call(value) === "[object Object]";
-function findPaginatedResourcePath(responseData) {
-	const paginatedResourcePath = deepFindPathToProperty(responseData, "pageInfo");
-	if (paginatedResourcePath.length === 0) throw new MissingPageInfo(responseData);
-	return paginatedResourcePath;
-}
-var deepFindPathToProperty = (object, searchProp, path = []) => {
-	for (const key of Object.keys(object)) {
-		const currentPath = [...path, key];
-		const currentValue = object[key];
-		if (isObject(currentValue)) {
-			if (currentValue.hasOwnProperty(searchProp)) return currentPath;
-			const result = deepFindPathToProperty(currentValue, searchProp, currentPath);
-			if (result.length > 0) return result;
-		}
-	}
-	return [];
-};
-var get$1 = (object, path) => {
-	return path.reduce((current, nextProperty) => current[nextProperty], object);
-};
-var set$1 = (object, path, mutator) => {
-	const lastProperty = path[path.length - 1];
-	const parent = get$1(object, [...path].slice(0, -1));
-	if (typeof mutator === "function") parent[lastProperty] = mutator(parent[lastProperty]);
-	else parent[lastProperty] = mutator;
-};
-var extractPageInfos = (responseData) => {
-	const pageInfoPath = findPaginatedResourcePath(responseData);
-	return {
-		pathInQuery: pageInfoPath,
-		pageInfo: get$1(responseData, [...pageInfoPath, "pageInfo"])
-	};
-};
-var isForwardSearch = (givenPageInfo) => {
-	return givenPageInfo.hasOwnProperty("hasNextPage");
-};
-var getCursorFrom = (pageInfo) => isForwardSearch(pageInfo) ? pageInfo.endCursor : pageInfo.startCursor;
-var hasAnotherPage = (pageInfo) => isForwardSearch(pageInfo) ? pageInfo.hasNextPage : pageInfo.hasPreviousPage;
-var createIterator = (octokit) => {
-	return (query, initialParameters = {}) => {
-		let nextPageExists = true;
-		let parameters = { ...initialParameters };
-		return { [Symbol.asyncIterator]: () => ({ async next() {
-			if (!nextPageExists) return {
-				done: true,
-				value: {}
-			};
-			const response = await octokit.graphql(query, parameters);
-			const pageInfoContext = extractPageInfos(response);
-			const nextCursorValue = getCursorFrom(pageInfoContext.pageInfo);
-			nextPageExists = hasAnotherPage(pageInfoContext.pageInfo);
-			if (nextPageExists && nextCursorValue === parameters.cursor) throw new MissingCursorChange(pageInfoContext, nextCursorValue);
-			parameters = {
-				...parameters,
-				cursor: nextCursorValue
-			};
-			return {
-				done: false,
-				value: response
-			};
-		} }) };
-	};
-};
-var mergeResponses = (response1, response2) => {
-	if (Object.keys(response1).length === 0) return Object.assign(response1, response2);
-	const path = findPaginatedResourcePath(response1);
-	const nodesPath = [...path, "nodes"];
-	const newNodes = get$1(response2, nodesPath);
-	if (newNodes) set$1(response1, nodesPath, (values) => {
-		return [...values, ...newNodes];
-	});
-	const edgesPath = [...path, "edges"];
-	const newEdges = get$1(response2, edgesPath);
-	if (newEdges) set$1(response1, edgesPath, (values) => {
-		return [...values, ...newEdges];
-	});
-	const pageInfoPath = [...path, "pageInfo"];
-	set$1(response1, pageInfoPath, get$1(response2, pageInfoPath));
-	return response1;
-};
-var createPaginate = (octokit) => {
-	const iterator = createIterator(octokit);
-	return async (query, initialParameters = {}) => {
-		let mergedResponse = {};
-		for await (const response of iterator(query, initialParameters)) mergedResponse = mergeResponses(mergedResponse, response);
-		return mergedResponse;
-	};
-};
-function paginateGraphQL(octokit) {
-	return { graphql: Object.assign(octokit.graphql, { paginate: Object.assign(createPaginate(octokit), { iterator: createIterator(octokit) }) }) };
-}
-
-//#endregion
-//#region node_modules/.pnpm/bottleneck@2.19.5/node_modules/bottleneck/light.js
-var require_light = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-	/**
-	* This file contains the Bottleneck library (MIT), compiled to ES2017, and without Clustering support.
-	* https://github.com/SGrondin/bottleneck
-	*/
-	(function(global, factory) {
-		typeof exports === "object" && typeof module !== "undefined" ? module.exports = factory() : typeof define === "function" && define.amd ? define(factory) : global.Bottleneck = factory();
-	})(exports, (function() {
-		"use strict";
-		var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
-		function getCjsExportFromNamespace(n) {
-			return n && n["default"] || n;
-		}
-		var load = function(received, defaults, onto = {}) {
-			var k, ref, v;
-			for (k in defaults) {
-				v = defaults[k];
-				onto[k] = (ref = received[k]) != null ? ref : v;
-			}
-			return onto;
-		};
-		var overwrite = function(received, defaults, onto = {}) {
-			var k, v;
-			for (k in received) {
-				v = received[k];
-				if (defaults[k] !== void 0) onto[k] = v;
-			}
-			return onto;
-		};
-		var parser = {
-			load,
-			overwrite
-		};
-		var DLList_1 = class DLList {
-			constructor(incr, decr) {
-				this.incr = incr;
-				this.decr = decr;
-				this._first = null;
-				this._last = null;
-				this.length = 0;
-			}
-			push(value) {
-				var node;
-				this.length++;
-				if (typeof this.incr === "function") this.incr();
-				node = {
-					value,
-					prev: this._last,
-					next: null
-				};
-				if (this._last != null) {
-					this._last.next = node;
-					this._last = node;
-				} else this._first = this._last = node;
-			}
-			shift() {
-				var value;
-				if (this._first == null) return;
-				else {
-					this.length--;
-					if (typeof this.decr === "function") this.decr();
-				}
-				value = this._first.value;
-				if ((this._first = this._first.next) != null) this._first.prev = null;
-				else this._last = null;
-				return value;
-			}
-			first() {
-				if (this._first != null) return this._first.value;
-			}
-			getArray() {
-				var node = this._first, ref, results = [];
-				while (node != null) results.push((ref = node, node = node.next, ref.value));
-				return results;
-			}
-			forEachShift(cb) {
-				var node = this.shift();
-				while (node != null) cb(node), node = this.shift();
-			}
-			debug() {
-				var node = this._first, ref, ref1, ref2, results = [];
-				while (node != null) results.push((ref = node, node = node.next, {
-					value: ref.value,
-					prev: (ref1 = ref.prev) != null ? ref1.value : void 0,
-					next: (ref2 = ref.next) != null ? ref2.value : void 0
-				}));
-				return results;
-			}
-		};
-		var Events_1 = class Events {
-			constructor(instance) {
-				this.instance = instance;
-				this._events = {};
-				if (this.instance.on != null || this.instance.once != null || this.instance.removeAllListeners != null) throw new Error("An Emitter already exists for this object");
-				this.instance.on = (name, cb) => {
-					return this._addListener(name, "many", cb);
-				};
-				this.instance.once = (name, cb) => {
-					return this._addListener(name, "once", cb);
-				};
-				this.instance.removeAllListeners = (name = null) => {
-					if (name != null) return delete this._events[name];
-					else return this._events = {};
-				};
-			}
-			_addListener(name, status, cb) {
-				var base;
-				if ((base = this._events)[name] == null) base[name] = [];
-				this._events[name].push({
-					cb,
-					status
-				});
-				return this.instance;
-			}
-			listenerCount(name) {
-				if (this._events[name] != null) return this._events[name].length;
-				else return 0;
-			}
-			async trigger(name, ...args) {
-				var e, promises;
-				try {
-					if (name !== "debug") this.trigger("debug", `Event triggered: ${name}`, args);
-					if (this._events[name] == null) return;
-					this._events[name] = this._events[name].filter(function(listener) {
-						return listener.status !== "none";
-					});
-					promises = this._events[name].map(async (listener) => {
-						var e, returned;
-						if (listener.status === "none") return;
-						if (listener.status === "once") listener.status = "none";
-						try {
-							returned = typeof listener.cb === "function" ? listener.cb(...args) : void 0;
-							if (typeof (returned != null ? returned.then : void 0) === "function") return await returned;
-							else return returned;
-						} catch (error) {
-							e = error;
-							this.trigger("error", e);
-							return null;
-						}
-					});
-					return (await Promise.all(promises)).find(function(x) {
-						return x != null;
-					});
-				} catch (error) {
-					e = error;
-					this.trigger("error", e);
-					return null;
-				}
-			}
-		};
-		var DLList$1 = DLList_1, Events$1 = Events_1;
-		var Queues_1 = class Queues {
-			constructor(num_priorities) {
-				this.Events = new Events$1(this);
-				this._length = 0;
-				this._lists = (function() {
-					var j, ref, results = [];
-					for (j = 1, ref = num_priorities; 1 <= ref ? j <= ref : j >= ref; 1 <= ref ? ++j : --j) results.push(new DLList$1((() => {
-						return this.incr();
-					}), (() => {
-						return this.decr();
-					})));
-					return results;
-				}).call(this);
-			}
-			incr() {
-				if (this._length++ === 0) return this.Events.trigger("leftzero");
-			}
-			decr() {
-				if (--this._length === 0) return this.Events.trigger("zero");
-			}
-			push(job) {
-				return this._lists[job.options.priority].push(job);
-			}
-			queued(priority) {
-				if (priority != null) return this._lists[priority].length;
-				else return this._length;
-			}
-			shiftAll(fn) {
-				return this._lists.forEach(function(list) {
-					return list.forEachShift(fn);
-				});
-			}
-			getFirst(arr = this._lists) {
-				var j, len, list;
-				for (j = 0, len = arr.length; j < len; j++) {
-					list = arr[j];
-					if (list.length > 0) return list;
-				}
-				return [];
-			}
-			shiftLastFrom(priority) {
-				return this.getFirst(this._lists.slice(priority).reverse()).shift();
-			}
-		};
-		var BottleneckError_1 = class BottleneckError extends Error {};
-		var BottleneckError$1, DEFAULT_PRIORITY, Job, NUM_PRIORITIES = 10, parser$1;
-		DEFAULT_PRIORITY = 5;
-		parser$1 = parser;
-		BottleneckError$1 = BottleneckError_1;
-		Job = class Job {
-			constructor(task, args, options, jobDefaults, rejectOnDrop, Events, _states, Promise) {
-				this.task = task;
-				this.args = args;
-				this.rejectOnDrop = rejectOnDrop;
-				this.Events = Events;
-				this._states = _states;
-				this.Promise = Promise;
-				this.options = parser$1.load(options, jobDefaults);
-				this.options.priority = this._sanitizePriority(this.options.priority);
-				if (this.options.id === jobDefaults.id) this.options.id = `${this.options.id}-${this._randomIndex()}`;
-				this.promise = new this.Promise((_resolve, _reject) => {
-					this._resolve = _resolve;
-					this._reject = _reject;
-				});
-				this.retryCount = 0;
-			}
-			_sanitizePriority(priority) {
-				var sProperty = ~~priority !== priority ? DEFAULT_PRIORITY : priority;
-				if (sProperty < 0) return 0;
-				else if (sProperty > NUM_PRIORITIES - 1) return NUM_PRIORITIES - 1;
-				else return sProperty;
-			}
-			_randomIndex() {
-				return Math.random().toString(36).slice(2);
-			}
-			doDrop({ error, message = "This job has been dropped by Bottleneck" } = {}) {
-				if (this._states.remove(this.options.id)) {
-					if (this.rejectOnDrop) this._reject(error != null ? error : new BottleneckError$1(message));
-					this.Events.trigger("dropped", {
-						args: this.args,
-						options: this.options,
-						task: this.task,
-						promise: this.promise
-					});
-					return true;
-				} else return false;
-			}
-			_assertStatus(expected) {
-				var status = this._states.jobStatus(this.options.id);
-				if (!(status === expected || expected === "DONE" && status === null)) throw new BottleneckError$1(`Invalid job status ${status}, expected ${expected}. Please open an issue at https://github.com/SGrondin/bottleneck/issues`);
-			}
-			doReceive() {
-				this._states.start(this.options.id);
-				return this.Events.trigger("received", {
-					args: this.args,
-					options: this.options
-				});
-			}
-			doQueue(reachedHWM, blocked) {
-				this._assertStatus("RECEIVED");
-				this._states.next(this.options.id);
-				return this.Events.trigger("queued", {
-					args: this.args,
-					options: this.options,
-					reachedHWM,
-					blocked
-				});
-			}
-			doRun() {
-				if (this.retryCount === 0) {
-					this._assertStatus("QUEUED");
-					this._states.next(this.options.id);
-				} else this._assertStatus("EXECUTING");
-				return this.Events.trigger("scheduled", {
-					args: this.args,
-					options: this.options
-				});
-			}
-			async doExecute(chained, clearGlobalState, run, free) {
-				var error, eventInfo, passed;
-				if (this.retryCount === 0) {
-					this._assertStatus("RUNNING");
-					this._states.next(this.options.id);
-				} else this._assertStatus("EXECUTING");
-				eventInfo = {
-					args: this.args,
-					options: this.options,
-					retryCount: this.retryCount
-				};
-				this.Events.trigger("executing", eventInfo);
-				try {
-					passed = await (chained != null ? chained.schedule(this.options, this.task, ...this.args) : this.task(...this.args));
-					if (clearGlobalState()) {
-						this.doDone(eventInfo);
-						await free(this.options, eventInfo);
-						this._assertStatus("DONE");
-						return this._resolve(passed);
-					}
-				} catch (error1) {
-					error = error1;
-					return this._onFailure(error, eventInfo, clearGlobalState, run, free);
-				}
-			}
-			doExpire(clearGlobalState, run, free) {
-				var error, eventInfo;
-				if (this._states.jobStatus(this.options.id === "RUNNING")) this._states.next(this.options.id);
-				this._assertStatus("EXECUTING");
-				eventInfo = {
-					args: this.args,
-					options: this.options,
-					retryCount: this.retryCount
-				};
-				error = new BottleneckError$1(`This job timed out after ${this.options.expiration} ms.`);
-				return this._onFailure(error, eventInfo, clearGlobalState, run, free);
-			}
-			async _onFailure(error, eventInfo, clearGlobalState, run, free) {
-				var retry, retryAfter;
-				if (clearGlobalState()) {
-					retry = await this.Events.trigger("failed", error, eventInfo);
-					if (retry != null) {
-						retryAfter = ~~retry;
-						this.Events.trigger("retry", `Retrying ${this.options.id} after ${retryAfter} ms`, eventInfo);
-						this.retryCount++;
-						return run(retryAfter);
-					} else {
-						this.doDone(eventInfo);
-						await free(this.options, eventInfo);
-						this._assertStatus("DONE");
-						return this._reject(error);
-					}
-				}
-			}
-			doDone(eventInfo) {
-				this._assertStatus("EXECUTING");
-				this._states.next(this.options.id);
-				return this.Events.trigger("done", eventInfo);
-			}
-		};
-		var Job_1 = Job;
-		var BottleneckError$2, LocalDatastore, parser$2 = parser;
-		BottleneckError$2 = BottleneckError_1;
-		LocalDatastore = class LocalDatastore {
-			constructor(instance, storeOptions, storeInstanceOptions) {
-				this.instance = instance;
-				this.storeOptions = storeOptions;
-				this.clientId = this.instance._randomIndex();
-				parser$2.load(storeInstanceOptions, storeInstanceOptions, this);
-				this._nextRequest = this._lastReservoirRefresh = this._lastReservoirIncrease = Date.now();
-				this._running = 0;
-				this._done = 0;
-				this._unblockTime = 0;
-				this.ready = this.Promise.resolve();
-				this.clients = {};
-				this._startHeartbeat();
-			}
-			_startHeartbeat() {
-				var base;
-				if (this.heartbeat == null && (this.storeOptions.reservoirRefreshInterval != null && this.storeOptions.reservoirRefreshAmount != null || this.storeOptions.reservoirIncreaseInterval != null && this.storeOptions.reservoirIncreaseAmount != null)) return typeof (base = this.heartbeat = setInterval(() => {
-					var amount, incr, maximum, now = Date.now(), reservoir;
-					if (this.storeOptions.reservoirRefreshInterval != null && now >= this._lastReservoirRefresh + this.storeOptions.reservoirRefreshInterval) {
-						this._lastReservoirRefresh = now;
-						this.storeOptions.reservoir = this.storeOptions.reservoirRefreshAmount;
-						this.instance._drainAll(this.computeCapacity());
-					}
-					if (this.storeOptions.reservoirIncreaseInterval != null && now >= this._lastReservoirIncrease + this.storeOptions.reservoirIncreaseInterval) {
-						({reservoirIncreaseAmount: amount, reservoirIncreaseMaximum: maximum, reservoir} = this.storeOptions);
-						this._lastReservoirIncrease = now;
-						incr = maximum != null ? Math.min(amount, maximum - reservoir) : amount;
-						if (incr > 0) {
-							this.storeOptions.reservoir += incr;
-							return this.instance._drainAll(this.computeCapacity());
-						}
-					}
-				}, this.heartbeatInterval)).unref === "function" ? base.unref() : void 0;
-				else return clearInterval(this.heartbeat);
-			}
-			async __publish__(message) {
-				await this.yieldLoop();
-				return this.instance.Events.trigger("message", message.toString());
-			}
-			async __disconnect__(flush) {
-				await this.yieldLoop();
-				clearInterval(this.heartbeat);
-				return this.Promise.resolve();
-			}
-			yieldLoop(t = 0) {
-				return new this.Promise(function(resolve, reject) {
-					return setTimeout(resolve, t);
-				});
-			}
-			computePenalty() {
-				var ref;
-				return (ref = this.storeOptions.penalty) != null ? ref : 15 * this.storeOptions.minTime || 5e3;
-			}
-			async __updateSettings__(options) {
-				await this.yieldLoop();
-				parser$2.overwrite(options, options, this.storeOptions);
-				this._startHeartbeat();
-				this.instance._drainAll(this.computeCapacity());
-				return true;
-			}
-			async __running__() {
-				await this.yieldLoop();
-				return this._running;
-			}
-			async __queued__() {
-				await this.yieldLoop();
-				return this.instance.queued();
-			}
-			async __done__() {
-				await this.yieldLoop();
-				return this._done;
-			}
-			async __groupCheck__(time) {
-				await this.yieldLoop();
-				return this._nextRequest + this.timeout < time;
-			}
-			computeCapacity() {
-				var maxConcurrent, reservoir;
-				({maxConcurrent, reservoir} = this.storeOptions);
-				if (maxConcurrent != null && reservoir != null) return Math.min(maxConcurrent - this._running, reservoir);
-				else if (maxConcurrent != null) return maxConcurrent - this._running;
-				else if (reservoir != null) return reservoir;
-				else return null;
-			}
-			conditionsCheck(weight) {
-				var capacity = this.computeCapacity();
-				return capacity == null || weight <= capacity;
-			}
-			async __incrementReservoir__(incr) {
-				var reservoir;
-				await this.yieldLoop();
-				reservoir = this.storeOptions.reservoir += incr;
-				this.instance._drainAll(this.computeCapacity());
-				return reservoir;
-			}
-			async __currentReservoir__() {
-				await this.yieldLoop();
-				return this.storeOptions.reservoir;
-			}
-			isBlocked(now) {
-				return this._unblockTime >= now;
-			}
-			check(weight, now) {
-				return this.conditionsCheck(weight) && this._nextRequest - now <= 0;
-			}
-			async __check__(weight) {
-				var now;
-				await this.yieldLoop();
-				now = Date.now();
-				return this.check(weight, now);
-			}
-			async __register__(index, weight, expiration) {
-				var now, wait;
-				await this.yieldLoop();
-				now = Date.now();
-				if (this.conditionsCheck(weight)) {
-					this._running += weight;
-					if (this.storeOptions.reservoir != null) this.storeOptions.reservoir -= weight;
-					wait = Math.max(this._nextRequest - now, 0);
-					this._nextRequest = now + wait + this.storeOptions.minTime;
-					return {
-						success: true,
-						wait,
-						reservoir: this.storeOptions.reservoir
-					};
-				} else return { success: false };
-			}
-			strategyIsBlock() {
-				return this.storeOptions.strategy === 3;
-			}
-			async __submit__(queueLength, weight) {
-				var blocked, now, reachedHWM;
-				await this.yieldLoop();
-				if (this.storeOptions.maxConcurrent != null && weight > this.storeOptions.maxConcurrent) throw new BottleneckError$2(`Impossible to add a job having a weight of ${weight} to a limiter having a maxConcurrent setting of ${this.storeOptions.maxConcurrent}`);
-				now = Date.now();
-				reachedHWM = this.storeOptions.highWater != null && queueLength === this.storeOptions.highWater && !this.check(weight, now);
-				blocked = this.strategyIsBlock() && (reachedHWM || this.isBlocked(now));
-				if (blocked) {
-					this._unblockTime = now + this.computePenalty();
-					this._nextRequest = this._unblockTime + this.storeOptions.minTime;
-					this.instance._dropAllQueued();
-				}
-				return {
-					reachedHWM,
-					blocked,
-					strategy: this.storeOptions.strategy
-				};
-			}
-			async __free__(index, weight) {
-				await this.yieldLoop();
-				this._running -= weight;
-				this._done += weight;
-				this.instance._drainAll(this.computeCapacity());
-				return { running: this._running };
-			}
-		};
-		var LocalDatastore_1 = LocalDatastore;
-		var BottleneckError$3 = BottleneckError_1;
-		var States_1 = class States {
-			constructor(status1) {
-				this.status = status1;
-				this._jobs = {};
-				this.counts = this.status.map(function() {
-					return 0;
-				});
-			}
-			next(id) {
-				var current = this._jobs[id], next = current + 1;
-				if (current != null && next < this.status.length) {
-					this.counts[current]--;
-					this.counts[next]++;
-					return this._jobs[id]++;
-				} else if (current != null) {
-					this.counts[current]--;
-					return delete this._jobs[id];
-				}
-			}
-			start(id) {
-				var initial = 0;
-				this._jobs[id] = initial;
-				return this.counts[initial]++;
-			}
-			remove(id) {
-				var current = this._jobs[id];
-				if (current != null) {
-					this.counts[current]--;
-					delete this._jobs[id];
-				}
-				return current != null;
-			}
-			jobStatus(id) {
-				var ref;
-				return (ref = this.status[this._jobs[id]]) != null ? ref : null;
-			}
-			statusJobs(status) {
-				var k, pos, ref, results, v;
-				if (status != null) {
-					pos = this.status.indexOf(status);
-					if (pos < 0) throw new BottleneckError$3(`status must be one of ${this.status.join(", ")}`);
-					ref = this._jobs;
-					results = [];
-					for (k in ref) {
-						v = ref[k];
-						if (v === pos) results.push(k);
-					}
-					return results;
-				} else return Object.keys(this._jobs);
-			}
-			statusCounts() {
-				return this.counts.reduce(((acc, v, i) => {
-					acc[this.status[i]] = v;
-					return acc;
-				}), {});
-			}
-		};
-		var DLList$2 = DLList_1;
-		var Sync_1 = class Sync {
-			constructor(name, Promise) {
-				this.schedule = this.schedule.bind(this);
-				this.name = name;
-				this.Promise = Promise;
-				this._running = 0;
-				this._queue = new DLList$2();
-			}
-			isEmpty() {
-				return this._queue.length === 0;
-			}
-			async _tryToRun() {
-				var args, cb, error, reject, resolve, returned, task;
-				if (this._running < 1 && this._queue.length > 0) {
-					this._running++;
-					({task, args, resolve, reject} = this._queue.shift());
-					cb = await (async function() {
-						try {
-							returned = await task(...args);
-							return function() {
-								return resolve(returned);
-							};
-						} catch (error1) {
-							error = error1;
-							return function() {
-								return reject(error);
-							};
-						}
-					})();
-					this._running--;
-					this._tryToRun();
-					return cb();
-				}
-			}
-			schedule(task, ...args) {
-				var promise, reject, resolve = reject = null;
-				promise = new this.Promise(function(_resolve, _reject) {
-					resolve = _resolve;
-					return reject = _reject;
-				});
-				this._queue.push({
-					task,
-					args,
-					resolve,
-					reject
-				});
-				this._tryToRun();
-				return promise;
-			}
-		};
-		var version = "2.19.5";
-		var version$1 = { version };
-		var version$2 = /* @__PURE__ */ Object.freeze({
-			version,
-			default: version$1
-		});
-		var require$$2 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
-		var require$$3 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
-		var require$$4 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
-		var Events$2, Group, IORedisConnection$1, RedisConnection$1, Scripts$1, parser$3 = parser;
-		Events$2 = Events_1;
-		RedisConnection$1 = require$$2;
-		IORedisConnection$1 = require$$3;
-		Scripts$1 = require$$4;
-		Group = (function() {
-			class Group {
-				constructor(limiterOptions = {}) {
-					this.deleteKey = this.deleteKey.bind(this);
-					this.limiterOptions = limiterOptions;
-					parser$3.load(this.limiterOptions, this.defaults, this);
-					this.Events = new Events$2(this);
-					this.instances = {};
-					this.Bottleneck = Bottleneck_1;
-					this._startAutoCleanup();
-					this.sharedConnection = this.connection != null;
-					if (this.connection == null) {
-						if (this.limiterOptions.datastore === "redis") this.connection = new RedisConnection$1(Object.assign({}, this.limiterOptions, { Events: this.Events }));
-						else if (this.limiterOptions.datastore === "ioredis") this.connection = new IORedisConnection$1(Object.assign({}, this.limiterOptions, { Events: this.Events }));
-					}
-				}
-				key(key = "") {
-					var ref;
-					return (ref = this.instances[key]) != null ? ref : (() => {
-						var limiter = this.instances[key] = new this.Bottleneck(Object.assign(this.limiterOptions, {
-							id: `${this.id}-${key}`,
-							timeout: this.timeout,
-							connection: this.connection
-						}));
-						this.Events.trigger("created", limiter, key);
-						return limiter;
-					})();
-				}
-				async deleteKey(key = "") {
-					var deleted, instance = this.instances[key];
-					if (this.connection) deleted = await this.connection.__runCommand__(["del", ...Scripts$1.allKeys(`${this.id}-${key}`)]);
-					if (instance != null) {
-						delete this.instances[key];
-						await instance.disconnect();
-					}
-					return instance != null || deleted > 0;
-				}
-				limiters() {
-					var k, ref = this.instances, results = [], v;
-					for (k in ref) {
-						v = ref[k];
-						results.push({
-							key: k,
-							limiter: v
-						});
-					}
-					return results;
-				}
-				keys() {
-					return Object.keys(this.instances);
-				}
-				async clusterKeys() {
-					var cursor, end, found, i, k, keys, len, next, start;
-					if (this.connection == null) return this.Promise.resolve(this.keys());
-					keys = [];
-					cursor = null;
-					start = `b_${this.id}-`.length;
-					end = 9;
-					while (cursor !== 0) {
-						[next, found] = await this.connection.__runCommand__([
-							"scan",
-							cursor != null ? cursor : 0,
-							"match",
-							`b_${this.id}-*_settings`,
-							"count",
-							1e4
-						]);
-						cursor = ~~next;
-						for (i = 0, len = found.length; i < len; i++) {
-							k = found[i];
-							keys.push(k.slice(start, -end));
-						}
-					}
-					return keys;
-				}
-				_startAutoCleanup() {
-					var base;
-					clearInterval(this.interval);
-					return typeof (base = this.interval = setInterval(async () => {
-						var e, k, ref, results, time = Date.now(), v;
-						ref = this.instances;
-						results = [];
-						for (k in ref) {
-							v = ref[k];
-							try {
-								if (await v._store.__groupCheck__(time)) results.push(this.deleteKey(k));
-								else results.push(void 0);
-							} catch (error) {
-								e = error;
-								results.push(v.Events.trigger("error", e));
-							}
-						}
-						return results;
-					}, this.timeout / 2)).unref === "function" ? base.unref() : void 0;
-				}
-				updateSettings(options = {}) {
-					parser$3.overwrite(options, this.defaults, this);
-					parser$3.overwrite(options, options, this.limiterOptions);
-					if (options.timeout != null) return this._startAutoCleanup();
-				}
-				disconnect(flush = true) {
-					var ref;
-					if (!this.sharedConnection) return (ref = this.connection) != null ? ref.disconnect(flush) : void 0;
-				}
-			}
-			Group.prototype.defaults = {
-				timeout: 1e3 * 60 * 5,
-				connection: null,
-				Promise,
-				id: "group-key"
-			};
-			return Group;
-		}).call(commonjsGlobal);
-		var Group_1 = Group;
-		var Batcher, Events$3, parser$4 = parser;
-		Events$3 = Events_1;
-		Batcher = (function() {
-			class Batcher {
-				constructor(options = {}) {
-					this.options = options;
-					parser$4.load(this.options, this.defaults, this);
-					this.Events = new Events$3(this);
-					this._arr = [];
-					this._resetPromise();
-					this._lastFlush = Date.now();
-				}
-				_resetPromise() {
-					return this._promise = new this.Promise((res, rej) => {
-						return this._resolve = res;
-					});
-				}
-				_flush() {
-					clearTimeout(this._timeout);
-					this._lastFlush = Date.now();
-					this._resolve();
-					this.Events.trigger("batch", this._arr);
-					this._arr = [];
-					return this._resetPromise();
-				}
-				add(data) {
-					var ret;
-					this._arr.push(data);
-					ret = this._promise;
-					if (this._arr.length === this.maxSize) this._flush();
-					else if (this.maxTime != null && this._arr.length === 1) this._timeout = setTimeout(() => {
-						return this._flush();
-					}, this.maxTime);
-					return ret;
-				}
-			}
-			Batcher.prototype.defaults = {
-				maxTime: null,
-				maxSize: null,
-				Promise
-			};
-			return Batcher;
-		}).call(commonjsGlobal);
-		var Batcher_1 = Batcher;
-		var require$$4$1 = () => console.log("You must import the full version of Bottleneck in order to use this feature.");
-		var require$$8 = getCjsExportFromNamespace(version$2);
-		var Bottleneck, DEFAULT_PRIORITY$1, Events$4, Job$1, LocalDatastore$1, NUM_PRIORITIES$1, Queues$1, RedisDatastore$1, States$1, Sync$1, parser$5, splice = [].splice;
-		NUM_PRIORITIES$1 = 10;
-		DEFAULT_PRIORITY$1 = 5;
-		parser$5 = parser;
-		Queues$1 = Queues_1;
-		Job$1 = Job_1;
-		LocalDatastore$1 = LocalDatastore_1;
-		RedisDatastore$1 = require$$4$1;
-		Events$4 = Events_1;
-		States$1 = States_1;
-		Sync$1 = Sync_1;
-		Bottleneck = (function() {
-			class Bottleneck {
-				constructor(options = {}, ...invalid) {
-					var storeInstanceOptions, storeOptions;
-					this._addToQueue = this._addToQueue.bind(this);
-					this._validateOptions(options, invalid);
-					parser$5.load(options, this.instanceDefaults, this);
-					this._queues = new Queues$1(NUM_PRIORITIES$1);
-					this._scheduled = {};
-					this._states = new States$1([
-						"RECEIVED",
-						"QUEUED",
-						"RUNNING",
-						"EXECUTING"
-					].concat(this.trackDoneStatus ? ["DONE"] : []));
-					this._limiter = null;
-					this.Events = new Events$4(this);
-					this._submitLock = new Sync$1("submit", this.Promise);
-					this._registerLock = new Sync$1("register", this.Promise);
-					storeOptions = parser$5.load(options, this.storeDefaults, {});
-					this._store = (function() {
-						if (this.datastore === "redis" || this.datastore === "ioredis" || this.connection != null) {
-							storeInstanceOptions = parser$5.load(options, this.redisStoreDefaults, {});
-							return new RedisDatastore$1(this, storeOptions, storeInstanceOptions);
-						} else if (this.datastore === "local") {
-							storeInstanceOptions = parser$5.load(options, this.localStoreDefaults, {});
-							return new LocalDatastore$1(this, storeOptions, storeInstanceOptions);
-						} else throw new Bottleneck.prototype.BottleneckError(`Invalid datastore type: ${this.datastore}`);
-					}).call(this);
-					this._queues.on("leftzero", () => {
-						var ref;
-						return (ref = this._store.heartbeat) != null ? typeof ref.ref === "function" ? ref.ref() : void 0 : void 0;
-					});
-					this._queues.on("zero", () => {
-						var ref;
-						return (ref = this._store.heartbeat) != null ? typeof ref.unref === "function" ? ref.unref() : void 0 : void 0;
-					});
-				}
-				_validateOptions(options, invalid) {
-					if (!(options != null && typeof options === "object" && invalid.length === 0)) throw new Bottleneck.prototype.BottleneckError("Bottleneck v2 takes a single object argument. Refer to https://github.com/SGrondin/bottleneck#upgrading-to-v2 if you're upgrading from Bottleneck v1.");
-				}
-				ready() {
-					return this._store.ready;
-				}
-				clients() {
-					return this._store.clients;
-				}
-				channel() {
-					return `b_${this.id}`;
-				}
-				channel_client() {
-					return `b_${this.id}_${this._store.clientId}`;
-				}
-				publish(message) {
-					return this._store.__publish__(message);
-				}
-				disconnect(flush = true) {
-					return this._store.__disconnect__(flush);
-				}
-				chain(_limiter) {
-					this._limiter = _limiter;
-					return this;
-				}
-				queued(priority) {
-					return this._queues.queued(priority);
-				}
-				clusterQueued() {
-					return this._store.__queued__();
-				}
-				empty() {
-					return this.queued() === 0 && this._submitLock.isEmpty();
-				}
-				running() {
-					return this._store.__running__();
-				}
-				done() {
-					return this._store.__done__();
-				}
-				jobStatus(id) {
-					return this._states.jobStatus(id);
-				}
-				jobs(status) {
-					return this._states.statusJobs(status);
-				}
-				counts() {
-					return this._states.statusCounts();
-				}
-				_randomIndex() {
-					return Math.random().toString(36).slice(2);
-				}
-				check(weight = 1) {
-					return this._store.__check__(weight);
-				}
-				_clearGlobalState(index) {
-					if (this._scheduled[index] != null) {
-						clearTimeout(this._scheduled[index].expiration);
-						delete this._scheduled[index];
-						return true;
-					} else return false;
-				}
-				async _free(index, job, options, eventInfo) {
-					var e, running;
-					try {
-						({running} = await this._store.__free__(index, options.weight));
-						this.Events.trigger("debug", `Freed ${options.id}`, eventInfo);
-						if (running === 0 && this.empty()) return this.Events.trigger("idle");
-					} catch (error1) {
-						e = error1;
-						return this.Events.trigger("error", e);
-					}
-				}
-				_run(index, job, wait) {
-					var clearGlobalState, free, run;
-					job.doRun();
-					clearGlobalState = this._clearGlobalState.bind(this, index);
-					run = this._run.bind(this, index, job);
-					free = this._free.bind(this, index, job);
-					return this._scheduled[index] = {
-						timeout: setTimeout(() => {
-							return job.doExecute(this._limiter, clearGlobalState, run, free);
-						}, wait),
-						expiration: job.options.expiration != null ? setTimeout(function() {
-							return job.doExpire(clearGlobalState, run, free);
-						}, wait + job.options.expiration) : void 0,
-						job
-					};
-				}
-				_drainOne(capacity) {
-					return this._registerLock.schedule(() => {
-						var args, index, next, options, queue;
-						if (this.queued() === 0) return this.Promise.resolve(null);
-						queue = this._queues.getFirst();
-						({options, args} = next = queue.first());
-						if (capacity != null && options.weight > capacity) return this.Promise.resolve(null);
-						this.Events.trigger("debug", `Draining ${options.id}`, {
-							args,
-							options
-						});
-						index = this._randomIndex();
-						return this._store.__register__(index, options.weight, options.expiration).then(({ success, wait, reservoir }) => {
-							var empty;
-							this.Events.trigger("debug", `Drained ${options.id}`, {
-								success,
-								args,
-								options
-							});
-							if (success) {
-								queue.shift();
-								empty = this.empty();
-								if (empty) this.Events.trigger("empty");
-								if (reservoir === 0) this.Events.trigger("depleted", empty);
-								this._run(index, next, wait);
-								return this.Promise.resolve(options.weight);
-							} else return this.Promise.resolve(null);
-						});
-					});
-				}
-				_drainAll(capacity, total = 0) {
-					return this._drainOne(capacity).then((drained) => {
-						var newCapacity;
-						if (drained != null) {
-							newCapacity = capacity != null ? capacity - drained : capacity;
-							return this._drainAll(newCapacity, total + drained);
-						} else return this.Promise.resolve(total);
-					}).catch((e) => {
-						return this.Events.trigger("error", e);
-					});
-				}
-				_dropAllQueued(message) {
-					return this._queues.shiftAll(function(job) {
-						return job.doDrop({ message });
-					});
-				}
-				stop(options = {}) {
-					var done, waitForExecuting;
-					options = parser$5.load(options, this.stopDefaults);
-					waitForExecuting = (at) => {
-						var finished = () => {
-							var counts = this._states.counts;
-							return counts[0] + counts[1] + counts[2] + counts[3] === at;
-						};
-						return new this.Promise((resolve, reject) => {
-							if (finished()) return resolve();
-							else return this.on("done", () => {
-								if (finished()) {
-									this.removeAllListeners("done");
-									return resolve();
-								}
-							});
-						});
-					};
-					done = options.dropWaitingJobs ? (this._run = function(index, next) {
-						return next.doDrop({ message: options.dropErrorMessage });
-					}, this._drainOne = () => {
-						return this.Promise.resolve(null);
-					}, this._registerLock.schedule(() => {
-						return this._submitLock.schedule(() => {
-							var k, ref = this._scheduled, v;
-							for (k in ref) {
-								v = ref[k];
-								if (this.jobStatus(v.job.options.id) === "RUNNING") {
-									clearTimeout(v.timeout);
-									clearTimeout(v.expiration);
-									v.job.doDrop({ message: options.dropErrorMessage });
-								}
-							}
-							this._dropAllQueued(options.dropErrorMessage);
-							return waitForExecuting(0);
-						});
-					})) : this.schedule({
-						priority: NUM_PRIORITIES$1 - 1,
-						weight: 0
-					}, () => {
-						return waitForExecuting(1);
-					});
-					this._receive = function(job) {
-						return job._reject(new Bottleneck.prototype.BottleneckError(options.enqueueErrorMessage));
-					};
-					this.stop = () => {
-						return this.Promise.reject(new Bottleneck.prototype.BottleneckError("stop() has already been called"));
-					};
-					return done;
-				}
-				async _addToQueue(job) {
-					var args, blocked, error, options, reachedHWM, shifted, strategy;
-					({args, options} = job);
-					try {
-						({reachedHWM, blocked, strategy} = await this._store.__submit__(this.queued(), options.weight));
-					} catch (error1) {
-						error = error1;
-						this.Events.trigger("debug", `Could not queue ${options.id}`, {
-							args,
-							options,
-							error
-						});
-						job.doDrop({ error });
-						return false;
-					}
-					if (blocked) {
-						job.doDrop();
-						return true;
-					} else if (reachedHWM) {
-						shifted = strategy === Bottleneck.prototype.strategy.LEAK ? this._queues.shiftLastFrom(options.priority) : strategy === Bottleneck.prototype.strategy.OVERFLOW_PRIORITY ? this._queues.shiftLastFrom(options.priority + 1) : strategy === Bottleneck.prototype.strategy.OVERFLOW ? job : void 0;
-						if (shifted != null) shifted.doDrop();
-						if (shifted == null || strategy === Bottleneck.prototype.strategy.OVERFLOW) {
-							if (shifted == null) job.doDrop();
-							return reachedHWM;
-						}
-					}
-					job.doQueue(reachedHWM, blocked);
-					this._queues.push(job);
-					await this._drainAll();
-					return reachedHWM;
-				}
-				_receive(job) {
-					if (this._states.jobStatus(job.options.id) != null) {
-						job._reject(new Bottleneck.prototype.BottleneckError(`A job with the same id already exists (id=${job.options.id})`));
-						return false;
-					} else {
-						job.doReceive();
-						return this._submitLock.schedule(this._addToQueue, job);
-					}
-				}
-				submit(...args) {
-					var cb, fn, job, options, ref, ref1, task;
-					if (typeof args[0] === "function") {
-						ref = args, [fn, ...args] = ref, [cb] = splice.call(args, -1);
-						options = parser$5.load({}, this.jobDefaults);
-					} else {
-						ref1 = args, [options, fn, ...args] = ref1, [cb] = splice.call(args, -1);
-						options = parser$5.load(options, this.jobDefaults);
-					}
-					task = (...args) => {
-						return new this.Promise(function(resolve, reject) {
-							return fn(...args, function(...args) {
-								return (args[0] != null ? reject : resolve)(args);
-							});
-						});
-					};
-					job = new Job$1(task, args, options, this.jobDefaults, this.rejectOnDrop, this.Events, this._states, this.Promise);
-					job.promise.then(function(args) {
-						return typeof cb === "function" ? cb(...args) : void 0;
-					}).catch(function(args) {
-						if (Array.isArray(args)) return typeof cb === "function" ? cb(...args) : void 0;
-						else return typeof cb === "function" ? cb(args) : void 0;
-					});
-					return this._receive(job);
-				}
-				schedule(...args) {
-					var job, options, task;
-					if (typeof args[0] === "function") {
-						[task, ...args] = args;
-						options = {};
-					} else [options, task, ...args] = args;
-					job = new Job$1(task, args, options, this.jobDefaults, this.rejectOnDrop, this.Events, this._states, this.Promise);
-					this._receive(job);
-					return job.promise;
-				}
-				wrap(fn) {
-					var schedule = this.schedule.bind(this), wrapped = function(...args) {
-						return schedule(fn.bind(this), ...args);
-					};
-					wrapped.withOptions = function(options, ...args) {
-						return schedule(options, fn, ...args);
-					};
-					return wrapped;
-				}
-				async updateSettings(options = {}) {
-					await this._store.__updateSettings__(parser$5.overwrite(options, this.storeDefaults));
-					parser$5.overwrite(options, this.instanceDefaults, this);
-					return this;
-				}
-				currentReservoir() {
-					return this._store.__currentReservoir__();
-				}
-				incrementReservoir(incr = 0) {
-					return this._store.__incrementReservoir__(incr);
-				}
-			}
-			Bottleneck.default = Bottleneck;
-			Bottleneck.Events = Events$4;
-			Bottleneck.version = Bottleneck.prototype.version = require$$8.version;
-			Bottleneck.strategy = Bottleneck.prototype.strategy = {
-				LEAK: 1,
-				OVERFLOW: 2,
-				OVERFLOW_PRIORITY: 4,
-				BLOCK: 3
-			};
-			Bottleneck.BottleneckError = Bottleneck.prototype.BottleneckError = BottleneckError_1;
-			Bottleneck.Group = Bottleneck.prototype.Group = Group_1;
-			Bottleneck.RedisConnection = Bottleneck.prototype.RedisConnection = require$$2;
-			Bottleneck.IORedisConnection = Bottleneck.prototype.IORedisConnection = require$$3;
-			Bottleneck.Batcher = Bottleneck.prototype.Batcher = Batcher_1;
-			Bottleneck.prototype.jobDefaults = {
-				priority: DEFAULT_PRIORITY$1,
-				weight: 1,
-				expiration: null,
-				id: "<no-id>"
-			};
-			Bottleneck.prototype.storeDefaults = {
-				maxConcurrent: null,
-				minTime: 0,
-				highWater: null,
-				strategy: Bottleneck.prototype.strategy.LEAK,
-				penalty: null,
-				reservoir: null,
-				reservoirRefreshInterval: null,
-				reservoirRefreshAmount: null,
-				reservoirIncreaseInterval: null,
-				reservoirIncreaseAmount: null,
-				reservoirIncreaseMaximum: null
-			};
-			Bottleneck.prototype.localStoreDefaults = {
-				Promise,
-				timeout: null,
-				heartbeatInterval: 250
-			};
-			Bottleneck.prototype.redisStoreDefaults = {
-				Promise,
-				timeout: null,
-				heartbeatInterval: 5e3,
-				clientTimeout: 1e4,
-				Redis: null,
-				clientOptions: {},
-				clusterNodes: null,
-				clearDatastore: false,
-				connection: null
-			};
-			Bottleneck.prototype.instanceDefaults = {
-				datastore: "local",
-				connection: null,
-				id: "<no-id>",
-				rejectOnDrop: true,
-				trackDoneStatus: false,
-				Promise
-			};
-			Bottleneck.prototype.stopDefaults = {
-				enqueueErrorMessage: "This limiter has been stopped and cannot accept new jobs.",
-				dropWaitingJobs: true,
-				dropErrorMessage: "This limiter has been stopped."
-			};
-			return Bottleneck;
-		}).call(commonjsGlobal);
-		var Bottleneck_1 = Bottleneck;
-		return Bottleneck_1;
-	}));
-}));
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+plugin-retry@8.1.0_@octokit+core@7.0.6/node_modules/@octokit/plugin-retry/dist-bundle/index.js
-var import_light = /* @__PURE__ */ __toESM(require_light(), 1);
-var VERSION$9 = "0.0.0-development";
-function isRequestError(error) {
-	return error.request !== void 0;
-}
-async function errorRequest(state, octokit, error, options) {
-	if (!isRequestError(error) || !error?.request.request) throw error;
-	if (error.status >= 400 && !state.doNotRetry.includes(error.status)) {
-		const retries = options.request.retries != null ? options.request.retries : state.retries;
-		const retryAfter = Math.pow((options.request.retryCount || 0) + 1, 2);
-		throw octokit.retry.retryRequest(error, retries, retryAfter);
-	}
-	throw error;
-}
-async function wrapRequest$1(state, octokit, request, options) {
-	const limiter = new import_light.default();
-	limiter.on("failed", function(error, info) {
-		const maxRetries = ~~error.request.request?.retries;
-		const after = ~~error.request.request?.retryAfter;
-		options.request.retryCount = info.retryCount + 1;
-		if (maxRetries > info.retryCount) return after * state.retryAfterBaseValue;
-	});
-	return limiter.schedule(requestWithGraphqlErrorHandling.bind(null, state, octokit, request), options);
-}
-async function requestWithGraphqlErrorHandling(state, octokit, request, options) {
-	const response = await request(options);
-	if (response.data && response.data.errors && response.data.errors.length > 0 && /Something went wrong while executing your query/.test(response.data.errors[0].message)) return errorRequest(state, octokit, new RequestError(response.data.errors[0].message, 500, {
-		request: options,
-		response
-	}), options);
-	return response;
-}
-function retry(octokit, octokitOptions) {
-	const state = Object.assign({
-		enabled: true,
-		retryAfterBaseValue: 1e3,
-		doNotRetry: [
-			400,
-			401,
-			403,
-			404,
-			410,
-			422,
-			451
-		],
-		retries: 3
-	}, octokitOptions.retry);
-	const retryPlugin = { retry: { retryRequest: (error, retries, retryAfter) => {
-		error.request.request = Object.assign({}, error.request.request, {
-			retries,
-			retryAfter
-		});
-		return error;
-	} } };
-	if (state.enabled) {
-		octokit.hook.error("request", errorRequest.bind(null, state, retryPlugin));
-		octokit.hook.wrap("request", wrapRequest$1.bind(null, state, retryPlugin));
-	}
-	return retryPlugin;
-}
-retry.VERSION = VERSION$9;
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+plugin-throttling@11.0.3_@octokit+core@7.0.6/node_modules/@octokit/plugin-throttling/dist-bundle/index.js
-var VERSION$8 = "0.0.0-development";
-var noop = () => Promise.resolve();
-function wrapRequest(state, request, options) {
-	return state.retryLimiter.schedule(doRequest, state, request, options);
-}
-async function doRequest(state, request, options) {
-	const { pathname } = new URL(options.url, "http://github.test");
-	const isAuth = isAuthRequest(options.method, pathname);
-	const isWrite = !isAuth && options.method !== "GET" && options.method !== "HEAD";
-	const isSearch = options.method === "GET" && pathname.startsWith("/search/");
-	const isGraphQL = pathname.startsWith("/graphql");
-	const jobOptions = ~~request.retryCount > 0 ? {
-		priority: 0,
-		weight: 0
-	} : {};
-	if (state.clustering) jobOptions.expiration = 1e3 * 60;
-	if (isWrite || isGraphQL) await state.write.key(state.id).schedule(jobOptions, noop);
-	if (isWrite && state.triggersNotification(pathname)) await state.notifications.key(state.id).schedule(jobOptions, noop);
-	if (isSearch) await state.search.key(state.id).schedule(jobOptions, noop);
-	const req = (isAuth ? state.auth : state.global).key(state.id).schedule(jobOptions, request, options);
-	if (isGraphQL) {
-		const res = await req;
-		if (res.data.errors != null && res.data.errors.some((error) => error.type === "RATE_LIMITED")) throw Object.assign(/* @__PURE__ */ new Error("GraphQL Rate Limit Exceeded"), {
-			response: res,
-			data: res.data
-		});
-	}
-	return req;
-}
-function isAuthRequest(method, pathname) {
-	return method === "PATCH" && /^\/applications\/[^/]+\/token\/scoped$/.test(pathname) || method === "POST" && (/^\/applications\/[^/]+\/token$/.test(pathname) || /^\/app\/installations\/[^/]+\/access_tokens$/.test(pathname) || pathname === "/login/oauth/access_token");
-}
-var triggers_notification_paths_default = [
-	"/orgs/{org}/invitations",
-	"/orgs/{org}/invitations/{invitation_id}",
-	"/orgs/{org}/teams/{team_slug}/discussions",
-	"/orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments",
-	"/repos/{owner}/{repo}/collaborators/{username}",
-	"/repos/{owner}/{repo}/commits/{commit_sha}/comments",
-	"/repos/{owner}/{repo}/issues",
-	"/repos/{owner}/{repo}/issues/{issue_number}/comments",
-	"/repos/{owner}/{repo}/issues/{issue_number}/sub_issue",
-	"/repos/{owner}/{repo}/issues/{issue_number}/sub_issues/priority",
-	"/repos/{owner}/{repo}/pulls",
-	"/repos/{owner}/{repo}/pulls/{pull_number}/comments",
-	"/repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies",
-	"/repos/{owner}/{repo}/pulls/{pull_number}/merge",
-	"/repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
-	"/repos/{owner}/{repo}/pulls/{pull_number}/reviews",
-	"/repos/{owner}/{repo}/releases",
-	"/teams/{team_id}/discussions",
-	"/teams/{team_id}/discussions/{discussion_number}/comments"
-];
-function routeMatcher$1(paths) {
-	const regex2 = `^(?:${paths.map((path) => path.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")).map((r) => `(?:${r})`).join("|")})[^/]*$`;
-	return new RegExp(regex2, "i");
-}
-var regex = routeMatcher$1(triggers_notification_paths_default);
-var triggersNotification = regex.test.bind(regex);
-var groups = {};
-var createGroups = function(Bottleneck, common) {
-	groups.global = new Bottleneck.Group({
-		id: "octokit-global",
-		maxConcurrent: 10,
-		...common
-	});
-	groups.auth = new Bottleneck.Group({
-		id: "octokit-auth",
-		maxConcurrent: 1,
-		...common
-	});
-	groups.search = new Bottleneck.Group({
-		id: "octokit-search",
-		maxConcurrent: 1,
-		minTime: 2e3,
-		...common
-	});
-	groups.write = new Bottleneck.Group({
-		id: "octokit-write",
-		maxConcurrent: 1,
-		minTime: 1e3,
-		...common
-	});
-	groups.notifications = new Bottleneck.Group({
-		id: "octokit-notifications",
-		maxConcurrent: 1,
-		minTime: 3e3,
-		...common
-	});
-};
-function throttling(octokit, octokitOptions) {
-	const { enabled = true, Bottleneck = import_light.default, id = "no-id", timeout = 1e3 * 60 * 2, connection } = octokitOptions.throttle || {};
-	if (!enabled) return {};
-	const common = { timeout };
-	if (typeof connection !== "undefined") common.connection = connection;
-	if (groups.global == null) createGroups(Bottleneck, common);
-	const state = Object.assign({
-		clustering: connection != null,
-		triggersNotification,
-		fallbackSecondaryRateRetryAfter: 60,
-		retryAfterBaseValue: 1e3,
-		retryLimiter: new Bottleneck(),
-		id,
-		...groups
-	}, octokitOptions.throttle);
-	if (typeof state.onSecondaryRateLimit !== "function" || typeof state.onRateLimit !== "function") throw new Error(`octokit/plugin-throttling error:
-        You must pass the onSecondaryRateLimit and onRateLimit error handlers.
-        See https://octokit.github.io/rest.js/#throttling
-
-        const octokit = new Octokit({
-          throttle: {
-            onSecondaryRateLimit: (retryAfter, options) => {/* ... */},
-            onRateLimit: (retryAfter, options) => {/* ... */}
-          }
-        })
-    `);
-	const events = {};
-	const emitter = new Bottleneck.Events(events);
-	events.on("secondary-limit", state.onSecondaryRateLimit);
-	events.on("rate-limit", state.onRateLimit);
-	events.on("error", (e) => octokit.log.warn("Error in throttling-plugin limit handler", e));
-	state.retryLimiter.on("failed", async function(error, info) {
-		const [state2, request, options] = info.args;
-		const { pathname } = new URL(options.url, "http://github.test");
-		if (!(pathname.startsWith("/graphql") && error.status !== 401 || error.status === 403 || error.status === 429)) return;
-		const retryCount = ~~request.retryCount;
-		request.retryCount = retryCount;
-		options.request.retryCount = retryCount;
-		const { wantRetry, retryAfter = 0 } = await (async function() {
-			if (/\bsecondary rate\b/i.test(error.message)) {
-				const retryAfter2 = Number(error.response.headers["retry-after"]) || state2.fallbackSecondaryRateRetryAfter;
-				return {
-					wantRetry: await emitter.trigger("secondary-limit", retryAfter2, options, octokit, retryCount),
-					retryAfter: retryAfter2
-				};
-			}
-			if (error.response.headers != null && error.response.headers["x-ratelimit-remaining"] === "0" || (error.response.data?.errors ?? []).some((error2) => error2.type === "RATE_LIMITED")) {
-				const rateLimitReset = (/* @__PURE__ */ new Date(~~error.response.headers["x-ratelimit-reset"] * 1e3)).getTime();
-				const retryAfter2 = Math.max(Math.ceil((rateLimitReset - Date.now()) / 1e3) + 1, 0);
-				return {
-					wantRetry: await emitter.trigger("rate-limit", retryAfter2, options, octokit, retryCount),
-					retryAfter: retryAfter2
-				};
-			}
-			return {};
-		})();
-		if (wantRetry) {
-			request.retryCount++;
-			return retryAfter * state2.retryAfterBaseValue;
-		}
-	});
-	octokit.hook.wrap("request", wrapRequest.bind(null, state));
-	return {};
-}
-throttling.VERSION = VERSION$8;
-throttling.triggersNotification = triggersNotification;
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+oauth-authorization-url@8.0.0/node_modules/@octokit/oauth-authorization-url/dist-src/index.js
-function oauthAuthorizationUrl(options) {
-	const clientType = options.clientType || "oauth-app";
-	const baseUrl = options.baseUrl || "https://github.com";
-	const result = {
-		clientType,
-		allowSignup: options.allowSignup === false ? false : true,
-		clientId: options.clientId,
-		login: options.login || null,
-		redirectUrl: options.redirectUrl || null,
-		state: options.state || Math.random().toString(36).substr(2),
-		url: ""
-	};
-	if (clientType === "oauth-app") {
-		const scopes = "scopes" in options ? options.scopes : [];
-		result.scopes = typeof scopes === "string" ? scopes.split(/[,\s]+/).filter(Boolean) : scopes;
-	}
-	result.url = urlBuilderAuthorize(`${baseUrl}/login/oauth/authorize`, result);
-	return result;
-}
-function urlBuilderAuthorize(base, options) {
-	const map = {
-		allowSignup: "allow_signup",
-		clientId: "client_id",
-		login: "login",
-		redirectUrl: "redirect_uri",
-		scopes: "scope",
-		state: "state"
-	};
-	let url = base;
-	Object.keys(map).filter((k) => options[k] !== null).filter((k) => {
-		if (k !== "scopes") return true;
-		if (options.clientType === "github-app") return false;
-		return !Array.isArray(options[k]) || options[k].length > 0;
-	}).map((key) => [map[key], `${options[key]}`]).forEach(([key, value], index) => {
-		url += index === 0 ? `?` : "&";
-		url += `${key}=${encodeURIComponent(value)}`;
-	});
-	return url;
-}
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+oauth-methods@6.0.2/node_modules/@octokit/oauth-methods/dist-bundle/index.js
-function requestToOAuthBaseUrl(request) {
-	const endpointDefaults = request.endpoint.DEFAULTS;
-	return /^https:\/\/(api\.)?github\.com$/.test(endpointDefaults.baseUrl) ? "https://github.com" : endpointDefaults.baseUrl.replace("/api/v3", "");
-}
-async function oauthRequest(request, route, parameters) {
-	const withOAuthParameters = {
-		baseUrl: requestToOAuthBaseUrl(request),
-		headers: { accept: "application/json" },
-		...parameters
-	};
-	const response = await request(route, withOAuthParameters);
-	if ("error" in response.data) {
-		const error = new RequestError(`${response.data.error_description} (${response.data.error}, ${response.data.error_uri})`, 400, { request: request.endpoint.merge(route, withOAuthParameters) });
-		error.response = response;
-		throw error;
-	}
-	return response;
-}
-function getWebFlowAuthorizationUrl({ request: request$4 = request, ...options }) {
-	const baseUrl = requestToOAuthBaseUrl(request$4);
-	return oauthAuthorizationUrl({
-		...options,
-		baseUrl
-	});
-}
-async function exchangeWebFlowCode(options) {
-	const response = await oauthRequest(options.request || request, "POST /login/oauth/access_token", {
-		client_id: options.clientId,
-		client_secret: options.clientSecret,
-		code: options.code,
-		redirect_uri: options.redirectUrl
-	});
-	const authentication = {
-		clientType: options.clientType,
-		clientId: options.clientId,
-		clientSecret: options.clientSecret,
-		token: response.data.access_token,
-		scopes: response.data.scope.split(/\s+/).filter(Boolean)
-	};
-	if (options.clientType === "github-app") {
-		if ("refresh_token" in response.data) {
-			const apiTimeInMs = new Date(response.headers.date).getTime();
-			authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp(apiTimeInMs, response.data.refresh_token_expires_in);
-		}
-		delete authentication.scopes;
-	}
-	return {
-		...response,
-		authentication
-	};
-}
-function toTimestamp(apiTimeInMs, expirationInSeconds) {
-	return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
-}
-async function createDeviceCode(options) {
-	const request$5 = options.request || request;
-	const parameters = { client_id: options.clientId };
-	if ("scopes" in options && Array.isArray(options.scopes)) parameters.scope = options.scopes.join(" ");
-	return oauthRequest(request$5, "POST /login/device/code", parameters);
-}
-async function exchangeDeviceCode(options) {
-	const response = await oauthRequest(options.request || request, "POST /login/oauth/access_token", {
-		client_id: options.clientId,
-		device_code: options.code,
-		grant_type: "urn:ietf:params:oauth:grant-type:device_code"
-	});
-	const authentication = {
-		clientType: options.clientType,
-		clientId: options.clientId,
-		token: response.data.access_token,
-		scopes: response.data.scope.split(/\s+/).filter(Boolean)
-	};
-	if ("clientSecret" in options) authentication.clientSecret = options.clientSecret;
-	if (options.clientType === "github-app") {
-		if ("refresh_token" in response.data) {
-			const apiTimeInMs = new Date(response.headers.date).getTime();
-			authentication.refreshToken = response.data.refresh_token, authentication.expiresAt = toTimestamp2(apiTimeInMs, response.data.expires_in), authentication.refreshTokenExpiresAt = toTimestamp2(apiTimeInMs, response.data.refresh_token_expires_in);
-		}
-		delete authentication.scopes;
-	}
-	return {
-		...response,
-		authentication
-	};
-}
-function toTimestamp2(apiTimeInMs, expirationInSeconds) {
-	return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
-}
-async function checkToken(options) {
-	const response = await (options.request || request)("POST /applications/{client_id}/token", {
-		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
-		client_id: options.clientId,
-		access_token: options.token
-	});
-	const authentication = {
-		clientType: options.clientType,
-		clientId: options.clientId,
-		clientSecret: options.clientSecret,
-		token: options.token,
-		scopes: response.data.scopes
-	};
-	if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
-	if (options.clientType === "github-app") delete authentication.scopes;
-	return {
-		...response,
-		authentication
-	};
-}
-async function refreshToken(options) {
-	const response = await oauthRequest(options.request || request, "POST /login/oauth/access_token", {
-		client_id: options.clientId,
-		client_secret: options.clientSecret,
-		grant_type: "refresh_token",
-		refresh_token: options.refreshToken
-	});
-	const apiTimeInMs = new Date(response.headers.date).getTime();
-	const authentication = {
-		clientType: "github-app",
-		clientId: options.clientId,
-		clientSecret: options.clientSecret,
-		token: response.data.access_token,
-		refreshToken: response.data.refresh_token,
-		expiresAt: toTimestamp3(apiTimeInMs, response.data.expires_in),
-		refreshTokenExpiresAt: toTimestamp3(apiTimeInMs, response.data.refresh_token_expires_in)
-	};
-	return {
-		...response,
-		authentication
-	};
-}
-function toTimestamp3(apiTimeInMs, expirationInSeconds) {
-	return new Date(apiTimeInMs + expirationInSeconds * 1e3).toISOString();
-}
-async function scopeToken(options) {
-	const { request: optionsRequest, clientType, clientId, clientSecret, token, ...requestOptions } = options;
-	const response = await (options.request || request)("POST /applications/{client_id}/token/scoped", {
-		headers: { authorization: `basic ${btoa(`${clientId}:${clientSecret}`)}` },
-		client_id: clientId,
-		access_token: token,
-		...requestOptions
-	});
-	const authentication = Object.assign({
-		clientType,
-		clientId,
-		clientSecret,
-		token: response.data.token
-	}, response.data.expires_at ? { expiresAt: response.data.expires_at } : {});
-	return {
-		...response,
-		authentication
-	};
-}
-async function resetToken(options) {
-	const response = await (options.request || request)("PATCH /applications/{client_id}/token", {
-		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
-		client_id: options.clientId,
-		access_token: options.token
-	});
-	const authentication = {
-		clientType: options.clientType,
-		clientId: options.clientId,
-		clientSecret: options.clientSecret,
-		token: response.data.token,
-		scopes: response.data.scopes
-	};
-	if (response.data.expires_at) authentication.expiresAt = response.data.expires_at;
-	if (options.clientType === "github-app") delete authentication.scopes;
-	return {
-		...response,
-		authentication
-	};
-}
-async function deleteToken(options) {
-	return (options.request || request)("DELETE /applications/{client_id}/token", {
-		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
-		client_id: options.clientId,
-		access_token: options.token
-	});
-}
-async function deleteAuthorization(options) {
-	return (options.request || request)("DELETE /applications/{client_id}/grant", {
-		headers: { authorization: `basic ${btoa(`${options.clientId}:${options.clientSecret}`)}` },
-		client_id: options.clientId,
-		access_token: options.token
-	});
-}
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+auth-oauth-device@8.0.3/node_modules/@octokit/auth-oauth-device/dist-bundle/index.js
-async function getOAuthAccessToken(state, options) {
-	const cachedAuthentication = getCachedAuthentication(state, options.auth);
-	if (cachedAuthentication) return cachedAuthentication;
-	const { data: verification } = await createDeviceCode({
-		clientType: state.clientType,
-		clientId: state.clientId,
-		request: options.request || state.request,
-		scopes: options.auth.scopes || state.scopes
-	});
-	await state.onVerification(verification);
-	const authentication = await waitForAccessToken(options.request || state.request, state.clientId, state.clientType, verification);
-	state.authentication = authentication;
-	return authentication;
-}
-function getCachedAuthentication(state, auth2) {
-	if (auth2.refresh === true) return false;
-	if (!state.authentication) return false;
-	if (state.clientType === "github-app") return state.authentication;
-	const authentication = state.authentication;
-	return ("scopes" in auth2 && auth2.scopes || state.scopes).join(" ") === authentication.scopes.join(" ") ? authentication : false;
-}
-async function wait(seconds) {
-	await new Promise((resolve) => setTimeout(resolve, seconds * 1e3));
-}
-async function waitForAccessToken(request, clientId, clientType, verification) {
-	try {
-		const options = {
-			clientId,
-			request,
-			code: verification.device_code
-		};
-		const { authentication } = clientType === "oauth-app" ? await exchangeDeviceCode({
-			...options,
-			clientType: "oauth-app"
-		}) : await exchangeDeviceCode({
-			...options,
-			clientType: "github-app"
-		});
-		return {
-			type: "token",
-			tokenType: "oauth",
-			...authentication
-		};
-	} catch (error) {
-		if (!error.response) throw error;
-		const errorType = error.response.data.error;
-		if (errorType === "authorization_pending") {
-			await wait(verification.interval);
-			return waitForAccessToken(request, clientId, clientType, verification);
-		}
-		if (errorType === "slow_down") {
-			await wait(verification.interval + 7);
-			return waitForAccessToken(request, clientId, clientType, verification);
-		}
-		throw error;
-	}
-}
-async function auth$4(state, authOptions) {
-	return getOAuthAccessToken(state, { auth: authOptions });
-}
-async function hook$4(state, request, route, parameters) {
-	let endpoint = request.endpoint.merge(route, parameters);
-	if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) return request(endpoint);
-	const { token } = await getOAuthAccessToken(state, {
-		request,
-		auth: { type: "oauth" }
-	});
-	endpoint.headers.authorization = `token ${token}`;
-	return request(endpoint);
-}
-var VERSION$7 = "0.0.0-development";
-function createOAuthDeviceAuth(options) {
-	const requestWithDefaults = options.request || request.defaults({ headers: { "user-agent": `octokit-auth-oauth-device.js/${VERSION$7} ${getUserAgent()}` } });
-	const { request: request$3 = requestWithDefaults, ...otherOptions } = options;
-	const state = options.clientType === "github-app" ? {
-		...otherOptions,
-		clientType: "github-app",
-		request: request$3
-	} : {
-		...otherOptions,
-		clientType: "oauth-app",
-		request: request$3,
-		scopes: options.scopes || []
-	};
-	if (!options.clientId) throw new Error("[@octokit/auth-oauth-device] \"clientId\" option must be set (https://github.com/octokit/auth-oauth-device.js#usage)");
-	if (!options.onVerification) throw new Error("[@octokit/auth-oauth-device] \"onVerification\" option must be a function (https://github.com/octokit/auth-oauth-device.js#usage)");
-	return Object.assign(auth$4.bind(null, state), { hook: hook$4.bind(null, state) });
-}
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+auth-oauth-user@6.0.2/node_modules/@octokit/auth-oauth-user/dist-bundle/index.js
-var VERSION$6 = "0.0.0-development";
-async function getAuthentication(state) {
-	if ("code" in state.strategyOptions) {
-		const { authentication } = await exchangeWebFlowCode({
-			clientId: state.clientId,
-			clientSecret: state.clientSecret,
-			clientType: state.clientType,
-			onTokenCreated: state.onTokenCreated,
-			...state.strategyOptions,
-			request: state.request
-		});
-		return {
-			type: "token",
-			tokenType: "oauth",
-			...authentication
-		};
-	}
-	if ("onVerification" in state.strategyOptions) {
-		const authentication = await createOAuthDeviceAuth({
-			clientType: state.clientType,
-			clientId: state.clientId,
-			onTokenCreated: state.onTokenCreated,
-			...state.strategyOptions,
-			request: state.request
-		})({ type: "oauth" });
-		return {
-			clientSecret: state.clientSecret,
-			...authentication
-		};
-	}
-	if ("token" in state.strategyOptions) return {
-		type: "token",
-		tokenType: "oauth",
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		clientType: state.clientType,
-		onTokenCreated: state.onTokenCreated,
-		...state.strategyOptions
-	};
-	throw new Error("[@octokit/auth-oauth-user] Invalid strategy options");
-}
-async function auth$3(state, options = {}) {
-	if (!state.authentication) state.authentication = state.clientType === "oauth-app" ? await getAuthentication(state) : await getAuthentication(state);
-	if (state.authentication.invalid) throw new Error("[@octokit/auth-oauth-user] Token is invalid");
-	const currentAuthentication = state.authentication;
-	if ("expiresAt" in currentAuthentication) {
-		if (options.type === "refresh" || new Date(currentAuthentication.expiresAt) < /* @__PURE__ */ new Date()) {
-			const { authentication } = await refreshToken({
-				clientType: "github-app",
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				refreshToken: currentAuthentication.refreshToken,
-				request: state.request
-			});
-			state.authentication = {
-				tokenType: "oauth",
-				type: "token",
-				...authentication
-			};
-		}
-	}
-	if (options.type === "refresh") {
-		if (state.clientType === "oauth-app") throw new Error("[@octokit/auth-oauth-user] OAuth Apps do not support expiring tokens");
-		if (!currentAuthentication.hasOwnProperty("expiresAt")) throw new Error("[@octokit/auth-oauth-user] Refresh token missing");
-		await state.onTokenCreated?.(state.authentication, { type: options.type });
-	}
-	if (options.type === "check" || options.type === "reset") {
-		const method = options.type === "check" ? checkToken : resetToken;
-		try {
-			const { authentication } = await method({
-				clientType: state.clientType,
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				token: state.authentication.token,
-				request: state.request
-			});
-			state.authentication = {
-				tokenType: "oauth",
-				type: "token",
-				...authentication
-			};
-			if (options.type === "reset") await state.onTokenCreated?.(state.authentication, { type: options.type });
-			return state.authentication;
-		} catch (error) {
-			if (error.status === 404) {
-				error.message = "[@octokit/auth-oauth-user] Token is invalid";
-				state.authentication.invalid = true;
-			}
-			throw error;
-		}
-	}
-	if (options.type === "delete" || options.type === "deleteAuthorization") {
-		const method = options.type === "delete" ? deleteToken : deleteAuthorization;
-		try {
-			await method({
-				clientType: state.clientType,
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				token: state.authentication.token,
-				request: state.request
-			});
-		} catch (error) {
-			if (error.status !== 404) throw error;
-		}
-		state.authentication.invalid = true;
-		return state.authentication;
-	}
-	return state.authentication;
-}
-var ROUTES_REQUIRING_BASIC_AUTH = /\/applications\/[^/]+\/(token|grant)s?/;
-function requiresBasicAuth(url) {
-	return url && ROUTES_REQUIRING_BASIC_AUTH.test(url);
-}
-async function hook$3(state, request, route, parameters = {}) {
-	const endpoint = request.endpoint.merge(route, parameters);
-	if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) return request(endpoint);
-	if (requiresBasicAuth(endpoint.url)) {
-		const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
-		endpoint.headers.authorization = `basic ${credentials}`;
-		return request(endpoint);
-	}
-	const { token } = state.clientType === "oauth-app" ? await auth$3({
-		...state,
-		request
-	}) : await auth$3({
-		...state,
-		request
-	});
-	endpoint.headers.authorization = "token " + token;
-	return request(endpoint);
-}
-function createOAuthUserAuth({ clientId, clientSecret, clientType = "oauth-app", request: request$2 = request.defaults({ headers: { "user-agent": `octokit-auth-oauth-app.js/${VERSION$6} ${getUserAgent()}` } }), onTokenCreated, ...strategyOptions }) {
-	const state = Object.assign({
-		clientType,
-		clientId,
-		clientSecret,
-		onTokenCreated,
-		strategyOptions,
-		request: request$2
-	});
-	return Object.assign(auth$3.bind(null, state), { hook: hook$3.bind(null, state) });
-}
-createOAuthUserAuth.VERSION = VERSION$6;
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+auth-oauth-app@9.0.3/node_modules/@octokit/auth-oauth-app/dist-bundle/index.js
-async function auth$2(state, authOptions) {
-	if (authOptions.type === "oauth-app") return {
-		type: "oauth-app",
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		clientType: state.clientType,
-		headers: { authorization: `basic ${btoa(`${state.clientId}:${state.clientSecret}`)}` }
-	};
-	if ("factory" in authOptions) {
-		const { type, ...options } = {
-			...authOptions,
-			...state
-		};
-		return authOptions.factory(options);
-	}
-	const common = {
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.request,
-		...authOptions
-	};
-	return (state.clientType === "oauth-app" ? await createOAuthUserAuth({
-		...common,
-		clientType: state.clientType
-	}) : await createOAuthUserAuth({
-		...common,
-		clientType: state.clientType
-	}))();
-}
-async function hook$2(state, request2, route, parameters) {
-	let endpoint = request2.endpoint.merge(route, parameters);
-	if (/\/login\/(oauth\/access_token|device\/code)$/.test(endpoint.url)) return request2(endpoint);
-	if (state.clientType === "github-app" && !requiresBasicAuth(endpoint.url)) throw new Error(`[@octokit/auth-oauth-app] GitHub Apps cannot use their client ID/secret for basic authentication for endpoints other than "/applications/{client_id}/**". "${endpoint.method} ${endpoint.url}" is not supported.`);
-	const credentials = btoa(`${state.clientId}:${state.clientSecret}`);
-	endpoint.headers.authorization = `basic ${credentials}`;
-	try {
-		return await request2(endpoint);
-	} catch (error) {
-		if (error.status !== 401) throw error;
-		error.message = `[@octokit/auth-oauth-app] "${endpoint.method} ${endpoint.url}" does not support clientId/clientSecret basic authentication.`;
-		throw error;
-	}
-}
-var VERSION$5 = "0.0.0-development";
-function createOAuthAppAuth(options) {
-	const state = Object.assign({
-		request: request.defaults({ headers: { "user-agent": `octokit-auth-oauth-app.js/${VERSION$5} ${getUserAgent()}` } }),
-		clientType: "oauth-app"
-	}, options);
-	return Object.assign(auth$2.bind(null, state), { hook: hook$2.bind(null, state) });
-}
-
-//#endregion
-//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/lib/utils.js
-/**
-* @param {string} privateKey
-* @returns {boolean}
-*/
-function isPkcs1(privateKey) {
-	return privateKey.includes("-----BEGIN RSA PRIVATE KEY-----");
-}
-/**
-* @param {string} privateKey
-* @returns {boolean}
-*/
-function isOpenSsh(privateKey) {
-	return privateKey.includes("-----BEGIN OPENSSH PRIVATE KEY-----");
-}
-/**
-* @param {string} str
-* @returns {ArrayBuffer}
-*/
-function string2ArrayBuffer(str) {
-	const buf = new ArrayBuffer(str.length);
-	const bufView = new Uint8Array(buf);
-	for (let i = 0, strLen = str.length; i < strLen; i++) bufView[i] = str.charCodeAt(i);
-	return buf;
-}
-/**
-* @param {string} pem
-* @returns {ArrayBuffer}
-*/
-function getDERfromPEM(pem) {
-	const pemB64 = pem.trim().split("\n").slice(1, -1).join("");
-	return string2ArrayBuffer(atob(pemB64));
-}
-/**
-* @param {import('../internals').Header} header
-* @param {import('../internals').Payload} payload
-* @returns {string}
-*/
-function getEncodedMessage(header, payload) {
-	return `${base64encodeJSON(header)}.${base64encodeJSON(payload)}`;
-}
-/**
-* @param {ArrayBuffer} buffer
-* @returns {string}
-*/
-function base64encode(buffer) {
-	var binary = "";
-	var bytes = new Uint8Array(buffer);
-	var len = bytes.byteLength;
-	for (var i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
-	return fromBase64(btoa(binary));
-}
-/**
-* @param {string} base64
-* @returns {string}
-*/
-function fromBase64(base64) {
-	return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-/**
-* @param {Record<string,unknown>} obj
-* @returns {string}
-*/
-function base64encodeJSON(obj) {
-	return fromBase64(btoa(JSON.stringify(obj)));
-}
-
-//#endregion
-//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/lib/crypto-node.js
-function convertPrivateKey(privateKey) {
-	if (!isPkcs1(privateKey)) return privateKey;
-	return createPrivateKey(privateKey).export({
-		type: "pkcs8",
-		format: "pem"
-	});
-}
-
-//#endregion
-//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/lib/get-token.js
-/**
-* @param {import('../internals').GetTokenOptions} options
-* @returns {Promise<string>}
-*/
-async function getToken({ privateKey, payload }) {
-	const convertedPrivateKey = convertPrivateKey(privateKey);
-	/* c8 ignore start */
-	if (isPkcs1(convertedPrivateKey)) throw new Error("[universal-github-app-jwt] Private Key is in PKCS#1 format, but only PKCS#8 is supported. See https://github.com/gr2m/universal-github-app-jwt#private-key-formats");
-	/* c8 ignore stop */
-	if (isOpenSsh(convertedPrivateKey)) throw new Error("[universal-github-app-jwt] Private Key is in OpenSSH format, but only PKCS#8 is supported. See https://github.com/gr2m/universal-github-app-jwt#private-key-formats");
-	const algorithm = {
-		name: "RSASSA-PKCS1-v1_5",
-		hash: { name: "SHA-256" }
-	};
-	/** @type {import('../internals').Header} */
-	const header = {
-		alg: "RS256",
-		typ: "JWT"
-	};
-	const privateKeyDER = getDERfromPEM(convertedPrivateKey);
-	const importedKey = await subtle.importKey("pkcs8", privateKeyDER, algorithm, false, ["sign"]);
-	const encodedMessage = getEncodedMessage(header, payload);
-	const encodedMessageArrBuf = string2ArrayBuffer(encodedMessage);
-	return `${encodedMessage}.${base64encode(await subtle.sign(algorithm.name, importedKey, encodedMessageArrBuf))}`;
-}
-
-//#endregion
-//#region node_modules/.pnpm/universal-github-app-jwt@2.2.2/node_modules/universal-github-app-jwt/index.js
-/**
-* @param {import(".").Options} options
-* @returns {Promise<import(".").Result>}
-*/
-async function githubAppJwt({ id, privateKey, now = Math.floor(Date.now() / 1e3) }) {
-	const privateKeyWithNewlines = privateKey.replace(/\\n/g, "\n");
-	const nowWithSafetyMargin = now - 30;
-	const expiration = nowWithSafetyMargin + 600;
-	return {
-		appId: id,
-		expiration,
-		token: await getToken({
-			privateKey: privateKeyWithNewlines,
-			payload: {
-				iat: nowWithSafetyMargin,
-				exp: expiration,
-				iss: id
-			}
-		})
-	};
-}
-
-//#endregion
-//#region node_modules/.pnpm/toad-cache@3.7.0/node_modules/toad-cache/dist/toad-cache.mjs
-var LruObject = class {
-	constructor(max = 1e3, ttlInMsecs = 0) {
-		if (isNaN(max) || max < 0) throw new Error("Invalid max value");
-		if (isNaN(ttlInMsecs) || ttlInMsecs < 0) throw new Error("Invalid ttl value");
-		this.first = null;
-		this.items = Object.create(null);
-		this.last = null;
-		this.size = 0;
-		this.max = max;
-		this.ttl = ttlInMsecs;
-	}
-	bumpLru(item) {
-		if (this.last === item) return;
-		const last = this.last;
-		const next = item.next;
-		const prev = item.prev;
-		if (this.first === item) this.first = next;
-		item.next = null;
-		item.prev = last;
-		last.next = item;
-		if (prev !== null) prev.next = next;
-		if (next !== null) next.prev = prev;
-		this.last = item;
-	}
-	clear() {
-		this.items = Object.create(null);
-		this.first = null;
-		this.last = null;
-		this.size = 0;
-	}
-	delete(key) {
-		if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-			const item = this.items[key];
-			delete this.items[key];
-			this.size--;
-			if (item.prev !== null) item.prev.next = item.next;
-			if (item.next !== null) item.next.prev = item.prev;
-			if (this.first === item) this.first = item.next;
-			if (this.last === item) this.last = item.prev;
-		}
-	}
-	deleteMany(keys) {
-		for (var i = 0; i < keys.length; i++) this.delete(keys[i]);
-	}
-	evict() {
-		if (this.size > 0) {
-			const item = this.first;
-			delete this.items[item.key];
-			if (--this.size === 0) {
-				this.first = null;
-				this.last = null;
-			} else {
-				this.first = item.next;
-				this.first.prev = null;
-			}
-		}
-	}
-	expiresAt(key) {
-		if (Object.prototype.hasOwnProperty.call(this.items, key)) return this.items[key].expiry;
-	}
-	get(key) {
-		if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-			const item = this.items[key];
-			if (this.ttl > 0 && item.expiry <= Date.now()) {
-				this.delete(key);
-				return;
-			}
-			this.bumpLru(item);
-			return item.value;
-		}
-	}
-	getMany(keys) {
-		const result = [];
-		for (var i = 0; i < keys.length; i++) result.push(this.get(keys[i]));
-		return result;
-	}
-	keys() {
-		return Object.keys(this.items);
-	}
-	set(key, value) {
-		if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-			const item = this.items[key];
-			item.value = value;
-			item.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
-			if (this.last !== item) this.bumpLru(item);
-			return;
-		}
-		if (this.max > 0 && this.size === this.max) this.evict();
-		const item = {
-			expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
-			key,
-			prev: this.last,
-			next: null,
-			value
-		};
-		this.items[key] = item;
-		if (++this.size === 1) this.first = item;
-		else this.last.next = item;
-		this.last = item;
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+auth-app@8.2.0/node_modules/@octokit/auth-app/dist-node/index.js
-async function getAppAuthentication({ appId, privateKey, timeDifference, createJwt }) {
-	try {
-		if (createJwt) {
-			const { jwt, expiresAt } = await createJwt(appId, timeDifference);
-			return {
-				type: "app",
-				token: jwt,
-				appId,
-				expiresAt
-			};
-		}
-		const authOptions = {
-			id: appId,
-			privateKey
-		};
-		if (timeDifference) Object.assign(authOptions, { now: Math.floor(Date.now() / 1e3) + timeDifference });
-		const appAuthentication = await githubAppJwt(authOptions);
-		return {
-			type: "app",
-			token: appAuthentication.token,
-			appId: appAuthentication.appId,
-			expiresAt: (/* @__PURE__ */ new Date(appAuthentication.expiration * 1e3)).toISOString()
-		};
-	} catch (error) {
-		if (privateKey === "-----BEGIN RSA PRIVATE KEY-----") throw new Error("The 'privateKey` option contains only the first line '-----BEGIN RSA PRIVATE KEY-----'. If you are setting it using a `.env` file, make sure it is set on a single line with newlines replaced by '\n'");
-		else throw error;
-	}
-}
-function getCache() {
-	return new LruObject(15e3, 1e3 * 60 * 59);
-}
-async function get(cache, options) {
-	const cacheKey = optionsToCacheKey(options);
-	const result = await cache.get(cacheKey);
-	if (!result) return;
-	const [token, createdAt, expiresAt, repositorySelection, permissionsString, singleFileName] = result.split("|");
-	return {
-		token,
-		createdAt,
-		expiresAt,
-		permissions: options.permissions || permissionsString.split(/,/).reduce((permissions2, string) => {
-			if (/!$/.test(string)) permissions2[string.slice(0, -1)] = "write";
-			else permissions2[string] = "read";
-			return permissions2;
-		}, {}),
-		repositoryIds: options.repositoryIds,
-		repositoryNames: options.repositoryNames,
-		singleFileName,
-		repositorySelection
-	};
-}
-async function set(cache, options, data) {
-	const key = optionsToCacheKey(options);
-	const permissionsString = options.permissions ? "" : Object.keys(data.permissions).map((name) => `${name}${data.permissions[name] === "write" ? "!" : ""}`).join(",");
-	const value = [
-		data.token,
-		data.createdAt,
-		data.expiresAt,
-		data.repositorySelection,
-		permissionsString,
-		data.singleFileName
-	].join("|");
-	await cache.set(key, value);
-}
-function optionsToCacheKey({ installationId, permissions = {}, repositoryIds = [], repositoryNames = [] }) {
-	const permissionsString = Object.keys(permissions).sort().map((name) => permissions[name] === "read" ? name : `${name}!`).join(",");
-	return [
-		installationId,
-		repositoryIds.sort().join(","),
-		repositoryNames.join(","),
-		permissionsString
-	].filter(Boolean).join("|");
-}
-function toTokenAuthentication({ installationId, token, createdAt, expiresAt, repositorySelection, permissions, repositoryIds, repositoryNames, singleFileName }) {
-	return Object.assign({
-		type: "token",
-		tokenType: "installation",
-		token,
-		installationId,
-		permissions,
-		createdAt,
-		expiresAt,
-		repositorySelection
-	}, repositoryIds ? { repositoryIds } : null, repositoryNames ? { repositoryNames } : null, singleFileName ? { singleFileName } : null);
-}
-async function getInstallationAuthentication(state, options, customRequest) {
-	const installationId = Number(options.installationId || state.installationId);
-	if (!installationId) throw new Error("[@octokit/auth-app] installationId option is required for installation authentication.");
-	if (options.factory) {
-		const { type, factory, oauthApp, ...factoryAuthOptions } = {
-			...state,
-			...options
-		};
-		return factory(factoryAuthOptions);
-	}
-	const request = customRequest || state.request;
-	return getInstallationAuthenticationConcurrently(state, {
-		...options,
-		installationId
-	}, request);
-}
-var pendingPromises = /* @__PURE__ */ new Map();
-function getInstallationAuthenticationConcurrently(state, options, request) {
-	const cacheKey = optionsToCacheKey(options);
-	if (pendingPromises.has(cacheKey)) return pendingPromises.get(cacheKey);
-	const promise = getInstallationAuthenticationImpl(state, options, request).finally(() => pendingPromises.delete(cacheKey));
-	pendingPromises.set(cacheKey, promise);
-	return promise;
-}
-async function getInstallationAuthenticationImpl(state, options, request) {
-	if (!options.refresh) {
-		const result = await get(state.cache, options);
-		if (result) {
-			const { token: token2, createdAt: createdAt2, expiresAt: expiresAt2, permissions: permissions2, repositoryIds: repositoryIds2, repositoryNames: repositoryNames2, singleFileName: singleFileName2, repositorySelection: repositorySelection2 } = result;
-			return toTokenAuthentication({
-				installationId: options.installationId,
-				token: token2,
-				createdAt: createdAt2,
-				expiresAt: expiresAt2,
-				permissions: permissions2,
-				repositorySelection: repositorySelection2,
-				repositoryIds: repositoryIds2,
-				repositoryNames: repositoryNames2,
-				singleFileName: singleFileName2
-			});
-		}
-	}
-	const appAuthentication = await getAppAuthentication(state);
-	const payload = {
-		installation_id: options.installationId,
-		mediaType: { previews: ["machine-man"] },
-		headers: { authorization: `bearer ${appAuthentication.token}` }
-	};
-	if (options.repositoryIds) Object.assign(payload, { repository_ids: options.repositoryIds });
-	if (options.repositoryNames) Object.assign(payload, { repositories: options.repositoryNames });
-	if (options.permissions) Object.assign(payload, { permissions: options.permissions });
-	const { data: { token, expires_at: expiresAt, repositories, permissions: permissionsOptional, repository_selection: repositorySelectionOptional, single_file: singleFileName } } = await request("POST /app/installations/{installation_id}/access_tokens", payload);
-	const permissions = permissionsOptional || {};
-	const repositorySelection = repositorySelectionOptional || "all";
-	const repositoryIds = repositories ? repositories.map((r) => r.id) : void 0;
-	const repositoryNames = repositories ? repositories.map((repo) => repo.name) : void 0;
-	const createdAt = (/* @__PURE__ */ new Date()).toISOString();
-	const cacheOptions = {
-		token,
-		createdAt,
-		expiresAt,
-		repositorySelection,
-		permissions,
-		repositoryIds,
-		repositoryNames
-	};
-	if (singleFileName) Object.assign(payload, { singleFileName });
-	await set(state.cache, options, cacheOptions);
-	const cacheData = {
-		installationId: options.installationId,
-		token,
-		createdAt,
-		expiresAt,
-		repositorySelection,
-		permissions,
-		repositoryIds,
-		repositoryNames
-	};
-	if (singleFileName) Object.assign(cacheData, { singleFileName });
-	return toTokenAuthentication(cacheData);
-}
-async function auth$1(state, authOptions) {
-	switch (authOptions.type) {
-		case "app": return getAppAuthentication(state);
-		case "oauth-app": return state.oauthApp({ type: "oauth-app" });
-		case "installation": return getInstallationAuthentication(state, {
-			...authOptions,
-			type: "installation"
-		});
-		case "oauth-user": return state.oauthApp(authOptions);
-		default: throw new Error(`Invalid auth type: ${authOptions.type}`);
-	}
-}
-var PATHS = [
-	"/app",
-	"/app/hook/config",
-	"/app/hook/deliveries",
-	"/app/hook/deliveries/{delivery_id}",
-	"/app/hook/deliveries/{delivery_id}/attempts",
-	"/app/installations",
-	"/app/installations/{installation_id}",
-	"/app/installations/{installation_id}/access_tokens",
-	"/app/installations/{installation_id}/suspended",
-	"/app/installation-requests",
-	"/marketplace_listing/accounts/{account_id}",
-	"/marketplace_listing/plan",
-	"/marketplace_listing/plans",
-	"/marketplace_listing/plans/{plan_id}/accounts",
-	"/marketplace_listing/stubbed/accounts/{account_id}",
-	"/marketplace_listing/stubbed/plan",
-	"/marketplace_listing/stubbed/plans",
-	"/marketplace_listing/stubbed/plans/{plan_id}/accounts",
-	"/orgs/{org}/installation",
-	"/repos/{owner}/{repo}/installation",
-	"/users/{username}/installation",
-	"/enterprises/{enterprise}/installation"
-];
-function routeMatcher(paths) {
-	const regex = `^(?:${paths.map((p) => p.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")).map((r) => `(?:${r})`).join("|")})$`;
-	return new RegExp(regex, "i");
-}
-var REGEX = routeMatcher(PATHS);
-function requiresAppAuth(url) {
-	return !!url && REGEX.test(url.split("?")[0]);
-}
-var FIVE_SECONDS_IN_MS = 5 * 1e3;
-function isNotTimeSkewError(error) {
-	return !(error.message.match(/'Expiration time' claim \('exp'\) is too far in the future/) || error.message.match(/'Expiration time' claim \('exp'\) must be a numeric value representing the future time at which the assertion expires/) || error.message.match(/'Issued at' claim \('iat'\) must be an Integer representing the time that the assertion was issued/));
-}
-async function hook$1(state, request, route, parameters) {
-	const endpoint = request.endpoint.merge(route, parameters);
-	const url = endpoint.url;
-	if (/\/login\/oauth\/access_token$/.test(url)) return request(endpoint);
-	if (requiresAppAuth(url.replace(request.endpoint.DEFAULTS.baseUrl, ""))) {
-		const { token: token2 } = await getAppAuthentication(state);
-		endpoint.headers.authorization = `bearer ${token2}`;
-		let response;
-		try {
-			response = await request(endpoint);
-		} catch (error) {
-			if (isNotTimeSkewError(error)) throw error;
-			if (typeof error.response.headers.date === "undefined") throw error;
-			const diff = Math.floor((Date.parse(error.response.headers.date) - Date.parse((/* @__PURE__ */ new Date()).toString())) / 1e3);
-			state.log.warn(error.message);
-			state.log.warn(`[@octokit/auth-app] GitHub API time and system time are different by ${diff} seconds. Retrying request with the difference accounted for.`);
-			const { token: token3 } = await getAppAuthentication({
-				...state,
-				timeDifference: diff
-			});
-			endpoint.headers.authorization = `bearer ${token3}`;
-			return request(endpoint);
-		}
-		return response;
-	}
-	if (requiresBasicAuth(url)) {
-		const authentication = await state.oauthApp({ type: "oauth-app" });
-		endpoint.headers.authorization = authentication.headers.authorization;
-		return request(endpoint);
-	}
-	const { token, createdAt } = await getInstallationAuthentication(state, {}, request.defaults({ baseUrl: endpoint.baseUrl }));
-	endpoint.headers.authorization = `token ${token}`;
-	return sendRequestWithRetries(state, request, endpoint, createdAt);
-}
-async function sendRequestWithRetries(state, request, options, createdAt, retries = 0) {
-	const timeSinceTokenCreationInMs = +/* @__PURE__ */ new Date() - +new Date(createdAt);
-	try {
-		return await request(options);
-	} catch (error) {
-		if (error.status !== 401) throw error;
-		if (timeSinceTokenCreationInMs >= FIVE_SECONDS_IN_MS) {
-			if (retries > 0) error.message = `After ${retries} retries within ${timeSinceTokenCreationInMs / 1e3}s of creating the installation access token, the response remains 401. At this point, the cause may be an authentication problem or a system outage. Please check https://www.githubstatus.com for status information`;
-			throw error;
-		}
-		++retries;
-		const awaitTime = retries * 1e3;
-		state.log.warn(`[@octokit/auth-app] Retrying after 401 response to account for token replication delay (retry: ${retries}, wait: ${awaitTime / 1e3}s)`);
-		await new Promise((resolve) => setTimeout(resolve, awaitTime));
-		return sendRequestWithRetries(state, request, options, createdAt, retries);
-	}
-}
-var VERSION$4 = "8.2.0";
-function createAppAuth(options) {
-	if (!options.appId) throw new Error("[@octokit/auth-app] appId option is required");
-	if (!options.privateKey && !options.createJwt) throw new Error("[@octokit/auth-app] privateKey option is required");
-	else if (options.privateKey && options.createJwt) throw new Error("[@octokit/auth-app] privateKey and createJwt options are mutually exclusive");
-	if ("installationId" in options && !options.installationId) throw new Error("[@octokit/auth-app] installationId is set to a falsy value");
-	const log = options.log || {};
-	if (typeof log.warn !== "function") log.warn = console.warn.bind(console);
-	const request$1 = options.request || request.defaults({ headers: { "user-agent": `octokit-auth-app.js/${VERSION$4} ${getUserAgent()}` } });
-	const state = Object.assign({
-		request: request$1,
-		cache: getCache()
-	}, options, options.installationId ? { installationId: Number(options.installationId) } : {}, {
-		log,
-		oauthApp: createOAuthAppAuth({
-			clientType: "github-app",
-			clientId: options.clientId || "",
-			clientSecret: options.clientSecret || "",
-			request: request$1
-		})
-	});
-	return Object.assign(auth$1.bind(null, state), { hook: hook$1.bind(null, state) });
-}
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+auth-unauthenticated@7.0.3/node_modules/@octokit/auth-unauthenticated/dist-node/index.js
-async function auth(reason) {
-	return {
-		type: "unauthenticated",
-		reason
-	};
-}
-function isRateLimitError(error) {
-	if (error.status !== 403) return false;
-	if (!error.response) return false;
-	return error.response.headers["x-ratelimit-remaining"] === "0";
-}
-var REGEX_ABUSE_LIMIT_MESSAGE = /\babuse\b/i;
-function isAbuseLimitError(error) {
-	if (error.status !== 403) return false;
-	return REGEX_ABUSE_LIMIT_MESSAGE.test(error.message);
-}
-async function hook(reason, request, route, parameters) {
-	const endpoint = request.endpoint.merge(route, parameters);
-	return request(endpoint).catch((error) => {
-		if (error.status === 404) {
-			error.message = `Not found. May be due to lack of authentication. Reason: ${reason}`;
-			throw error;
-		}
-		if (isRateLimitError(error)) {
-			error.message = `API rate limit exceeded. This maybe caused by the lack of authentication. Reason: ${reason}`;
-			throw error;
-		}
-		if (isAbuseLimitError(error)) {
-			error.message = `You have triggered an abuse detection mechanism. This maybe caused by the lack of authentication. Reason: ${reason}`;
-			throw error;
-		}
-		if (error.status === 401) {
-			error.message = `Unauthorized. "${endpoint.method} ${endpoint.url}" failed most likely due to lack of authentication. Reason: ${reason}`;
-			throw error;
-		}
-		if (error.status >= 400 && error.status < 500) error.message = error.message.replace(/\.?$/, `. May be caused by lack of authentication (${reason}).`);
-		throw error;
-	});
-}
-var createUnauthenticatedAuth = function createUnauthenticatedAuth2(options) {
-	if (!options || !options.reason) throw new Error("[@octokit/auth-unauthenticated] No reason passed to createUnauthenticatedAuth");
-	return Object.assign(auth.bind(null, options.reason), { hook: hook.bind(null, options.reason) });
-};
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+oauth-app@8.0.3/node_modules/@octokit/oauth-app/dist-node/index.js
-var VERSION$3 = "8.0.3";
-function addEventHandler(state, eventName, eventHandler) {
-	if (Array.isArray(eventName)) {
-		for (const singleEventName of eventName) addEventHandler(state, singleEventName, eventHandler);
-		return;
-	}
-	if (!state.eventHandlers[eventName]) state.eventHandlers[eventName] = [];
-	state.eventHandlers[eventName].push(eventHandler);
-}
-var OAuthAppOctokit = Octokit$1.defaults({ userAgent: `octokit-oauth-app.js/${VERSION$3} ${getUserAgent()}` });
-async function emitEvent(state, context) {
-	const { name, action } = context;
-	if (state.eventHandlers[`${name}.${action}`]) for (const eventHandler of state.eventHandlers[`${name}.${action}`]) await eventHandler(context);
-	if (state.eventHandlers[name]) for (const eventHandler of state.eventHandlers[name]) await eventHandler(context);
-}
-async function getUserOctokitWithState(state, options) {
-	return state.octokit.auth({
-		type: "oauth-user",
-		...options,
-		async factory(options2) {
-			const octokit = new state.Octokit({
-				authStrategy: createOAuthUserAuth,
-				auth: options2
-			});
-			const authentication = await octokit.auth({ type: "get" });
-			await emitEvent(state, {
-				name: "token",
-				action: "created",
-				token: authentication.token,
-				scopes: authentication.scopes,
-				authentication,
-				octokit
-			});
-			return octokit;
-		}
-	});
-}
-function getWebFlowAuthorizationUrlWithState(state, options) {
-	const optionsWithDefaults = {
-		clientId: state.clientId,
-		request: state.octokit.request,
-		...options,
-		allowSignup: state.allowSignup ?? options.allowSignup,
-		redirectUrl: options.redirectUrl ?? state.redirectUrl,
-		scopes: options.scopes ?? state.defaultScopes
-	};
-	return getWebFlowAuthorizationUrl({
-		clientType: state.clientType,
-		...optionsWithDefaults
-	});
-}
-async function createTokenWithState(state, options) {
-	const authentication = await state.octokit.auth({
-		type: "oauth-user",
-		...options
-	});
-	await emitEvent(state, {
-		name: "token",
-		action: "created",
-		token: authentication.token,
-		scopes: authentication.scopes,
-		authentication,
-		octokit: new state.Octokit({
-			authStrategy: createOAuthUserAuth,
-			auth: {
-				clientType: state.clientType,
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				token: authentication.token,
-				scopes: authentication.scopes,
-				refreshToken: authentication.refreshToken,
-				expiresAt: authentication.expiresAt,
-				refreshTokenExpiresAt: authentication.refreshTokenExpiresAt
-			}
-		})
-	});
-	return { authentication };
-}
-async function checkTokenWithState(state, options) {
-	const result = await checkToken({
-		clientType: state.clientType,
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.octokit.request,
-		...options
-	});
-	Object.assign(result.authentication, {
-		type: "token",
-		tokenType: "oauth"
-	});
-	return result;
-}
-async function resetTokenWithState(state, options) {
-	const optionsWithDefaults = {
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.octokit.request,
-		...options
-	};
-	if (state.clientType === "oauth-app") {
-		const response2 = await resetToken({
-			clientType: "oauth-app",
-			...optionsWithDefaults
-		});
-		const authentication2 = Object.assign(response2.authentication, {
-			type: "token",
-			tokenType: "oauth"
-		});
-		await emitEvent(state, {
-			name: "token",
-			action: "reset",
-			token: response2.authentication.token,
-			scopes: response2.authentication.scopes || void 0,
-			authentication: authentication2,
-			octokit: new state.Octokit({
-				authStrategy: createOAuthUserAuth,
-				auth: {
-					clientType: state.clientType,
-					clientId: state.clientId,
-					clientSecret: state.clientSecret,
-					token: response2.authentication.token,
-					scopes: response2.authentication.scopes
-				}
-			})
-		});
-		return {
-			...response2,
-			authentication: authentication2
-		};
-	}
-	const response = await resetToken({
-		clientType: "github-app",
-		...optionsWithDefaults
-	});
-	const authentication = Object.assign(response.authentication, {
-		type: "token",
-		tokenType: "oauth"
-	});
-	await emitEvent(state, {
-		name: "token",
-		action: "reset",
-		token: response.authentication.token,
-		authentication,
-		octokit: new state.Octokit({
-			authStrategy: createOAuthUserAuth,
-			auth: {
-				clientType: state.clientType,
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				token: response.authentication.token
-			}
-		})
-	});
-	return {
-		...response,
-		authentication
-	};
-}
-async function refreshTokenWithState(state, options) {
-	if (state.clientType === "oauth-app") throw new Error("[@octokit/oauth-app] app.refreshToken() is not supported for OAuth Apps");
-	const response = await refreshToken({
-		clientType: "github-app",
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.octokit.request,
-		refreshToken: options.refreshToken
-	});
-	const authentication = Object.assign(response.authentication, {
-		type: "token",
-		tokenType: "oauth"
-	});
-	await emitEvent(state, {
-		name: "token",
-		action: "refreshed",
-		token: response.authentication.token,
-		authentication,
-		octokit: new state.Octokit({
-			authStrategy: createOAuthUserAuth,
-			auth: {
-				clientType: state.clientType,
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				token: response.authentication.token
-			}
-		})
-	});
-	return {
-		...response,
-		authentication
-	};
-}
-async function scopeTokenWithState(state, options) {
-	if (state.clientType === "oauth-app") throw new Error("[@octokit/oauth-app] app.scopeToken() is not supported for OAuth Apps");
-	const response = await scopeToken({
-		clientType: "github-app",
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.octokit.request,
-		...options
-	});
-	const authentication = Object.assign(response.authentication, {
-		type: "token",
-		tokenType: "oauth"
-	});
-	await emitEvent(state, {
-		name: "token",
-		action: "scoped",
-		token: response.authentication.token,
-		authentication,
-		octokit: new state.Octokit({
-			authStrategy: createOAuthUserAuth,
-			auth: {
-				clientType: state.clientType,
-				clientId: state.clientId,
-				clientSecret: state.clientSecret,
-				token: response.authentication.token
-			}
-		})
-	});
-	return {
-		...response,
-		authentication
-	};
-}
-async function deleteTokenWithState(state, options) {
-	const optionsWithDefaults = {
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.octokit.request,
-		...options
-	};
-	const response = state.clientType === "oauth-app" ? await deleteToken({
-		clientType: "oauth-app",
-		...optionsWithDefaults
-	}) : await deleteToken({
-		clientType: "github-app",
-		...optionsWithDefaults
-	});
-	await emitEvent(state, {
-		name: "token",
-		action: "deleted",
-		token: options.token,
-		octokit: new state.Octokit({
-			authStrategy: createUnauthenticatedAuth,
-			auth: { reason: `Handling "token.deleted" event. The access for the token has been revoked.` }
-		})
-	});
-	return response;
-}
-async function deleteAuthorizationWithState(state, options) {
-	const optionsWithDefaults = {
-		clientId: state.clientId,
-		clientSecret: state.clientSecret,
-		request: state.octokit.request,
-		...options
-	};
-	const response = state.clientType === "oauth-app" ? await deleteAuthorization({
-		clientType: "oauth-app",
-		...optionsWithDefaults
-	}) : await deleteAuthorization({
-		clientType: "github-app",
-		...optionsWithDefaults
-	});
-	await emitEvent(state, {
-		name: "token",
-		action: "deleted",
-		token: options.token,
-		octokit: new state.Octokit({
-			authStrategy: createUnauthenticatedAuth,
-			auth: { reason: `Handling "token.deleted" event. The access for the token has been revoked.` }
-		})
-	});
-	await emitEvent(state, {
-		name: "authorization",
-		action: "deleted",
-		token: options.token,
-		octokit: new state.Octokit({
-			authStrategy: createUnauthenticatedAuth,
-			auth: { reason: `Handling "authorization.deleted" event. The access for the app has been revoked.` }
-		})
-	});
-	return response;
-}
-var OAuthApp$1 = class {
-	static VERSION = VERSION$3;
-	static defaults(defaults) {
-		const OAuthAppWithDefaults = class extends this {
-			constructor(...args) {
-				super({
-					...defaults,
-					...args[0]
-				});
-			}
-		};
-		return OAuthAppWithDefaults;
-	}
-	constructor(options) {
-		const Octokit2 = options.Octokit || OAuthAppOctokit;
-		this.type = options.clientType || "oauth-app";
-		const octokit = new Octokit2({
-			authStrategy: createOAuthAppAuth,
-			auth: {
-				clientType: this.type,
-				clientId: options.clientId,
-				clientSecret: options.clientSecret
-			}
-		});
-		const state = {
-			clientType: this.type,
-			clientId: options.clientId,
-			clientSecret: options.clientSecret,
-			defaultScopes: options.defaultScopes || [],
-			allowSignup: options.allowSignup,
-			baseUrl: options.baseUrl,
-			redirectUrl: options.redirectUrl,
-			log: options.log,
-			Octokit: Octokit2,
-			octokit,
-			eventHandlers: {}
-		};
-		this.on = addEventHandler.bind(null, state);
-		this.octokit = octokit;
-		this.getUserOctokit = getUserOctokitWithState.bind(null, state);
-		this.getWebFlowAuthorizationUrl = getWebFlowAuthorizationUrlWithState.bind(null, state);
-		this.createToken = createTokenWithState.bind(null, state);
-		this.checkToken = checkTokenWithState.bind(null, state);
-		this.resetToken = resetTokenWithState.bind(null, state);
-		this.refreshToken = refreshTokenWithState.bind(null, state);
-		this.scopeToken = scopeTokenWithState.bind(null, state);
-		this.deleteToken = deleteTokenWithState.bind(null, state);
-		this.deleteAuthorization = deleteAuthorizationWithState.bind(null, state);
-	}
-	type;
-	on;
-	octokit;
-	getUserOctokit;
-	getWebFlowAuthorizationUrl;
-	createToken;
-	checkToken;
-	resetToken;
-	refreshToken;
-	scopeToken;
-	deleteToken;
-	deleteAuthorization;
-};
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+webhooks-methods@6.0.0/node_modules/@octokit/webhooks-methods/dist-node/index.js
-var VERSION$2 = "6.0.0";
-async function sign(secret, payload) {
-	if (!secret || !payload) throw new TypeError("[@octokit/webhooks-methods] secret & payload required for sign()");
-	if (typeof payload !== "string") throw new TypeError("[@octokit/webhooks-methods] payload must be a string");
-	const algorithm = "sha256";
-	return `${algorithm}=${createHmac(algorithm, secret).update(payload).digest("hex")}`;
-}
-sign.VERSION = VERSION$2;
-async function verify(secret, eventPayload, signature) {
-	if (!secret || !eventPayload || !signature) throw new TypeError("[@octokit/webhooks-methods] secret, eventPayload & signature required");
-	if (typeof eventPayload !== "string") throw new TypeError("[@octokit/webhooks-methods] eventPayload must be a string");
-	const signatureBuffer = Buffer$1.from(signature);
-	const verificationBuffer = Buffer$1.from(await sign(secret, eventPayload));
-	if (signatureBuffer.length !== verificationBuffer.length) return false;
-	return timingSafeEqual(signatureBuffer, verificationBuffer);
-}
-verify.VERSION = VERSION$2;
-async function verifyWithFallback(secret, payload, signature, additionalSecrets) {
-	if (await verify(secret, payload, signature)) return true;
-	if (additionalSecrets !== void 0) for (const s of additionalSecrets) {
-		const v = await verify(s, payload, signature);
-		if (v) return v;
-	}
-	return false;
-}
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+webhooks@14.2.0/node_modules/@octokit/webhooks/dist-bundle/index.js
-var createLogger = (logger = {}) => {
-	if (typeof logger.debug !== "function") logger.debug = () => {};
-	if (typeof logger.info !== "function") logger.info = () => {};
-	if (typeof logger.warn !== "function") logger.warn = console.warn.bind(console);
-	if (typeof logger.error !== "function") logger.error = console.error.bind(console);
-	return logger;
-};
-var emitterEventNames = [
-	"branch_protection_configuration",
-	"branch_protection_configuration.disabled",
-	"branch_protection_configuration.enabled",
-	"branch_protection_rule",
-	"branch_protection_rule.created",
-	"branch_protection_rule.deleted",
-	"branch_protection_rule.edited",
-	"check_run",
-	"check_run.completed",
-	"check_run.created",
-	"check_run.requested_action",
-	"check_run.rerequested",
-	"check_suite",
-	"check_suite.completed",
-	"check_suite.requested",
-	"check_suite.rerequested",
-	"code_scanning_alert",
-	"code_scanning_alert.appeared_in_branch",
-	"code_scanning_alert.closed_by_user",
-	"code_scanning_alert.created",
-	"code_scanning_alert.fixed",
-	"code_scanning_alert.reopened",
-	"code_scanning_alert.reopened_by_user",
-	"commit_comment",
-	"commit_comment.created",
-	"create",
-	"custom_property",
-	"custom_property.created",
-	"custom_property.deleted",
-	"custom_property.promote_to_enterprise",
-	"custom_property.updated",
-	"custom_property_values",
-	"custom_property_values.updated",
-	"delete",
-	"dependabot_alert",
-	"dependabot_alert.auto_dismissed",
-	"dependabot_alert.auto_reopened",
-	"dependabot_alert.created",
-	"dependabot_alert.dismissed",
-	"dependabot_alert.fixed",
-	"dependabot_alert.reintroduced",
-	"dependabot_alert.reopened",
-	"deploy_key",
-	"deploy_key.created",
-	"deploy_key.deleted",
-	"deployment",
-	"deployment.created",
-	"deployment_protection_rule",
-	"deployment_protection_rule.requested",
-	"deployment_review",
-	"deployment_review.approved",
-	"deployment_review.rejected",
-	"deployment_review.requested",
-	"deployment_status",
-	"deployment_status.created",
-	"discussion",
-	"discussion.answered",
-	"discussion.category_changed",
-	"discussion.closed",
-	"discussion.created",
-	"discussion.deleted",
-	"discussion.edited",
-	"discussion.labeled",
-	"discussion.locked",
-	"discussion.pinned",
-	"discussion.reopened",
-	"discussion.transferred",
-	"discussion.unanswered",
-	"discussion.unlabeled",
-	"discussion.unlocked",
-	"discussion.unpinned",
-	"discussion_comment",
-	"discussion_comment.created",
-	"discussion_comment.deleted",
-	"discussion_comment.edited",
-	"fork",
-	"github_app_authorization",
-	"github_app_authorization.revoked",
-	"gollum",
-	"installation",
-	"installation.created",
-	"installation.deleted",
-	"installation.new_permissions_accepted",
-	"installation.suspend",
-	"installation.unsuspend",
-	"installation_repositories",
-	"installation_repositories.added",
-	"installation_repositories.removed",
-	"installation_target",
-	"installation_target.renamed",
-	"issue_comment",
-	"issue_comment.created",
-	"issue_comment.deleted",
-	"issue_comment.edited",
-	"issue_dependencies",
-	"issue_dependencies.blocked_by_added",
-	"issue_dependencies.blocked_by_removed",
-	"issue_dependencies.blocking_added",
-	"issue_dependencies.blocking_removed",
-	"issues",
-	"issues.assigned",
-	"issues.closed",
-	"issues.deleted",
-	"issues.demilestoned",
-	"issues.edited",
-	"issues.labeled",
-	"issues.locked",
-	"issues.milestoned",
-	"issues.opened",
-	"issues.pinned",
-	"issues.reopened",
-	"issues.transferred",
-	"issues.typed",
-	"issues.unassigned",
-	"issues.unlabeled",
-	"issues.unlocked",
-	"issues.unpinned",
-	"issues.untyped",
-	"label",
-	"label.created",
-	"label.deleted",
-	"label.edited",
-	"marketplace_purchase",
-	"marketplace_purchase.cancelled",
-	"marketplace_purchase.changed",
-	"marketplace_purchase.pending_change",
-	"marketplace_purchase.pending_change_cancelled",
-	"marketplace_purchase.purchased",
-	"member",
-	"member.added",
-	"member.edited",
-	"member.removed",
-	"membership",
-	"membership.added",
-	"membership.removed",
-	"merge_group",
-	"merge_group.checks_requested",
-	"merge_group.destroyed",
-	"meta",
-	"meta.deleted",
-	"milestone",
-	"milestone.closed",
-	"milestone.created",
-	"milestone.deleted",
-	"milestone.edited",
-	"milestone.opened",
-	"org_block",
-	"org_block.blocked",
-	"org_block.unblocked",
-	"organization",
-	"organization.deleted",
-	"organization.member_added",
-	"organization.member_invited",
-	"organization.member_removed",
-	"organization.renamed",
-	"package",
-	"package.published",
-	"package.updated",
-	"page_build",
-	"personal_access_token_request",
-	"personal_access_token_request.approved",
-	"personal_access_token_request.cancelled",
-	"personal_access_token_request.created",
-	"personal_access_token_request.denied",
-	"ping",
-	"project",
-	"project.closed",
-	"project.created",
-	"project.deleted",
-	"project.edited",
-	"project.reopened",
-	"project_card",
-	"project_card.converted",
-	"project_card.created",
-	"project_card.deleted",
-	"project_card.edited",
-	"project_card.moved",
-	"project_column",
-	"project_column.created",
-	"project_column.deleted",
-	"project_column.edited",
-	"project_column.moved",
-	"projects_v2",
-	"projects_v2.closed",
-	"projects_v2.created",
-	"projects_v2.deleted",
-	"projects_v2.edited",
-	"projects_v2.reopened",
-	"projects_v2_item",
-	"projects_v2_item.archived",
-	"projects_v2_item.converted",
-	"projects_v2_item.created",
-	"projects_v2_item.deleted",
-	"projects_v2_item.edited",
-	"projects_v2_item.reordered",
-	"projects_v2_item.restored",
-	"projects_v2_status_update",
-	"projects_v2_status_update.created",
-	"projects_v2_status_update.deleted",
-	"projects_v2_status_update.edited",
-	"public",
-	"pull_request",
-	"pull_request.assigned",
-	"pull_request.auto_merge_disabled",
-	"pull_request.auto_merge_enabled",
-	"pull_request.closed",
-	"pull_request.converted_to_draft",
-	"pull_request.demilestoned",
-	"pull_request.dequeued",
-	"pull_request.edited",
-	"pull_request.enqueued",
-	"pull_request.labeled",
-	"pull_request.locked",
-	"pull_request.milestoned",
-	"pull_request.opened",
-	"pull_request.ready_for_review",
-	"pull_request.reopened",
-	"pull_request.review_request_removed",
-	"pull_request.review_requested",
-	"pull_request.synchronize",
-	"pull_request.unassigned",
-	"pull_request.unlabeled",
-	"pull_request.unlocked",
-	"pull_request_review",
-	"pull_request_review.dismissed",
-	"pull_request_review.edited",
-	"pull_request_review.submitted",
-	"pull_request_review_comment",
-	"pull_request_review_comment.created",
-	"pull_request_review_comment.deleted",
-	"pull_request_review_comment.edited",
-	"pull_request_review_thread",
-	"pull_request_review_thread.resolved",
-	"pull_request_review_thread.unresolved",
-	"push",
-	"registry_package",
-	"registry_package.published",
-	"registry_package.updated",
-	"release",
-	"release.created",
-	"release.deleted",
-	"release.edited",
-	"release.prereleased",
-	"release.published",
-	"release.released",
-	"release.unpublished",
-	"repository",
-	"repository.archived",
-	"repository.created",
-	"repository.deleted",
-	"repository.edited",
-	"repository.privatized",
-	"repository.publicized",
-	"repository.renamed",
-	"repository.transferred",
-	"repository.unarchived",
-	"repository_advisory",
-	"repository_advisory.published",
-	"repository_advisory.reported",
-	"repository_dispatch",
-	"repository_dispatch.sample.collected",
-	"repository_import",
-	"repository_ruleset",
-	"repository_ruleset.created",
-	"repository_ruleset.deleted",
-	"repository_ruleset.edited",
-	"repository_vulnerability_alert",
-	"repository_vulnerability_alert.create",
-	"repository_vulnerability_alert.dismiss",
-	"repository_vulnerability_alert.reopen",
-	"repository_vulnerability_alert.resolve",
-	"secret_scanning_alert",
-	"secret_scanning_alert.assigned",
-	"secret_scanning_alert.created",
-	"secret_scanning_alert.publicly_leaked",
-	"secret_scanning_alert.reopened",
-	"secret_scanning_alert.resolved",
-	"secret_scanning_alert.unassigned",
-	"secret_scanning_alert.validated",
-	"secret_scanning_alert_location",
-	"secret_scanning_alert_location.created",
-	"secret_scanning_scan",
-	"secret_scanning_scan.completed",
-	"security_advisory",
-	"security_advisory.published",
-	"security_advisory.updated",
-	"security_advisory.withdrawn",
-	"security_and_analysis",
-	"sponsorship",
-	"sponsorship.cancelled",
-	"sponsorship.created",
-	"sponsorship.edited",
-	"sponsorship.pending_cancellation",
-	"sponsorship.pending_tier_change",
-	"sponsorship.tier_changed",
-	"star",
-	"star.created",
-	"star.deleted",
-	"status",
-	"sub_issues",
-	"sub_issues.parent_issue_added",
-	"sub_issues.parent_issue_removed",
-	"sub_issues.sub_issue_added",
-	"sub_issues.sub_issue_removed",
-	"team",
-	"team.added_to_repository",
-	"team.created",
-	"team.deleted",
-	"team.edited",
-	"team.removed_from_repository",
-	"team_add",
-	"watch",
-	"watch.started",
-	"workflow_dispatch",
-	"workflow_job",
-	"workflow_job.completed",
-	"workflow_job.in_progress",
-	"workflow_job.queued",
-	"workflow_job.waiting",
-	"workflow_run",
-	"workflow_run.completed",
-	"workflow_run.in_progress",
-	"workflow_run.requested"
-];
-function validateEventName(eventName, options = {}) {
-	if (typeof eventName !== "string") throw new TypeError("eventName must be of type string");
-	if (eventName === "*") throw new TypeError(`Using the "*" event with the regular Webhooks.on() function is not supported. Please use the Webhooks.onAny() method instead`);
-	if (eventName === "error") throw new TypeError(`Using the "error" event with the regular Webhooks.on() function is not supported. Please use the Webhooks.onError() method instead`);
-	if (options.onUnknownEventName === "ignore") return;
-	if (!emitterEventNames.includes(eventName)) if (options.onUnknownEventName !== "warn") throw new TypeError(`"${eventName}" is not a known webhook name (https://developer.github.com/v3/activity/events/types/)`);
-	else (options.log || console).warn(`"${eventName}" is not a known webhook name (https://developer.github.com/v3/activity/events/types/)`);
-}
-function handleEventHandlers(state, webhookName, handler) {
-	if (!state.hooks[webhookName]) state.hooks[webhookName] = [];
-	state.hooks[webhookName].push(handler);
-}
-function receiverOn(state, webhookNameOrNames, handler) {
-	if (Array.isArray(webhookNameOrNames)) {
-		webhookNameOrNames.forEach((webhookName) => receiverOn(state, webhookName, handler));
-		return;
-	}
-	validateEventName(webhookNameOrNames, {
-		onUnknownEventName: "warn",
-		log: state.log
-	});
-	handleEventHandlers(state, webhookNameOrNames, handler);
-}
-function receiverOnAny(state, handler) {
-	handleEventHandlers(state, "*", handler);
-}
-function receiverOnError(state, handler) {
-	handleEventHandlers(state, "error", handler);
-}
-function wrapErrorHandler(handler, error) {
-	let returnValue;
-	try {
-		returnValue = handler(error);
-	} catch (error2) {
-		console.log("FATAL: Error occurred in \"error\" event handler");
-		console.log(error2);
-	}
-	if (returnValue && returnValue.catch) returnValue.catch((error2) => {
-		console.log("FATAL: Error occurred in \"error\" event handler");
-		console.log(error2);
-	});
-}
-function getHooks(state, eventPayloadAction, eventName) {
-	const hooks = [state.hooks[eventName], state.hooks["*"]];
-	if (eventPayloadAction) hooks.unshift(state.hooks[`${eventName}.${eventPayloadAction}`]);
-	return [].concat(...hooks.filter(Boolean));
-}
-function receiverHandle(state, event) {
-	const errorHandlers = state.hooks.error || [];
-	if (event instanceof Error) {
-		const error = Object.assign(new AggregateError([event], event.message), { event });
-		errorHandlers.forEach((handler) => wrapErrorHandler(handler, error));
-		return Promise.reject(error);
-	}
-	if (!event || !event.name) {
-		const error = /* @__PURE__ */ new Error("Event name not passed");
-		throw new AggregateError([error], error.message);
-	}
-	if (!event.payload) {
-		const error = /* @__PURE__ */ new Error("Event name not passed");
-		throw new AggregateError([error], error.message);
-	}
-	const hooks = getHooks(state, "action" in event.payload ? event.payload.action : null, event.name);
-	if (hooks.length === 0) return Promise.resolve();
-	const errors = [];
-	const promises = hooks.map((handler) => {
-		let promise = Promise.resolve(event);
-		if (state.transform) promise = promise.then(state.transform);
-		return promise.then((event2) => {
-			return handler(event2);
-		}).catch((error) => errors.push(Object.assign(error, { event })));
-	});
-	return Promise.all(promises).then(() => {
-		if (errors.length === 0) return;
-		const error = new AggregateError(errors, errors.map((error2) => error2.message).join("\n"));
-		Object.assign(error, { event });
-		errorHandlers.forEach((handler) => wrapErrorHandler(handler, error));
-		throw error;
-	});
-}
-function removeListener(state, webhookNameOrNames, handler) {
-	if (Array.isArray(webhookNameOrNames)) {
-		webhookNameOrNames.forEach((webhookName) => removeListener(state, webhookName, handler));
-		return;
-	}
-	if (!state.hooks[webhookNameOrNames]) return;
-	for (let i = state.hooks[webhookNameOrNames].length - 1; i >= 0; i--) if (state.hooks[webhookNameOrNames][i] === handler) {
-		state.hooks[webhookNameOrNames].splice(i, 1);
-		return;
-	}
-}
-function createEventHandler(options) {
-	const state = {
-		hooks: {},
-		log: createLogger(options && options.log)
-	};
-	if (options && options.transform) state.transform = options.transform;
-	return {
-		on: receiverOn.bind(null, state),
-		onAny: receiverOnAny.bind(null, state),
-		onError: receiverOnError.bind(null, state),
-		removeListener: removeListener.bind(null, state),
-		receive: receiverHandle.bind(null, state)
-	};
-}
-async function verifyAndReceive(state, event) {
-	if (!await verifyWithFallback(state.secret, event.payload, event.signature, state.additionalSecrets).catch(() => false)) {
-		const error = /* @__PURE__ */ new Error("[@octokit/webhooks] signature does not match event payload and secret");
-		error.event = event;
-		error.status = 400;
-		return state.eventHandler.receive(error);
-	}
-	let payload;
-	try {
-		payload = JSON.parse(event.payload);
-	} catch (error) {
-		error.message = "Invalid JSON";
-		error.status = 400;
-		throw new AggregateError([error], error.message);
-	}
-	return state.eventHandler.receive({
-		id: event.id,
-		name: event.name,
-		payload
-	});
-}
-var textDecoder = new TextDecoder("utf-8", { fatal: false });
-var decode = textDecoder.decode.bind(textDecoder);
-var Webhooks = class {
-	sign;
-	verify;
-	on;
-	onAny;
-	onError;
-	removeListener;
-	receive;
-	verifyAndReceive;
-	constructor(options) {
-		if (!options || !options.secret) throw new Error("[@octokit/webhooks] options.secret required");
-		const state = {
-			eventHandler: createEventHandler(options),
-			secret: options.secret,
-			additionalSecrets: options.additionalSecrets,
-			hooks: {},
-			log: createLogger(options.log)
-		};
-		this.sign = sign.bind(null, options.secret);
-		this.verify = verify.bind(null, options.secret);
-		this.on = state.eventHandler.on;
-		this.onAny = state.eventHandler.onAny;
-		this.onError = state.eventHandler.onError;
-		this.removeListener = state.eventHandler.removeListener;
-		this.receive = state.eventHandler.receive;
-		this.verifyAndReceive = verifyAndReceive.bind(null, state);
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/@octokit+app@16.1.2/node_modules/@octokit/app/dist-node/index.js
-var VERSION$1 = "16.1.2";
-function webhooks(appOctokit, options) {
-	return new Webhooks({
-		secret: options.secret,
-		transform: async (event) => {
-			if (!("installation" in event.payload) || typeof event.payload.installation !== "object") {
-				const octokit2 = new appOctokit.constructor({
-					authStrategy: createUnauthenticatedAuth,
-					auth: { reason: `"installation" key missing in webhook event payload` }
-				});
-				return {
-					...event,
-					octokit: octokit2
-				};
-			}
-			const installationId = event.payload.installation.id;
-			const octokit = await appOctokit.auth({
-				type: "installation",
-				installationId,
-				factory(auth) {
-					return new auth.octokit.constructor({
-						...auth.octokitOptions,
-						authStrategy: createAppAuth,
-						auth: {
-							...auth,
-							installationId
-						}
-					});
-				}
-			});
-			octokit.hook.before("request", (options2) => {
-				options2.headers["x-github-delivery"] = event.id;
-			});
-			return {
-				...event,
-				octokit
-			};
-		}
-	});
-}
-async function getInstallationOctokit(app, installationId) {
-	return app.octokit.auth({
-		type: "installation",
-		installationId,
-		factory(auth) {
-			const options = {
-				...auth.octokitOptions,
-				authStrategy: createAppAuth,
-				auth: {
-					...auth,
-					installationId
-				}
-			};
-			return new auth.octokit.constructor(options);
-		}
-	});
-}
-function eachInstallationFactory(app) {
-	return Object.assign(eachInstallation.bind(null, app), { iterator: eachInstallationIterator.bind(null, app) });
-}
-async function eachInstallation(app, callback) {
-	const i = eachInstallationIterator(app)[Symbol.asyncIterator]();
-	let result = await i.next();
-	while (!result.done) {
-		await callback(result.value);
-		result = await i.next();
-	}
-}
-function eachInstallationIterator(app) {
-	return { async *[Symbol.asyncIterator]() {
-		const iterator = composePaginateRest.iterator(app.octokit, "GET /app/installations");
-		for await (const { data: installations } of iterator) for (const installation of installations) yield {
-			octokit: await getInstallationOctokit(app, installation.id),
-			installation
-		};
-	} };
-}
-function eachRepositoryFactory(app) {
-	return Object.assign(eachRepository.bind(null, app), { iterator: eachRepositoryIterator.bind(null, app) });
-}
-async function eachRepository(app, queryOrCallback, callback) {
-	const i = eachRepositoryIterator(app, callback ? queryOrCallback : void 0)[Symbol.asyncIterator]();
-	let result = await i.next();
-	while (!result.done) {
-		if (callback) await callback(result.value);
-		else await queryOrCallback(result.value);
-		result = await i.next();
-	}
-}
-function singleInstallationIterator(app, installationId) {
-	return { async *[Symbol.asyncIterator]() {
-		yield { octokit: await app.getInstallationOctokit(installationId) };
-	} };
-}
-function eachRepositoryIterator(app, query) {
-	return { async *[Symbol.asyncIterator]() {
-		const iterator = query ? singleInstallationIterator(app, query.installationId) : app.eachInstallation.iterator();
-		for await (const { octokit } of iterator) {
-			const repositoriesIterator = composePaginateRest.iterator(octokit, "GET /installation/repositories");
-			for await (const { data: repositories } of repositoriesIterator) for (const repository of repositories) yield {
-				octokit,
-				repository
-			};
-		}
-	} };
-}
-function getInstallationUrlFactory(app) {
-	let installationUrlBasePromise;
-	return async function getInstallationUrl(options = {}) {
-		if (!installationUrlBasePromise) installationUrlBasePromise = getInstallationUrlBase(app);
-		const installationUrlBase = await installationUrlBasePromise;
-		const installationUrl = new URL(installationUrlBase);
-		if (options.target_id !== void 0) {
-			installationUrl.pathname += "/permissions";
-			installationUrl.searchParams.append("target_id", options.target_id.toFixed());
-		}
-		if (options.state !== void 0) installationUrl.searchParams.append("state", options.state);
-		return installationUrl.href;
-	};
-}
-async function getInstallationUrlBase(app) {
-	const { data: appInfo } = await app.octokit.request("GET /app");
-	if (!appInfo) throw new Error("[@octokit/app] unable to fetch metadata for app");
-	return `${appInfo.html_url}/installations/new`;
-}
-var App$1 = class {
-	static VERSION = VERSION$1;
-	static defaults(defaults) {
-		const AppWithDefaults = class extends this {
-			constructor(...args) {
-				super({
-					...defaults,
-					...args[0]
-				});
-			}
-		};
-		return AppWithDefaults;
-	}
-	octokit;
-	webhooks;
-	oauth;
-	getInstallationOctokit;
-	eachInstallation;
-	eachRepository;
-	getInstallationUrl;
-	log;
-	constructor(options) {
-		const Octokit = options.Octokit || Octokit$1;
-		const octokitOptions = {
-			authStrategy: createAppAuth,
-			auth: Object.assign({
-				appId: options.appId,
-				privateKey: options.privateKey
-			}, options.oauth ? {
-				clientId: options.oauth.clientId,
-				clientSecret: options.oauth.clientSecret
-			} : {})
-		};
-		if ("log" in options && typeof options.log !== "undefined") octokitOptions.log = options.log;
-		this.octokit = new Octokit(octokitOptions);
-		this.log = Object.assign({
-			debug: () => {},
-			info: () => {},
-			warn: console.warn.bind(console),
-			error: console.error.bind(console)
-		}, options.log);
-		if (options.webhooks) this.webhooks = webhooks(this.octokit, options.webhooks);
-		else Object.defineProperty(this, "webhooks", { get() {
-			throw new Error("[@octokit/app] webhooks option not set");
-		} });
-		if (options.oauth) this.oauth = new OAuthApp$1({
-			...options.oauth,
-			clientType: "github-app",
-			Octokit
-		});
-		else Object.defineProperty(this, "oauth", { get() {
-			throw new Error("[@octokit/app] oauth.clientId / oauth.clientSecret options are not set");
-		} });
-		this.getInstallationOctokit = getInstallationOctokit.bind(null, this);
-		this.eachInstallation = eachInstallationFactory(this);
-		this.eachRepository = eachRepositoryFactory(this);
-		this.getInstallationUrl = getInstallationUrlFactory(this);
-	}
-};
-
-//#endregion
-//#region node_modules/.pnpm/octokit@5.0.5/node_modules/octokit/dist-bundle/index.js
-var VERSION = "0.0.0-development";
-var Octokit = Octokit$1.plugin(restEndpointMethods, paginateRest, paginateGraphQL, retry, throttling).defaults({
-	userAgent: `octokit.js/${VERSION}`,
-	throttle: {
-		onRateLimit,
-		onSecondaryRateLimit
-	}
-});
-function onRateLimit(retryAfter, options, octokit) {
-	octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
-	if (options.request.retryCount === 0) {
-		octokit.log.info(`Retrying after ${retryAfter} seconds!`);
-		return true;
-	}
-}
-function onSecondaryRateLimit(retryAfter, options, octokit) {
-	octokit.log.warn(`SecondaryRateLimit detected for request ${options.method} ${options.url}`);
-	if (options.request.retryCount === 0) {
-		octokit.log.info(`Retrying after ${retryAfter} seconds!`);
-		return true;
-	}
-}
-var App = App$1.defaults({ Octokit });
-var OAuthApp = OAuthApp$1.defaults({ Octokit });
-/* v8 ignore next no need to test internals of the throttle plugin -- @preserve */
-
-//#endregion
-//#region src/gh/octokit-clank8y.ts
-async function clank8yOctokit() {
-	return new Octokit({ auth: getClank8yRuntimeContext().auth.githubToken });
-}
-
-//#endregion
-//#region src/gh/index.ts
-async function getOctokit() {
-	return await clank8yOctokit();
-}
-
-//#endregion
-//#region src/setup.ts
-let _runtimeContext = null;
-let _activePullRequestContext = null;
-function requireRuntimeContext() {
-	if (!_runtimeContext) throw new Error("Clank8y runtime context is not initialized. Call setClank8yRuntimeContext first.");
-	return _runtimeContext;
-}
-function parseRepository(repository) {
-	const normalizedRepository = repository.trim();
-	if (!normalizedRepository) throw new Error("Repository is required (format: owner/repo).");
-	const segments = normalizedRepository.split("/");
-	const [owner, repo] = segments;
-	if (segments.length !== 2 || !owner || !repo) throw new Error(`Invalid repository value '${normalizedRepository}'. Expected format: owner/repo.`);
-	return {
-		owner,
-		repo
-	};
-}
-function normalizeRuntimeContext(context) {
-	if (!context.promptContext.trim()) throw new Error("Clank8y runtime context requires a non-empty promptContext.");
-	if (!context.auth.githubToken.trim()) throw new Error("Clank8y runtime context requires a non-empty auth.githubToken.");
-	if (!context.auth.copilotToken.trim()) throw new Error("Clank8y runtime context requires a non-empty auth.copilotToken.");
-	return {
-		...context,
-		promptContext: context.promptContext.trim(),
-		auth: {
-			githubToken: context.auth.githubToken.trim(),
-			copilotToken: context.auth.copilotToken.trim()
-		}
-	};
-}
-function setClank8yRuntimeContext(context) {
-	_runtimeContext = normalizeRuntimeContext(context);
-	_activePullRequestContext = null;
-}
-function getClank8yRuntimeContext() {
-	return requireRuntimeContext();
-}
-async function setPullRequestContext(params) {
-	if (!Number.isFinite(params.prNumber) || params.prNumber < 1) throw new Error(`Invalid pull request number '${String(params.prNumber)}'.`);
-	const repository = parseRepository(params.repository);
-	const { data: pr } = await (await getOctokit()).rest.pulls.get({
-		owner: repository.owner,
-		repo: repository.repo,
-		pull_number: params.prNumber
-	});
-	_activePullRequestContext = {
-		owner: repository.owner,
-		repo: repository.repo,
-		number: pr.number,
-		headSha: pr.head.sha,
-		headRef: pr.head.ref,
-		baseSha: pr.base.sha,
-		baseRef: pr.base.ref
-	};
-	return _activePullRequestContext;
-}
-function getActivePullRequestContext() {
-	if (!_activePullRequestContext) throw new Error("Pull request context is not initialized. Call set-pull-request-context first.");
-	return _activePullRequestContext;
-}
-
-//#endregion
-//#region src/utils/artifacts.ts
-const CLANK8Y_ARTIFACT_DIR = ".clank8y";
-const DIFF_ARTIFACT_FILE = "diff.txt";
-const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
-function getClank8yArtifactDirPath() {
-	return path.join(process$1.cwd(), CLANK8Y_ARTIFACT_DIR);
-}
-function resolveClank8yArtifactPath(...segments) {
-	return path.join(getClank8yArtifactDirPath(), ...segments);
-}
-function isWithinClank8yArtifacts(targetPath) {
-	const artifactDir = getClank8yArtifactDirPath();
-	const relativePath = path.relative(artifactDir, targetPath);
-	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
-}
-function getReviewArtifactPaths() {
-	return {
-		artifactDir: getClank8yArtifactDirPath(),
-		diffPath: resolveClank8yArtifactPath(DIFF_ARTIFACT_FILE),
-		reviewCommentsPath: resolveClank8yArtifactPath(REVIEW_COMMENTS_ARTIFACT_FILE)
-	};
-}
-async function resetClank8yArtifacts() {
-	const artifactPaths = getReviewArtifactPaths();
-	await rm(artifactPaths.artifactDir, {
-		force: true,
-		recursive: true
-	});
-	await mkdir(artifactPaths.artifactDir, { recursive: true });
-	return artifactPaths;
-}
-async function writeDiffArtifact(content) {
-	const { diffPath } = getReviewArtifactPaths();
-	await writeFile(diffPath, content, "utf-8");
-}
-async function writeReviewCommentsArtifact(content) {
-	const { reviewCommentsPath } = getReviewArtifactPaths();
-	await writeFile(reviewCommentsPath, content, "utf-8");
-	return reviewCommentsPath;
-}
 
 //#endregion
 //#region src/agents/copilot/client.ts
@@ -38252,1250 +39514,6 @@ async function ensureCopilotModelAvailable(model) {
 }
 
 //#endregion
-//#region src/mcp/angular.ts
-const ANGULAR_MCP_COMMAND = "npx";
-const ANGULAR_MCP_ARGS = [
-	"-y",
-	"@angular/cli",
-	"mcp"
-];
-/**
-* Tools exposed from the Angular CLI MCP server.
-* - `find_examples`       — authoritative Angular code examples (local)
-* - `get_best_practices`  — Angular best practices guide (local)
-* - `search_documentation`— searches angular.dev (remote)
-*/
-const ANGULAR_ALLOWED_TOOLS = [
-	"find_examples",
-	"get_best_practices",
-	"search_documentation"
-];
-let _angularMCP = null;
-function angularMCP() {
-	if (!_angularMCP) _angularMCP = createAngularMCP();
-	return _angularMCP;
-}
-function createAngularMCP() {
-	let status = { state: "stopped" };
-	return {
-		serverType: "stdio",
-		allowedTools: ANGULAR_ALLOWED_TOOLS,
-		get status() {
-			return status;
-		},
-		start: async () => {
-			status = { state: "running" };
-			return {
-				command: ANGULAR_MCP_COMMAND,
-				args: ANGULAR_MCP_ARGS,
-				toolNames: ANGULAR_ALLOWED_TOOLS
-			};
-		},
-		stop: async () => {
-			status = { state: "stopped" };
-		}
-	};
-}
-
-//#endregion
-//#region src/mcp/codex.ts
-const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
-let _codexMCP = null;
-function codexMCP() {
-	if (!_codexMCP) _codexMCP = createCodexMCP();
-	return _codexMCP;
-}
-function createCodexMCP() {
-	return {
-		serverType: "http",
-		allowedTools: ["*"],
-		get status() {
-			return { state: "running" };
-		},
-		start: async () => ({
-			url: CODEX_MCP_URL,
-			toolNames: []
-		}),
-		stop: async () => {}
-	};
-}
-
-//#endregion
-//#region node_modules/.pnpm/@toon-format+toon@2.1.0/node_modules/@toon-format/toon/dist/index.mjs
-const LIST_ITEM_MARKER = "-";
-const LIST_ITEM_PREFIX = "- ";
-const COMMA = ",";
-const PIPE = "|";
-const DOT = ".";
-const NULL_LITERAL = "null";
-const TRUE_LITERAL = "true";
-const FALSE_LITERAL = "false";
-const BACKSLASH = "\\";
-const DOUBLE_QUOTE = "\"";
-const TAB = "	";
-const DELIMITERS = {
-	comma: COMMA,
-	tab: TAB,
-	pipe: PIPE
-};
-const DEFAULT_DELIMITER = DELIMITERS.comma;
-/**
-* Escapes special characters in a string for encoding.
-*
-* @remarks
-* Handles backslashes, quotes, newlines, carriage returns, and tabs.
-*/
-function escapeString(value) {
-	return value.replace(/\\/g, `${BACKSLASH}${BACKSLASH}`).replace(/"/g, `${BACKSLASH}${DOUBLE_QUOTE}`).replace(/\n/g, `${BACKSLASH}n`).replace(/\r/g, `${BACKSLASH}r`).replace(/\t/g, `${BACKSLASH}t`);
-}
-function isBooleanOrNullLiteral(token) {
-	return token === TRUE_LITERAL || token === FALSE_LITERAL || token === NULL_LITERAL;
-}
-function normalizeValue(value) {
-	if (value === null) return null;
-	if (typeof value === "object" && value !== null && "toJSON" in value && typeof value.toJSON === "function") {
-		const next = value.toJSON();
-		if (next !== value) return normalizeValue(next);
-	}
-	if (typeof value === "string" || typeof value === "boolean") return value;
-	if (typeof value === "number") {
-		if (Object.is(value, -0)) return 0;
-		if (!Number.isFinite(value)) return null;
-		return value;
-	}
-	if (typeof value === "bigint") {
-		if (value >= Number.MIN_SAFE_INTEGER && value <= Number.MAX_SAFE_INTEGER) return Number(value);
-		return value.toString();
-	}
-	if (value instanceof Date) return value.toISOString();
-	if (Array.isArray(value)) return value.map(normalizeValue);
-	if (value instanceof Set) return Array.from(value).map(normalizeValue);
-	if (value instanceof Map) return Object.fromEntries(Array.from(value, ([k, v]) => [String(k), normalizeValue(v)]));
-	if (isPlainObject(value)) {
-		const normalized = {};
-		for (const key in value) if (Object.prototype.hasOwnProperty.call(value, key)) normalized[key] = normalizeValue(value[key]);
-		return normalized;
-	}
-	return null;
-}
-function isJsonPrimitive(value) {
-	return value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean";
-}
-function isJsonArray(value) {
-	return Array.isArray(value);
-}
-function isJsonObject(value) {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function isEmptyObject(value) {
-	return Object.keys(value).length === 0;
-}
-function isPlainObject(value) {
-	if (value === null || typeof value !== "object") return false;
-	const prototype = Object.getPrototypeOf(value);
-	return prototype === null || prototype === Object.prototype;
-}
-function isArrayOfPrimitives(value) {
-	return value.length === 0 || value.every((item) => isJsonPrimitive(item));
-}
-function isArrayOfArrays(value) {
-	return value.length === 0 || value.every((item) => isJsonArray(item));
-}
-function isArrayOfObjects(value) {
-	return value.length === 0 || value.every((item) => isJsonObject(item));
-}
-/**
-* Checks if a key can be used without quotes.
-*
-* @remarks
-* Valid unquoted keys must start with a letter or underscore,
-* followed by letters, digits, underscores, or dots.
-*/
-function isValidUnquotedKey(key) {
-	return /^[A-Z_][\w.]*$/i.test(key);
-}
-/**
-* Checks if a key segment is a valid identifier for safe folding/expansion.
-*
-* @remarks
-* Identifier segments are more restrictive than unquoted keys:
-* - Must start with a letter or underscore
-* - Followed only by letters, digits, or underscores (no dots)
-* - Used for safe key folding and path expansion
-*/
-function isIdentifierSegment(key) {
-	return /^[A-Z_]\w*$/i.test(key);
-}
-/**
-* Determines if a string value can be safely encoded without quotes.
-*
-* @remarks
-* A string needs quoting if it:
-* - Is empty
-* - Has leading or trailing whitespace
-* - Could be confused with a literal (boolean, null, number)
-* - Contains structural characters (colons, brackets, braces)
-* - Contains quotes or backslashes (need escaping)
-* - Contains control characters (newlines, tabs, etc.)
-* - Contains the active delimiter
-* - Starts with a list marker (hyphen)
-*/
-function isSafeUnquoted(value, delimiter = DEFAULT_DELIMITER) {
-	if (!value) return false;
-	if (value !== value.trim()) return false;
-	if (isBooleanOrNullLiteral(value) || isNumericLike(value)) return false;
-	if (value.includes(":")) return false;
-	if (value.includes("\"") || value.includes("\\")) return false;
-	if (/[[\]{}]/.test(value)) return false;
-	if (/[\n\r\t]/.test(value)) return false;
-	if (value.includes(delimiter)) return false;
-	if (value.startsWith(LIST_ITEM_MARKER)) return false;
-	return true;
-}
-/**
-* Checks if a string looks like a number.
-*
-* @remarks
-* Match numbers like `42`, `-3.14`, `1e-6`, `05`, etc.
-*/
-function isNumericLike(value) {
-	return /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(value) || /^0\d+$/.test(value);
-}
-/**
-* Attempts to fold a single-key object chain into a dotted path.
-*
-* @remarks
-* Folding traverses nested objects with single keys, collapsing them into a dotted path.
-* It stops when:
-* - A non-single-key object is encountered
-* - An array is encountered (arrays are not "single-key objects")
-* - A primitive value is reached
-* - The flatten depth limit is reached
-* - Any segment fails safe mode validation
-*
-* Safe mode requirements:
-* - `options.keyFolding` must be `'safe'`
-* - Every segment must be a valid identifier (no dots, no special chars)
-* - The folded key must not collide with existing sibling keys
-* - No segment should require quoting
-*
-* @param key - The starting key to fold
-* @param value - The value associated with the key
-* @param siblings - Array of all sibling keys at this level (for collision detection)
-* @param options - Resolved encoding options
-* @returns A FoldResult if folding is possible, undefined otherwise
-*/
-function tryFoldKeyChain(key, value, siblings, options, rootLiteralKeys, pathPrefix, flattenDepth) {
-	if (options.keyFolding !== "safe") return;
-	if (!isJsonObject(value)) return;
-	const { segments, tail, leafValue } = collectSingleKeyChain(key, value, flattenDepth ?? options.flattenDepth);
-	if (segments.length < 2) return;
-	if (!segments.every((seg) => isIdentifierSegment(seg))) return;
-	const foldedKey = buildFoldedKey(segments);
-	const absolutePath = pathPrefix ? `${pathPrefix}${DOT}${foldedKey}` : foldedKey;
-	if (siblings.includes(foldedKey)) return;
-	if (rootLiteralKeys && rootLiteralKeys.has(absolutePath)) return;
-	return {
-		foldedKey,
-		remainder: tail,
-		leafValue,
-		segmentCount: segments.length
-	};
-}
-/**
-* Collects a chain of single-key objects into segments.
-*
-* @remarks
-* Traverses nested objects, collecting keys until:
-* - A non-single-key object is found
-* - An array is encountered
-* - A primitive is reached
-* - An empty object is reached
-* - The depth limit is reached
-*
-* @param startKey - The initial key to start the chain
-* @param startValue - The value to traverse
-* @param maxDepth - Maximum number of segments to collect
-* @returns Object containing segments array, tail value, and leaf value
-*/
-function collectSingleKeyChain(startKey, startValue, maxDepth) {
-	const segments = [startKey];
-	let currentValue = startValue;
-	while (segments.length < maxDepth) {
-		if (!isJsonObject(currentValue)) break;
-		const keys = Object.keys(currentValue);
-		if (keys.length !== 1) break;
-		const nextKey = keys[0];
-		const nextValue = currentValue[nextKey];
-		segments.push(nextKey);
-		currentValue = nextValue;
-	}
-	if (!isJsonObject(currentValue) || isEmptyObject(currentValue)) return {
-		segments,
-		tail: void 0,
-		leafValue: currentValue
-	};
-	return {
-		segments,
-		tail: currentValue,
-		leafValue: currentValue
-	};
-}
-function buildFoldedKey(segments) {
-	return segments.join(DOT);
-}
-function encodePrimitive(value, delimiter) {
-	if (value === null) return NULL_LITERAL;
-	if (typeof value === "boolean") return String(value);
-	if (typeof value === "number") return String(value);
-	return encodeStringLiteral(value, delimiter);
-}
-function encodeStringLiteral(value, delimiter = DEFAULT_DELIMITER) {
-	if (isSafeUnquoted(value, delimiter)) return value;
-	return `${DOUBLE_QUOTE}${escapeString(value)}${DOUBLE_QUOTE}`;
-}
-function encodeKey(key) {
-	if (isValidUnquotedKey(key)) return key;
-	return `${DOUBLE_QUOTE}${escapeString(key)}${DOUBLE_QUOTE}`;
-}
-function encodeAndJoinPrimitives(values, delimiter = DEFAULT_DELIMITER) {
-	return values.map((v) => encodePrimitive(v, delimiter)).join(delimiter);
-}
-function formatHeader(length, options) {
-	const key = options?.key;
-	const fields = options?.fields;
-	const delimiter = options?.delimiter ?? COMMA;
-	let header = "";
-	if (key) header += encodeKey(key);
-	header += `[${length}${delimiter !== DEFAULT_DELIMITER ? delimiter : ""}]`;
-	if (fields) {
-		const quotedFields = fields.map((f) => encodeKey(f));
-		header += `{${quotedFields.join(delimiter)}}`;
-	}
-	header += ":";
-	return header;
-}
-function* encodeJsonValue(value, options, depth) {
-	if (isJsonPrimitive(value)) {
-		const encodedPrimitive = encodePrimitive(value, options.delimiter);
-		if (encodedPrimitive !== "") yield encodedPrimitive;
-		return;
-	}
-	if (isJsonArray(value)) yield* encodeArrayLines(void 0, value, depth, options);
-	else if (isJsonObject(value)) yield* encodeObjectLines(value, depth, options);
-}
-function* encodeObjectLines(value, depth, options, rootLiteralKeys, pathPrefix, remainingDepth) {
-	const keys = Object.keys(value);
-	if (depth === 0 && !rootLiteralKeys) rootLiteralKeys = new Set(keys.filter((k) => k.includes(".")));
-	const effectiveFlattenDepth = remainingDepth ?? options.flattenDepth;
-	for (const [key, val] of Object.entries(value)) yield* encodeKeyValuePairLines(key, val, depth, options, keys, rootLiteralKeys, pathPrefix, effectiveFlattenDepth);
-}
-function* encodeKeyValuePairLines(key, value, depth, options, siblings, rootLiteralKeys, pathPrefix, flattenDepth) {
-	const currentPath = pathPrefix ? `${pathPrefix}${DOT}${key}` : key;
-	const effectiveFlattenDepth = flattenDepth ?? options.flattenDepth;
-	if (options.keyFolding === "safe" && siblings) {
-		const foldResult = tryFoldKeyChain(key, value, siblings, options, rootLiteralKeys, pathPrefix, effectiveFlattenDepth);
-		if (foldResult) {
-			const { foldedKey, remainder, leafValue, segmentCount } = foldResult;
-			const encodedFoldedKey = encodeKey(foldedKey);
-			if (remainder === void 0) {
-				if (isJsonPrimitive(leafValue)) {
-					yield indentedLine(depth, `${encodedFoldedKey}: ${encodePrimitive(leafValue, options.delimiter)}`, options.indent);
-					return;
-				} else if (isJsonArray(leafValue)) {
-					yield* encodeArrayLines(foldedKey, leafValue, depth, options);
-					return;
-				} else if (isJsonObject(leafValue) && isEmptyObject(leafValue)) {
-					yield indentedLine(depth, `${encodedFoldedKey}:`, options.indent);
-					return;
-				}
-			}
-			if (isJsonObject(remainder)) {
-				yield indentedLine(depth, `${encodedFoldedKey}:`, options.indent);
-				const remainingDepth = effectiveFlattenDepth - segmentCount;
-				const foldedPath = pathPrefix ? `${pathPrefix}${DOT}${foldedKey}` : foldedKey;
-				yield* encodeObjectLines(remainder, depth + 1, options, rootLiteralKeys, foldedPath, remainingDepth);
-				return;
-			}
-		}
-	}
-	const encodedKey = encodeKey(key);
-	if (isJsonPrimitive(value)) yield indentedLine(depth, `${encodedKey}: ${encodePrimitive(value, options.delimiter)}`, options.indent);
-	else if (isJsonArray(value)) yield* encodeArrayLines(key, value, depth, options);
-	else if (isJsonObject(value)) {
-		yield indentedLine(depth, `${encodedKey}:`, options.indent);
-		if (!isEmptyObject(value)) yield* encodeObjectLines(value, depth + 1, options, rootLiteralKeys, currentPath, effectiveFlattenDepth);
-	}
-}
-function* encodeArrayLines(key, value, depth, options) {
-	if (value.length === 0) {
-		yield indentedLine(depth, formatHeader(0, {
-			key,
-			delimiter: options.delimiter
-		}), options.indent);
-		return;
-	}
-	if (isArrayOfPrimitives(value)) {
-		yield indentedLine(depth, encodeInlineArrayLine(value, options.delimiter, key), options.indent);
-		return;
-	}
-	if (isArrayOfArrays(value)) {
-		if (value.every((arr) => isArrayOfPrimitives(arr))) {
-			yield* encodeArrayOfArraysAsListItemsLines(key, value, depth, options);
-			return;
-		}
-	}
-	if (isArrayOfObjects(value)) {
-		const header = extractTabularHeader(value);
-		if (header) yield* encodeArrayOfObjectsAsTabularLines(key, value, header, depth, options);
-		else yield* encodeMixedArrayAsListItemsLines(key, value, depth, options);
-		return;
-	}
-	yield* encodeMixedArrayAsListItemsLines(key, value, depth, options);
-}
-function* encodeArrayOfArraysAsListItemsLines(prefix, values, depth, options) {
-	yield indentedLine(depth, formatHeader(values.length, {
-		key: prefix,
-		delimiter: options.delimiter
-	}), options.indent);
-	for (const arr of values) if (isArrayOfPrimitives(arr)) {
-		const arrayLine = encodeInlineArrayLine(arr, options.delimiter);
-		yield indentedListItem(depth + 1, arrayLine, options.indent);
-	}
-}
-function encodeInlineArrayLine(values, delimiter, prefix) {
-	const header = formatHeader(values.length, {
-		key: prefix,
-		delimiter
-	});
-	const joinedValue = encodeAndJoinPrimitives(values, delimiter);
-	if (values.length === 0) return header;
-	return `${header} ${joinedValue}`;
-}
-function* encodeArrayOfObjectsAsTabularLines(prefix, rows, header, depth, options) {
-	yield indentedLine(depth, formatHeader(rows.length, {
-		key: prefix,
-		fields: header,
-		delimiter: options.delimiter
-	}), options.indent);
-	yield* writeTabularRowsLines(rows, header, depth + 1, options);
-}
-function extractTabularHeader(rows) {
-	if (rows.length === 0) return;
-	const firstRow = rows[0];
-	const firstKeys = Object.keys(firstRow);
-	if (firstKeys.length === 0) return;
-	if (isTabularArray(rows, firstKeys)) return firstKeys;
-}
-function isTabularArray(rows, header) {
-	for (const row of rows) {
-		if (Object.keys(row).length !== header.length) return false;
-		for (const key of header) {
-			if (!(key in row)) return false;
-			if (!isJsonPrimitive(row[key])) return false;
-		}
-	}
-	return true;
-}
-function* writeTabularRowsLines(rows, header, depth, options) {
-	for (const row of rows) yield indentedLine(depth, encodeAndJoinPrimitives(header.map((key) => row[key]), options.delimiter), options.indent);
-}
-function* encodeMixedArrayAsListItemsLines(prefix, items, depth, options) {
-	yield indentedLine(depth, formatHeader(items.length, {
-		key: prefix,
-		delimiter: options.delimiter
-	}), options.indent);
-	for (const item of items) yield* encodeListItemValueLines(item, depth + 1, options);
-}
-function* encodeObjectAsListItemLines(obj, depth, options) {
-	if (isEmptyObject(obj)) {
-		yield indentedLine(depth, LIST_ITEM_MARKER, options.indent);
-		return;
-	}
-	const entries = Object.entries(obj);
-	const [firstKey, firstValue] = entries[0];
-	const restEntries = entries.slice(1);
-	if (isJsonArray(firstValue) && isArrayOfObjects(firstValue)) {
-		const header = extractTabularHeader(firstValue);
-		if (header) {
-			yield indentedListItem(depth, formatHeader(firstValue.length, {
-				key: firstKey,
-				fields: header,
-				delimiter: options.delimiter
-			}), options.indent);
-			yield* writeTabularRowsLines(firstValue, header, depth + 2, options);
-			if (restEntries.length > 0) yield* encodeObjectLines(Object.fromEntries(restEntries), depth + 1, options);
-			return;
-		}
-	}
-	const encodedKey = encodeKey(firstKey);
-	if (isJsonPrimitive(firstValue)) yield indentedListItem(depth, `${encodedKey}: ${encodePrimitive(firstValue, options.delimiter)}`, options.indent);
-	else if (isJsonArray(firstValue)) if (firstValue.length === 0) yield indentedListItem(depth, `${encodedKey}${formatHeader(0, { delimiter: options.delimiter })}`, options.indent);
-	else if (isArrayOfPrimitives(firstValue)) yield indentedListItem(depth, `${encodedKey}${encodeInlineArrayLine(firstValue, options.delimiter)}`, options.indent);
-	else {
-		yield indentedListItem(depth, `${encodedKey}${formatHeader(firstValue.length, { delimiter: options.delimiter })}`, options.indent);
-		for (const item of firstValue) yield* encodeListItemValueLines(item, depth + 2, options);
-	}
-	else if (isJsonObject(firstValue)) {
-		yield indentedListItem(depth, `${encodedKey}:`, options.indent);
-		if (!isEmptyObject(firstValue)) yield* encodeObjectLines(firstValue, depth + 2, options);
-	}
-	if (restEntries.length > 0) yield* encodeObjectLines(Object.fromEntries(restEntries), depth + 1, options);
-}
-function* encodeListItemValueLines(value, depth, options) {
-	if (isJsonPrimitive(value)) yield indentedListItem(depth, encodePrimitive(value, options.delimiter), options.indent);
-	else if (isJsonArray(value)) if (isArrayOfPrimitives(value)) yield indentedListItem(depth, encodeInlineArrayLine(value, options.delimiter), options.indent);
-	else {
-		yield indentedListItem(depth, formatHeader(value.length, { delimiter: options.delimiter }), options.indent);
-		for (const item of value) yield* encodeListItemValueLines(item, depth + 1, options);
-	}
-	else if (isJsonObject(value)) yield* encodeObjectAsListItemLines(value, depth, options);
-}
-function indentedLine(depth, content, indentSize) {
-	return " ".repeat(indentSize * depth) + content;
-}
-function indentedListItem(depth, content, indentSize) {
-	return indentedLine(depth, LIST_ITEM_PREFIX + content, indentSize);
-}
-/**
-* Applies a replacer function to a `JsonValue` and all its descendants.
-*
-* The replacer is called for:
-* - The root value (with key='', path=[])
-* - Every object property (with the property name as key)
-* - Every array element (with the string index as key: '0', '1', etc.)
-*
-* @param root - The normalized `JsonValue` to transform
-* @param replacer - The replacer function to apply
-* @returns The transformed `JsonValue`
-*/
-function applyReplacer(root, replacer) {
-	const replacedRoot = replacer("", root, []);
-	if (replacedRoot === void 0) return transformChildren(root, replacer, []);
-	return transformChildren(normalizeValue(replacedRoot), replacer, []);
-}
-/**
-* Recursively transforms the children of a `JsonValue` using the replacer.
-*
-* @param value - The value whose children should be transformed
-* @param replacer - The replacer function to apply
-* @param path - Current path from root
-* @returns The value with transformed children
-*/
-function transformChildren(value, replacer, path) {
-	if (isJsonObject(value)) return transformObject(value, replacer, path);
-	if (isJsonArray(value)) return transformArray(value, replacer, path);
-	return value;
-}
-/**
-* Transforms an object by applying the replacer to each property.
-*
-* @param obj - The object to transform
-* @param replacer - The replacer function to apply
-* @param path - Current path from root
-* @returns A new object with transformed properties
-*/
-function transformObject(obj, replacer, path) {
-	const result = {};
-	for (const [key, value] of Object.entries(obj)) {
-		const childPath = [...path, key];
-		const replacedValue = replacer(key, value, childPath);
-		if (replacedValue === void 0) continue;
-		result[key] = transformChildren(normalizeValue(replacedValue), replacer, childPath);
-	}
-	return result;
-}
-/**
-* Transforms an array by applying the replacer to each element.
-*
-* @param arr - The array to transform
-* @param replacer - The replacer function to apply
-* @param path - Current path from root
-* @returns A new array with transformed elements
-*/
-function transformArray(arr, replacer, path) {
-	const result = [];
-	for (let i = 0; i < arr.length; i++) {
-		const value = arr[i];
-		const childPath = [...path, i];
-		const replacedValue = replacer(String(i), value, childPath);
-		if (replacedValue === void 0) continue;
-		const normalizedValue = normalizeValue(replacedValue);
-		result.push(transformChildren(normalizedValue, replacer, childPath));
-	}
-	return result;
-}
-/**
-* Encodes a JavaScript value into TOON format string.
-*
-* @param input - Any JavaScript value (objects, arrays, primitives)
-* @param options - Optional encoding configuration
-* @returns TOON formatted string
-*
-* @example
-* ```ts
-* encode({ name: 'Alice', age: 30 })
-* // name: Alice
-* // age: 30
-*
-* encode({ users: [{ id: 1 }, { id: 2 }] })
-* // users[]:
-* //   - id: 1
-* //   - id: 2
-*
-* encode(data, { indent: 4, keyFolding: 'safe' })
-* ```
-*/
-function encode(input, options) {
-	return Array.from(encodeLines(input, options)).join("\n");
-}
-/**
-* Encodes a JavaScript value into TOON format as a sequence of lines.
-*
-* This function yields TOON lines one at a time without building the full string,
-* making it suitable for streaming large outputs to files, HTTP responses, or process stdout.
-*
-* @param input - Any JavaScript value (objects, arrays, primitives)
-* @param options - Optional encoding configuration
-* @returns Iterable of TOON lines (without trailing newlines)
-*
-* @example
-* ```ts
-* // Stream to stdout
-* for (const line of encodeLines({ name: 'Alice', age: 30 })) {
-*   console.log(line)
-* }
-*
-* // Collect to array
-* const lines = Array.from(encodeLines(data))
-*
-* // Equivalent to encode()
-* const toonString = Array.from(encodeLines(data, options)).join('\n')
-* ```
-*/
-function encodeLines(input, options) {
-	const normalizedValue = normalizeValue(input);
-	const resolvedOptions = resolveOptions(options);
-	return encodeJsonValue(resolvedOptions.replacer ? applyReplacer(normalizedValue, resolvedOptions.replacer) : normalizedValue, resolvedOptions, 0);
-}
-function resolveOptions(options) {
-	return {
-		indent: options?.indent ?? 2,
-		delimiter: options?.delimiter ?? DEFAULT_DELIMITER,
-		keyFolding: options?.keyFolding ?? "off",
-		flattenDepth: options?.flattenDepth ?? Number.POSITIVE_INFINITY,
-		replacer: options?.replacer
-	};
-}
-
-//#endregion
-//#region shared/comment.ts
-const CLANK8Y_REPO_URL = "https://github.com/clank8y/clank8y";
-const CUMULOCITY_URL = "https://cumulocity.com";
-function buildClank8yCommentBody(rawBody, options) {
-	const normalizedBody = (rawBody ?? "").trim();
-	const footerLinks = [{
-		label: "clank8y",
-		url: CLANK8Y_REPO_URL
-	}, {
-		label: "cumulocity",
-		url: CUMULOCITY_URL
-	}];
-	if (options?.workflowRunUrl) footerLinks.push({
-		label: "workflow run",
-		url: options.workflowRunUrl
-	});
-	const footer = footerLinks.map((link) => `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`).join(" | ");
-	return [
-		normalizedBody || "_No summary provided._",
-		"",
-		`<sub>${footer}</sub>`
-	].join("\n");
-}
-
-//#endregion
-//#region src/mcp/github.ts
-const FILE_CHUNK_DEFAULT_LIMIT = 200;
-const FILE_CHUNK_MAX_LIMIT = 400;
-const FILE_CHUNK_MAX_CHARS = 3e4;
-const FILE_FULL_MAX_LINES = 250;
-const FILE_FULL_MAX_CHARS = 2e4;
-let _githubMCP = null;
-function normalizeEscapedNewlines(text) {
-	return text.replace(/\\r\\n|\\n|\\r/g, (match) => {
-		if (match === "\\r\\n") return "\r\n";
-		return "\n";
-	});
-}
-function stripSurroundingQuotes(text) {
-	let result = text;
-	if (result.startsWith("\"")) result = result.slice(1);
-	if (result.endsWith("\"")) result = result.slice(0, -1);
-	return result;
-}
-function normalizeToolString(text) {
-	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
-}
-async function fetchAllPullRequestFiles() {
-	const octokit = await getOctokit();
-	const pullRequest = getActivePullRequestContext();
-	const allFiles = [];
-	let page = 1;
-	while (true) {
-		const { data: files } = await octokit.rest.pulls.listFiles({
-			owner: pullRequest.owner,
-			repo: pullRequest.repo,
-			pull_number: pullRequest.number,
-			page,
-			per_page: 100
-		});
-		allFiles.push(...files);
-		if (files.length < 100) break;
-		page += 1;
-	}
-	return allFiles;
-}
-async function fetchAllPullRequestReviews() {
-	const octokit = await getOctokit();
-	const pullRequest = getActivePullRequestContext();
-	return await octokit.paginate(octokit.rest.pulls.listReviews, {
-		owner: pullRequest.owner,
-		repo: pullRequest.repo,
-		pull_number: pullRequest.number,
-		per_page: 100
-	});
-}
-async function fetchAllPullRequestReviewComments() {
-	const octokit = await getOctokit();
-	const pullRequest = getActivePullRequestContext();
-	return await octokit.paginate(octokit.rest.pulls.listReviewComments, {
-		owner: pullRequest.owner,
-		repo: pullRequest.repo,
-		pull_number: pullRequest.number,
-		per_page: 100
-	});
-}
-function formatTimestamp(timestamp) {
-	if (!timestamp) return "unknown time";
-	return timestamp;
-}
-function firstNonEmptyValue(...values) {
-	for (const value of values) if (value !== null && value !== void 0) return value;
-	return null;
-}
-function buildReviewHeader(review) {
-	const reviewer = review.user?.login ?? "unknown";
-	const submittedAt = formatTimestamp(review.submitted_at);
-	const state = review.state ?? "UNKNOWN";
-	return `Review ${review.id} by ${reviewer} at ${submittedAt} [${state}]`;
-}
-function buildThreadLocation(comment, rootCommentId) {
-	const path = comment.path ?? "(no file path)";
-	const line = firstNonEmptyValue(comment.line, comment.original_line, comment.start_line, comment.original_start_line);
-	if (line === null) return `${path} [thread ${rootCommentId}]`;
-	return `${path}:${line}`;
-}
-function formatPreviousReviewCommentsArtifact(pullRequestNumber, reviews, comments) {
-	const lines = [];
-	const tocEntries = [];
-	const reviewById = new Map(reviews.map((review) => [review.id, review]));
-	const commentById = new Map(comments.map((comment) => [comment.id, comment]));
-	const threadMap = /* @__PURE__ */ new Map();
-	function getRootCommentId(comment) {
-		let current = comment;
-		let rootId = current.id;
-		const seen = /* @__PURE__ */ new Set();
-		while (current.in_reply_to_id) {
-			if (seen.has(current.id)) break;
-			seen.add(current.id);
-			const parent = commentById.get(current.in_reply_to_id);
-			if (!parent) {
-				rootId = current.in_reply_to_id;
-				break;
-			}
-			current = parent;
-			rootId = current.id;
-		}
-		return rootId;
-	}
-	for (const comment of comments) {
-		const rootCommentId = getRootCommentId(comment);
-		const threadComments = threadMap.get(rootCommentId);
-		if (threadComments) threadComments.push(comment);
-		else threadMap.set(rootCommentId, [comment]);
-	}
-	const threads = [...threadMap.entries()].flatMap(([rootCommentId, threadComments]) => {
-		const sortedComments = [...threadComments].sort((left, right) => {
-			const leftTime = left.created_at ?? "";
-			const rightTime = right.created_at ?? "";
-			return leftTime.localeCompare(rightTime) || left.id - right.id;
-		});
-		const rootComment = sortedComments.find((comment) => comment.id === rootCommentId) ?? sortedComments[0];
-		if (!rootComment) return [];
-		return {
-			rootCommentId,
-			rootComment,
-			comments: sortedComments
-		};
-	}).sort((left, right) => {
-		const leftPath = left.rootComment.path ?? "";
-		const rightPath = right.rootComment.path ?? "";
-		const pathCompare = leftPath.localeCompare(rightPath);
-		if (pathCompare !== 0) return pathCompare;
-		const leftLine = firstNonEmptyValue(left.rootComment.line, left.rootComment.original_line, left.rootComment.start_line, left.rootComment.original_start_line) ?? 0;
-		const rightLine = firstNonEmptyValue(right.rootComment.line, right.rootComment.original_line, right.rootComment.start_line, right.rootComment.original_start_line) ?? 0;
-		if (leftLine !== rightLine) return leftLine - rightLine;
-		return left.rootCommentId - right.rootCommentId;
-	});
-	lines.push(`# Previous Review Comments For PR #${pullRequestNumber}`);
-	lines.push("");
-	lines.push(`reviews: ${reviews.length}`);
-	lines.push(`inline_comments: ${comments.length}`);
-	lines.push("");
-	if (reviews.length > 0) {
-		lines.push("## Reviews");
-		lines.push("");
-		for (const review of [...reviews].sort((left, right) => {
-			const leftTime = left.submitted_at ?? "";
-			const rightTime = right.submitted_at ?? "";
-			return leftTime.localeCompare(rightTime) || left.id - right.id;
-		})) {
-			lines.push(`### ${buildReviewHeader(review)}`);
-			lines.push("");
-			lines.push(review.body?.trim() || "(no review body)");
-			lines.push("");
-		}
-	}
-	if (threads.length > 0) {
-		lines.push("## Thread TOC");
-		lines.push("");
-		for (const thread of threads) tocEntries.push(`- ${buildThreadLocation(thread.rootComment, thread.rootCommentId)}`);
-		lines.push(...tocEntries);
-		lines.push("");
-	}
-	lines.push("---");
-	lines.push("");
-	if (threads.length === 0) {
-		lines.push("No inline review comments found on this pull request yet.");
-		lines.push("");
-	}
-	for (const thread of threads) {
-		const location = buildThreadLocation(thread.rootComment, thread.rootCommentId);
-		const review = thread.rootComment.pull_request_review_id ? reviewById.get(thread.rootComment.pull_request_review_id) ?? null : null;
-		lines.push(`## ${location}`);
-		lines.push("");
-		lines.push(`root_comment_id: ${thread.rootCommentId}`);
-		lines.push(`review_id: ${thread.rootComment.pull_request_review_id ?? "unknown"}`);
-		lines.push(`reviewer: ${review?.user?.login ?? "unknown"}`);
-		lines.push(`review_state: ${review?.state ?? "unknown"}`);
-		lines.push(`thread_comments: ${thread.comments.length}`);
-		lines.push("");
-		if (thread.rootComment.diff_hunk) {
-			lines.push("```diff");
-			lines.push(thread.rootComment.diff_hunk);
-			lines.push("```");
-			lines.push("");
-		}
-		for (const comment of thread.comments) {
-			const author = comment.user?.login ?? "unknown";
-			lines.push(`### ${author} at ${formatTimestamp(comment.created_at)}`);
-			lines.push("");
-			lines.push(`comment_id: ${comment.id}`);
-			lines.push(`reply_to: ${comment.in_reply_to_id ?? "root"}`);
-			lines.push(comment.body?.trim() || "(no comment body)");
-			lines.push("");
-		}
-	}
-	return {
-		toc: tocEntries.join("\n"),
-		content: lines.join("\n")
-	};
-}
-function formatFilesWithLineNumbers(files) {
-	const output = [];
-	const tocEntries = [];
-	let currentLine = 1;
-	for (const file of files) {
-		const fileStartLine = currentLine;
-		output.push(`## ${file.filename}`);
-		output.push(`status: ${file.status}, +${file.additions}/-${file.deletions}`);
-		currentLine += 2;
-		if (!file.patch) {
-			output.push("(binary file or no textual patch available)");
-			output.push("");
-			currentLine += 2;
-			tocEntries.push(`- ${file.filename} -> lines ${fileStartLine}-${currentLine - 1}`);
-			continue;
-		}
-		const lines = file.patch.split("\n");
-		let oldLine = 0;
-		let newLine = 0;
-		for (const line of lines) {
-			const hunkMatch = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-			if (hunkMatch) {
-				const oldStart = hunkMatch[1];
-				const newStart = hunkMatch[2];
-				if (!oldStart || !newStart) continue;
-				oldLine = Number.parseInt(oldStart, 10);
-				newLine = Number.parseInt(newStart, 10);
-				output.push(line);
-				currentLine += 1;
-				continue;
-			}
-			const marker = line[0] ?? " ";
-			const code = line.slice(1);
-			if (marker === "-") {
-				output.push(`|${oldLine}|-|${code}`);
-				oldLine += 1;
-			} else if (marker === "+") {
-				output.push(`|${newLine}|+|${code}`);
-				newLine += 1;
-			} else {
-				output.push(`|${oldLine}|${newLine}||${code}`);
-				oldLine += 1;
-				newLine += 1;
-			}
-			currentLine += 1;
-		}
-		output.push("");
-		currentLine += 1;
-		tocEntries.push(`- ${file.filename} -> lines ${fileStartLine}-${currentLine - 1}`);
-	}
-	const toc = [
-		"# TOC",
-		...tocEntries,
-		""
-	].join("\n");
-	return {
-		content: `${toc}${output.join("\n")}`,
-		toc
-	};
-}
-function githubMCP() {
-	if (!_githubMCP) _githubMCP = createGitHubMCP();
-	return _githubMCP;
-}
-function createGitHubMCP() {
-	const transport = new HttpTransport(mcp, { path: "/mcp" });
-	const server = serve({
-		manual: true,
-		port: 0,
-		fetch: async (req) => {
-			const response = await transport.respond(req);
-			if (!response) return new NodeResponse("Not found", { status: 404 });
-			return response;
-		}
-	});
-	let status = { state: "stopped" };
-	return {
-		serverType: "http",
-		allowedTools: ["*"],
-		get status() {
-			return status;
-		},
-		start: async () => {
-			await server.serve();
-			const { url } = await server.ready();
-			if (!url) {
-				await server.close(true);
-				throw new Error("Failed to start GitHub MCP server");
-			}
-			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
-			status = {
-				state: "running",
-				url: actualUrl
-			};
-			return {
-				url: actualUrl,
-				toolNames: githubMcpTools.map((tool) => tool.name)
-			};
-		},
-		stop: async () => {
-			await server.close(true);
-			status = { state: "stopped" };
-		}
-	};
-}
-const mcp = new McpServer({
-	name: "clank8y-github-mcp",
-	description: "A MCP server that helps you complete pull request reviews",
-	version: "1.0.0"
-}, {
-	adapter: new ValibotJsonSchemaAdapter(),
-	capabilities: { tools: { listChanged: true } }
-});
-const setPullRequestContextTool = defineTool({
-	name: "set-pull-request-context",
-	description: "Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.",
-	title: "Set Pull Request Context",
-	schema: pipe(object({
-		repository: pipe(string(), description("Repository in owner/repo format for the pull request to review.")),
-		pr_number: pipe(number(), description("The pull request number to set as the active review context."))
-	}), description("Arguments for selecting the active pull request before any review-specific GitHub MCP tools are used."))
-}, async ({ repository, pr_number }) => {
-	try {
-		const pullRequest = await setPullRequestContext({
-			repository,
-			prNumber: pr_number
-		});
-		return tool.structured({
-			success: true,
-			context: {
-				repository: `${pullRequest.owner}/${pullRequest.repo}`,
-				pullRequestNumber: pullRequest.number,
-				baseRef: pullRequest.baseRef,
-				headRef: pullRequest.headRef
-			},
-			pullRequest: {
-				number: pullRequest.number,
-				owner: pullRequest.owner,
-				repo: pullRequest.repo,
-				headRef: pullRequest.headRef,
-				headSha: pullRequest.headSha,
-				baseRef: pullRequest.baseRef,
-				baseSha: pullRequest.baseSha
-			}
-		});
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return tool.error(`Failed to set pull request context: ${message}`);
-	}
-});
-const preparePullRequestReviewTool = defineTool({
-	name: "prepare-pull-request-review",
-	description: "Single entrypoint for review setup: PR metadata, file summary, and diff TOC with chunk-read instructions",
-	title: "Prepare Pull Request Review"
-}, async () => {
-	try {
-		const octokit = await getOctokit();
-		const pullRequest = getActivePullRequestContext();
-		const [{ data: pr }, files, reviews, reviewComments] = await Promise.all([
-			octokit.rest.pulls.get({
-				owner: pullRequest.owner,
-				repo: pullRequest.repo,
-				pull_number: pullRequest.number
-			}),
-			fetchAllPullRequestFiles(),
-			fetchAllPullRequestReviews(),
-			fetchAllPullRequestReviewComments()
-		]);
-		const artifactPaths = getReviewArtifactPaths();
-		await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
-		const previousReviewComments = formatPreviousReviewCommentsArtifact(pr.number, reviews, reviewComments);
-		const reviewCommentsPath = await writeReviewCommentsArtifact(previousReviewComments.content);
-		const fileSummaries = files.map((file) => ({
-			path: file.filename,
-			status: file.status,
-			additions: file.additions,
-			deletions: file.deletions,
-			hasPatch: !!file.patch
-		}));
-		return tool.structured({
-			pullRequest: {
-				number: pr.number,
-				title: pr.title,
-				body: pr.body,
-				url: pr.html_url,
-				state: pr.state,
-				draft: pr.draft,
-				merged: pr.merged,
-				author: pr.user?.login ?? null,
-				base: {
-					ref: pr.base.ref,
-					sha: pr.base.sha
-				},
-				head: {
-					ref: pr.head.ref,
-					sha: pr.head.sha
-				},
-				labels: pr.labels.map((label) => typeof label === "string" ? label : label.name),
-				assignees: pr.assignees?.map((assignee) => assignee.login) ?? [],
-				isFork: pr.head.repo?.full_name !== pr.base.repo.full_name
-			},
-			files: {
-				count: fileSummaries.length,
-				summary: fileSummaries
-			},
-			diff: {
-				path: artifactPaths.diffPath,
-				instructions: "Read the TOC at the top first to map files to line ranges. Then work through file groups selectively. Use rg or grep on this file to search for repeated patterns."
-			},
-			previousReviews: {
-				path: reviewCommentsPath,
-				reviewCount: reviews.length,
-				inlineCommentCount: reviewComments.length,
-				toc: previousReviewComments.toc,
-				instructions: "Read this separate artifact to see previous review bodies and inline comment history, including who wrote what and when. Use it to avoid repeating already-given feedback unless the new diff introduces a new instance of the same problem."
-			}
-		});
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return tool.error(`Failed to prepare pull request review context: ${message}`);
-	}
-});
-const createPullRequestReviewTool = defineTool({
-	name: "create-pull-request-review",
-	description: "Submit a review for the current pull request with optional inline comments",
-	title: "Create Pull Request Review",
-	schema: pipe(object({
-		body: optional(pipe(string(), description("1-2 sentence summary for the review. Put most actionable feedback in inline comments. Do not wrap the value in quotation marks."))),
-		commit_id: optional(pipe(string(), description("Optional commit SHA for the review. Defaults to current PR head SHA."))),
-		comments: optional(pipe(array(pipe(object({
-			path: pipe(string(), description("Path of the file to comment on, relative to repository root.")),
-			line: pipe(number(), description("End line of the comment range in the diff (new file line numbering).")),
-			start_line: optional(pipe(number(), description("Start line of the comment range. For single-line comments, set equal to line."))),
-			side: optional(pipe(picklist(["LEFT", "RIGHT"]), description("Diff side: LEFT for old/deleted lines, RIGHT for new/unchanged lines. Defaults to RIGHT."))),
-			body: optional(pipe(string(), description("Explanatory comment text. Optional if suggestion is provided."))),
-			suggestion: optional(pipe(string(), description("Replacement code for [start_line, line]. Must preserve indentation.")))
-		}), description("Single inline review comment payload."))), description("Inline review comments. Use these for line-level feedback in the diff.")))
-	}), description("Payload for submitting a pull request review in one API call."))
-}, async ({ body, commit_id, comments }) => {
-	try {
-		const octokit = await getOctokit();
-		const runtimeContext = getClank8yRuntimeContext();
-		const pullRequest = getActivePullRequestContext();
-		const reviewCommentsInput = comments ?? [];
-		const reviewBody = buildClank8yCommentBody(body === void 0 ? void 0 : normalizeToolString(body), { workflowRunUrl: runtimeContext.runInfo?.url ?? null });
-		let commitSha = commit_id;
-		if (!commitSha) {
-			const { data: pr } = await octokit.rest.pulls.get({
-				owner: pullRequest.owner,
-				repo: pullRequest.repo,
-				pull_number: pullRequest.number
-			});
-			commitSha = pr.head.sha;
-		}
-		const apiComments = reviewCommentsInput.map((comment) => {
-			const side = comment.side ?? "RIGHT";
-			const startLine = comment.start_line ?? comment.line;
-			let commentBody = normalizeToolString(comment.body ?? "");
-			if (comment.suggestion !== void 0) {
-				const suggestionBlock = `\`\`\`suggestion\n${normalizeToolString(comment.suggestion)}\n\`\`\``;
-				commentBody = commentBody ? `${commentBody}\n\n${suggestionBlock}` : suggestionBlock;
-			}
-			return {
-				path: comment.path,
-				line: comment.line,
-				side,
-				body: commentBody,
-				start_line: startLine,
-				start_side: side
-			};
-		});
-		const params = {
-			owner: pullRequest.owner,
-			repo: pullRequest.repo,
-			pull_number: pullRequest.number,
-			event: "COMMENT",
-			commit_id: commitSha
-		};
-		params.body = reviewBody;
-		if (apiComments.length > 0) params.comments = apiComments;
-		const result = await octokit.rest.pulls.createReview(params);
-		return tool.text(encode({
-			success: true,
-			review_id: result.data.id,
-			state: result.data.state,
-			url: result.data.html_url,
-			submitted_at: result.data.submitted_at,
-			comment_count: apiComments.length
-		}));
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return tool.error(`Failed to create pull request review: ${message}`);
-	}
-});
-const getPullRequestFileContentTool = defineTool({
-	name: "get-pull-request-file-content",
-	description: "Get content for a changed pull request file, with chunked reads by default",
-	title: "Get Pull Request File Content",
-	schema: pipe(object({
-		filename: pipe(string(), description("Path of a file changed in the current pull request.")),
-		offset: optional(pipe(number(), description("1-based starting line number for chunked file reads. Defaults to 1."))),
-		limit: optional(pipe(number(), description("Maximum number of lines to return for chunked reads. Defaults to 200 and is capped at 400."))),
-		full: optional(pipe(boolean(), description("Return full file content when true. Allowed only for small files (max 250 lines and 20,000 characters).")))
-	}), description("Arguments for fetching the head-version content of a changed pull request file with optional chunking."))
-}, async ({ filename, offset, limit, full }) => {
-	try {
-		const octokit = await getOctokit();
-		const pullRequest = getActivePullRequestContext();
-		if (!(await fetchAllPullRequestFiles()).find((f) => f.filename === filename)) return tool.error(`File ${filename} not found in pull request`);
-		const { data: content } = await octokit.rest.repos.getContent({
-			owner: pullRequest.owner,
-			repo: pullRequest.repo,
-			path: filename,
-			ref: pullRequest.headSha
-		});
-		if (Array.isArray(content)) return tool.error(`Path ${filename} resolved to a directory, expected a file`);
-		if (!("content" in content) || !content.content) return tool.error(`No textual content available for ${filename}`);
-		const encoding = content.encoding === "base64" ? "base64" : "utf-8";
-		const decodedContent = Buffer$1.from(content.content, encoding).toString("utf-8");
-		const lines = decodedContent.split("\n");
-		const totalLines = lines.length;
-		if (full) {
-			if (totalLines > FILE_FULL_MAX_LINES || decodedContent.length > FILE_FULL_MAX_CHARS) return tool.error([
-				`Refusing full file read for ${filename}.`,
-				`Hard limits: <= ${FILE_FULL_MAX_LINES} lines and <= ${FILE_FULL_MAX_CHARS} characters.`,
-				`Actual: ${totalLines} lines, ${decodedContent.length} characters.`,
-				"Use chunked reads with offset + limit instead."
-			].join(" "));
-			return tool.text(decodedContent);
-		}
-		const requestedOffset = offset ?? 1;
-		const startLine = Math.max(1, requestedOffset);
-		const requestedLimit = limit ?? FILE_CHUNK_DEFAULT_LIMIT;
-		const normalizedLimit = Math.max(1, Math.min(FILE_CHUNK_MAX_LIMIT, requestedLimit));
-		const endLine = Math.min(totalLines, startLine + normalizedLimit - 1);
-		const rawChunk = lines.slice(startLine - 1, endLine).join("\n");
-		const chunk = rawChunk.length > FILE_CHUNK_MAX_CHARS ? `${rawChunk.slice(0, FILE_CHUNK_MAX_CHARS)}\n\n[truncated: chunk exceeded ${FILE_CHUNK_MAX_CHARS} characters]` : rawChunk;
-		return tool.text([
-			`File chunk ${startLine}-${endLine} of ${totalLines} for ${filename}`,
-			`Remaining lines after this chunk: ${Math.max(0, totalLines - endLine)}`,
-			"",
-			chunk
-		].join("\n"));
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return tool.error(`Failed to load PR file content: ${message}`);
-	}
-});
-const createPullRequestCommentTool = defineTool({
-	name: "create-pull-request-comment",
-	description: "Post a simple comment on the pull request. Use this instead of create-pull-request-review when you have no inline review findings to submit — for example when the diff is clean or all issues are already covered by open review comments.",
-	title: "Create Pull Request Comment",
-	schema: pipe(object({ body: pipe(string(), description("The comment body. Briefly explain why no review was submitted (e.g. no issues found, all issues already covered by open comments). Do not wrap the value in quotation marks.")) }), description("Payload for posting a simple PR comment without a formal review."))
-}, async ({ body }) => {
-	try {
-		const octokit = await getOctokit();
-		const runtimeContext = getClank8yRuntimeContext();
-		const pullRequest = getActivePullRequestContext();
-		const commentBody = buildClank8yCommentBody(normalizeToolString(body), { workflowRunUrl: runtimeContext.runInfo?.url ?? null });
-		const result = await octokit.rest.issues.createComment({
-			owner: pullRequest.owner,
-			repo: pullRequest.repo,
-			issue_number: pullRequest.number,
-			body: commentBody
-		});
-		return tool.text(encode({
-			success: true,
-			comment_id: result.data.id,
-			url: result.data.html_url
-		}));
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return tool.error(`Failed to create pull request comment: ${message}`);
-	}
-});
-const githubMcpTools = [
-	setPullRequestContextTool,
-	preparePullRequestReviewTool,
-	createPullRequestReviewTool,
-	createPullRequestCommentTool,
-	getPullRequestFileContentTool
-];
-mcp.tools(githubMcpTools);
-
-//#endregion
 //#region src/mcp/index.ts
 async function startAll(servers) {
 	const results = {};
@@ -39519,13 +39537,6 @@ async function startAll(servers) {
 }
 async function stopAll(servers) {
 	await Promise.all(Object.values(servers).map((s) => s.stop()));
-}
-function mcpServers() {
-	return {
-		github: githubMCP(),
-		codex: codexMCP(),
-		angular: angularMCP()
-	};
 }
 
 //#endregion
@@ -39594,7 +39605,7 @@ const COPILOT_REVIEW_EXCLUDED_TOOLS = [
 	"web_fetch",
 	"write_bash"
 ];
-async function runCopilotReview(prompt, profile) {
+async function runCopilotReview(prompt, profile, mcps) {
 	const client = await getCopilotClient();
 	const thoughtStarts = /* @__PURE__ */ new Map();
 	const totals = {
@@ -39604,7 +39615,7 @@ async function runCopilotReview(prompt, profile) {
 		cacheWriteTokens: 0,
 		cost: 0
 	};
-	const servers = mcpServers();
+	const servers = mcps;
 	const startResults = await startAll(servers);
 	try {
 		const session = await client.createSession({
@@ -39709,10 +39720,10 @@ const githubCopilotAgent = async (profile) => {
 			mcp: selectModeOptions.mcp,
 			timeoutMs: profile.tools.maxRuntimeMs
 		}),
-		run: async ({ mode, prompt }) => {
+		run: async ({ mode, prompt, mcps }) => {
 			switch (mode) {
 				case "Review":
-					await runCopilotReview(prompt, profile);
+					await runCopilotReview(prompt, profile, mcps);
 					break;
 				default: throw new Error(`Unsupported mode for GitHub Copilot agent: ${mode}`);
 			}
@@ -39763,16 +39774,16 @@ async function executeClank8yAgent(options) {
 	const { agent, profile } = await getClank8y(options);
 	await resetClank8yArtifacts();
 	consola.success("Reset .clank8y artifacts directory.");
-	const { mcp, getSelection } = selectModeMCP();
+	const { mcp, getSelection, prompt: selectModePrompt } = getSelectModeRuntime(options.promptContext);
 	await mcp.start();
 	await agent.selectMode({
-		prompt: buildModeSelectionPrompt(options.promptContext),
+		prompt: selectModePrompt,
 		mcp
 	});
 	await mcp.stop();
 	const selection = getSelection();
 	if (!selection) throw new Error("Mode selection failed: the model did not provide a valid clank8y mode selection.");
-	const prompt = buildPrompt(selection.mode, options.promptContext);
+	const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext);
 	logAgentMessage({
 		agent: agent.name,
 		model: profile.model
@@ -39787,7 +39798,8 @@ async function executeClank8yAgent(options) {
 	]);
 	await agent.run({
 		mode: selection.mode,
-		prompt
+		prompt,
+		mcps
 	});
 	await agent.cleanup?.();
 	return selection;
