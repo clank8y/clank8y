@@ -64,48 +64,6 @@ function requireRunInfo(repository: RepositoryContext): RunInfo {
   }
 }
 
-function buildPromptContext(basePromptContext: string, repository: RepositoryContext): string {
-  const workflowBranch = process.env.GITHUB_REF_NAME?.trim() || undefined
-  const workflowRef = github.context.ref?.trim() || undefined
-  const workflowName = process.env.GITHUB_WORKFLOW?.trim() || undefined
-  const eventName = github.context.eventName?.trim() || undefined
-  const actor = github.context.actor?.trim() || undefined
-
-  const lines = [basePromptContext.trim()]
-
-  lines.push(
-    '',
-    '---',
-    '',
-    'GITHUB WORKFLOW CONTEXT:',
-    'execution_environment: github-actions',
-  )
-
-  lines.push(`workflow_repository: ${repository.owner}/${repository.repo}`)
-
-  if (workflowBranch) {
-    lines.push(`workflow_branch: ${workflowBranch}`)
-  }
-
-  if (workflowRef) {
-    lines.push(`workflow_ref: ${workflowRef}`)
-  }
-
-  if (workflowName) {
-    lines.push(`workflow_name: ${workflowName}`)
-  }
-
-  if (eventName) {
-    lines.push(`workflow_event: ${eventName}`)
-  }
-
-  if (actor) {
-    lines.push(`workflow_actor: ${actor}`)
-  }
-
-  return lines.join('\n')
-}
-
 function resolveCopilotToken(): string {
   const token = process.env.COPILOT_GITHUB_TOKEN?.trim()
   if (!token) {
@@ -202,7 +160,7 @@ export async function runClank8yEntry(): Promise<void> {
   core.setSecret(copilotToken)
 
   await runClank8y({
-    promptContext: buildPromptContext(resolveRequiredInput('prompt'), repository),
+    promptContext: resolveRequiredInput('prompt'),
     auth: {
       githubToken,
       copilotToken,

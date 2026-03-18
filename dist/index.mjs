@@ -39864,22 +39864,6 @@ function requireRunInfo(repository) {
 		url: `https://github.com/${repository.owner}/${repository.repo}/actions/runs/${context.runId}`
 	};
 }
-function buildPromptContext(basePromptContext, repository) {
-	const workflowBranch = process$1.env.GITHUB_REF_NAME?.trim() || void 0;
-	const workflowRef = context.ref.trim() || void 0;
-	const workflowName = process$1.env.GITHUB_WORKFLOW?.trim() || void 0;
-	const eventName = context.eventName.trim() || void 0;
-	const actor = context.actor.trim() || void 0;
-	const lines = [basePromptContext.trim()];
-	lines.push("", "---", "", "GITHUB WORKFLOW CONTEXT:", "execution_environment: github-actions");
-	lines.push(`workflow_repository: ${repository.owner}/${repository.repo}`);
-	if (workflowBranch) lines.push(`workflow_branch: ${workflowBranch}`);
-	if (workflowRef) lines.push(`workflow_ref: ${workflowRef}`);
-	if (workflowName) lines.push(`workflow_name: ${workflowName}`);
-	if (eventName) lines.push(`workflow_event: ${eventName}`);
-	if (actor) lines.push(`workflow_actor: ${actor}`);
-	return lines.join("\n");
-}
 function resolveCopilotToken() {
 	const token = process$1.env.COPILOT_GITHUB_TOKEN?.trim();
 	if (!token) throw new Error("Copilot authentication token is missing. Set COPILOT_GITHUB_TOKEN.");
@@ -39942,7 +39926,7 @@ async function runClank8yEntry() {
 	setSecret(githubToken);
 	setSecret(copilotToken);
 	await runClank8y({
-		promptContext: buildPromptContext(resolveRequiredInput("prompt"), repository),
+		promptContext: resolveRequiredInput("prompt"),
 		auth: {
 			githubToken,
 			copilotToken
