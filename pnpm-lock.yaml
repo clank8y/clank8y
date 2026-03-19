@@ -208,6 +208,10 @@ importers:
       wrangler:
         specifier: 'catalog:'
         version: 4.69.0
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
 packages:
 
