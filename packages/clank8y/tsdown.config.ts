@@ -11,6 +11,7 @@ export default defineConfig({
   treeshake: true,
   dts: true,
   outDir: './dist',
+  inlineOnly: false,
   outputOptions: {
     codeSplitting: false,
   },
