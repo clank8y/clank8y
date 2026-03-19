@@ -20,7 +20,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "release": "bumpp",
+    "release": "bumpp -r",
     "localtest": "pnpm dlx jiti ./localtest.ts"
   },
   "dependencies": {
