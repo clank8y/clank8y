@@ -1,0 +1,68 @@
+{
+  "name": "clank8y",
+  "version": "1.1.1",
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
+  "description": "Run the clank8y agent programmatically — for sandboxed environments and cross-repo workflows",
+  "keywords": [
+    "clank8y",
+    "cumulocity",
+    "c8y",
+    "pull-request",
+    "review-bot",
+    "ai-agent"
+  ],
+  "license": "MIT",
+  "author": "schplitt",
+  "homepage": "https://github.com/clank8y/clank8y/tree/main/packages/clank8y#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clank8y/clank8y.git",
+    "directory": "packages/clank8y"
+  },
+  "bugs": {
+    "url": "https://github.com/clank8y/clank8y/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "catalog:",
+    "@tmcp/adapter-valibot": "catalog:",
+    "@tmcp/transport-http": "catalog:",
+    "@toon-format/toon": "catalog:",
+    "@valibot/to-json-schema": "catalog:",
+    "consola": "catalog:",
+    "defu": "catalog:",
+    "octokit": "catalog:",
+    "srvx": "catalog:",
+    "tinyexec": "catalog:",
+    "tmcp": "catalog:",
+    "valibot": "catalog:"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

@@ -4,7 +4,8 @@
   "scripts": {
     "build": "nitro build",
     "dev": "nitro dev",
-    "preview": "npx srvx --prod .output/"
+    "preview": "npx srvx --prod .output/",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@octokit/auth-app": "catalog:",
@@ -15,5 +16,8 @@
     "rolldown": "catalog:",
     "valibot": "catalog:",
     "wrangler": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
   }
 }

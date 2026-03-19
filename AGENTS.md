@@ -8,58 +8,72 @@
 
 ```
 src/
-├── index.ts            # Main action entrypoint
-├── setup.ts            # Action inputs + runtime context (PR context in modes/review/context.ts)
-├── formatters/         # Reusable pure formatting helpers shared across MCPs
-├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
-│   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
-│   ├── review/         # Review mode runtime
-│   │   ├── prompt.ts   # Review prompt builder
-│   │   └── mcps/       # Review-specific MCP servers
-│   └── selectMode/     # Mode-selection runtime
-│       ├── prompt.ts   # Mode-selection prompt builder
-│       └── mcps/       # Dedicated select-mode MCP server
-├── modeSelection/      # Shared mode-selection metadata and schemas
-├── agents/             # Review agent runtime and orchestration helpers
-│   └── copilot/        # Shared Copilot client/bootstrap helpers plus per-mode runtime files
-└── mcp/                # Shared MCP interfaces, adapters, and reusable external MCPs
-    ├── index.ts        # Interfaces (MCPServer, LocalHTTPMCPServer, LocalStdioMCPServer), startAll/stopAll
-    ├── angular.ts      # Stdio MCP server (Angular CLI via npx)
-    ├── codex.ts        # Remote HTTP MCP for Cumulocity docs
-    └── adapters/
-        └── copilot.ts  # Translates MCPServerMap → Copilot SDK mcpServers session config
-tests/
-└── ...                 # Vitest tests, including inline snapshot tests for shared formatters
+└── action.ts           # GitHub Action entrypoint, imports the workspace package
+shared/
+└── oidc.ts             # Action/webhook-shared OIDC constants
+packages/
+└── clank8y/
+  ├── src/
+  │   ├── index.ts            # Public package entrypoint for sandbox/custom runtimes
+  │   ├── setup.ts            # Runtime context state
+  │   ├── formatters/         # Reusable pure formatting helpers shared across MCPs
+  │   ├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
+  │   │   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
+  │   │   ├── review/         # Review mode runtime
+  │   │   │   ├── prompt.ts   # Review prompt builder
+  │   │   │   └── mcps/       # Review-specific MCP servers
+  │   │   └── selectMode/     # Mode-selection runtime
+  │   │       ├── prompt.ts   # Mode-selection prompt builder
+  │   │       └── mcps/       # Dedicated select-mode MCP server
+  │   ├── modeSelection/      # Shared mode-selection metadata and schemas
+  │   ├── agents/             # Review agent runtime and orchestration helpers
+  │   │   └── copilot/        # Shared Copilot client/bootstrap helpers plus per-mode runtime files
+  │   └── mcp/                # Shared MCP interfaces, adapters, and reusable external MCPs
+  │       ├── index.ts        # Interfaces (MCPServer, LocalHTTPMCPServer, LocalStdioMCPServer), startAll/stopAll
+  │       ├── angular.ts      # Stdio MCP server (Angular CLI via npx)
+  │       ├── codex.ts        # Remote HTTP MCP for Cumulocity docs
+  │       └── adapters/
+  │           └── copilot.ts  # Translates MCPServerMap → Copilot SDK mcpServers session config
+  ├── shared/
+  │   └── comment.ts          # Package-local review comment footer helper
+  └── tests/
+    └── ...                 # Vitest tests, including formatter tests
 ```
 
-### Source (src/index.ts)
+### Action Source (src/action.ts)
 
-- Main entry point for the bot
-- All public PR review functions and utilities should be exported here
+- Main GitHub Action entry point
+- Wraps GitHub Actions/OIDC specifics and calls the `clank8y` workspace package
 - Uses ESM module format
 
-### Tests (tests/)
+### Package Source (packages/clank8y/src/index.ts)
+
+- Public package entry point for sandbox/custom runtime consumption
+- Exports `runClank8y` and related runtime types
+- Does not contain GitHub Action side effects
+
+### Tests (packages/clank8y/tests/)
 
 - Uses Vitest for testing
 - Test files follow the `*.test.ts` naming convention
-- Import from `../src` to test the source code
+- Import from `../../src` within nested test folders to test the package source code
 
 ## Development
 
 ```sh
 pnpm install    # Install dependencies
-pnpm test:run   # Run tests
-pnpm build      # Build with tsdown
+pnpm test:run   # Run package tests
+pnpm build      # Build the action and the clank8y package
 pnpm lint       # Lint with ESLint
 pnpm lint:fix   # Lint and auto-fix
-pnpm typecheck  # TypeScript type checking
+pnpm typecheck  # TypeScript type checking for action + package
 ```
 
 ## CI/CD Workflows
 
 - `ci.yml`: PR validation (build/test/lint/typecheck)
 - `autofix.yml`: starter-style autofix on `main` pushes (`pnpm lint:fix` + autofix commit)
-- `release.yml`: tag-triggered workflow (`v*`) that validates and creates GitHub release
+- `release.yml`: tag-triggered workflow (`v*`) that validates, publishes `clank8y` to npm with trusted publishing, deploys the website, and creates the GitHub release
 - `website-preview-deploy.yml`: Wrangler deploy for `preview` branch and manual runs
 
 ## Code Style
@@ -72,10 +86,10 @@ pnpm typecheck  # TypeScript type checking
 
 ## Testing
 
-- Write tests in the `tests/` directory
+- Write tests in the `packages/clank8y/tests/` directory
 - Use `*.test.ts` file naming convention
 - Run `pnpm test:run` for running tests
-- Import modules from `../src`
+- Import modules from `../../src` when the test file is in a nested package test directory
 
 Example test structure:
 

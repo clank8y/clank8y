@@ -2,8 +2,8 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import process from 'node:process'
 import { CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL, CLANK8Y_OIDC_AUDIENCE } from '../shared/oidc'
-import { runClank8y } from './clank8y'
-import type { RepositoryContext, RunInfo } from './setup'
+import { runClank8y } from 'clank8y'
+import type { RepositoryContext, RunInfo } from 'clank8y'
 
 function resolveRequiredInput(name: string): string {
   const value = core.getInput(name).trim()
@@ -148,7 +148,7 @@ async function resolveGitHubToken(repository: RepositoryContext): Promise<string
   throw lastError
 }
 
-export async function runClank8yEntry(): Promise<void> {
+async function runClank8yEntry(): Promise<void> {
   requireGitHubActionRuntime()
 
   const model = resolveOptionalInput('model')

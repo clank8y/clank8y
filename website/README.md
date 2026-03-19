@@ -8,5 +8,3 @@ The clank8y webhook server and landing page, built with [Nitro](https://v3.nitro
 pnpm install
 pnpm dev
 ```
-
-```

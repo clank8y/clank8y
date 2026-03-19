@@ -1,81 +1,42 @@
 {
-  "name": "clank8y",
+  "name": "@clank8y/action",
   "version": "1.1.1",
+  "private": true,
   "type": "module",
   "packageManager": "pnpm@10.30.3",
-  "description": "A PR review bot for Cumulocity IoT (c8y) with GitHub Action + MCP tooling",
-  "keywords": [
-    "typescript",
-    "clank8y",
-    "cumulocity",
-    "c8y",
-    "github-actions",
-    "pull-request",
-    "review-bot",
-    "esm",
-    "vitest",
-    "eslint"
-  ],
+  "description": "clank8y GitHub Action — AI-powered PR review bot for Cumulocity IoT",
   "license": "MIT",
   "author": "schplitt",
-  "homepage": "https://github.com/schplitt/clank8y#readme",
+  "homepage": "https://github.com/clank8y/clank8y#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/schplitt/clank8y.git"
+    "url": "https://github.com/clank8y/clank8y.git"
   },
   "bugs": {
-    "url": "https://github.com/schplitt/clank8y/issues"
+    "url": "https://github.com/clank8y/clank8y/issues"
   },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
-  },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "files": [
-    "LICENSE",
-    "README.md",
-    "dist"
-  ],
   "scripts": {
     "build": "tsdown",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "prerelease": "eslint && tsc --noEmit && tsdown && vitest run",
-    "release": "bumpp",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "release": "bumpp -r",
     "localtest": "pnpm dlx jiti ./localtest.ts"
   },
   "dependencies": {
     "@actions/core": "catalog:",
     "@actions/github": "catalog:",
-    "@github/copilot-sdk": "catalog:",
-    "@tmcp/adapter-valibot": "catalog:",
-    "@tmcp/transport-http": "catalog:",
-    "@toon-format/toon": "catalog:",
-    "@valibot/to-json-schema": "catalog:",
-    "changelogithub": "catalog:",
-    "consola": "catalog:",
-    "defu": "catalog:",
-    "dotenv": "catalog:",
-    "octokit": "catalog:",
-    "srvx": "catalog:",
-    "tinyexec": "catalog:",
-    "tmcp": "catalog:",
-    "valibot": "catalog:"
+    "clank8y": "workspace:*",
+    "dotenv": "catalog:"
   },
   "devDependencies": {
     "@schplitt/eslint-config": "catalog:",
+    "@types/node": "catalog:",
     "bumpp": "catalog:",
+    "changelogithub": "catalog:",
     "eslint": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"

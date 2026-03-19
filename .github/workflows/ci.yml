@@ -32,16 +32,18 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm build
+        run: pnpm -r --include-workspace-root build
+
+      - name: Test
+        run: pnpm -r --include-workspace-root test:run
 
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm -r --include-workspace-root typecheck
 
-      - name: Test
-        run: pnpm test
+
 
   deploy-preview:
     name: Preview Deploy
