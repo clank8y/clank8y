@@ -1,6 +1,6 @@
 {
   "name": "clank8y",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "packageManager": "pnpm@10.30.3",
   "description": "Run the clank8y agent programmatically — for sandboxed environments and cross-repo workflows",
