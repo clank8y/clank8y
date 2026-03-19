@@ -126,11 +126,17 @@ The `id-token: write` permission allows clank8y to exchange an OIDC token for a 
 
 ```sh
 pnpm install    # install dependencies
-pnpm test:run   # run tests
-pnpm build      # build action artifact (dist/index.mjs)
+pnpm test:run   # run package tests
+pnpm build      # build action artifact (.action/index.mjs) and package dist
 pnpm lint       # lint
 pnpm typecheck  # type check
 ```
+
+## npm Package
+
+The repo also publishes the `clank8y` npm package from `packages/clank8y`.
+
+That package is intended for running the clank8y agent in sandboxed or custom automation environments. It is not the recommended path for GitHub-hosted workflow usage; for GitHub Actions, use the action in this repository instead.
 
 ## License
 

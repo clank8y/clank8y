@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write  # required for npm provenance + clank8y OIDC (action build)
 
 jobs:
   release:
@@ -25,24 +26,25 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Test
-        run: pnpm test:run
-
-      - name: Build action
-        run: pnpm build
+      - name: Build
+        run: pnpm -r --include-workspace-root build
 
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm -r --include-workspace-root typecheck
 
-      - name: Build website
-        run: pnpm --filter ./website build
+      - name: Test
+        run: pnpm -r --include-workspace-root test:run
+
+      - name: Publish clank8y to npm
+        run: pnpm --filter clank8y publish --access public --no-git-checks --provenance
 
       - name: Deploy website with Wrangler
         uses: cloudflare/wrangler-action@v3

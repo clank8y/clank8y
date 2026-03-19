@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import process from 'node:process'
-import { runClank8y } from './src/clank8y'
+import { runClank8y } from 'clank8y'
 
 /**
  * Local test runner setup (dotenv-based)
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
       githubToken: resolveGithubToken(),
       copilotToken: requireEnv('COPILOT_GITHUB_TOKEN'),
     },
-    model: 'claude-sonnet-4.5',
+    model: 'claude-sonnet-4.6',
     timeOutMs,
   })
 }
