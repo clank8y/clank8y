@@ -1,4 +1,6 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
+
+import { copilotIncidentFixPermissionHandler, extractCommandNames } from '../../../src/agents/copilot/client'
 
 // Mock the SDK to avoid its broken ESM import chain (vscode-jsonrpc/node)
 vi.mock('@github/copilot-sdk', () => ({
@@ -9,17 +11,6 @@ vi.mock('@github/copilot-sdk', () => ({
 vi.mock('../../../src/setup', () => ({
   getClank8yRuntimeContext: () => ({ auth: { copilotToken: 'test' } }),
 }))
-
-type PermissionHandlerFn = (request: Record<string, unknown>, ctx: { sessionId: string }) => { kind: string, rules?: unknown[] }
-
-let copilotIncidentFixPermissionHandler: PermissionHandlerFn
-let extractCommandNames: (fullCommandText: string) => string[]
-
-beforeAll(async () => {
-  const mod = await import('../../../src/agents/copilot/client')
-  copilotIncidentFixPermissionHandler = mod.copilotIncidentFixPermissionHandler as unknown as PermissionHandlerFn
-  extractCommandNames = mod.extractCommandNames
-})
 
 const sessionCtx = { sessionId: 'test-session' }
 
