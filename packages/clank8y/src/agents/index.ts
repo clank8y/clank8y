@@ -1,7 +1,7 @@
 import { defu } from 'defu'
 import { logAgentMessage } from '../logging'
 import type { DeepOptional } from '../types'
-import type { Clank8yMode, Clank8yModeSelection } from '../modeSelection'
+import type { Clank8yDisabledModes, Clank8yMode, Clank8yModeSelection } from '../modeSelection'
 import type { Clank8yMCPServers, LocalHTTPMCPServer } from '../mcp'
 import { getModeRuntime, getSelectModeRuntime } from '../modes'
 import { githubCopilotAgent } from './copilot'
@@ -48,6 +48,11 @@ interface Clank8yAgentConfiguration {
    * @default 'github-copilot'
    */
   agent: 'github-copilot'
+  /**
+   * Modes disabled for this run.
+   * @default {}
+   */
+  disabledModes: Clank8yDisabledModes
 }
 
 const DEFAULT_CONFIGURATION = {
@@ -58,6 +63,7 @@ const DEFAULT_CONFIGURATION = {
     maxRuntimeMs: 60_000,
   },
   agent: 'github-copilot',
+  disabledModes: {},
 } as const satisfies Clank8yAgentConfiguration
 
 export type Clank8yAgentOptions = DeepOptional<Omit<Clank8yAgentConfiguration, 'agent'>>
@@ -116,7 +122,7 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     mcp,
     getSelection,
     prompt: selectModePrompt,
-  } = getSelectModeRuntime(options.promptContext)
+  } = getSelectModeRuntime(options.promptContext, profile.disabledModes)
 
   await mcp.start()
 
@@ -131,6 +137,10 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
 
   if (!selection) {
     throw new Error('Mode selection failed: the model did not provide a valid clank8y mode selection.')
+  }
+
+  if (profile.disabledModes[selection.mode] === true) {
+    throw new Error(`Mode selection failed: selected mode '${selection.mode}' is not enabled for this run.`)
   }
 
   const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext)

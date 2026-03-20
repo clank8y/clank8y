@@ -170,6 +170,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
 - Keep shared runtime context helpers under `src/setup/`; place reusable git execution/config helpers under `src/utils/` rather than inside a single mode implementation.
 - Current git auth still uses env-injected extraheaders for remote operations; stricter ASKPASS-style auth remains future hardening work, not current behavior.
+- Gate mode availability at the runtime entry boundary via the top-level `disabledModes` config; derive the selectable mode array from that before building the mode-selection tool schema, and keep the GitHub Action wrapper locked to `Review`.
 - Treat each mode as the runtime ownership boundary: `src/modes/<mode>/` owns its prompt plus MCP assembly.
 - Keep shared modes agent-agnostic. Agent-specific runtime policy such as Copilot excluded tools belongs in the agent runtime layer, not in shared `src/modes/` definitions.
 - Keep mode-selection prompt text and MCP server under `src/modes/selectMode/`, while shared mode-selection metadata/schema stays in `src/modeSelection/`.

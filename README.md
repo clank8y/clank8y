@@ -106,6 +106,7 @@ Submits GitHub PR review with inline comments
 - ✅ On-demand PR code review triggered by `@clank8y` mention
 - ✅ Reviews diffs, files, and PR context
 - ✅ Submits structured GitHub PR reviews with inline comments
+- ✅ GitHub Action runtime keeps mode availability locked to `Review`
 
 ### What it doesn't do (yet)
 
