@@ -11,6 +11,7 @@ export interface ReviewArtifactPaths {
 const CLANK8Y_ARTIFACT_DIR = '.clank8y'
 const DIFF_ARTIFACT_FILE = 'diff.txt'
 const REVIEW_COMMENTS_ARTIFACT_FILE = 'review-comments.md'
+const REPORT_ARTIFACT_FILE = 'report.md'
 
 export function getClank8yArtifactDirPath(): string {
   return path.join(process.cwd(), CLANK8Y_ARTIFACT_DIR)
@@ -50,6 +51,16 @@ export async function resetClank8yArtifacts(): Promise<ReviewArtifactPaths> {
   await rm(artifactPaths.artifactDir, { force: true, recursive: true })
   await mkdir(artifactPaths.artifactDir, { recursive: true })
   return artifactPaths
+}
+
+export function getReportArtifactPath(): string {
+  return resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE)
+}
+
+export async function doesReportArtifactExist(): Promise<boolean> {
+  const reportPath = getReportArtifactPath()
+  const stats = await stat(reportPath).catch(() => null)
+  return stats?.isFile() ?? false
 }
 
 export async function doesDiffArtifactExist(): Promise<boolean> {
