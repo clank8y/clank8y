@@ -139,6 +139,11 @@ declare global {
 //#region src/types.d.ts
 type DeepOptional<T> = T extends ((...args: any[]) => any) ? T : T extends Array<infer U> ? Array<DeepOptional<U>> : T extends object ? { [K in keyof T]?: DeepOptional<T[K]> } : T;
 //#endregion
+//#region src/modeSelection/schema.d.ts
+declare const CLANK8Y_MODES: readonly ["Review", "IncidentFix"];
+type Clank8yMode = (typeof CLANK8Y_MODES)[number];
+type Clank8yDisabledModes = { [Mode in Clank8yMode]?: true };
+//#endregion
 //#region src/agents/index.d.ts
 type Models = 'claude-sonnet-4.6' | 'claude-sonnet-4.5' | 'claude-haiku-4.5' | 'claude-opus-4.6' | 'claude-opus-4.6-fast' | 'claude-opus-4.5' | 'claude-sonnet-4' | 'gemini-3-pro-preview' | 'gpt-5.3-codex' | 'gpt-5.2-codex' | 'gpt-5.2' | 'gpt-5.1-codex-max' | 'gpt-5.1-codex' | 'gpt-5.1' | 'gpt-5.1-codex-mini' | 'gpt-5-mini' | 'gpt-4.1';
 interface Clank8yAgentConfiguration {
@@ -170,10 +175,15 @@ interface Clank8yAgentConfiguration {
    * @default 'github-copilot'
    */
   agent: 'github-copilot';
+  /**
+   * Modes disabled for this run.
+   * @default {}
+   */
+  disabledModes: Clank8yDisabledModes;
 }
 type Clank8yAgentOptions = DeepOptional<Omit<Clank8yAgentConfiguration, 'agent'>>;
 //#endregion
-//#region src/setup.d.ts
+//#region src/setup/context.d.ts
 interface RepositoryContext {
   owner: string;
   repo: string;
@@ -204,4 +214,4 @@ interface Clank8yRunResult {
 interface RunClank8yOptions extends Clank8yAgentOptions, Clank8yRuntimeContext {}
 declare function runClank8y(options: RunClank8yOptions): Promise<Clank8yRunResult>;
 //#endregion
-export { type Clank8yAgentOptions, type Clank8yRunResult, type Clank8yRuntimeContext, type Models, type RepositoryContext, type RunClank8yOptions, type RunInfo, runClank8y };
+export { type Clank8yAgentOptions, type Clank8yDisabledModes, type Clank8yMode, type Clank8yRunResult, type Clank8yRuntimeContext, type Models, type RepositoryContext, type RunClank8yOptions, type RunInfo, runClank8y };

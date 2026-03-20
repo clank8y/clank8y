@@ -1,23 +1,23 @@
 import { createRequire } from "node:module";
 import * as tty from "node:tty";
 import { WriteStream } from "node:tty";
-import { createHmac, createPrivateKey, subtle, timingSafeEqual } from "node:crypto";
-import { Buffer as Buffer$1 } from "node:buffer";
 import { AsyncLocalStorage } from "node:async_hooks";
 import nodeHTTP from "node:http";
 import { PassThrough, Readable } from "node:stream";
 import nodeHTTPS from "node:https";
 import nodeHTTP2 from "node:http2";
-import process$1, { cwd, stdin, stdout } from "node:process";
+import { createHmac, createPrivateKey, subtle, timingSafeEqual } from "node:crypto";
+import { Buffer as Buffer$1 } from "node:buffer";
+import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { formatWithOptions } from "node:util";
-import f from "node:readline";
-import { existsSync } from "node:fs";
+import process$1, { cwd, stdin, stdout } from "node:process";
+import { createRequire as createRequire$1 } from "module";
 import { spawn } from "node:child_process";
+import f from "node:readline";
+import { formatWithOptions } from "node:util";
+import { existsSync } from "node:fs";
 import { Socket } from "node:net";
 import { fileURLToPath } from "node:url";
-import { createRequire as createRequire$1 } from "module";
 
 //#region \0rolldown/runtime.js
 var __create = Object.create;
@@ -330,6 +330,7032 @@ function logAgentMessage(info, lines) {
 }
 
 //#endregion
+//#region src/mcp/angular.ts
+const ANGULAR_MCP_COMMAND = "npx";
+const ANGULAR_MCP_ARGS = [
+	"-y",
+	"@angular/cli",
+	"mcp"
+];
+/**
+* Tools exposed from the Angular CLI MCP server.
+* - `find_examples`       — authoritative Angular code examples (local)
+* - `get_best_practices`  — Angular best practices guide (local)
+* - `search_documentation`— searches angular.dev (remote)
+*/
+const ANGULAR_ALLOWED_TOOLS = [
+	"find_examples",
+	"get_best_practices",
+	"search_documentation"
+];
+let _angularMCP = null;
+function angularMCP() {
+	if (!_angularMCP) _angularMCP = createAngularMCP();
+	return _angularMCP;
+}
+function createAngularMCP() {
+	let status = { state: "stopped" };
+	return {
+		serverType: "stdio",
+		allowedTools: ANGULAR_ALLOWED_TOOLS,
+		get status() {
+			return status;
+		},
+		start: async () => {
+			status = { state: "running" };
+			return {
+				command: ANGULAR_MCP_COMMAND,
+				args: ANGULAR_MCP_ARGS,
+				toolNames: ANGULAR_ALLOWED_TOOLS
+			};
+		},
+		stop: async () => {
+			status = { state: "stopped" };
+		}
+	};
+}
+
+//#endregion
+//#region src/mcp/codex.ts
+const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
+let _codexMCP = null;
+function codexMCP() {
+	if (!_codexMCP) _codexMCP = createCodexMCP();
+	return _codexMCP;
+}
+function createCodexMCP() {
+	return {
+		serverType: "http",
+		allowedTools: ["*"],
+		get status() {
+			return { state: "running" };
+		},
+		start: async () => ({
+			url: CODEX_MCP_URL,
+			toolNames: []
+		}),
+		stop: async () => {}
+	};
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/adapter.js
+/**
+* @import { StandardSchemaV1 } from "@standard-schema/spec";
+* @import { JSONSchema7 } from "json-schema";
+*/
+/**
+* @template {StandardSchemaV1} TSchema
+*/
+var JsonSchemaAdapter = class {
+	/**
+	* @param {TSchema} schema
+	* @returns {Promise<JSONSchema7>}
+	*/
+	toJsonSchema(schema) {
+		throw new Error("toJsonSchema method not implemented");
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/valibot@1.2.0_typescript@5.9.3/node_modules/valibot/dist/index.mjs
+let store$4;
+/**
+* Returns the global configuration.
+*
+* @param config The config to merge.
+*
+* @returns The configuration.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalConfig(config$1) {
+	return {
+		lang: config$1?.lang ?? store$4?.lang,
+		message: config$1?.message,
+		abortEarly: config$1?.abortEarly ?? store$4?.abortEarly,
+		abortPipeEarly: config$1?.abortPipeEarly ?? store$4?.abortPipeEarly
+	};
+}
+let store$3;
+/**
+* Returns a global error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalMessage(lang) {
+	return store$3?.get(lang);
+}
+let store$2;
+/**
+* Returns a schema error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getSchemaMessage(lang) {
+	return store$2?.get(lang);
+}
+let store$1;
+/**
+* Returns a specific error message.
+*
+* @param reference The identifier reference.
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getSpecificMessage(reference, lang) {
+	return store$1?.get(reference)?.get(lang);
+}
+/**
+* Stringifies an unknown input to a literal or type string.
+*
+* @param input The unknown input.
+*
+* @returns A literal or type string.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _stringify(input) {
+	const type = typeof input;
+	if (type === "string") return `"${input}"`;
+	if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
+	if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
+	return type;
+}
+/**
+* Adds an issue to the dataset.
+*
+* @param context The issue context.
+* @param label The issue label.
+* @param dataset The input dataset.
+* @param config The configuration.
+* @param other The optional props.
+*
+* @internal
+*/
+function _addIssue(context, label, dataset, config$1, other) {
+	const input = other && "input" in other ? other.input : dataset.value;
+	const expected = other?.expected ?? context.expects ?? null;
+	const received = other?.received ?? /* @__PURE__ */ _stringify(input);
+	const issue = {
+		kind: context.kind,
+		type: context.type,
+		input,
+		expected,
+		received,
+		message: `Invalid ${label}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
+		requirement: context.requirement,
+		path: other?.path,
+		issues: other?.issues,
+		lang: config$1.lang,
+		abortEarly: config$1.abortEarly,
+		abortPipeEarly: config$1.abortPipeEarly
+	};
+	const isSchema = context.kind === "schema";
+	const message$1 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
+	if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
+	if (isSchema) dataset.typed = false;
+	if (dataset.issues) dataset.issues.push(issue);
+	else dataset.issues = [issue];
+}
+/**
+* Returns the Standard Schema properties.
+*
+* @param context The schema context.
+*
+* @returns The Standard Schema properties.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getStandardProps(context) {
+	return {
+		version: 1,
+		vendor: "valibot",
+		validate(value$1) {
+			return context["~run"]({ value: value$1 }, /* @__PURE__ */ getGlobalConfig());
+		}
+	};
+}
+/**
+* Disallows inherited object properties and prevents object prototype
+* pollution by disallowing certain keys.
+*
+* @param object The object to check.
+* @param key The key to check.
+*
+* @returns Whether the key is allowed.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _isValidObjectKey(object$1, key) {
+	return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
+}
+/**
+* Joins multiple `expects` values with the given separator.
+*
+* @param values The `expects` values.
+* @param separator The separator.
+*
+* @returns The joined `expects` property.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _joinExpects(values$1, separator) {
+	const list = [...new Set(values$1)];
+	if (list.length > 1) return `(${list.join(` ${separator} `)})`;
+	return list[0] ?? "never";
+}
+/**
+* A Valibot error with useful information.
+*/
+var ValiError = class extends Error {
+	/**
+	* Creates a Valibot error with useful information.
+	*
+	* @param issues The error issues.
+	*/
+	constructor(issues) {
+		super(issues[0].message);
+		this.name = "ValiError";
+		this.issues = issues;
+	}
+};
+/**
+* [Base64](https://en.wikipedia.org/wiki/Base64) regex.
+*/
+const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
+/* @__NO_SIDE_EFFECTS__ */
+function base64(message$1) {
+	return {
+		kind: "validation",
+		type: "base64",
+		reference: base64,
+		async: false,
+		expects: null,
+		requirement: BASE64_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function check(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "check",
+		reference: check,
+		async: false,
+		expects: null,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/**
+* Creates a description metadata action.
+*
+* @param description_ The description text.
+*
+* @returns A description action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function description(description_) {
+	return {
+		kind: "metadata",
+		type: "description",
+		reference: description,
+		description: description_
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function integer(message$1) {
+	return {
+		kind: "validation",
+		type: "integer",
+		reference: integer,
+		async: false,
+		expects: null,
+		requirement: Number.isInteger,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function maxLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_length",
+		reference: maxLength,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function maxValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_value",
+		reference: maxValue,
+		async: false,
+		expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function minLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_length",
+		reference: minLength,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function minValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_value",
+		reference: minValue,
+		async: false,
+		expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function regex$2(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "regex",
+		reference: regex$2,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "format", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function startsWith(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "starts_with",
+		reference: startsWith,
+		async: false,
+		expects: `"${requirement}"`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.startsWith(this.requirement)) _addIssue(this, "start", dataset, config$1, { received: `"${dataset.value.slice(0, this.requirement.length)}"` });
+			return dataset;
+		}
+	};
+}
+/**
+* Returns the fallback value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The output dataset if available.
+* @param config The config if available.
+*
+* @returns The fallback value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getFallback(schema, dataset, config$1) {
+	return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
+}
+/**
+* Returns the default value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The input dataset if available.
+* @param config The config if available.
+*
+* @returns The default value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getDefault(schema, dataset, config$1) {
+	return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
+}
+/* @__NO_SIDE_EFFECTS__ */
+function array(item, message$1) {
+	return {
+		kind: "schema",
+		type: "array",
+		reference: array,
+		expects: "Array",
+		async: false,
+		item,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < input.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function boolean(message$1) {
+	return {
+		kind: "schema",
+		type: "boolean",
+		reference: boolean,
+		expects: "boolean",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "boolean") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function literal(literal_, message$1) {
+	return {
+		kind: "schema",
+		type: "literal",
+		reference: literal,
+		expects: /* @__PURE__ */ _stringify(literal_),
+		async: false,
+		literal: literal_,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === this.literal) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function looseObject(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "loose_object",
+		reference: looseObject,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function number(message$1) {
+	return {
+		kind: "schema",
+		type: "number",
+		reference: number,
+		expects: "number",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function object(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "object",
+		reference: object,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function optional(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "optional",
+		reference: optional,
+		expects: `(${wrapped.expects} | undefined)`,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function picklist(options, message$1) {
+	return {
+		kind: "schema",
+		type: "picklist",
+		reference: picklist,
+		expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (this.options.includes(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function record(key, value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "record",
+		reference: record,
+		expects: "Object",
+		async: false,
+		key,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
+					const entryValue = input[entryKey];
+					const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
+					if (keyDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "key",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of keyDataset.issues) {
+							issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = keyDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function strictObject(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "strict_object",
+		reference: strictObject,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (!(key in this.entries)) {
+						_addIssue(this, "key", dataset, config$1, {
+							input: key,
+							expected: "never",
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function string(message$1) {
+	return {
+		kind: "schema",
+		type: "string",
+		reference: string,
+		expects: "string",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "string") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/**
+* Returns the sub issues of the provided datasets for the union issue.
+*
+* @param datasets The datasets.
+*
+* @returns The sub issues.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _subIssues(datasets) {
+	let issues;
+	if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
+	else issues = dataset.issues;
+	return issues;
+}
+/* @__NO_SIDE_EFFECTS__ */
+function union(options, message$1) {
+	return {
+		kind: "schema",
+		type: "union",
+		reference: union,
+		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			let validDataset;
+			let typedDatasets;
+			let untypedDatasets;
+			for (const schema of this.options) {
+				const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
+				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
+				else typedDatasets = [optionDataset];
+				else {
+					validDataset = optionDataset;
+					break;
+				}
+				else if (untypedDatasets) untypedDatasets.push(optionDataset);
+				else untypedDatasets = [optionDataset];
+			}
+			if (validDataset) return validDataset;
+			if (typedDatasets) {
+				if (typedDatasets.length === 1) return typedDatasets[0];
+				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
+				dataset.typed = true;
+			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
+			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
+			return dataset;
+		}
+	};
+}
+/**
+* Creates a unknown schema.
+*
+* @returns A unknown schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function unknown() {
+	return {
+		kind: "schema",
+		type: "unknown",
+		reference: unknown,
+		expects: "unknown",
+		async: false,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset) {
+			dataset.typed = true;
+			return dataset;
+		}
+	};
+}
+/* @__NO_SIDE_EFFECTS__ */
+function variant(key, options, message$1) {
+	return {
+		kind: "schema",
+		type: "variant",
+		reference: variant,
+		expects: "Object",
+		async: false,
+		key,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				let outputDataset;
+				let maxDiscriminatorPriority = 0;
+				let invalidDiscriminatorKey = this.key;
+				let expectedDiscriminators = [];
+				const parseOptions = (variant$1, allKeys) => {
+					for (const schema of variant$1.options) {
+						if (schema.type === "variant") parseOptions(schema, new Set(allKeys).add(schema.key));
+						else {
+							let keysAreValid = true;
+							let currentPriority = 0;
+							for (const currentKey of allKeys) {
+								const discriminatorSchema = schema.entries[currentKey];
+								if (currentKey in input ? discriminatorSchema["~run"]({
+									typed: false,
+									value: input[currentKey]
+								}, { abortEarly: true }).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
+									keysAreValid = false;
+									if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
+										maxDiscriminatorPriority = currentPriority;
+										invalidDiscriminatorKey = currentKey;
+										expectedDiscriminators = [];
+									}
+									if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
+									break;
+								}
+								currentPriority++;
+							}
+							if (keysAreValid) {
+								const optionDataset = schema["~run"]({ value: input }, config$1);
+								if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
+							}
+						}
+						if (outputDataset && !outputDataset.issues) break;
+					}
+				};
+				parseOptions(this, new Set([this.key]));
+				if (outputDataset) return outputDataset;
+				_addIssue(this, "type", dataset, config$1, {
+					input: input[invalidDiscriminatorKey],
+					expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
+					path: [{
+						type: "object",
+						origin: "value",
+						input,
+						key: invalidDiscriminatorKey,
+						value: input[invalidDiscriminatorKey]
+					}]
+				});
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parsed input.
+*/
+function parse$1(schema, input, config$1) {
+	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	if (dataset.issues) throw new ValiError(dataset.issues);
+	return dataset.value;
+}
+/* @__NO_SIDE_EFFECTS__ */
+function pipe(...pipe$1) {
+	return {
+		...pipe$1[0],
+		pipe: pipe$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			for (const item of pipe$1) if (item.kind !== "metadata") {
+				if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
+					dataset.typed = false;
+					break;
+				}
+				if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = item["~run"](dataset, config$1);
+			}
+			return dataset;
+		}
+	};
+}
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parse result.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function safeParse$1(schema, input, config$1) {
+	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	return {
+		typed: dataset.typed,
+		success: !dataset.issues,
+		output: dataset.value,
+		issues: dataset.issues
+	};
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/@valibot+to-json-schema@1.5.0_valibot@1.2.0_typescript@5.9.3_/node_modules/@valibot/to-json-schema/dist/index.mjs
+/**
+* Adds an error message to the errors array.
+*
+* @param errors The array of error messages.
+* @param message The error message to add.
+*
+* @returns The new errors.
+*/
+function addError(errors, message) {
+	if (errors) {
+		errors.push(message);
+		return errors;
+	}
+	return [message];
+}
+/**
+* Throws an error or logs a warning based on the configuration.
+*
+* @param message The message to throw or log.
+* @param config The conversion configuration.
+*/
+function handleError(message, config) {
+	switch (config?.errorMode) {
+		case "ignore": break;
+		case "warn":
+			console.warn(message);
+			break;
+		default: throw new Error(message);
+	}
+}
+/**
+* Converts any supported Valibot action to the JSON Schema format.
+*
+* @param jsonSchema The JSON Schema object.
+* @param valibotAction The Valibot action object.
+* @param config The conversion configuration.
+*
+* @returns The converted JSON Schema.
+*/
+function convertAction(jsonSchema, valibotAction, config) {
+	if (config?.ignoreActions?.includes(valibotAction.type)) return jsonSchema;
+	let errors;
+	switch (valibotAction.type) {
+		case "base64":
+			jsonSchema.contentEncoding = "base64";
+			break;
+		case "bic":
+		case "cuid2":
+		case "decimal":
+		case "digits":
+		case "emoji":
+		case "hexadecimal":
+		case "hex_color":
+		case "nanoid":
+		case "octal":
+		case "ulid":
+			jsonSchema.pattern = valibotAction.requirement.source;
+			break;
+		case "description":
+			jsonSchema.description = valibotAction.description;
+			break;
+		case "email":
+			jsonSchema.format = "email";
+			break;
+		case "empty":
+			if (jsonSchema.type === "array") jsonSchema.maxItems = 0;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.maxLength = 0;
+			}
+			break;
+		case "entries":
+			jsonSchema.minProperties = valibotAction.requirement;
+			jsonSchema.maxProperties = valibotAction.requirement;
+			break;
+		case "examples":
+			if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.examples];
+			else jsonSchema.examples = valibotAction.examples;
+			break;
+		case "integer":
+			jsonSchema.type = "integer";
+			break;
+		case "ipv4":
+			jsonSchema.format = "ipv4";
+			break;
+		case "ipv6":
+			jsonSchema.format = "ipv6";
+			break;
+		case "iso_date":
+			jsonSchema.format = "date";
+			break;
+		case "iso_date_time":
+		case "iso_timestamp":
+			jsonSchema.format = "date-time";
+			break;
+		case "iso_time":
+			jsonSchema.format = "time";
+			break;
+		case "length":
+			if (jsonSchema.type === "array") {
+				jsonSchema.minItems = valibotAction.requirement;
+				jsonSchema.maxItems = valibotAction.requirement;
+			} else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = valibotAction.requirement;
+				jsonSchema.maxLength = valibotAction.requirement;
+			}
+			break;
+		case "max_entries":
+			jsonSchema.maxProperties = valibotAction.requirement;
+			break;
+		case "max_length":
+			if (jsonSchema.type === "array") jsonSchema.maxItems = valibotAction.requirement;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.maxLength = valibotAction.requirement;
+			}
+			break;
+		case "max_value":
+			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "max_value" action is not supported on type "${jsonSchema.type}".`);
+			jsonSchema.maximum = valibotAction.requirement;
+			break;
+		case "metadata":
+			if (typeof valibotAction.metadata.title === "string") jsonSchema.title = valibotAction.metadata.title;
+			if (typeof valibotAction.metadata.description === "string") jsonSchema.description = valibotAction.metadata.description;
+			if (Array.isArray(valibotAction.metadata.examples)) if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.metadata.examples];
+			else jsonSchema.examples = valibotAction.metadata.examples;
+			break;
+		case "min_entries":
+			jsonSchema.minProperties = valibotAction.requirement;
+			break;
+		case "min_length":
+			if (jsonSchema.type === "array") jsonSchema.minItems = valibotAction.requirement;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = valibotAction.requirement;
+			}
+			break;
+		case "min_value":
+			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "min_value" action is not supported on type "${jsonSchema.type}".`);
+			jsonSchema.minimum = valibotAction.requirement;
+			break;
+		case "multiple_of":
+			jsonSchema.multipleOf = valibotAction.requirement;
+			break;
+		case "non_empty":
+			if (jsonSchema.type === "array") jsonSchema.minItems = 1;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = 1;
+			}
+			break;
+		case "regex":
+			if (valibotAction.requirement.flags) errors = addError(errors, "RegExp flags are not supported by JSON Schema.");
+			jsonSchema.pattern = valibotAction.requirement.source;
+			break;
+		case "title":
+			jsonSchema.title = valibotAction.title;
+			break;
+		case "url":
+			jsonSchema.format = "uri";
+			break;
+		case "uuid":
+			jsonSchema.format = "uuid";
+			break;
+		case "value":
+			jsonSchema.const = valibotAction.requirement;
+			break;
+		default: errors = addError(errors, `The "${valibotAction.type}" action cannot be converted to JSON Schema.`);
+	}
+	if (config?.overrideAction) {
+		const actionOverride = config.overrideAction({
+			valibotAction,
+			jsonSchema,
+			errors
+		});
+		if (actionOverride) return { ...actionOverride };
+	}
+	if (errors) for (const message of errors) handleError(message, config);
+	return jsonSchema;
+}
+/**
+* Flattens a Valibot pipe by recursively expanding nested pipes.
+*
+* @param pipe The pipeline to flatten.
+*
+* @returns A flat pipeline.
+*/
+function flattenPipe(pipe) {
+	return pipe.flatMap((item) => "pipe" in item ? flattenPipe(item.pipe) : item);
+}
+let refCount = 0;
+/**
+* Converts any supported Valibot schema to the JSON Schema format.
+*
+* @param jsonSchema The JSON Schema object.
+* @param valibotSchema The Valibot schema object.
+* @param config The conversion configuration.
+* @param context The conversion context.
+* @param skipRef Whether to skip using a reference.
+*
+* @returns The converted JSON Schema.
+*/
+function convertSchema(jsonSchema, valibotSchema, config, context, skipRef = false) {
+	if (!skipRef) {
+		const referenceId = context.referenceMap.get(valibotSchema);
+		if (referenceId) {
+			jsonSchema.$ref = `#/$defs/${referenceId}`;
+			if (config?.overrideRef) {
+				const refOverride = config.overrideRef({
+					...context,
+					referenceId,
+					valibotSchema,
+					jsonSchema
+				});
+				if (refOverride) jsonSchema.$ref = refOverride;
+			}
+			return jsonSchema;
+		}
+	}
+	if ("pipe" in valibotSchema) {
+		const flatPipe = flattenPipe(valibotSchema.pipe);
+		let startIndex = 0;
+		let stopIndex = flatPipe.length - 1;
+		if (config?.typeMode === "input") {
+			const inputStopIndex = flatPipe.slice(1).findIndex((item) => item.kind === "schema" || item.kind === "transformation" && (item.type === "find_item" || item.type === "parse_json" || item.type === "raw_transform" || item.type === "reduce_items" || item.type === "stringify_json" || item.type === "to_bigint" || item.type === "to_boolean" || item.type === "to_date" || item.type === "to_number" || item.type === "to_string" || item.type === "transform"));
+			if (inputStopIndex !== -1) stopIndex = inputStopIndex;
+		} else if (config?.typeMode === "output") {
+			const outputStartIndex = flatPipe.findLastIndex((item) => item.kind === "schema");
+			if (outputStartIndex !== -1) startIndex = outputStartIndex;
+		}
+		for (let index = startIndex; index <= stopIndex; index++) {
+			const valibotPipeItem = flatPipe[index];
+			if (valibotPipeItem.kind === "schema") {
+				if (index > startIndex) handleError("Set the \"typeMode\" config to \"input\" or \"output\" to convert pipelines with multiple schemas.", config);
+				jsonSchema = convertSchema(jsonSchema, valibotPipeItem, config, context, true);
+			} else jsonSchema = convertAction(jsonSchema, valibotPipeItem, config);
+		}
+		return jsonSchema;
+	}
+	let errors;
+	switch (valibotSchema.type) {
+		case "boolean":
+			jsonSchema.type = "boolean";
+			break;
+		case "null":
+			if (config?.target === "openapi-3.0") jsonSchema.enum = [null];
+			else jsonSchema.type = "null";
+			break;
+		case "number":
+			jsonSchema.type = "number";
+			break;
+		case "string":
+			jsonSchema.type = "string";
+			break;
+		case "array":
+			jsonSchema.type = "array";
+			jsonSchema.items = convertSchema({}, valibotSchema.item, config, context);
+			break;
+		case "tuple":
+		case "tuple_with_rest":
+		case "loose_tuple":
+		case "strict_tuple":
+			jsonSchema.type = "array";
+			if (config?.target === "openapi-3.0") {
+				jsonSchema.items = { anyOf: [] };
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.items.anyOf.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items.anyOf.push(convertSchema({}, valibotSchema.rest, config, context));
+				else if (valibotSchema.type === "strict_tuple" || valibotSchema.type === "tuple") jsonSchema.maxItems = valibotSchema.items.length;
+			} else if (config?.target === "draft-2020-12") {
+				jsonSchema.prefixItems = [];
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.prefixItems.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items = convertSchema({}, valibotSchema.rest, config, context);
+				else if (valibotSchema.type === "strict_tuple") jsonSchema.items = false;
+			} else {
+				jsonSchema.items = [];
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.items.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.additionalItems = convertSchema({}, valibotSchema.rest, config, context);
+				else if (valibotSchema.type === "strict_tuple") jsonSchema.additionalItems = false;
+			}
+			break;
+		case "object":
+		case "object_with_rest":
+		case "loose_object":
+		case "strict_object":
+			jsonSchema.type = "object";
+			jsonSchema.properties = {};
+			jsonSchema.required = [];
+			for (const key in valibotSchema.entries) {
+				const entry = valibotSchema.entries[key];
+				jsonSchema.properties[key] = convertSchema({}, entry, config, context);
+				if (entry.type !== "exact_optional" && entry.type !== "nullish" && entry.type !== "optional") jsonSchema.required.push(key);
+			}
+			if (valibotSchema.type === "object_with_rest") jsonSchema.additionalProperties = convertSchema({}, valibotSchema.rest, config, context);
+			else if (valibotSchema.type === "strict_object") jsonSchema.additionalProperties = false;
+			break;
+		case "record":
+			if (config?.target === "openapi-3.0" && "pipe" in valibotSchema.key) errors = addError(errors, "The \"record\" schema with a schema for the key that contains a \"pipe\" cannot be converted to JSON Schema.");
+			if (valibotSchema.key.type !== "string") errors = addError(errors, `The "record" schema with the "${valibotSchema.key.type}" schema for the key cannot be converted to JSON Schema.`);
+			jsonSchema.type = "object";
+			if (config?.target !== "openapi-3.0") jsonSchema.propertyNames = convertSchema({}, valibotSchema.key, config, context);
+			jsonSchema.additionalProperties = convertSchema({}, valibotSchema.value, config, context);
+			break;
+		case "any":
+		case "unknown": break;
+		case "nullable":
+		case "nullish":
+			if (config?.target === "openapi-3.0") {
+				const innerSchema = convertSchema({}, valibotSchema.wrapped, config, context);
+				Object.assign(jsonSchema, innerSchema);
+				jsonSchema.nullable = true;
+			} else jsonSchema.anyOf = [convertSchema({}, valibotSchema.wrapped, config, context), { type: "null" }];
+			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
+			break;
+		case "exact_optional":
+		case "optional":
+		case "undefinedable":
+			jsonSchema = convertSchema(jsonSchema, valibotSchema.wrapped, config, context);
+			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
+			break;
+		case "literal":
+			if (typeof valibotSchema.literal !== "boolean" && typeof valibotSchema.literal !== "number" && typeof valibotSchema.literal !== "string") errors = addError(errors, "The value of the \"literal\" schema is not JSON compatible.");
+			if (config?.target === "openapi-3.0") jsonSchema.enum = [valibotSchema.literal];
+			else jsonSchema.const = valibotSchema.literal;
+			break;
+		case "enum":
+			jsonSchema.enum = valibotSchema.options;
+			break;
+		case "picklist":
+			if (valibotSchema.options.some((option) => typeof option !== "number" && typeof option !== "string")) errors = addError(errors, "An option of the \"picklist\" schema is not JSON compatible.");
+			jsonSchema.enum = valibotSchema.options;
+			break;
+		case "union":
+			jsonSchema.anyOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "variant":
+			jsonSchema.oneOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "intersect":
+			jsonSchema.allOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "lazy": {
+			let wrappedValibotSchema = context.getterMap.get(valibotSchema.getter);
+			if (!wrappedValibotSchema) {
+				wrappedValibotSchema = valibotSchema.getter(void 0);
+				context.getterMap.set(valibotSchema.getter, wrappedValibotSchema);
+			}
+			let referenceId = context.referenceMap.get(wrappedValibotSchema);
+			if (!referenceId) {
+				referenceId = `${refCount++}`;
+				context.referenceMap.set(wrappedValibotSchema, referenceId);
+				context.definitions[referenceId] = convertSchema({}, wrappedValibotSchema, config, context, true);
+			}
+			jsonSchema.$ref = `#/$defs/${referenceId}`;
+			if (config?.overrideRef) {
+				const refOverride = config.overrideRef({
+					...context,
+					referenceId,
+					valibotSchema: wrappedValibotSchema,
+					jsonSchema
+				});
+				if (refOverride) jsonSchema.$ref = refOverride;
+			}
+			break;
+		}
+		default: errors = addError(errors, `The "${valibotSchema.type}" schema cannot be converted to JSON Schema.`);
+	}
+	if (config?.overrideSchema) {
+		const schemaOverride = config.overrideSchema({
+			...context,
+			referenceId: context.referenceMap.get(valibotSchema),
+			valibotSchema,
+			jsonSchema,
+			errors
+		});
+		if (schemaOverride) return { ...schemaOverride };
+	}
+	if (errors) for (const message of errors) handleError(message, config);
+	return jsonSchema;
+}
+let store;
+/**
+* Returns the current global schema definitions.
+*
+* @returns The schema definitions.
+*
+* @beta
+*/
+function getGlobalDefs() {
+	return store;
+}
+/**
+* Converts a Valibot schema to the JSON Schema format.
+*
+* @param schema The Valibot schema object.
+* @param config The JSON Schema configuration.
+*
+* @returns The converted JSON Schema.
+*/
+function toJsonSchema$1(schema, config) {
+	const context = {
+		definitions: {},
+		referenceMap: /* @__PURE__ */ new Map(),
+		getterMap: /* @__PURE__ */ new Map()
+	};
+	const definitions = config?.definitions ?? getGlobalDefs();
+	if (definitions) {
+		for (const key in definitions) context.referenceMap.set(definitions[key], key);
+		for (const key in definitions) context.definitions[key] = convertSchema({}, definitions[key], config, context, true);
+	}
+	const jsonSchema = convertSchema({}, schema, config, context);
+	const target = config?.target ?? "draft-07";
+	if (target === "draft-2020-12") jsonSchema.$schema = "https://json-schema.org/draft/2020-12/schema";
+	else if (target === "draft-07") jsonSchema.$schema = "http://json-schema.org/draft-07/schema#";
+	if (context.referenceMap.size) jsonSchema.$defs = context.definitions;
+	return jsonSchema;
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/@tmcp+adapter-valibot@0.1.5_tmcp@1.19.2_typescript@5.9.3__valibot@1.2.0_typescript@5.9.3_/node_modules/@tmcp/adapter-valibot/src/index.js
+/**
+* @import { GenericSchema } from "valibot";
+*/
+/**
+* Atrocious hack to satisfy the current version of the protocol that for some reason
+* requires `type: string` on enum fields despite JSON Schema spec not requiring it.
+*
+* TODO: Remove this once the protocol is fixed to align with JSON Schema spec.
+* @param {ReturnType<typeof toJsonSchema>} json_schema
+*/
+function add_type_to_enums(json_schema) {
+	for (let key in json_schema) {
+		const property = json_schema[key];
+		if (property != null && typeof property === "object" && !Array.isArray(property)) {
+			if ("enum" in property && !("type" in property)) property.type = "string";
+			add_type_to_enums(property);
+		}
+	}
+	return json_schema;
+}
+/**
+* Valibot adapter for converting Valibot schemas to JSON Schema format
+* @augments {JsonSchemaAdapter<GenericSchema>}
+*/
+var ValibotJsonSchemaAdapter = class extends JsonSchemaAdapter {
+	/**
+	* Converts a Valibot schema to JSON Schema format
+	* @param {GenericSchema} schema - The Valibot schema to convert
+	* @returns {Promise<ReturnType<typeof toJsonSchema>>} - The converted JSON Schema
+	*/
+	async toJsonSchema(schema) {
+		return add_type_to_enums(toJsonSchema$1(schema));
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/@tmcp+session-manager@0.2.1_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/session-manager/src/index.js
+/**
+* @import { Context } from "tmcp";
+*/
+/**
+* @abstract
+*/
+var StreamSessionManager = class {
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {ReadableStreamDefaultController} controller
+	* @returns {void | Promise<void>}
+	*/
+	create(id, controller) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {void | Promise<void>}
+	*/
+	delete(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {boolean | Promise<boolean>}
+	*/
+	has(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string[] | undefined} sessions
+	* @param {string} data
+	* @returns {void | Promise<void>}
+	*/
+	send(sessions, data) {
+		throw new Error("Method not implemented.");
+	}
+};
+var InMemoryStreamSessionManager = class extends StreamSessionManager {
+	/**
+	* @type {Map<string, ReadableStreamDefaultController>}
+	*/
+	#sessions = /* @__PURE__ */ new Map();
+	#text_encoder = new TextEncoder();
+	/**
+	* @param {string} id
+	* @param {ReadableStreamDefaultController} controller
+	*/
+	create(id, controller) {
+		this.#sessions.set(id, controller);
+	}
+	/**
+	* @param {string} id
+	*/
+	delete(id) {
+		const controller = this.#sessions.get(id);
+		if (controller) {
+			this.#sessions.delete(id);
+			try {
+				controller.close();
+			} catch {}
+		}
+	}
+	/**
+	* @param {string} id
+	* @returns {Promise<boolean>}
+	*/
+	async has(id) {
+		return this.#sessions.has(id);
+	}
+	/**
+	* @param {string[] | undefined} sessions
+	* @param {string} data
+	*/
+	send(sessions, data) {
+		for (const [id, controller] of this.#sessions.entries()) if (sessions == null || sessions.includes(id)) controller.enqueue(this.#text_encoder.encode(data));
+	}
+};
+/**
+* @abstract
+*/
+var InfoSessionManager = class {
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientInfo"]>}
+	*/
+	getClientInfo(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {NonNullable<Context["sessionInfo"]>["clientInfo"]} client_info
+	*/
+	setClientInfo(id, client_info) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
+	*/
+	getClientCapabilities(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {NonNullable<Context["sessionInfo"]>["clientCapabilities"]} client_capabilities
+	*/
+	setClientCapabilities(id, client_capabilities) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @returns {Promise<NonNullable<Context["sessionInfo"]>["logLevel"]>}
+	*/
+	getLogLevel(id) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {NonNullable<Context["sessionInfo"]>["logLevel"]} log_level
+	*/
+	setLogLevel(id, log_level) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} uri
+	* @returns {Promise<string[]>}
+	*/
+	getSubscriptions(uri) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {string} uri
+	*/
+	addSubscription(id, uri) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	* @param {string} uri
+	*/
+	removeSubscription(id, uri) {
+		throw new Error("Method not implemented.");
+	}
+	/**
+	* @abstract
+	* @param {string} id
+	*/
+	delete(id) {
+		throw new Error("Method not implemented.");
+	}
+};
+var InMemoryInfoSessionManager = class extends InfoSessionManager {
+	/**
+	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientInfo"]>}
+	*/
+	#client_info = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
+	*/
+	#client_capabilities = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, NonNullable<Context["sessionInfo"]>["logLevel"]>}
+	*/
+	#log_level = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, Set<string>>}
+	*/
+	#subscriptions = /* @__PURE__ */ new Map();
+	/**
+	* @param {string} session
+	* @param {string} name
+	* @returns {Promise<never>}
+	*/
+	async #invariant(session, name) {
+		throw new Error(`${name} not found for session ${session}`);
+	}
+	/**
+	* @type {InfoSessionManager["getClientInfo"]}
+	*/
+	getClientInfo(id) {
+		return Promise.resolve(this.#client_info.get(id) ?? this.#invariant(id, "Client info"));
+	}
+	/**
+	* @type {InfoSessionManager["setClientInfo"]}
+	*/
+	setClientInfo(id, client_info) {
+		this.#client_info.set(id, client_info);
+	}
+	/**
+	* @type {InfoSessionManager["getClientCapabilities"]}
+	*/
+	getClientCapabilities(id) {
+		return Promise.resolve(this.#client_capabilities.get(id) ?? this.#invariant(id, "Client capabilities"));
+	}
+	/**
+	* @type {InfoSessionManager["setClientCapabilities"]}
+	*/
+	setClientCapabilities(id, client_capabilities) {
+		this.#client_capabilities.set(id, client_capabilities);
+	}
+	/**
+	* @type {InfoSessionManager["getLogLevel"]}
+	*/
+	getLogLevel(id) {
+		return Promise.resolve(this.#log_level.get(id) ?? this.#invariant(id, "Log Level"));
+	}
+	/**
+	* @type {InfoSessionManager["setLogLevel"]}
+	*/
+	setLogLevel(id, log_level) {
+		this.#log_level.set(id, log_level);
+	}
+	/**
+	* @type {InfoSessionManager["getSubscriptions"]}
+	*/
+	getSubscriptions(uri) {
+		return Promise.resolve([...this.#subscriptions.get(uri) ?? []]);
+	}
+	/**
+	* @type {InfoSessionManager["addSubscription"]}
+	*/
+	addSubscription(id, uri) {
+		let subscriptions = this.#subscriptions.get(uri);
+		if (!subscriptions) {
+			subscriptions = /* @__PURE__ */ new Set();
+			this.#subscriptions.set(uri, subscriptions);
+		}
+		subscriptions.add(id);
+	}
+	/**
+	* @type {InfoSessionManager["removeSubscription"]}
+	*/
+	removeSubscription(id, uri) {
+		let subscriptions = this.#subscriptions.get(uri);
+		if (subscriptions) subscriptions.delete(id);
+	}
+	/**
+	* @type {InfoSessionManager["delete"]}
+	*/
+	delete(id) {
+		this.#subscriptions.delete(id);
+		this.#log_level.delete(id);
+		this.#client_capabilities.delete(id);
+		this.#client_info.delete(id);
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/esm-env@1.2.2/node_modules/esm-env/dev-fallback.js
+const node_env = globalThis.process?.env?.NODE_ENV;
+var dev_fallback_default = node_env && !node_env.toLowerCase().startsWith("prod");
+
+//#endregion
+//#region ../../node_modules/.pnpm/@tmcp+transport-http@0.8.4_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/transport-http/src/index.js
+/**
+* @import { AuthInfo, McpServer } from "tmcp";
+* @import { OAuth  } from "@tmcp/auth";
+* @import { StreamSessionManager, InfoSessionManager } from "@tmcp/session-manager";
+* @import { OptionalizeSessionManager } from "./type-utils.js"
+*/
+/**
+* @typedef {{
+* 	origin?: string | string[] | boolean
+* 	methods?: string[]
+* 	allowedHeaders?: string[]
+* 	exposedHeaders?: string[]
+* 	credentials?: boolean
+* 	maxAge?: number
+* }} CorsConfig
+*/
+/**
+* @typedef {{
+* 	getSessionId?: () => string
+* 	path?: string | null
+* 	oauth?: OAuth<"built">
+* 	cors?: CorsConfig | boolean,
+* 	sessionManager?: { streams?: StreamSessionManager, info?: OptionalizeSessionManager<InfoSessionManager> }
+* 	disableSse?: boolean
+* }} HttpTransportOptions
+*/
+/**
+* @template {Record<string, unknown> | undefined} [TCustom=undefined]
+*/
+var HttpTransport = class {
+	/**
+	* @typedef {NonNullable<Required<Pick<HttpTransportOptions, "sessionManager">["sessionManager"]>>} SessionManager
+	*/
+	/**
+	* @type {McpServer<any, TCustom>}
+	*/
+	#server;
+	/**
+	* @type {Required<Omit<HttpTransportOptions, 'oauth' | 'cors' | 'sessionManager' | 'disableSse'>> & { cors?: CorsConfig | boolean, sessionManager: SessionManager, disableSse?: boolean }}
+	*/
+	#options;
+	/**
+	* @type {string | null}
+	*/
+	#path;
+	/**
+	* @type {AsyncLocalStorage<ReadableStreamDefaultController | undefined>}
+	*/
+	#controller_storage = new AsyncLocalStorage();
+	/**
+	* @type {AsyncLocalStorage<string>}
+	*/
+	#session_id_storage = new AsyncLocalStorage();
+	/**
+	* @type {OAuth<"built"> | undefined}
+	*/
+	#oauth;
+	#text_encoder = new TextEncoder();
+	/**
+	*
+	* @param {McpServer<any, TCustom>} server
+	* @param {HttpTransportOptions} [options]
+	*/
+	constructor(server, options) {
+		this.#server = server;
+		const { getSessionId = () => crypto.randomUUID(), path = "/mcp", oauth, cors, disableSse, sessionManager: _sessionManager = {
+			streams: new InMemoryStreamSessionManager(),
+			info: new InMemoryInfoSessionManager()
+		} } = options ?? { getSessionId: () => crypto.randomUUID() };
+		/**
+		* @type {SessionManager}
+		*/
+		const sessionManager = {
+			streams: _sessionManager.streams ?? new InMemoryStreamSessionManager(),
+			info: _sessionManager.info ?? new InMemoryInfoSessionManager()
+		};
+		if (options?.path === void 0 && dev_fallback_default) console.warn("[tmcp][transport-http] `options.path` is undefined, in future versions passing `undefined` will default to respond on all paths. To keep the current behavior, explicitly set `path` to '/mcp' or your desired path.");
+		if (oauth) this.#oauth = oauth;
+		this.#options = {
+			getSessionId,
+			path,
+			cors,
+			sessionManager,
+			disableSse
+		};
+		this.#path = path;
+		this.#server.on("initialize", ({ capabilities, clientInfo }) => {
+			const sessionId = this.#session_id_storage.getStore();
+			if (!sessionId) return;
+			this.#options.sessionManager.info.setClientCapabilities(sessionId, capabilities);
+			this.#options.sessionManager.info.setClientInfo(sessionId, clientInfo);
+		});
+		this.#server.on("subscription", async ({ uri, action }) => {
+			const sessionId = this.#session_id_storage.getStore();
+			if (!sessionId) return;
+			if (action === "remove") this.#options.sessionManager.info.removeSubscription?.(sessionId, uri);
+			else this.#options.sessionManager.info.addSubscription(sessionId, uri);
+		});
+		this.#server.on("loglevelchange", ({ level }) => {
+			const sessionId = this.#session_id_storage.getStore();
+			if (!sessionId) return;
+			this.#options.sessionManager.info.setLogLevel(sessionId, level);
+		});
+		this.#server.on("broadcast", async ({ request }) => {
+			let sessions = void 0;
+			if (request.method === "notifications/resources/updated") sessions = await this.#options.sessionManager.info.getSubscriptions(request.params.uri);
+			await this.#options.sessionManager.streams.send(sessions, "event: message\ndata: " + JSON.stringify(request) + "\n\n");
+		});
+		this.#server.on("send", async ({ request }) => {
+			const controller = this.#controller_storage.getStore();
+			if (!controller) return;
+			controller.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(request) + "\n\n"));
+		});
+	}
+	/**
+	* Applies CORS headers to a response based on the configuration
+	* @param {Response} response - The response to modify
+	* @param {Request} request - The original request
+	*/
+	#apply_cors_headers(response, request) {
+		const cors_config = this.#options.cors;
+		if (!cors_config) return;
+		if (cors_config === true) {
+			response.headers.set("Access-Control-Allow-Origin", "*");
+			response.headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+			response.headers.set("Access-Control-Allow-Headers", "*");
+			return;
+		}
+		const config = cors_config;
+		const origin = request.headers.get("origin");
+		if (config.origin !== void 0) {
+			if (config.origin === true || config.origin === "*") response.headers.set("Access-Control-Allow-Origin", "*");
+			else if (typeof config.origin === "string") {
+				if (origin === config.origin) response.headers.set("Access-Control-Allow-Origin", config.origin);
+			} else if (Array.isArray(config.origin)) {
+				if (origin && config.origin.includes(origin)) response.headers.set("Access-Control-Allow-Origin", origin);
+			}
+		}
+		const methods = config.methods ?? [
+			"GET",
+			"POST",
+			"DELETE",
+			"OPTIONS"
+		];
+		response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
+		const allowed_headers = config.allowedHeaders ?? "*";
+		if (Array.isArray(allowed_headers)) response.headers.set("Access-Control-Allow-Headers", allowed_headers.join(", "));
+		else response.headers.set("Access-Control-Allow-Headers", allowed_headers);
+		if (config.exposedHeaders) response.headers.set("Access-Control-Expose-Headers", config.exposedHeaders.join(", "));
+		if (config.credentials) response.headers.set("Access-Control-Allow-Credentials", "true");
+		if (config.maxAge !== void 0) response.headers.set("Access-Control-Max-Age", config.maxAge.toString());
+	}
+	/**
+	* @param {string} session_id
+	*/
+	async #handle_delete(session_id) {
+		await this.#options.sessionManager.streams.delete(session_id);
+		await this.#options.sessionManager.info.delete(session_id);
+		return new Response(null, {
+			status: 200,
+			headers: { "mcp-session-id": session_id }
+		});
+	}
+	/**
+	*
+	* @param {string} session_id
+	* @returns
+	*/
+	async #handle_get(session_id) {
+		if (this.#options.disableSse) return new Response(null, {
+			status: 405,
+			headers: { Allow: "POST, DELETE, OPTIONS" }
+		});
+		const sessions = this.#options.sessionManager;
+		const text_encoder = this.#text_encoder;
+		if (await sessions.streams.has(session_id)) return new Response(JSON.stringify({
+			jsonrpc: "2.0",
+			error: {
+				code: -32e3,
+				message: "Conflict: Only one SSE stream is allowed per session"
+			},
+			id: null
+		}), {
+			headers: {
+				"Content-Type": "application/json",
+				"mcp-session-id": session_id
+			},
+			status: 409
+		});
+		const stream = new ReadableStream({
+			async start(controller) {
+				await sessions.streams.create(session_id, controller);
+				controller.enqueue(text_encoder.encode(": connected\n\n"));
+			},
+			async cancel() {
+				await sessions.streams.delete(session_id);
+			}
+		});
+		return new Response(stream, {
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+				"mcp-session-id": session_id
+			},
+			status: 200
+		});
+	}
+	/**
+	*
+	* @param {string} session_id
+	* @param {Request} request
+	* @param {AuthInfo | null} auth_info
+	* @param {TCustom} [ctx]
+	*/
+	async #handle_post(session_id, request, auth_info, ctx) {
+		const content_type = request.headers.get("content-type");
+		if (!content_type || !content_type.includes("application/json")) return new Response(JSON.stringify({
+			jsonrpc: "2.0",
+			error: {
+				code: -32600,
+				message: "Invalid Request",
+				data: "Content-Type must be application/json"
+			}
+		}), {
+			status: 415,
+			headers: {
+				"Content-Type": "application/json",
+				"mcp-session-id": session_id
+			}
+		});
+		try {
+			const body = await request.clone().json();
+			/**
+			* @type {ReadableStreamDefaultController | undefined}
+			*/
+			let controller;
+			const stream = new ReadableStream({ start(_controller) {
+				controller = _controller;
+			} });
+			const session_id_storage = this.#session_id_storage;
+			const handle = async () => {
+				const client_capabilities = await this.#options.sessionManager.info.getClientCapabilities(session_id).catch(() => void 0);
+				const client_info = await this.#options.sessionManager.info.getClientInfo(session_id).catch(() => void 0);
+				const log_level = await this.#options.sessionManager.info.getLogLevel(session_id).catch(() => void 0);
+				const response = await this.#controller_storage.run(controller, () => session_id_storage.run(session_id, () => this.#server.receive(body, {
+					sessionId: session_id,
+					auth: auth_info ?? void 0,
+					sessionInfo: {
+						clientCapabilities: client_capabilities,
+						clientInfo: client_info,
+						logLevel: log_level
+					},
+					custom: ctx
+				})));
+				controller?.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(response) + "\n\n"));
+				controller?.close();
+			};
+			handle();
+			const has_request = (Array.isArray(body) ? body : [body]).some((message) => message.id != null);
+			const status = !has_request ? 202 : 200;
+			return new Response(has_request ? stream : null, {
+				headers: has_request ? {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					connection: "keep-alive",
+					"mcp-session-id": session_id
+				} : void 0,
+				status
+			});
+		} catch (error) {
+			return new Response(JSON.stringify({
+				jsonrpc: "2.0",
+				error: {
+					code: -32700,
+					message: "Parse error",
+					data: error.message
+				}
+			}), {
+				status: 400,
+				headers: {
+					"Content-Type": "application/json",
+					"mcp-session-id": session_id
+				}
+			});
+		}
+	}
+	/**
+	*
+	* @param {string} method
+	* @returns
+	*/
+	#handle_default(method) {
+		return new Response(JSON.stringify({
+			jsonrpc: "2.0",
+			error: {
+				code: -32601,
+				message: "Method not found",
+				data: `HTTP method ${method} not supported`
+			}
+		}), {
+			status: 405,
+			headers: {
+				"Content-Type": "application/json",
+				Allow: "GET, POST, DELETE, OPTIONS"
+			}
+		});
+	}
+	/**
+	*
+	* @param {Request} request
+	* @param {TCustom} [ctx]
+	* @returns {Promise<Response | null>}
+	*/
+	async respond(request, ctx) {
+		const url = new URL(request.url);
+		/**
+		* @type {AuthInfo | null}
+		*/
+		let auth_info = null;
+		if (this.#oauth) {
+			try {
+				const response = await this.#oauth.respond(request);
+				if (response) return response;
+			} catch (error) {
+				return new Response(JSON.stringify({
+					error: "server_error",
+					error_description: error.message
+				}), {
+					status: 500,
+					headers: { "Content-Type": "application/json" }
+				});
+			}
+			auth_info = await this.#oauth.verify(request);
+		}
+		if (url.pathname !== this.#path && this.#path !== null) return null;
+		const method = request.method;
+		const session_id = request.headers.get("mcp-session-id") || this.#options.getSessionId();
+		/**
+		* @type {Response | null}
+		*/
+		let response = null;
+		if (method === "OPTIONS") response = new Response(null, {
+			status: 204,
+			headers: { "Content-Type": "application/json" }
+		});
+		else if (method === "DELETE") response = await this.#handle_delete(session_id);
+		else if (method === "GET") response = await this.#handle_get(session_id);
+		else if (method === "POST") response = await this.#handle_post(session_id, request, auth_info, ctx);
+		else response = this.#handle_default(method);
+		if (response) this.#apply_cors_headers(response, request);
+		return response;
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_utils.mjs
+const noColor = /* @__PURE__ */ (() => {
+	const env = globalThis.process?.env ?? {};
+	return env.NO_COLOR === "1" || env.TERM === "dumb";
+})();
+const _c = (c, r = 39) => (t) => noColor ? t : `\u001B[${c}m${t}\u001B[${r}m`;
+const bold = /* @__PURE__ */ _c(1, 22);
+const red = /* @__PURE__ */ _c(31);
+const green = /* @__PURE__ */ _c(32);
+const gray = /* @__PURE__ */ _c(90);
+
+//#endregion
+//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_url.mjs
+function lazyInherit(target, source, sourceKey) {
+	for (const key of [...Object.getOwnPropertyNames(source), ...Object.getOwnPropertySymbols(source)]) {
+		if (key === "constructor") continue;
+		const targetDesc = Object.getOwnPropertyDescriptor(target, key);
+		const desc = Object.getOwnPropertyDescriptor(source, key);
+		let modified = false;
+		if (desc.get) {
+			modified = true;
+			desc.get = targetDesc?.get || function() {
+				return this[sourceKey][key];
+			};
+		}
+		if (desc.set) {
+			modified = true;
+			desc.set = targetDesc?.set || function(value) {
+				this[sourceKey][key] = value;
+			};
+		}
+		if (!targetDesc?.value && typeof desc.value === "function") {
+			modified = true;
+			desc.value = function(...args) {
+				return this[sourceKey][key](...args);
+			};
+		}
+		if (modified) Object.defineProperty(target, key, desc);
+	}
+}
+/**
+* URL wrapper with fast paths to access to the following props:
+*
+*  - `url.pathname`
+*  - `url.search`
+*  - `url.searchParams`
+*  - `url.protocol`
+*
+* **NOTES:**
+*
+* - It is assumed that the input URL is **already encoded** and formatted from an HTTP request and contains no hash.
+* - Triggering the setters or getters on other props will deoptimize to full URL parsing.
+* - Changes to `searchParams` will be discarded as we don't track them.
+*/
+const FastURL = /* @__PURE__ */ (() => {
+	const NativeURL = globalThis.URL;
+	const FastURL = class URL {
+		#url;
+		#href;
+		#protocol;
+		#host;
+		#pathname;
+		#search;
+		#searchParams;
+		#pos;
+		constructor(url) {
+			if (typeof url === "string") this.#href = url;
+			else {
+				this.#protocol = url.protocol;
+				this.#host = url.host;
+				this.#pathname = url.pathname;
+				this.#search = url.search;
+			}
+		}
+		static [Symbol.hasInstance](val) {
+			return val instanceof NativeURL;
+		}
+		get _url() {
+			if (this.#url) return this.#url;
+			this.#url = new NativeURL(this.href);
+			this.#href = void 0;
+			this.#protocol = void 0;
+			this.#host = void 0;
+			this.#pathname = void 0;
+			this.#search = void 0;
+			this.#searchParams = void 0;
+			this.#pos = void 0;
+			return this.#url;
+		}
+		get href() {
+			if (this.#url) return this.#url.href;
+			if (!this.#href) this.#href = `${this.#protocol || "http:"}//${this.#host || "localhost"}${this.#pathname || "/"}${this.#search || ""}`;
+			return this.#href;
+		}
+		#getPos() {
+			if (!this.#pos) {
+				const url = this.href;
+				const protoIndex = url.indexOf("://");
+				const pathnameIndex = protoIndex === -1 ? -1 : url.indexOf("/", protoIndex + 4);
+				this.#pos = [
+					protoIndex,
+					pathnameIndex,
+					pathnameIndex === -1 ? -1 : url.indexOf("?", pathnameIndex)
+				];
+			}
+			return this.#pos;
+		}
+		get pathname() {
+			if (this.#url) return this.#url.pathname;
+			if (this.#pathname === void 0) {
+				const [, pathnameIndex, queryIndex] = this.#getPos();
+				if (pathnameIndex === -1) return this._url.pathname;
+				this.#pathname = this.href.slice(pathnameIndex, queryIndex === -1 ? void 0 : queryIndex);
+			}
+			return this.#pathname;
+		}
+		get search() {
+			if (this.#url) return this.#url.search;
+			if (this.#search === void 0) {
+				const [, pathnameIndex, queryIndex] = this.#getPos();
+				if (pathnameIndex === -1) return this._url.search;
+				const url = this.href;
+				this.#search = queryIndex === -1 || queryIndex === url.length - 1 ? "" : url.slice(queryIndex);
+			}
+			return this.#search;
+		}
+		get searchParams() {
+			if (this.#url) return this.#url.searchParams;
+			if (!this.#searchParams) this.#searchParams = new URLSearchParams(this.search);
+			return this.#searchParams;
+		}
+		get protocol() {
+			if (this.#url) return this.#url.protocol;
+			if (this.#protocol === void 0) {
+				const [protocolIndex] = this.#getPos();
+				if (protocolIndex === -1) return this._url.protocol;
+				this.#protocol = this.href.slice(0, protocolIndex + 1);
+			}
+			return this.#protocol;
+		}
+		toString() {
+			return this.href;
+		}
+		toJSON() {
+			return this.href;
+		}
+	};
+	lazyInherit(FastURL.prototype, NativeURL.prototype, "_url");
+	Object.setPrototypeOf(FastURL.prototype, NativeURL.prototype);
+	Object.setPrototypeOf(FastURL, NativeURL);
+	return FastURL;
+})();
+
+//#endregion
+//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_utils2.mjs
+function resolvePortAndHost(opts) {
+	const _port = opts.port ?? globalThis.process?.env.PORT ?? 3e3;
+	const port = typeof _port === "number" ? _port : Number.parseInt(_port, 10);
+	if (port < 0 || port > 65535) throw new RangeError(`Port must be between 0 and 65535 (got "${port}").`);
+	return {
+		port,
+		hostname: opts.hostname ?? globalThis.process?.env.HOST
+	};
+}
+function fmtURL(host, port, secure) {
+	if (!host || !port) return;
+	if (host.includes(":")) host = `[${host}]`;
+	return `http${secure ? "s" : ""}://${host}:${port}/`;
+}
+function printListening(opts, url) {
+	if (!url || (opts.silent ?? globalThis.process?.env?.TEST)) return;
+	let additionalInfo = "";
+	try {
+		const _url = new URL(url);
+		if (_url.hostname === "[::]" || _url.hostname === "0.0.0.0") {
+			_url.hostname = "localhost";
+			url = _url.href;
+			additionalInfo = " (all interfaces)";
+		}
+	} catch {}
+	let listeningOn = `➜ Listening on:`;
+	if (globalThis.process.stdout?.isTTY) {
+		listeningOn = `\u001B[32m${listeningOn}\u001B[0m`;
+		url = `\u001B[36m${url}\u001B[0m`;
+		additionalInfo = `\u001B[2m${additionalInfo}\u001B[0m`;
+	}
+	console.log(`${listeningOn} ${url}${additionalInfo}`);
+}
+function resolveTLSOptions(opts) {
+	if (!opts.tls || opts.protocol === "http") return;
+	const cert = resolveCertOrKey(opts.tls.cert);
+	const key = resolveCertOrKey(opts.tls.key);
+	if (!cert && !key) {
+		if (opts.protocol === "https") throw new TypeError("TLS `cert` and `key` must be provided for `https` protocol.");
+		return;
+	}
+	if (!cert || !key) throw new TypeError("TLS `cert` and `key` must be provided together.");
+	return {
+		cert,
+		key,
+		passphrase: opts.tls.passphrase
+	};
+}
+function resolveCertOrKey(value) {
+	if (!value) return;
+	if (typeof value !== "string") throw new TypeError("TLS certificate and key must be strings in PEM format or file paths.");
+	if (value.startsWith("-----BEGIN ")) return value;
+	const { readFileSync } = process.getBuiltinModule("node:fs");
+	return readFileSync(value, "utf8");
+}
+function createWaitUntil() {
+	const promises = /* @__PURE__ */ new Set();
+	return {
+		waitUntil: (promise) => {
+			if (typeof promise?.then !== "function") return;
+			promises.add(Promise.resolve(promise).catch(console.error).finally(() => {
+				promises.delete(promise);
+			}));
+		},
+		wait: () => {
+			return Promise.all(promises);
+		}
+	};
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_plugins.mjs
+function wrapFetch(server) {
+	const fetchHandler = server.options.fetch;
+	const middleware = server.options.middleware || [];
+	return middleware.length === 0 ? fetchHandler : (request) => callMiddleware(request, fetchHandler, middleware, 0);
+}
+function callMiddleware(request, fetchHandler, middleware, index) {
+	if (index === middleware.length) return fetchHandler(request);
+	return middleware[index](request, () => callMiddleware(request, fetchHandler, middleware, index + 1));
+}
+const errorPlugin = (server) => {
+	const errorHandler = server.options.error;
+	if (!errorHandler) return;
+	server.options.middleware.unshift((_req, next) => {
+		try {
+			const res = next();
+			return res instanceof Promise ? res.catch((error) => errorHandler(error)) : res;
+		} catch (error) {
+			return errorHandler(error);
+		}
+	});
+};
+const gracefulShutdownPlugin = (server) => {
+	const config = server.options?.gracefulShutdown;
+	if (!globalThis.process?.on || config === false || config === void 0 && (process.env.CI || process.env.TEST)) return;
+	const gracefulTimeout = config === true || !config?.gracefulTimeout ? Number.parseInt(process.env.SERVER_SHUTDOWN_TIMEOUT || "") || 5 : config.gracefulTimeout;
+	let isClosing = false;
+	let isClosed = false;
+	const w = server.options.silent ? () => {} : process.stderr.write.bind(process.stderr);
+	const forceClose = async () => {
+		if (isClosed) return;
+		w(red("\x1B[2K\rForcibly closing connections...\n"));
+		isClosed = true;
+		await server.close(true);
+	};
+	const shutdown = async () => {
+		if (isClosing || isClosed) return;
+		setTimeout(() => {
+			globalThis.process.once("SIGINT", forceClose);
+		}, 100);
+		isClosing = true;
+		const closePromise = server.close();
+		for (let remaining = gracefulTimeout; remaining > 0; remaining--) {
+			w(gray(`\rStopping server gracefully (${remaining}s)... Press ${bold("Ctrl+C")} again to force close.`));
+			if (await Promise.race([closePromise.then(() => true), new Promise((r) => setTimeout(() => r(false), 1e3))])) {
+				w("\x1B[2K\r" + green("Server closed successfully.\n"));
+				isClosed = true;
+				return;
+			}
+		}
+		w("\x1B[2K\rGraceful shutdown timed out.\n");
+		await forceClose();
+	};
+	for (const sig of ["SIGINT", "SIGTERM"]) globalThis.process.on(sig, shutdown);
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/adapters/node.mjs
+async function sendNodeResponse(nodeRes, webRes) {
+	if (!webRes) {
+		nodeRes.statusCode = 500;
+		return endNodeResponse(nodeRes);
+	}
+	if (webRes._toNodeResponse) {
+		const res = webRes._toNodeResponse();
+		writeHead(nodeRes, res.status, res.statusText, res.headers);
+		if (res.body) {
+			if (res.body instanceof ReadableStream) return streamBody(res.body, nodeRes);
+			else if (typeof res.body?.pipe === "function") {
+				res.body.pipe(nodeRes);
+				return new Promise((resolve) => nodeRes.on("close", resolve));
+			}
+			nodeRes.write(res.body);
+		}
+		return endNodeResponse(nodeRes);
+	}
+	const rawHeaders = [...webRes.headers];
+	writeHead(nodeRes, webRes.status, webRes.statusText, rawHeaders);
+	return webRes.body ? streamBody(webRes.body, nodeRes) : endNodeResponse(nodeRes);
+}
+function writeHead(nodeRes, status, statusText, rawHeaders) {
+	const writeHeaders = globalThis.Deno ? rawHeaders : rawHeaders.flat();
+	if (!nodeRes.headersSent) if (nodeRes.req?.httpVersion === "2.0") nodeRes.writeHead(status, writeHeaders);
+	else nodeRes.writeHead(status, statusText, writeHeaders);
+}
+function endNodeResponse(nodeRes) {
+	return new Promise((resolve) => nodeRes.end(resolve));
+}
+function streamBody(stream, nodeRes) {
+	if (nodeRes.destroyed) {
+		stream.cancel();
+		return;
+	}
+	const reader = stream.getReader();
+	function streamCancel(error) {
+		reader.cancel(error).catch(() => {});
+		if (error) nodeRes.destroy(error);
+	}
+	function streamHandle({ done, value }) {
+		try {
+			if (done) nodeRes.end();
+			else if (nodeRes.write(value)) reader.read().then(streamHandle, streamCancel);
+			else nodeRes.once("drain", () => reader.read().then(streamHandle, streamCancel));
+		} catch (error) {
+			streamCancel(error instanceof Error ? error : void 0);
+		}
+	}
+	nodeRes.on("close", streamCancel);
+	nodeRes.on("error", streamCancel);
+	reader.read().then(streamHandle, streamCancel);
+	return reader.closed.catch(streamCancel).finally(() => {
+		nodeRes.off("close", streamCancel);
+		nodeRes.off("error", streamCancel);
+	});
+}
+/**
+* Validates an HTTP Host header value (domain, IPv4, or bracketed IPv6) with optional port.
+* Intended for preliminary filtering invalid values like "localhost:3000/foobar?"
+*/
+const HOST_RE = /^(\[(?:[A-Fa-f0-9:.]+)\]|(?:[A-Za-z0-9_-]+\.)*[A-Za-z0-9_-]+|(?:\d{1,3}\.){3}\d{1,3})(:\d{1,5})?$/;
+var NodeRequestURL = class extends FastURL {
+	#req;
+	constructor({ req }) {
+		const path = req.url || "/";
+		if (path[0] === "/") {
+			const qIndex = path.indexOf("?");
+			const pathname = qIndex === -1 ? path : path?.slice(0, qIndex) || "/";
+			const search = qIndex === -1 ? "" : path?.slice(qIndex) || "";
+			let host = req.headers.host || req.headers[":authority"];
+			if (host) {
+				if (!HOST_RE.test(host)) throw new TypeError(`Invalid host header: ${host}`);
+			} else if (req.socket) host = `${req.socket.localFamily === "IPv6" ? "[" + req.socket.localAddress + "]" : req.socket.localAddress}:${req.socket?.localPort || "80"}`;
+			else host = "localhost";
+			const protocol = req.socket?.encrypted || req.headers["x-forwarded-proto"] === "https" || req.headers[":scheme"] === "https" ? "https:" : "http:";
+			super({
+				protocol,
+				host,
+				pathname,
+				search
+			});
+		} else super(path);
+		this.#req = req;
+	}
+	get pathname() {
+		return super.pathname;
+	}
+	set pathname(value) {
+		this._url.pathname = value;
+		this.#req.url = this._url.pathname + this._url.search;
+	}
+};
+const NodeRequestHeaders = /* @__PURE__ */ (() => {
+	const NativeHeaders = globalThis.Headers;
+	class Headers {
+		#req;
+		#headers;
+		constructor(req) {
+			this.#req = req;
+		}
+		static [Symbol.hasInstance](val) {
+			return val instanceof NativeHeaders;
+		}
+		get _headers() {
+			if (!this.#headers) {
+				const headers = new NativeHeaders();
+				const rawHeaders = this.#req.rawHeaders;
+				const len = rawHeaders.length;
+				for (let i = 0; i < len; i += 2) {
+					const key = rawHeaders[i];
+					if (key.charCodeAt(0) === 58) continue;
+					const value = rawHeaders[i + 1];
+					headers.append(key, value);
+				}
+				this.#headers = headers;
+			}
+			return this.#headers;
+		}
+		get(name) {
+			if (this.#headers) return this.#headers.get(name);
+			const value = this.#req.headers[name.toLowerCase()];
+			return Array.isArray(value) ? value.join(", ") : value || null;
+		}
+		has(name) {
+			if (this.#headers) return this.#headers.has(name);
+			return name.toLowerCase() in this.#req.headers;
+		}
+		getSetCookie() {
+			if (this.#headers) return this.#headers.getSetCookie();
+			const value = this.#req.headers["set-cookie"];
+			return Array.isArray(value) ? value : value ? [value] : [];
+		}
+		*_entries() {
+			const rawHeaders = this.#req.rawHeaders;
+			const len = rawHeaders.length;
+			for (let i = 0; i < len; i += 2) {
+				const key = rawHeaders[i];
+				if (key.charCodeAt(0) === 58) continue;
+				yield [key.toLowerCase(), rawHeaders[i + 1]];
+			}
+		}
+		entries() {
+			return this.#headers ? this.#headers.entries() : this._entries();
+		}
+		[Symbol.iterator]() {
+			return this.entries();
+		}
+	}
+	lazyInherit(Headers.prototype, NativeHeaders.prototype, "_headers");
+	Object.setPrototypeOf(Headers, NativeHeaders);
+	Object.setPrototypeOf(Headers.prototype, NativeHeaders.prototype);
+	return Headers;
+})();
+const NodeRequest = /* @__PURE__ */ (() => {
+	const NativeRequest = globalThis.Request;
+	class Request {
+		runtime;
+		#req;
+		#url;
+		#bodyStream;
+		#request;
+		#headers;
+		#abortController;
+		constructor(ctx) {
+			this.#req = ctx.req;
+			this.runtime = {
+				name: "node",
+				node: ctx
+			};
+		}
+		static [Symbol.hasInstance](val) {
+			return val instanceof NativeRequest;
+		}
+		get ip() {
+			return this.#req.socket?.remoteAddress;
+		}
+		get method() {
+			if (this.#request) return this.#request.method;
+			return this.#req.method || "GET";
+		}
+		get _url() {
+			return this.#url ||= new NodeRequestURL({ req: this.#req });
+		}
+		set _url(url) {
+			this.#url = url;
+		}
+		get url() {
+			if (this.#request) return this.#request.url;
+			return this._url.href;
+		}
+		get headers() {
+			if (this.#request) return this.#request.headers;
+			return this.#headers ||= new NodeRequestHeaders(this.#req);
+		}
+		get _abortController() {
+			if (!this.#abortController) {
+				this.#abortController = new AbortController();
+				const { req, res } = this.runtime.node;
+				const abortController = this.#abortController;
+				const abort = (err) => abortController.abort?.(err);
+				if (res) res.once("close", () => {
+					const reqError = req.errored;
+					if (reqError) abort(reqError);
+					else if (!res.writableEnded) abort();
+				});
+				else req.once("close", () => {
+					if (!req.complete) abort();
+				});
+			}
+			return this.#abortController;
+		}
+		get signal() {
+			return this.#request ? this.#request.signal : this._abortController.signal;
+		}
+		get body() {
+			if (this.#request) return this.#request.body;
+			if (this.#bodyStream === void 0) {
+				const method = this.method;
+				this.#bodyStream = !(method === "GET" || method === "HEAD") ? Readable.toWeb(this.#req) : null;
+			}
+			return this.#bodyStream;
+		}
+		text() {
+			if (this.#request) return this.#request.text();
+			if (this.#bodyStream !== void 0) return this.#bodyStream ? new Response(this.#bodyStream).text() : Promise.resolve("");
+			return readBody(this.#req).then((buf) => buf.toString());
+		}
+		json() {
+			if (this.#request) return this.#request.json();
+			return this.text().then((text) => JSON.parse(text));
+		}
+		get _request() {
+			if (!this.#request) {
+				const body = this.body;
+				this.#request = new NativeRequest(this.url, {
+					method: this.method,
+					headers: this.headers,
+					signal: this._abortController.signal,
+					body,
+					duplex: body ? "half" : void 0
+				});
+				this.#headers = void 0;
+				this.#bodyStream = void 0;
+			}
+			return this.#request;
+		}
+	}
+	lazyInherit(Request.prototype, NativeRequest.prototype, "_request");
+	Object.setPrototypeOf(Request.prototype, NativeRequest.prototype);
+	return Request;
+})();
+function readBody(req) {
+	if ("rawBody" in req && Buffer.isBuffer(req.rawBody)) return Promise.resolve(req.rawBody);
+	return new Promise((resolve, reject) => {
+		const chunks = [];
+		const onData = (chunk) => {
+			chunks.push(chunk);
+		};
+		const onError = (err) => {
+			reject(err);
+		};
+		const onEnd = () => {
+			req.off("error", onError);
+			req.off("data", onData);
+			resolve(Buffer.concat(chunks));
+		};
+		req.on("data", onData).once("end", onEnd).once("error", onError);
+	});
+}
+/**
+* Fast Response for Node.js runtime
+*
+* It is faster because in most cases it doesn't create a full Response instance.
+*/
+const NodeResponse = /* @__PURE__ */ (() => {
+	const NativeResponse = globalThis.Response;
+	const STATUS_CODES = globalThis.process?.getBuiltinModule?.("node:http")?.STATUS_CODES || {};
+	class NodeResponse {
+		#body;
+		#init;
+		#headers;
+		#response;
+		constructor(body, init) {
+			this.#body = body;
+			this.#init = init;
+		}
+		static [Symbol.hasInstance](val) {
+			return val instanceof NativeResponse;
+		}
+		get status() {
+			return this.#response?.status || this.#init?.status || 200;
+		}
+		get statusText() {
+			return this.#response?.statusText || this.#init?.statusText || STATUS_CODES[this.status] || "";
+		}
+		get headers() {
+			if (this.#response) return this.#response.headers;
+			if (this.#headers) return this.#headers;
+			const initHeaders = this.#init?.headers;
+			return this.#headers = initHeaders instanceof Headers ? initHeaders : new Headers(initHeaders);
+		}
+		get ok() {
+			if (this.#response) return this.#response.ok;
+			const status = this.status;
+			return status >= 200 && status < 300;
+		}
+		get _response() {
+			if (this.#response) return this.#response;
+			let body = this.#body;
+			if (body && typeof body.pipe === "function" && !(body instanceof Readable)) {
+				const stream = new PassThrough();
+				body.pipe(stream);
+				const abort = body.abort;
+				if (abort) stream.once("close", () => abort());
+				body = stream;
+			}
+			this.#response = new NativeResponse(body, this.#headers ? {
+				...this.#init,
+				headers: this.#headers
+			} : this.#init);
+			this.#init = void 0;
+			this.#headers = void 0;
+			this.#body = void 0;
+			return this.#response;
+		}
+		_toNodeResponse() {
+			const status = this.status;
+			const statusText = this.statusText;
+			let body;
+			let contentType;
+			let contentLength;
+			if (this.#response) body = this.#response.body;
+			else if (this.#body) if (this.#body instanceof ReadableStream) body = this.#body;
+			else if (typeof this.#body === "string") {
+				body = this.#body;
+				contentType = "text/plain; charset=UTF-8";
+				contentLength = Buffer.byteLength(this.#body);
+			} else if (this.#body instanceof ArrayBuffer) {
+				body = Buffer.from(this.#body);
+				contentLength = this.#body.byteLength;
+			} else if (this.#body instanceof Uint8Array) {
+				body = this.#body;
+				contentLength = this.#body.byteLength;
+			} else if (this.#body instanceof DataView) {
+				body = Buffer.from(this.#body.buffer);
+				contentLength = this.#body.byteLength;
+			} else if (this.#body instanceof Blob) {
+				body = this.#body.stream();
+				contentType = this.#body.type;
+				contentLength = this.#body.size;
+			} else if (typeof this.#body.pipe === "function") body = this.#body;
+			else body = this._response.body;
+			const headers = [];
+			const initHeaders = this.#init?.headers;
+			const headerEntries = this.#response?.headers || this.#headers || (initHeaders ? Array.isArray(initHeaders) ? initHeaders : initHeaders?.entries ? initHeaders.entries() : Object.entries(initHeaders).map(([k, v]) => [k.toLowerCase(), v]) : void 0);
+			let hasContentTypeHeader;
+			let hasContentLength;
+			if (headerEntries) for (const [key, value] of headerEntries) {
+				if (Array.isArray(value)) for (const v of value) headers.push([key, v]);
+				else headers.push([key, value]);
+				if (key === "content-type") hasContentTypeHeader = true;
+				else if (key === "content-length") hasContentLength = true;
+			}
+			if (contentType && !hasContentTypeHeader) headers.push(["content-type", contentType]);
+			if (contentLength && !hasContentLength) headers.push(["content-length", String(contentLength)]);
+			this.#init = void 0;
+			this.#headers = void 0;
+			this.#response = void 0;
+			this.#body = void 0;
+			return {
+				status,
+				statusText,
+				headers,
+				body
+			};
+		}
+	}
+	lazyInherit(NodeResponse.prototype, NativeResponse.prototype, "_response");
+	Object.setPrototypeOf(NodeResponse, NativeResponse);
+	Object.setPrototypeOf(NodeResponse.prototype, NativeResponse.prototype);
+	return NodeResponse;
+})();
+function serve(options) {
+	return new NodeServer(options);
+}
+var NodeServer = class {
+	runtime = "node";
+	options;
+	node;
+	serveOptions;
+	fetch;
+	waitUntil;
+	#isSecure;
+	#listeningPromise;
+	#wait;
+	constructor(options) {
+		this.options = {
+			...options,
+			middleware: [...options.middleware || []]
+		};
+		for (const plugin of options.plugins || []) plugin(this);
+		errorPlugin(this);
+		const fetchHandler = this.fetch = wrapFetch(this);
+		const handler = (nodeReq, nodeRes) => {
+			const request = new NodeRequest({
+				req: nodeReq,
+				res: nodeRes
+			});
+			request.waitUntil = this.#wait?.waitUntil;
+			const res = fetchHandler(request);
+			return res instanceof Promise ? res.then((resolvedRes) => sendNodeResponse(nodeRes, resolvedRes)) : sendNodeResponse(nodeRes, res);
+		};
+		this.node = {
+			handler,
+			server: void 0
+		};
+		const loader = globalThis.__srvxLoader__;
+		if (loader) {
+			loader({ server: this });
+			return;
+		}
+		gracefulShutdownPlugin(this);
+		this.#wait = createWaitUntil();
+		this.waitUntil = this.#wait.waitUntil;
+		const tls = resolveTLSOptions(this.options);
+		const { port, hostname: host } = resolvePortAndHost(this.options);
+		this.serveOptions = {
+			port,
+			host,
+			exclusive: !this.options.reusePort,
+			...tls ? {
+				cert: tls.cert,
+				key: tls.key,
+				passphrase: tls.passphrase
+			} : {},
+			...this.options.node
+		};
+		let server;
+		this.#isSecure = !!this.serveOptions.cert && this.options.protocol !== "http";
+		if (this.options.node?.http2 ?? this.#isSecure) if (this.#isSecure) server = nodeHTTP2.createSecureServer({
+			allowHTTP1: true,
+			...this.serveOptions
+		}, handler);
+		else throw new Error("node.http2 option requires tls certificate!");
+		else if (this.#isSecure) server = nodeHTTPS.createServer(this.serveOptions, handler);
+		else server = nodeHTTP.createServer(this.serveOptions, handler);
+		this.node.server = server;
+		if (!options.manual) this.serve();
+	}
+	serve() {
+		if (this.#listeningPromise) return Promise.resolve(this.#listeningPromise).then(() => this);
+		this.#listeningPromise = new Promise((resolve) => {
+			this.node.server.listen(this.serveOptions, () => {
+				printListening(this.options, this.url);
+				resolve();
+			});
+		});
+	}
+	get url() {
+		const addr = this.node?.server?.address();
+		if (!addr) return;
+		return typeof addr === "string" ? addr : fmtURL(addr.address, addr.port, this.#isSecure);
+	}
+	ready() {
+		return Promise.resolve(this.#listeningPromise).then(() => this);
+	}
+	async close(closeAll) {
+		await Promise.all([this.#wait?.wait(), new Promise((resolve, reject) => {
+			const server = this.node?.server;
+			if (server && closeAll && "closeAllConnections" in server) server.closeAllConnections();
+			if (!server || !server.listening) return resolve();
+			server.close((error) => error ? reject(error) : resolve());
+		})]);
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/models.js
+var require_models = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var __extends = exports && exports.__extends || (function() {
+		var extendStatics = function(d, b) {
+			extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d, b) {
+				d.__proto__ = b;
+			} || function(d, b) {
+				for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+			};
+			return extendStatics(d, b);
+		};
+		return function(d, b) {
+			if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+			extendStatics(d, b);
+			function __() {
+				this.constructor = d;
+			}
+			d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+		};
+	})();
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.createJSONRPCNotification = exports.createJSONRPCRequest = exports.createJSONRPCSuccessResponse = exports.createJSONRPCErrorResponse = exports.JSONRPCErrorCode = exports.JSONRPCErrorException = exports.isJSONRPCResponses = exports.isJSONRPCResponse = exports.isJSONRPCRequests = exports.isJSONRPCRequest = exports.isJSONRPCID = exports.JSONRPC = void 0;
+	exports.JSONRPC = "2.0";
+	var isJSONRPCID = function(id) {
+		return typeof id === "string" || typeof id === "number" || id === null;
+	};
+	exports.isJSONRPCID = isJSONRPCID;
+	var isJSONRPCRequest = function(payload) {
+		return payload.jsonrpc === exports.JSONRPC && payload.method !== void 0 && payload.result === void 0 && payload.error === void 0;
+	};
+	exports.isJSONRPCRequest = isJSONRPCRequest;
+	var isJSONRPCRequests = function(payload) {
+		return Array.isArray(payload) && payload.every(exports.isJSONRPCRequest);
+	};
+	exports.isJSONRPCRequests = isJSONRPCRequests;
+	var isJSONRPCResponse = function(payload) {
+		return payload.jsonrpc === exports.JSONRPC && payload.id !== void 0 && (payload.result !== void 0 || payload.error !== void 0);
+	};
+	exports.isJSONRPCResponse = isJSONRPCResponse;
+	var isJSONRPCResponses = function(payload) {
+		return Array.isArray(payload) && payload.every(exports.isJSONRPCResponse);
+	};
+	exports.isJSONRPCResponses = isJSONRPCResponses;
+	var createJSONRPCError = function(code, message, data) {
+		var error = {
+			code,
+			message
+		};
+		if (data != null) error.data = data;
+		return error;
+	};
+	var JSONRPCErrorException = function(_super) {
+		__extends(JSONRPCErrorException, _super);
+		function JSONRPCErrorException(message, code, data) {
+			var _this = _super.call(this, message) || this;
+			Object.setPrototypeOf(_this, JSONRPCErrorException.prototype);
+			_this.code = code;
+			_this.data = data;
+			return _this;
+		}
+		JSONRPCErrorException.prototype.toObject = function() {
+			return createJSONRPCError(this.code, this.message, this.data);
+		};
+		return JSONRPCErrorException;
+	}(Error);
+	exports.JSONRPCErrorException = JSONRPCErrorException;
+	(function(JSONRPCErrorCode) {
+		JSONRPCErrorCode[JSONRPCErrorCode["ParseError"] = -32700] = "ParseError";
+		JSONRPCErrorCode[JSONRPCErrorCode["InvalidRequest"] = -32600] = "InvalidRequest";
+		JSONRPCErrorCode[JSONRPCErrorCode["MethodNotFound"] = -32601] = "MethodNotFound";
+		JSONRPCErrorCode[JSONRPCErrorCode["InvalidParams"] = -32602] = "InvalidParams";
+		JSONRPCErrorCode[JSONRPCErrorCode["InternalError"] = -32603] = "InternalError";
+	})(exports.JSONRPCErrorCode || (exports.JSONRPCErrorCode = {}));
+	var createJSONRPCErrorResponse = function(id, code, message, data) {
+		return {
+			jsonrpc: exports.JSONRPC,
+			id,
+			error: createJSONRPCError(code, message, data)
+		};
+	};
+	exports.createJSONRPCErrorResponse = createJSONRPCErrorResponse;
+	var createJSONRPCSuccessResponse = function(id, result) {
+		return {
+			jsonrpc: exports.JSONRPC,
+			id,
+			result: result !== null && result !== void 0 ? result : null
+		};
+	};
+	exports.createJSONRPCSuccessResponse = createJSONRPCSuccessResponse;
+	var createJSONRPCRequest = function(id, method, params) {
+		return {
+			jsonrpc: exports.JSONRPC,
+			id,
+			method,
+			params
+		};
+	};
+	exports.createJSONRPCRequest = createJSONRPCRequest;
+	var createJSONRPCNotification = function(method, params) {
+		return {
+			jsonrpc: exports.JSONRPC,
+			method,
+			params
+		};
+	};
+	exports.createJSONRPCNotification = createJSONRPCNotification;
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/internal.js
+var require_internal = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.DefaultErrorCode = void 0;
+	exports.DefaultErrorCode = 0;
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/client.js
+var require_client = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+		function adopt(value) {
+			return value instanceof P ? value : new P(function(resolve) {
+				resolve(value);
+			});
+		}
+		return new (P || (P = Promise))(function(resolve, reject) {
+			function fulfilled(value) {
+				try {
+					step(generator.next(value));
+				} catch (e) {
+					reject(e);
+				}
+			}
+			function rejected(value) {
+				try {
+					step(generator["throw"](value));
+				} catch (e) {
+					reject(e);
+				}
+			}
+			function step(result) {
+				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+			}
+			step((generator = generator.apply(thisArg, _arguments || [])).next());
+		});
+	};
+	var __generator = exports && exports.__generator || function(thisArg, body) {
+		var _ = {
+			label: 0,
+			sent: function() {
+				if (t[0] & 1) throw t[1];
+				return t[1];
+			},
+			trys: [],
+			ops: []
+		}, f, y, t, g;
+		return g = {
+			next: verb(0),
+			"throw": verb(1),
+			"return": verb(2)
+		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+			return this;
+		}), g;
+		function verb(n) {
+			return function(v) {
+				return step([n, v]);
+			};
+		}
+		function step(op) {
+			if (f) throw new TypeError("Generator is already executing.");
+			while (g && (g = 0, op[0] && (_ = 0)), _) try {
+				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+				if (y = 0, t) op = [op[0] & 2, t.value];
+				switch (op[0]) {
+					case 0:
+					case 1:
+						t = op;
+						break;
+					case 4:
+						_.label++;
+						return {
+							value: op[1],
+							done: false
+						};
+					case 5:
+						_.label++;
+						y = op[1];
+						op = [0];
+						continue;
+					case 7:
+						op = _.ops.pop();
+						_.trys.pop();
+						continue;
+					default:
+						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+							_ = 0;
+							continue;
+						}
+						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+							_.label = op[1];
+							break;
+						}
+						if (op[0] === 6 && _.label < t[1]) {
+							_.label = t[1];
+							t = op;
+							break;
+						}
+						if (t && _.label < t[2]) {
+							_.label = t[2];
+							_.ops.push(op);
+							break;
+						}
+						if (t[2]) _.ops.pop();
+						_.trys.pop();
+						continue;
+				}
+				op = body.call(thisArg, _);
+			} catch (e) {
+				op = [6, e];
+				y = 0;
+			} finally {
+				f = t = 0;
+			}
+			if (op[0] & 5) throw op[1];
+			return {
+				value: op[0] ? op[1] : void 0,
+				done: true
+			};
+		}
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.JSONRPCClient = void 0;
+	var models_1 = require_models();
+	var internal_1 = require_internal();
+	var JSONRPCClient = function() {
+		function JSONRPCClient(_send, createID) {
+			this._send = _send;
+			this.createID = createID;
+			this.idToResolveMap = /* @__PURE__ */ new Map();
+			this.id = 0;
+		}
+		JSONRPCClient.prototype._createID = function() {
+			if (this.createID) return this.createID();
+			else return ++this.id;
+		};
+		JSONRPCClient.prototype.timeout = function(delay, overrideCreateJSONRPCErrorResponse) {
+			var _this = this;
+			if (overrideCreateJSONRPCErrorResponse === void 0) overrideCreateJSONRPCErrorResponse = function(id) {
+				return (0, models_1.createJSONRPCErrorResponse)(id, internal_1.DefaultErrorCode, "Request timeout");
+			};
+			var timeoutRequest = function(ids, request) {
+				var timeoutID = setTimeout(function() {
+					ids.forEach(function(id) {
+						var resolve = _this.idToResolveMap.get(id);
+						if (resolve) {
+							_this.idToResolveMap.delete(id);
+							resolve(overrideCreateJSONRPCErrorResponse(id));
+						}
+					});
+				}, delay);
+				return request().then(function(result) {
+					clearTimeout(timeoutID);
+					return result;
+				}, function(error) {
+					clearTimeout(timeoutID);
+					return Promise.reject(error);
+				});
+			};
+			var requestAdvanced = function(request, clientParams) {
+				return timeoutRequest((!Array.isArray(request) ? [request] : request).map(function(request) {
+					return request.id;
+				}).filter(isDefinedAndNonNull), function() {
+					return _this.requestAdvanced(request, clientParams);
+				});
+			};
+			return {
+				request: function(method, params, clientParams) {
+					var id = _this._createID();
+					return timeoutRequest([id], function() {
+						return _this.requestWithID(method, params, clientParams, id);
+					});
+				},
+				requestAdvanced: function(request, clientParams) {
+					return requestAdvanced(request, clientParams);
+				}
+			};
+		};
+		JSONRPCClient.prototype.request = function(method, params, clientParams) {
+			return this.requestWithID(method, params, clientParams, this._createID());
+		};
+		JSONRPCClient.prototype.requestWithID = function(method, params, clientParams, id) {
+			return __awaiter(this, void 0, void 0, function() {
+				var request, response;
+				return __generator(this, function(_a) {
+					switch (_a.label) {
+						case 0:
+							request = (0, models_1.createJSONRPCRequest)(id, method, params);
+							return [4, this.requestAdvanced(request, clientParams)];
+						case 1:
+							response = _a.sent();
+							if (response.result !== void 0 && !response.error) return [2, response.result];
+							else if (response.result === void 0 && response.error) return [2, Promise.reject(new models_1.JSONRPCErrorException(response.error.message, response.error.code, response.error.data))];
+							else return [2, Promise.reject(/* @__PURE__ */ new Error("An unexpected error occurred"))];
+							return [2];
+					}
+				});
+			});
+		};
+		JSONRPCClient.prototype.requestAdvanced = function(requests, clientParams) {
+			var _this = this;
+			var areRequestsOriginallyArray = Array.isArray(requests);
+			if (!Array.isArray(requests)) requests = [requests];
+			var requestsWithID = requests.filter(function(request) {
+				return isDefinedAndNonNull(request.id);
+			});
+			var promises = requestsWithID.map(function(request) {
+				return new Promise(function(resolve) {
+					return _this.idToResolveMap.set(request.id, resolve);
+				});
+			});
+			var promise = Promise.all(promises).then(function(responses) {
+				if (areRequestsOriginallyArray || !responses.length) return responses;
+				else return responses[0];
+			});
+			return this.send(areRequestsOriginallyArray ? requests : requests[0], clientParams).then(function() {
+				return promise;
+			}, function(error) {
+				requestsWithID.forEach(function(request) {
+					_this.receive((0, models_1.createJSONRPCErrorResponse)(request.id, internal_1.DefaultErrorCode, error && error.message || "Failed to send a request"));
+				});
+				return promise;
+			});
+		};
+		JSONRPCClient.prototype.notify = function(method, params, clientParams) {
+			var request = (0, models_1.createJSONRPCNotification)(method, params);
+			this.send(request, clientParams).then(void 0, function() {});
+		};
+		JSONRPCClient.prototype.send = function(payload, clientParams) {
+			return __awaiter(this, void 0, void 0, function() {
+				return __generator(this, function(_a) {
+					return [2, this._send(payload, clientParams)];
+				});
+			});
+		};
+		JSONRPCClient.prototype.rejectAllPendingRequests = function(message) {
+			this.idToResolveMap.forEach(function(resolve, id) {
+				return resolve((0, models_1.createJSONRPCErrorResponse)(id, internal_1.DefaultErrorCode, message));
+			});
+			this.idToResolveMap.clear();
+		};
+		JSONRPCClient.prototype.receive = function(responses) {
+			var _this = this;
+			if (!Array.isArray(responses)) responses = [responses];
+			responses.forEach(function(response) {
+				var resolve = _this.idToResolveMap.get(response.id);
+				if (resolve) {
+					_this.idToResolveMap.delete(response.id);
+					resolve(response);
+				}
+			});
+		};
+		return JSONRPCClient;
+	}();
+	exports.JSONRPCClient = JSONRPCClient;
+	var isDefinedAndNonNull = function(value) {
+		return value !== void 0 && value !== null;
+	};
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/interfaces.js
+var require_interfaces = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/server.js
+var require_server = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var __assign = exports && exports.__assign || function() {
+		__assign = Object.assign || function(t) {
+			for (var s, i = 1, n = arguments.length; i < n; i++) {
+				s = arguments[i];
+				for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+			}
+			return t;
+		};
+		return __assign.apply(this, arguments);
+	};
+	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+		function adopt(value) {
+			return value instanceof P ? value : new P(function(resolve) {
+				resolve(value);
+			});
+		}
+		return new (P || (P = Promise))(function(resolve, reject) {
+			function fulfilled(value) {
+				try {
+					step(generator.next(value));
+				} catch (e) {
+					reject(e);
+				}
+			}
+			function rejected(value) {
+				try {
+					step(generator["throw"](value));
+				} catch (e) {
+					reject(e);
+				}
+			}
+			function step(result) {
+				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+			}
+			step((generator = generator.apply(thisArg, _arguments || [])).next());
+		});
+	};
+	var __generator = exports && exports.__generator || function(thisArg, body) {
+		var _ = {
+			label: 0,
+			sent: function() {
+				if (t[0] & 1) throw t[1];
+				return t[1];
+			},
+			trys: [],
+			ops: []
+		}, f, y, t, g;
+		return g = {
+			next: verb(0),
+			"throw": verb(1),
+			"return": verb(2)
+		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+			return this;
+		}), g;
+		function verb(n) {
+			return function(v) {
+				return step([n, v]);
+			};
+		}
+		function step(op) {
+			if (f) throw new TypeError("Generator is already executing.");
+			while (g && (g = 0, op[0] && (_ = 0)), _) try {
+				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+				if (y = 0, t) op = [op[0] & 2, t.value];
+				switch (op[0]) {
+					case 0:
+					case 1:
+						t = op;
+						break;
+					case 4:
+						_.label++;
+						return {
+							value: op[1],
+							done: false
+						};
+					case 5:
+						_.label++;
+						y = op[1];
+						op = [0];
+						continue;
+					case 7:
+						op = _.ops.pop();
+						_.trys.pop();
+						continue;
+					default:
+						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+							_ = 0;
+							continue;
+						}
+						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+							_.label = op[1];
+							break;
+						}
+						if (op[0] === 6 && _.label < t[1]) {
+							_.label = t[1];
+							t = op;
+							break;
+						}
+						if (t && _.label < t[2]) {
+							_.label = t[2];
+							_.ops.push(op);
+							break;
+						}
+						if (t[2]) _.ops.pop();
+						_.trys.pop();
+						continue;
+				}
+				op = body.call(thisArg, _);
+			} catch (e) {
+				op = [6, e];
+				y = 0;
+			} finally {
+				f = t = 0;
+			}
+			if (op[0] & 5) throw op[1];
+			return {
+				value: op[0] ? op[1] : void 0,
+				done: true
+			};
+		}
+	};
+	var __spreadArray = exports && exports.__spreadArray || function(to, from, pack) {
+		if (pack || arguments.length === 2) {
+			for (var i = 0, l = from.length, ar; i < l; i++) if (ar || !(i in from)) {
+				if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+				ar[i] = from[i];
+			}
+		}
+		return to.concat(ar || Array.prototype.slice.call(from));
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.JSONRPCServer = void 0;
+	var models_1 = require_models();
+	var internal_1 = require_internal();
+	var createParseErrorResponse = function() {
+		return (0, models_1.createJSONRPCErrorResponse)(null, models_1.JSONRPCErrorCode.ParseError, "Parse error");
+	};
+	var createInvalidRequestResponse = function(request) {
+		return (0, models_1.createJSONRPCErrorResponse)((0, models_1.isJSONRPCID)(request.id) ? request.id : null, models_1.JSONRPCErrorCode.InvalidRequest, "Invalid Request");
+	};
+	var createMethodNotFoundResponse = function(id) {
+		return (0, models_1.createJSONRPCErrorResponse)(id, models_1.JSONRPCErrorCode.MethodNotFound, "Method not found");
+	};
+	var JSONRPCServer = function() {
+		function JSONRPCServer(options) {
+			if (options === void 0) options = {};
+			var _a;
+			this.mapErrorToJSONRPCErrorResponse = defaultMapErrorToJSONRPCErrorResponse;
+			this.nameToMethodDictionary = {};
+			this.middleware = null;
+			this.errorListener = (_a = options.errorListener) !== null && _a !== void 0 ? _a : console.warn;
+		}
+		JSONRPCServer.prototype.hasMethod = function(name) {
+			return !!this.nameToMethodDictionary[name];
+		};
+		JSONRPCServer.prototype.addMethod = function(name, method) {
+			this.addMethodAdvanced(name, this.toJSONRPCMethod(method));
+		};
+		JSONRPCServer.prototype.removeMethod = function(name) {
+			delete this.nameToMethodDictionary[name];
+		};
+		JSONRPCServer.prototype.toJSONRPCMethod = function(method) {
+			return function(request, serverParams) {
+				var response = method(request.params, serverParams);
+				return Promise.resolve(response).then(function(result) {
+					return mapResultToJSONRPCResponse(request.id, result);
+				});
+			};
+		};
+		JSONRPCServer.prototype.addMethodAdvanced = function(name, method) {
+			var _a;
+			this.nameToMethodDictionary = __assign(__assign({}, this.nameToMethodDictionary), (_a = {}, _a[name] = method, _a));
+		};
+		JSONRPCServer.prototype.receiveJSON = function(json, serverParams) {
+			var request = this.tryParseRequestJSON(json);
+			if (request) return this.receive(request, serverParams);
+			else return Promise.resolve(createParseErrorResponse());
+		};
+		JSONRPCServer.prototype.tryParseRequestJSON = function(json) {
+			try {
+				return JSON.parse(json);
+			} catch (_a) {
+				return null;
+			}
+		};
+		JSONRPCServer.prototype.receive = function(request, serverParams) {
+			if (Array.isArray(request)) return this.receiveMultiple(request, serverParams);
+			else return this.receiveSingle(request, serverParams);
+		};
+		JSONRPCServer.prototype.receiveMultiple = function(requests, serverParams) {
+			return __awaiter(this, void 0, void 0, function() {
+				var responses;
+				var _this = this;
+				return __generator(this, function(_a) {
+					switch (_a.label) {
+						case 0: return [4, Promise.all(requests.map(function(request) {
+							return _this.receiveSingle(request, serverParams);
+						}))];
+						case 1:
+							responses = _a.sent().filter(isNonNull);
+							if (responses.length === 1) return [2, responses[0]];
+							else if (responses.length) return [2, responses];
+							else return [2, null];
+							return [2];
+					}
+				});
+			});
+		};
+		JSONRPCServer.prototype.receiveSingle = function(request, serverParams) {
+			return __awaiter(this, void 0, void 0, function() {
+				var method, response;
+				return __generator(this, function(_a) {
+					switch (_a.label) {
+						case 0:
+							method = this.nameToMethodDictionary[request.method];
+							if (!!(0, models_1.isJSONRPCRequest)(request)) return [3, 1];
+							return [2, createInvalidRequestResponse(request)];
+						case 1: return [4, this.callMethod(method, request, serverParams)];
+						case 2:
+							response = _a.sent();
+							return [2, mapResponse(request, response)];
+					}
+				});
+			});
+		};
+		JSONRPCServer.prototype.applyMiddleware = function() {
+			var middlewares = [];
+			for (var _i = 0; _i < arguments.length; _i++) middlewares[_i] = arguments[_i];
+			if (this.middleware) this.middleware = this.combineMiddlewares(__spreadArray([this.middleware], middlewares, true));
+			else this.middleware = this.combineMiddlewares(middlewares);
+		};
+		JSONRPCServer.prototype.combineMiddlewares = function(middlewares) {
+			if (!middlewares.length) return null;
+			else return middlewares.reduce(this.middlewareReducer);
+		};
+		JSONRPCServer.prototype.middlewareReducer = function(prevMiddleware, nextMiddleware) {
+			return function(next, request, serverParams) {
+				return prevMiddleware(function(request, serverParams) {
+					return nextMiddleware(next, request, serverParams);
+				}, request, serverParams);
+			};
+		};
+		JSONRPCServer.prototype.callMethod = function(method, request, serverParams) {
+			var _this = this;
+			var callMethod = function(request, serverParams) {
+				if (method) return method(request, serverParams);
+				else if (request.id !== void 0) return Promise.resolve(createMethodNotFoundResponse(request.id));
+				else return Promise.resolve(null);
+			};
+			var onError = function(error) {
+				_this.errorListener("An unexpected error occurred while executing \"".concat(request.method, "\" JSON-RPC method:"), error);
+				return Promise.resolve(_this.mapErrorToJSONRPCErrorResponseIfNecessary(request.id, error));
+			};
+			try {
+				return (this.middleware || noopMiddleware)(callMethod, request, serverParams).then(void 0, onError);
+			} catch (error) {
+				return onError(error);
+			}
+		};
+		JSONRPCServer.prototype.mapErrorToJSONRPCErrorResponseIfNecessary = function(id, error) {
+			if (id !== void 0) return this.mapErrorToJSONRPCErrorResponse(id, error);
+			else return null;
+		};
+		return JSONRPCServer;
+	}();
+	exports.JSONRPCServer = JSONRPCServer;
+	var isNonNull = function(value) {
+		return value !== null;
+	};
+	var noopMiddleware = function(next, request, serverParams) {
+		return next(request, serverParams);
+	};
+	var mapResultToJSONRPCResponse = function(id, result) {
+		if (id !== void 0) return (0, models_1.createJSONRPCSuccessResponse)(id, result);
+		else return null;
+	};
+	var defaultMapErrorToJSONRPCErrorResponse = function(id, error) {
+		var _a;
+		var message = (_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : "An unexpected error occurred";
+		var code = internal_1.DefaultErrorCode;
+		var data;
+		if (error instanceof models_1.JSONRPCErrorException) {
+			code = error.code;
+			data = error.data;
+		}
+		return (0, models_1.createJSONRPCErrorResponse)(id, code, message, data);
+	};
+	var mapResponse = function(request, response) {
+		if (response) return response;
+		else if (request.id !== void 0) return (0, models_1.createJSONRPCErrorResponse)(request.id, models_1.JSONRPCErrorCode.InternalError, "Internal error");
+		else return null;
+	};
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/server-and-client.js
+var require_server_and_client = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
+		function adopt(value) {
+			return value instanceof P ? value : new P(function(resolve) {
+				resolve(value);
+			});
+		}
+		return new (P || (P = Promise))(function(resolve, reject) {
+			function fulfilled(value) {
+				try {
+					step(generator.next(value));
+				} catch (e) {
+					reject(e);
+				}
+			}
+			function rejected(value) {
+				try {
+					step(generator["throw"](value));
+				} catch (e) {
+					reject(e);
+				}
+			}
+			function step(result) {
+				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+			}
+			step((generator = generator.apply(thisArg, _arguments || [])).next());
+		});
+	};
+	var __generator = exports && exports.__generator || function(thisArg, body) {
+		var _ = {
+			label: 0,
+			sent: function() {
+				if (t[0] & 1) throw t[1];
+				return t[1];
+			},
+			trys: [],
+			ops: []
+		}, f, y, t, g;
+		return g = {
+			next: verb(0),
+			"throw": verb(1),
+			"return": verb(2)
+		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+			return this;
+		}), g;
+		function verb(n) {
+			return function(v) {
+				return step([n, v]);
+			};
+		}
+		function step(op) {
+			if (f) throw new TypeError("Generator is already executing.");
+			while (g && (g = 0, op[0] && (_ = 0)), _) try {
+				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+				if (y = 0, t) op = [op[0] & 2, t.value];
+				switch (op[0]) {
+					case 0:
+					case 1:
+						t = op;
+						break;
+					case 4:
+						_.label++;
+						return {
+							value: op[1],
+							done: false
+						};
+					case 5:
+						_.label++;
+						y = op[1];
+						op = [0];
+						continue;
+					case 7:
+						op = _.ops.pop();
+						_.trys.pop();
+						continue;
+					default:
+						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+							_ = 0;
+							continue;
+						}
+						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+							_.label = op[1];
+							break;
+						}
+						if (op[0] === 6 && _.label < t[1]) {
+							_.label = t[1];
+							t = op;
+							break;
+						}
+						if (t && _.label < t[2]) {
+							_.label = t[2];
+							_.ops.push(op);
+							break;
+						}
+						if (t[2]) _.ops.pop();
+						_.trys.pop();
+						continue;
+				}
+				op = body.call(thisArg, _);
+			} catch (e) {
+				op = [6, e];
+				y = 0;
+			} finally {
+				f = t = 0;
+			}
+			if (op[0] & 5) throw op[1];
+			return {
+				value: op[0] ? op[1] : void 0,
+				done: true
+			};
+		}
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.JSONRPCServerAndClient = void 0;
+	var models_1 = require_models();
+	var JSONRPCServerAndClient = function() {
+		function JSONRPCServerAndClient(server, client, options) {
+			if (options === void 0) options = {};
+			var _a;
+			this.server = server;
+			this.client = client;
+			this.errorListener = (_a = options.errorListener) !== null && _a !== void 0 ? _a : console.warn;
+		}
+		JSONRPCServerAndClient.prototype.applyServerMiddleware = function() {
+			var _a;
+			var middlewares = [];
+			for (var _i = 0; _i < arguments.length; _i++) middlewares[_i] = arguments[_i];
+			(_a = this.server).applyMiddleware.apply(_a, middlewares);
+		};
+		JSONRPCServerAndClient.prototype.hasMethod = function(name) {
+			return this.server.hasMethod(name);
+		};
+		JSONRPCServerAndClient.prototype.addMethod = function(name, method) {
+			this.server.addMethod(name, method);
+		};
+		JSONRPCServerAndClient.prototype.addMethodAdvanced = function(name, method) {
+			this.server.addMethodAdvanced(name, method);
+		};
+		JSONRPCServerAndClient.prototype.removeMethod = function(name) {
+			this.server.removeMethod(name);
+		};
+		JSONRPCServerAndClient.prototype.timeout = function(delay) {
+			return this.client.timeout(delay);
+		};
+		JSONRPCServerAndClient.prototype.request = function(method, params, clientParams) {
+			return this.client.request(method, params, clientParams);
+		};
+		JSONRPCServerAndClient.prototype.requestAdvanced = function(jsonRPCRequest, clientParams) {
+			return this.client.requestAdvanced(jsonRPCRequest, clientParams);
+		};
+		JSONRPCServerAndClient.prototype.notify = function(method, params, clientParams) {
+			this.client.notify(method, params, clientParams);
+		};
+		JSONRPCServerAndClient.prototype.rejectAllPendingRequests = function(message) {
+			this.client.rejectAllPendingRequests(message);
+		};
+		JSONRPCServerAndClient.prototype.receiveAndSend = function(payload, serverParams, clientParams) {
+			return __awaiter(this, void 0, void 0, function() {
+				var response, message;
+				return __generator(this, function(_a) {
+					switch (_a.label) {
+						case 0:
+							if (!((0, models_1.isJSONRPCResponse)(payload) || (0, models_1.isJSONRPCResponses)(payload))) return [3, 1];
+							this.client.receive(payload);
+							return [3, 4];
+						case 1:
+							if (!((0, models_1.isJSONRPCRequest)(payload) || (0, models_1.isJSONRPCRequests)(payload))) return [3, 3];
+							return [4, this.server.receive(payload, serverParams)];
+						case 2:
+							response = _a.sent();
+							if (response) return [2, this.client.send(response, clientParams)];
+							return [3, 4];
+						case 3:
+							message = "Received an invalid JSON-RPC message";
+							this.errorListener(message, payload);
+							return [2, Promise.reject(new Error(message))];
+						case 4: return [2];
+					}
+				});
+			});
+		};
+		return JSONRPCServerAndClient;
+	}();
+	exports.JSONRPCServerAndClient = JSONRPCServerAndClient;
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/index.js
+var require_dist = /* @__PURE__ */ __commonJSMin(((exports) => {
+	var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
+		if (k2 === void 0) k2 = k;
+		var desc = Object.getOwnPropertyDescriptor(m, k);
+		if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) desc = {
+			enumerable: true,
+			get: function() {
+				return m[k];
+			}
+		};
+		Object.defineProperty(o, k2, desc);
+	}) : (function(o, m, k, k2) {
+		if (k2 === void 0) k2 = k;
+		o[k2] = m[k];
+	}));
+	var __exportStar = exports && exports.__exportStar || function(m, exports$2) {
+		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$2, p)) __createBinding(exports$2, m, p);
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	__exportStar(require_client(), exports);
+	__exportStar(require_interfaces(), exports);
+	__exportStar(require_models(), exports);
+	__exportStar(require_server(), exports);
+	__exportStar(require_server_and_client(), exports);
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/uri-template-matcher@1.1.2/node_modules/uri-template-matcher/src/parser.js
+/**
+* @fileoverview URI template parser implementation without regex
+*/
+/**
+* @typedef {import('./types.js').ParsedTemplate} ParsedTemplate
+* @typedef {import('./types.js').TemplateExpression} TemplateExpression
+* @typedef {import('./types.js').TemplatePart} TemplatePart
+* @typedef {import('./types.js').ExpressionPart} ExpressionPart
+*/
+/**
+* Parse a URI template string into its component parts
+* @param {string} template - The URI template to parse
+* @returns {ParsedTemplate} Parsed template representation
+*/
+function parse_template(template) {
+	/** @type {TemplatePart[]} */
+	const parts = [];
+	let current_literal = "";
+	let i = 0;
+	while (i < template.length) {
+		const char = template[i];
+		if (char === "{") {
+			if (current_literal) {
+				parts.push({
+					type: "literal",
+					value: current_literal
+				});
+				current_literal = "";
+			}
+			const expression_start = i + 1;
+			let expression_end = expression_start;
+			let brace_count = 1;
+			while (expression_end < template.length && brace_count > 0) {
+				if (template[expression_end] === "{") brace_count++;
+				else if (template[expression_end] === "}") brace_count--;
+				expression_end++;
+			}
+			if (brace_count > 0) throw new Error(`Unclosed expression in template: ${template}`);
+			const parsed_expression = parse_expression(template.slice(expression_start, expression_end - 1));
+			parts.push(parsed_expression);
+			i = expression_end;
+		} else {
+			current_literal += char;
+			i++;
+		}
+	}
+	if (current_literal) parts.push({
+		type: "literal",
+		value: current_literal
+	});
+	return {
+		template,
+		parts
+	};
+}
+/**
+* Parse an expression content (without braces)
+* @param {string} content - Expression content
+* @returns {TemplatePart} Parsed expression part
+*/
+function parse_expression(content) {
+	if (!content.trim()) throw new Error("Empty expression");
+	const first_char = content[0];
+	const operators = [
+		"+",
+		"#",
+		".",
+		"/",
+		";",
+		"?",
+		"&"
+	];
+	/** @type {string | undefined} */
+	let operator = void 0;
+	let variables_part = content;
+	if (operators.includes(first_char)) {
+		operator = first_char;
+		variables_part = content.slice(1);
+	}
+	return {
+		type: "expression",
+		expressions: split_variables(variables_part).map(parse_variable),
+		operator
+	};
+}
+/**
+* Split variables by comma, handling nested structures
+* @param {string} variables - Variables string
+* @returns {string[]} Array of variable strings
+*/
+function split_variables(variables) {
+	/** @type {string[]} */
+	const result = [];
+	let current = "";
+	let i = 0;
+	while (i < variables.length) {
+		const char = variables[i];
+		if (char === ",") {
+			if (current.trim()) {
+				result.push(current.trim());
+				current = "";
+			}
+		} else current += char;
+		i++;
+	}
+	if (current.trim()) result.push(current.trim());
+	return result;
+}
+/**
+* Parse a single variable specification
+* @param {string} variable - Variable string
+* @returns {TemplateExpression} Parsed variable expression
+*/
+function parse_variable(variable) {
+	let name = variable;
+	/** @type {number | undefined} */
+	let prefix = void 0;
+	let explode = false;
+	if (name.endsWith("*")) {
+		explode = true;
+		name = name.slice(0, -1);
+	}
+	const colon_index = name.indexOf(":");
+	if (colon_index !== -1) {
+		const prefix_str = name.slice(colon_index + 1);
+		prefix = parseInt(prefix_str, 10);
+		if (isNaN(prefix) || prefix < 0) throw new Error(`Invalid prefix length: ${prefix_str}`);
+		name = name.slice(0, colon_index);
+	}
+	if (!name) throw new Error("Empty variable name");
+	return {
+		name,
+		prefix,
+		explode
+	};
+}
+/**
+* Match a URI against a parsed template
+* @param {string} uri - URI to match
+* @param {ParsedTemplate} parsed_template - Parsed template
+* @returns {Record<string, string | string[]> | null} Extracted parameters or null
+*/
+function match_uri(uri, parsed_template) {
+	/** @type {Record<string, string | string[]>} */
+	const params = {};
+	const result = match_parts(uri, 0, parsed_template.parts, 0, params);
+	if (!result || result.uri_index !== uri.length) return null;
+	return params;
+}
+/**
+* Recursively match template parts with backtracking for consecutive variables
+* @param {string} uri - URI to match
+* @param {number} uri_index - Current position in URI
+* @param {TemplatePart[]} parts - Template parts to match
+* @param {number} part_index - Current template part index
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {{ uri_index: number } | null} Match result or null
+*/
+function match_parts(uri, uri_index, parts, part_index, params) {
+	if (part_index >= parts.length) return { uri_index };
+	const part = parts[part_index];
+	if (part.type === "literal") {
+		if (!uri.slice(uri_index).startsWith(part.value)) return null;
+		return match_parts(uri, uri_index + part.value.length, parts, part_index + 1, params);
+	} else {
+		const next_part = parts[part_index + 1];
+		const sorted_boundaries = find_expression_boundaries(uri, uri_index, next_part).sort((a, b) => {
+			if (next_part && next_part.type === "expression" && !next_part.operator) return b - a;
+			return a - b;
+		});
+		for (const boundary of sorted_boundaries) {
+			const segment = uri.slice(uri_index, boundary);
+			const temp_params = { ...params };
+			if (match_simple_expression(segment, part, temp_params, uri, uri_index)) {
+				const rest_result = match_parts(uri, boundary, parts, part_index + 1, temp_params);
+				if (rest_result) {
+					Object.assign(params, temp_params);
+					return rest_result;
+				}
+			}
+		}
+		return null;
+	}
+}
+/**
+* Find possible boundaries for an expression
+* @param {string} uri - URI to search
+* @param {number} start_index - Start position
+* @param {TemplatePart | undefined} next_part - Next template part
+* @returns {number[]} Array of possible boundary positions
+*/
+function find_expression_boundaries(uri, start_index, next_part) {
+	/** @type {number[]} */
+	const boundaries = [];
+	if (next_part && next_part.type === "literal") {
+		let search_index = start_index;
+		while (search_index < uri.length) {
+			const found_index = uri.indexOf(next_part.value, search_index);
+			if (found_index === -1) break;
+			boundaries.push(found_index);
+			search_index = found_index + 1;
+		}
+		if (boundaries.length === 0) return [];
+	} else if (next_part && next_part.type === "expression") {
+		const next_expr = next_part;
+		if (next_expr.operator === ".") {
+			for (let i = start_index; i < uri.length; i++) if (uri[i] === ".") boundaries.push(i);
+			boundaries.push(uri.length);
+		} else if (next_expr.operator === "/") {
+			for (let i = start_index; i < uri.length; i++) if (uri[i] === "/") boundaries.push(i);
+		} else for (let i = start_index; i <= uri.length; i++) boundaries.push(i);
+	} else boundaries.push(uri.length);
+	return boundaries.sort((a, b) => a - b);
+}
+/**
+* Match a simple expression (no complex operators)
+* @param {string} segment - URI segment to match
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @param {string} uri - Full URI
+* @param {number} uri_index - Current URI index
+* @returns {boolean} Whether the match was successful
+*/
+function match_simple_expression(segment, expression, params, uri, uri_index) {
+	if (expression.type !== "expression") return false;
+	switch (expression.operator) {
+		case "+": return handle_reserved_match(segment, expression, params);
+		case "#": return handle_fragment_match(segment, expression, params);
+		case ".": return handle_dot_match(segment, expression, params);
+		case "/": return handle_path_match(segment, expression, params);
+		case ";": return handle_semicolon_match(segment, expression, params);
+		case "?":
+		case "&": return handle_query_match(segment, expression, params);
+		default: return handle_simple_match(segment, expression, params, uri, uri_index);
+	}
+}
+/**
+* Handle fragment match (# operator)
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {boolean} Whether the match was successful
+*/
+function handle_fragment_match(segment, expression, params) {
+	if (expression.type !== "expression") return false;
+	if (!segment.startsWith("#")) {
+		for (const expr of expression.expressions) params[expr.name] = "";
+		return segment === "";
+	}
+	const fragment_content = segment.slice(1);
+	if (expression.expressions.length === 1) {
+		const expr = expression.expressions[0];
+		let value = fragment_content;
+		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+		params[expr.name] = decodeURIComponent(value);
+		return true;
+	} else {
+		const values = fragment_content.split(",");
+		for (let i = 0; i < expression.expressions.length; i++) {
+			const expr = expression.expressions[i];
+			let value = values[i] || "";
+			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+			params[expr.name] = decodeURIComponent(value);
+		}
+		return true;
+	}
+}
+/**
+* Handle reserved string match (+ operator)
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {boolean} Whether the match was successful
+*/
+function handle_reserved_match(segment, expression, params) {
+	if (expression.type !== "expression") return false;
+	if (expression.expressions.length === 1) {
+		const expr = expression.expressions[0];
+		let value = segment;
+		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+		params[expr.name] = decodeURIComponent(value);
+		return true;
+	} else {
+		const values = segment.split(",");
+		for (let i = 0; i < expression.expressions.length; i++) {
+			const expr = expression.expressions[i];
+			let value = values[i] || "";
+			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+			params[expr.name] = decodeURIComponent(value);
+		}
+		return true;
+	}
+}
+/**
+* Handle simple string match
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @param {string} uri - Full URI
+* @param {number} uri_index - Current URI index
+* @returns {boolean} Whether the match was successful
+*/
+function handle_simple_match(segment, expression, params, uri, uri_index) {
+	if (expression.type !== "expression") return false;
+	if (expression.expressions.length === 1) {
+		const expr = expression.expressions[0];
+		let value = segment;
+		if (value.includes("/")) return false;
+		if (value === "" && uri_index + segment.length === uri.length && uri.endsWith("/")) return false;
+		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+		params[expr.name] = decodeURIComponent(value);
+		return true;
+	} else {
+		const values = segment.split(",");
+		for (let i = 0; i < expression.expressions.length; i++) {
+			const expr = expression.expressions[i];
+			let value = values[i] || "";
+			if (value.includes("/")) return false;
+			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+			params[expr.name] = decodeURIComponent(value);
+		}
+		return true;
+	}
+}
+/**
+* Handle dot notation match
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {boolean} Whether the match was successful
+*/
+function handle_dot_match(segment, expression, params) {
+	if (expression.type !== "expression") return false;
+	if (segment === "") {
+		for (const expr of expression.expressions) params[expr.name] = "";
+		return true;
+	}
+	const clean_segment = segment.startsWith(".") ? segment.slice(1) : segment;
+	if (expression.expressions.length === 1) {
+		const expr = expression.expressions[0];
+		if (expr.explode) {
+			const values = clean_segment.split(".");
+			params[expr.name] = values.map((v) => decodeURIComponent(v));
+		} else params[expr.name] = decodeURIComponent(clean_segment);
+		return true;
+	} else {
+		const values = clean_segment.split(".");
+		for (let i = 0; i < expression.expressions.length; i++) {
+			const expr = expression.expressions[i];
+			let value = values[i] || "";
+			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+			params[expr.name] = decodeURIComponent(value);
+		}
+		return true;
+	}
+}
+/**
+* Handle path match
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {boolean} Whether the match was successful
+*/
+function handle_path_match(segment, expression, params) {
+	if (expression.type !== "expression") return false;
+	const clean_segment = segment.startsWith("/") ? segment.slice(1) : segment;
+	if (expression.expressions.length === 1) {
+		const expr = expression.expressions[0];
+		params[expr.name] = decodeURIComponent(clean_segment);
+		return true;
+	} else {
+		const values = clean_segment.split(",");
+		for (let i = 0; i < expression.expressions.length; i++) {
+			const expr = expression.expressions[i];
+			let value = values[i] || "";
+			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
+			params[expr.name] = decodeURIComponent(value);
+		}
+		return true;
+	}
+}
+/**
+* Handle semicolon match
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {boolean} Whether the match was successful
+*/
+function handle_semicolon_match(segment, expression, params) {
+	if (expression.type !== "expression") return false;
+	const parts = segment.split(";").filter((p) => p);
+	for (const part of parts) {
+		const eq_index = part.indexOf("=");
+		if (eq_index !== -1) {
+			const key = part.slice(0, eq_index);
+			const value = part.slice(eq_index + 1);
+			const expr = expression.expressions.find((e) => e.name === key);
+			if (expr) params[expr.name] = decodeURIComponent(value);
+		}
+	}
+	return true;
+}
+/**
+* Handle query match
+* @param {string} segment - URI segment
+* @param {TemplatePart} expression - Expression part
+* @param {Record<string, string | string[]>} params - Parameters object
+* @returns {boolean} Whether the match was successful
+*/
+function handle_query_match(segment, expression, params) {
+	if (expression.type !== "expression") return false;
+	const clean_segment = segment.replace(/^[?&]/, "");
+	if (expression.expressions.length === 1) {
+		const expr = expression.expressions[0];
+		if (expr.explode) {
+			const values = clean_segment.split("&");
+			params[expr.name] = values.map((v) => decodeURIComponent(v));
+		} else {
+			const parts = clean_segment.split("&");
+			for (const part of parts) {
+				const eq_index = part.indexOf("=");
+				if (eq_index !== -1) {
+					const key = part.slice(0, eq_index);
+					const value = part.slice(eq_index + 1);
+					if (key === expr.name) params[expr.name] = decodeURIComponent(value);
+				}
+			}
+		}
+	} else {
+		const parts = clean_segment.split("&");
+		for (const part of parts) {
+			const eq_index = part.indexOf("=");
+			if (eq_index !== -1) {
+				const key = part.slice(0, eq_index);
+				const value = part.slice(eq_index + 1);
+				const expr = expression.expressions.find((e) => e.name === key);
+				if (expr) params[expr.name] = decodeURIComponent(value);
+			}
+		}
+	}
+	return true;
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/uri-template-matcher@1.1.2/node_modules/uri-template-matcher/src/matcher.js
+/**
+* @fileoverview Main UriTemplateMatcher class
+*/
+/**
+* @typedef {import('./types.js').MatchResult} MatchResult
+* @typedef {import('./types.js').ParsedTemplate} ParsedTemplate
+*/
+/**
+* URI Template Matcher class for registering and matching URI templates
+*/
+var UriTemplateMatcher = class {
+	/**
+	* Create a new UriTemplateMatcher instance
+	*/
+	constructor() {
+		/** @type {ParsedTemplate[]} */
+		this.templates = [];
+	}
+	/**
+	* Add a URI template to the matcher
+	* @param {string} template - The URI template string to add
+	* @throws {Error} If template is invalid
+	*/
+	add(template) {
+		if (typeof template !== "string") throw new Error("Template must be a string");
+		if (template !== "" && template.trim() === "") throw new Error("Template cannot be empty");
+		try {
+			const parsed = parse_template(template);
+			this.templates.push(parsed);
+		} catch (error) {
+			throw new Error(`Invalid template: ${template} - ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+	/**
+	* Match a URI against all registered templates
+	* @param {string} uri - The URI to match
+	* @returns {MatchResult | null} Match result or null if no match found
+	* @throws {Error} If URI is invalid
+	*/
+	match(uri) {
+		if (typeof uri !== "string") throw new Error("URI must be a string");
+		for (const template of this.templates) {
+			const params = match_uri(uri, template);
+			if (params !== null) return {
+				template: template.template,
+				params
+			};
+		}
+		return null;
+	}
+	/**
+	* Clear all registered templates
+	*/
+	clear() {
+		this.templates = [];
+	}
+	/**
+	* Get all registered template strings
+	* @returns {string[]} Array of template strings
+	*/
+	all() {
+		return this.templates.map((t) => t.template);
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/validation/index.js
+var import_dist = require_dist();
+const JSONRPC_VERSION = "2.0";
+var McpError = class extends Error {
+	/**
+	* @param {number} code
+	* @param {string} message
+	*/
+	constructor(code, message) {
+		super(`MCP error ${code}: ${message}`);
+		this.name = "McpError";
+	}
+};
+/**
+* A progress token, used to associate progress notifications with the original request.
+*/
+const ProgressTokenSchema = union([string(), pipe(number(), integer())]);
+/**
+* An opaque token used to represent a cursor for pagination.
+*/
+const CursorSchema = string();
+const RequestMetaSchema = looseObject({ progressToken: optional(ProgressTokenSchema) });
+const BaseRequestParamsSchema = looseObject({ _meta: optional(RequestMetaSchema) });
+const RequestSchema = object({
+	method: string(),
+	params: optional(BaseRequestParamsSchema)
+});
+const BaseNotificationParamsSchema = looseObject({ _meta: optional(looseObject({})) });
+const NotificationSchema = object({
+	method: string(),
+	params: optional(BaseNotificationParamsSchema)
+});
+const ResultSchema = looseObject({ _meta: optional(looseObject({})) });
+/**
+* A uniquely identifying ID for a request in JSON-RPC.
+*/
+const RequestIdSchema = union([string(), pipe(number(), integer())]);
+/**
+* A request that expects a response.
+*/
+const JSONRPCRequestSchema = object({
+	jsonrpc: literal(JSONRPC_VERSION),
+	id: RequestIdSchema,
+	...RequestSchema.entries
+});
+/**
+* A notification which does not expect a response.
+*/
+const JSONRPCNotificationSchema = object({
+	jsonrpc: literal(JSONRPC_VERSION),
+	...NotificationSchema.entries
+});
+/**
+* A successful (non-error) response to a request.
+*/
+const JSONRPCResponseSchema = strictObject({
+	jsonrpc: literal(JSONRPC_VERSION),
+	id: RequestIdSchema,
+	result: ResultSchema
+});
+/**
+* A response to a request that indicates an error occurred.
+*/
+const JSONRPCErrorSchema = strictObject({
+	jsonrpc: literal(JSONRPC_VERSION),
+	id: RequestIdSchema,
+	error: object({
+		code: pipe(number(), integer()),
+		message: string(),
+		data: optional(unknown())
+	})
+});
+const JSONRPCMessageSchema = union([
+	JSONRPCRequestSchema,
+	JSONRPCNotificationSchema,
+	JSONRPCResponseSchema,
+	JSONRPCErrorSchema
+]);
+/**
+* A response that indicates success but carries no data.
+*/
+const EmptyResultSchema = strictObject({ ...ResultSchema.entries });
+/**
+* This notification can be sent by either side to indicate that it is cancelling a previously-issued request.
+*
+* The request SHOULD still be in-flight, but due to communication latency, it is always possible that this notification MAY arrive after the request has already finished.
+*
+* This notification indicates that the result will be unused, so any associated processing SHOULD cease.
+*
+* A client MUST NOT attempt to cancel its `initialize` request.
+*/
+const CancelledNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/cancelled"),
+	params: object({
+		...BaseNotificationParamsSchema.entries,
+		requestId: RequestIdSchema,
+		reason: optional(string())
+	})
+});
+/**
+* Base metadata interface for common properties across resources, tools, prompts, and implementations.
+*/
+const BaseMetadataSchema = object({
+	name: string(),
+	title: optional(string())
+});
+/**
+* Icon schema for use in tools, prompts, resources, and implementations.
+*/
+const IconSchema = object({
+	src: string(),
+	mimeType: optional(string()),
+	sizes: optional(array(string()))
+});
+const IconsSchema = object({ icons: optional(array(IconSchema)) });
+/**
+* Describes the name and version of an MCP implementation.
+*/
+const ImplementationSchema = object({
+	...BaseMetadataSchema.entries,
+	version: string(),
+	websiteUrl: optional(string()),
+	...IconsSchema.entries
+});
+/**
+* Capabilities a client may support. Known capabilities are defined here, in this schema, but this is not a closed set: any client can define its own, additional capabilities.
+*/
+const ClientCapabilitiesSchema = object({
+	experimental: optional(object({})),
+	sampling: optional(object({})),
+	elicitation: optional(object({})),
+	roots: optional(object({ listChanged: optional(boolean()) }))
+});
+const InitializeRequestParamsSchema = object({
+	...BaseRequestParamsSchema.entries,
+	protocolVersion: string(),
+	capabilities: ClientCapabilitiesSchema,
+	clientInfo: ImplementationSchema
+});
+/**
+* This request is sent from the client to the server when it first connects, asking it to begin initialization.
+*/
+const InitializeRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("initialize"),
+	params: InitializeRequestParamsSchema
+});
+/**
+* Capabilities that a server may support. Known capabilities are defined here, in this schema, but this is not a closed set: any server can define its own, additional capabilities.
+*/
+const ServerCapabilitiesSchema = object({
+	experimental: optional(object({})),
+	logging: optional(object({})),
+	completions: optional(object({})),
+	prompts: optional(object({ listChanged: optional(boolean()) })),
+	resources: optional(object({
+		subscribe: optional(boolean()),
+		listChanged: optional(boolean())
+	})),
+	tools: optional(object({ listChanged: optional(boolean()) }))
+});
+/**
+* After receiving an initialize request from the client, the server sends this response.
+*/
+const InitializeResultSchema = object({
+	...ResultSchema.entries,
+	protocolVersion: string(),
+	capabilities: ServerCapabilitiesSchema,
+	serverInfo: ImplementationSchema,
+	instructions: optional(string())
+});
+/**
+* This notification is sent from the client to the server after initialization has finished.
+*/
+const InitializedNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/initialized")
+});
+/**
+* A ping, issued by either the server or the client, to check that the other party is still alive. The receiver must promptly respond, or else may be disconnected.
+*/
+const PingRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("ping")
+});
+const ProgressSchema = object({
+	progress: number(),
+	total: optional(number()),
+	message: optional(string())
+});
+/**
+* An out-of-band notification used to inform the receiver of a progress update for a long-running request.
+*/
+const ProgressNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/progress"),
+	params: object({
+		...BaseNotificationParamsSchema.entries,
+		...ProgressSchema.entries,
+		progressToken: ProgressTokenSchema
+	})
+});
+const PaginatedRequestSchema = object({
+	...RequestSchema.entries,
+	params: optional(object({
+		...BaseRequestParamsSchema.entries,
+		cursor: optional(CursorSchema)
+	}))
+});
+const PaginatedResultSchema = object({
+	...ResultSchema.entries,
+	nextCursor: optional(CursorSchema)
+});
+/**
+* The contents of a specific resource or sub-resource.
+*/
+const ResourceContentsSchema = object({
+	uri: string(),
+	mimeType: optional(string()),
+	_meta: optional(looseObject({}))
+});
+const TextResourceContentsSchema = object({
+	...ResourceContentsSchema.entries,
+	text: string()
+});
+const BlobResourceContentsSchema = object({
+	...ResourceContentsSchema.entries,
+	blob: pipe(string(), base64())
+});
+/**
+* A known resource that the server is capable of reading.
+*/
+const ResourceSchema = object({
+	...BaseMetadataSchema.entries,
+	uri: string(),
+	description: optional(string()),
+	mimeType: optional(string()),
+	_meta: optional(looseObject({})),
+	...IconsSchema.entries
+});
+/**
+* A template description for resources available on the server.
+*/
+const ResourceTemplateSchema = object({
+	...BaseMetadataSchema.entries,
+	uriTemplate: string(),
+	description: optional(string()),
+	mimeType: optional(string()),
+	_meta: optional(looseObject({})),
+	...IconsSchema.entries
+});
+/**
+* Sent from the client to request a list of resources the server has.
+*/
+const ListResourcesRequestSchema = object({
+	...PaginatedRequestSchema.entries,
+	method: literal("resources/list")
+});
+/**
+* The server's response to a resources/list request from the client.
+*/
+const ListResourcesResultSchema = object({
+	...PaginatedResultSchema.entries,
+	resources: array(ResourceSchema)
+});
+/**
+* Sent from the client to request a list of resource templates the server has.
+*/
+const ListResourceTemplatesRequestSchema = object({
+	...PaginatedRequestSchema.entries,
+	method: literal("resources/templates/list")
+});
+/**
+* The server's response to a resources/templates/list request from the client.
+*/
+const ListResourceTemplatesResultSchema = object({
+	...PaginatedResultSchema.entries,
+	resourceTemplates: array(ResourceTemplateSchema)
+});
+/**
+* Sent from the client to the server, to read a specific resource URI.
+*/
+const ReadResourceRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("resources/read"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		uri: string()
+	})
+});
+/**
+* The server's response to a resources/read request from the client.
+*/
+const ReadResourceResultSchema = object({
+	...ResultSchema.entries,
+	contents: array(union([TextResourceContentsSchema, BlobResourceContentsSchema]))
+});
+/**
+* An optional notification from the server to the client, informing it that the list of resources it can read from has changed. This may be issued by servers without any previous subscription from the client.
+*/
+const ResourceListChangedNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/resources/list_changed")
+});
+/**
+* Sent from the client to request resources/updated notifications from the server whenever a particular resource changes.
+*/
+const SubscribeRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("resources/subscribe"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		uri: string()
+	})
+});
+/**
+* Sent from the client to request cancellation of resources/updated notifications from the server. This should follow a previous resources/subscribe request.
+*/
+const UnsubscribeRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("resources/unsubscribe"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		uri: string()
+	})
+});
+/**
+* A notification from the server to the client, informing it that a resource has changed and may need to be read again. This should only be sent if the client previously sent a resources/subscribe request.
+*/
+const ResourceUpdatedNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/resources/updated"),
+	params: object({
+		...BaseNotificationParamsSchema.entries,
+		uri: string()
+	})
+});
+/**
+* Describes an argument that a prompt can accept.
+*/
+const PromptArgumentSchema = object({
+	name: string(),
+	description: optional(string()),
+	required: optional(boolean())
+});
+/**
+* A prompt or prompt template that the server offers.
+*/
+const PromptSchema = object({
+	...BaseMetadataSchema.entries,
+	description: optional(string()),
+	arguments: optional(array(PromptArgumentSchema)),
+	_meta: optional(looseObject({})),
+	...IconsSchema.entries
+});
+/**
+* Sent from the client to request a list of prompts and prompt templates the server has.
+*/
+const ListPromptsRequestSchema = object({
+	...PaginatedRequestSchema.entries,
+	method: literal("prompts/list")
+});
+/**
+* The server's response to a prompts/list request from the client.
+*/
+const ListPromptsResultSchema = object({
+	...PaginatedResultSchema.entries,
+	prompts: array(PromptSchema)
+});
+/**
+* Used by the client to get a prompt provided by the server.
+*/
+const GetPromptRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("prompts/get"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		name: string(),
+		arguments: optional(record(string(), string()))
+	})
+});
+/**
+* Text provided to or from an LLM.
+*/
+const TextContentSchema = object({
+	type: literal("text"),
+	text: string(),
+	_meta: optional(looseObject({}))
+});
+/**
+* An image provided to or from an LLM.
+*/
+const ImageContentSchema = object({
+	type: literal("image"),
+	data: pipe(string(), base64()),
+	mimeType: string(),
+	_meta: optional(looseObject({}))
+});
+/**
+* An Audio provided to or from an LLM.
+*/
+const AudioContentSchema = object({
+	type: literal("audio"),
+	data: pipe(string(), base64()),
+	mimeType: string(),
+	_meta: optional(looseObject({}))
+});
+/**
+* The contents of a resource, embedded into a prompt or tool call result.
+*/
+const EmbeddedResourceSchema = object({
+	type: literal("resource"),
+	resource: union([TextResourceContentsSchema, BlobResourceContentsSchema]),
+	_meta: optional(looseObject({}))
+});
+/**
+* A resource that the server is capable of reading, included in a prompt or tool call result.
+*
+* Note: resource links returned by tools are not guaranteed to appear in the results of `resources/list` requests.
+*/
+const ResourceLinkSchema = object({
+	...ResourceSchema.entries,
+	type: literal("resource_link")
+});
+/**
+* A content block that can be used in prompts and tool results.
+*/
+const ContentBlockSchema = union([
+	TextContentSchema,
+	ImageContentSchema,
+	AudioContentSchema,
+	ResourceLinkSchema,
+	EmbeddedResourceSchema
+]);
+/**
+* Describes a message returned as part of a prompt.
+*/
+const PromptMessageSchema = object({
+	role: picklist(["user", "assistant"]),
+	content: ContentBlockSchema
+});
+/**
+* The server's response to a prompts/get request from the client.
+*/
+const GetPromptResultSchema = object({
+	...ResultSchema.entries,
+	description: optional(string()),
+	messages: array(PromptMessageSchema)
+});
+/**
+* An optional notification from the server to the client, informing it that the list of prompts it offers has changed. This may be issued by servers without any previous subscription from the client.
+*/
+const PromptListChangedNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/prompts/list_changed")
+});
+/**
+* Additional properties describing a Tool to clients.
+*
+* NOTE: all properties in ToolAnnotations are **hints**.
+* They are not guaranteed to provide a faithful description of
+* tool behavior (including descriptive properties like `title`).
+*
+* Clients should never make tool use decisions based on ToolAnnotations
+* received from untrusted servers.
+*/
+const ToolAnnotationsSchema = object({
+	title: optional(string()),
+	readOnlyHint: optional(boolean()),
+	destructiveHint: optional(boolean()),
+	idempotentHint: optional(boolean()),
+	openWorldHint: optional(boolean())
+});
+/**
+* Definition for a tool the client can call.
+*/
+const ToolSchema = object({
+	...BaseMetadataSchema.entries,
+	description: optional(string()),
+	inputSchema: object({
+		type: literal("object"),
+		properties: optional(object({})),
+		required: optional(array(string()))
+	}),
+	outputSchema: optional(object({
+		type: literal("object"),
+		properties: optional(object({})),
+		required: optional(array(string()))
+	})),
+	annotations: optional(ToolAnnotationsSchema),
+	_meta: optional(looseObject({})),
+	...IconsSchema.entries
+});
+/**
+* Sent from the client to request a list of tools the server has.
+*/
+const ListToolsRequestSchema = object({
+	...PaginatedRequestSchema.entries,
+	method: literal("tools/list")
+});
+/**
+* The server's response to a tools/list request from the client.
+*/
+const ListToolsResultSchema = object({
+	...PaginatedResultSchema.entries,
+	tools: array(ToolSchema)
+});
+/**
+* The server's response to a tool call.
+*/
+const CallToolResultSchema = object({
+	...ResultSchema.entries,
+	content: optional(array(ContentBlockSchema), []),
+	structuredContent: optional(looseObject({})),
+	isError: optional(boolean())
+});
+/**
+* CallToolResultSchema extended with backwards compatibility to protocol version 2024-10-07.
+*/
+const CompatibilityCallToolResultSchema = union([CallToolResultSchema, object({
+	...ResultSchema.entries,
+	toolResult: unknown()
+})]);
+/**
+* Used by the client to invoke a tool provided by the server.
+*/
+const CallToolRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("tools/call"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		name: string(),
+		arguments: optional(record(string(), unknown()))
+	})
+});
+/**
+* An optional notification from the server to the client, informing it that the list of tools it offers has changed. This may be issued by servers without any previous subscription from the client.
+*/
+const ToolListChangedNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/tools/list_changed")
+});
+/**
+* The severity of a log message.
+*/
+const LoggingLevelSchema = picklist([
+	"debug",
+	"info",
+	"notice",
+	"warning",
+	"error",
+	"critical",
+	"alert",
+	"emergency"
+]);
+/**
+* A request from the client to the server, to enable or adjust logging.
+*/
+const SetLevelRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("logging/setLevel"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		level: LoggingLevelSchema
+	})
+});
+/**
+* Notification of a log message passed from server to client. If no logging/setLevel request has been sent from the client, the server MAY decide which messages to send automatically.
+*/
+const LoggingMessageNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/message"),
+	params: object({
+		...BaseNotificationParamsSchema.entries,
+		level: LoggingLevelSchema,
+		logger: optional(string()),
+		data: unknown()
+	})
+});
+/**
+* Hints to use for model selection.
+*/
+const ModelHintSchema = object({ name: optional(string()) });
+/**
+* The server's preferences for model selection, requested of the client during sampling.
+*/
+const ModelPreferencesSchema = object({
+	hints: optional(array(ModelHintSchema)),
+	costPriority: optional(pipe(number(), minValue(0), maxValue(1))),
+	speedPriority: optional(pipe(number(), minValue(0), maxValue(1))),
+	intelligencePriority: optional(pipe(number(), minValue(0), maxValue(1)))
+});
+/**
+* Describes a message issued to or received from an LLM API.
+*/
+const SamplingMessageSchema = object({
+	role: picklist(["user", "assistant"]),
+	content: union([
+		TextContentSchema,
+		ImageContentSchema,
+		AudioContentSchema
+	])
+});
+const CreateMessageRequestParamsSchema = object({
+	...BaseRequestParamsSchema.entries,
+	messages: array(SamplingMessageSchema),
+	systemPrompt: optional(string()),
+	includeContext: optional(picklist([
+		"none",
+		"thisServer",
+		"allServers"
+	])),
+	temperature: optional(number()),
+	maxTokens: pipe(number(), integer()),
+	stopSequences: optional(array(string())),
+	metadata: optional(object({})),
+	modelPreferences: optional(ModelPreferencesSchema)
+});
+/**
+* A request from the server to sample an LLM via the client. The client has full discretion over which model to select. The client should also inform the user before beginning sampling, to allow them to inspect the request (human in the loop) and decide whether to approve it.
+*/
+const CreateMessageRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("sampling/createMessage"),
+	params: CreateMessageRequestParamsSchema
+});
+/**
+* The client's response to a sampling/create_message request from the server. The client should inform the user before returning the sampled message, to allow them to inspect the response (human in the loop) and decide whether to allow the server to see it.
+*/
+const CreateMessageResultSchema = object({
+	...ResultSchema.entries,
+	model: string(),
+	stopReason: optional(union([picklist([
+		"endTurn",
+		"stopSequence",
+		"maxTokens"
+	]), string()])),
+	role: picklist(["user", "assistant"]),
+	content: variant("type", [
+		TextContentSchema,
+		ImageContentSchema,
+		AudioContentSchema
+	])
+});
+/**
+* Primitive schema definition for boolean fields.
+*/
+const BooleanSchemaSchema = object({
+	type: literal("boolean"),
+	title: optional(string()),
+	description: optional(string()),
+	default: optional(boolean())
+});
+/**
+* Primitive schema definition for string fields.
+*/
+const StringSchemaSchema = object({
+	type: literal("string"),
+	title: optional(string()),
+	description: optional(string()),
+	minLength: optional(number()),
+	maxLength: optional(number()),
+	format: optional(picklist([
+		"email",
+		"uri",
+		"date",
+		"date-time"
+	]))
+});
+/**
+* Primitive schema definition for number fields.
+*/
+const NumberSchemaSchema = object({
+	type: picklist(["number", "integer"]),
+	title: optional(string()),
+	description: optional(string()),
+	minimum: optional(number()),
+	maximum: optional(number())
+});
+/**
+* Primitive schema definition for enum fields.
+*/
+const EnumSchemaSchema = object({
+	type: literal("string"),
+	title: optional(string()),
+	description: optional(string()),
+	enum: array(string()),
+	enumNames: optional(array(string()))
+});
+/**
+* Union of all primitive schema definitions.
+*/
+const PrimitiveSchemaDefinitionSchema = union([
+	BooleanSchemaSchema,
+	StringSchemaSchema,
+	NumberSchemaSchema,
+	EnumSchemaSchema
+]);
+/**
+* A request from the server to elicit user input via the client.
+* The client should present the message and form fields to the user.
+*/
+const ElicitRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("elicitation/create"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		message: string(),
+		requestedSchema: object({
+			type: literal("object"),
+			properties: record(string(), PrimitiveSchemaDefinitionSchema),
+			required: optional(array(string()))
+		})
+	})
+});
+/**
+* The client's response to an elicitation/create request from the server.
+*/
+const ElicitResultSchema = object({
+	...ResultSchema.entries,
+	action: picklist([
+		"accept",
+		"decline",
+		"cancel"
+	]),
+	content: optional(record(string(), unknown()))
+});
+/**
+* A reference to a resource or resource template definition.
+*/
+const ResourceTemplateReferenceSchema = object({
+	type: literal("ref/resource"),
+	uri: string()
+});
+/**
+* Identifies a prompt.
+*/
+const PromptReferenceSchema = object({
+	type: literal("ref/prompt"),
+	name: string()
+});
+/**
+* A request from the client to the server, to ask for completion options.
+*/
+const CompleteRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("completion/complete"),
+	params: object({
+		...BaseRequestParamsSchema.entries,
+		ref: union([PromptReferenceSchema, ResourceTemplateReferenceSchema]),
+		argument: object({
+			name: string(),
+			value: string()
+		}),
+		context: optional(object({ arguments: optional(record(string(), string())) }))
+	})
+});
+/**
+* The server's response to a completion/complete request
+*/
+const CompleteResultSchema = object({
+	...ResultSchema.entries,
+	completion: object({
+		values: pipe(array(string()), maxLength(100)),
+		total: optional(pipe(number(), integer())),
+		hasMore: optional(boolean())
+	})
+});
+/**
+* Represents a root directory or file that the server can operate on.
+*/
+const RootSchema = object({
+	uri: pipe(string(), startsWith("file://")),
+	name: optional(string()),
+	_meta: optional(looseObject({}))
+});
+/**
+* Sent from the server to request a list of root URIs from the client.
+*/
+const ListRootsRequestSchema = object({
+	...RequestSchema.entries,
+	method: literal("roots/list")
+});
+/**
+* The client's response to a roots/list request from the server.
+*/
+const ListRootsResultSchema = object({
+	...ResultSchema.entries,
+	roots: array(RootSchema)
+});
+/**
+* A notification from the client to the server, informing it that the list of roots has changed.
+*/
+const RootsListChangedNotificationSchema = object({
+	...NotificationSchema.entries,
+	method: literal("notifications/roots/list_changed")
+});
+const ClientRequestSchema = union([
+	PingRequestSchema,
+	InitializeRequestSchema,
+	CompleteRequestSchema,
+	SetLevelRequestSchema,
+	GetPromptRequestSchema,
+	ListPromptsRequestSchema,
+	ListResourcesRequestSchema,
+	ListResourceTemplatesRequestSchema,
+	ReadResourceRequestSchema,
+	SubscribeRequestSchema,
+	UnsubscribeRequestSchema,
+	CallToolRequestSchema,
+	ListToolsRequestSchema
+]);
+const ClientNotificationSchema = union([
+	CancelledNotificationSchema,
+	ProgressNotificationSchema,
+	InitializedNotificationSchema,
+	RootsListChangedNotificationSchema
+]);
+const ClientResultSchema = union([
+	EmptyResultSchema,
+	CreateMessageResultSchema,
+	ElicitResultSchema,
+	ListRootsResultSchema
+]);
+const ServerRequestSchema = union([
+	PingRequestSchema,
+	CreateMessageRequestSchema,
+	ElicitRequestSchema,
+	ListRootsRequestSchema
+]);
+const ServerNotificationSchema = union([
+	CancelledNotificationSchema,
+	ProgressNotificationSchema,
+	LoggingMessageNotificationSchema,
+	ResourceUpdatedNotificationSchema,
+	ResourceListChangedNotificationSchema,
+	ToolListChangedNotificationSchema,
+	PromptListChangedNotificationSchema
+]);
+const ServerResultSchema = union([
+	EmptyResultSchema,
+	InitializeResultSchema,
+	CompleteResultSchema,
+	GetPromptResultSchema,
+	ListPromptsResultSchema,
+	ListResourcesResultSchema,
+	ListResourceTemplatesResultSchema,
+	ReadResourceResultSchema,
+	CallToolResultSchema,
+	ListToolsResultSchema
+]);
+/**
+* @typedef {v.InferInput<typeof IconsSchema>} Icons
+*/
+/**
+* @typedef {v.InferInput<typeof ClientCapabilitiesSchema>} ClientCapabilities
+*/
+/**
+* @typedef {v.InferInput<typeof ServerCapabilitiesSchema>} ServerCapabilities
+*/
+/**
+* @typedef {v.InferInput<typeof ImplementationSchema>} ClientInfo
+*/
+/**
+* @typedef {v.InferInput<typeof ImplementationSchema> & { description?: string }} ServerInfo
+*/
+/**
+* @typedef {v.InferInput<typeof InitializeRequestParamsSchema>} InitializeRequestParams
+*/
+/**
+* @template {Record<string, unknown> | undefined} TStructuredContent
+* @typedef {Omit<v.InferInput<typeof CallToolResultSchema>, "structuredContent" | "isError"> & (undefined extends TStructuredContent ? { structuredContent?: undefined, isError?: boolean } : ({ structuredContent: TStructuredContent, isError?: false } | { isError: true, structuredContent?: TStructuredContent }))} CallToolResult
+*/
+/**
+* @typedef {v.InferInput<typeof ReadResourceResultSchema>} ReadResourceResult
+*/
+/**
+* @typedef {v.InferInput<typeof GetPromptResultSchema>} GetPromptResult
+*/
+/**
+* @typedef {v.InferInput<typeof CompleteResultSchema>} CompleteResult
+*/
+/**
+* @typedef {v.InferInput<typeof CreateMessageRequestParamsSchema>} CreateMessageRequestParams
+*/
+/**
+* @typedef {v.InferInput<typeof CreateMessageResultSchema>} CreateMessageResult
+*/
+/**
+* @typedef {v.InferInput<typeof ModelPreferencesSchema>} ModelPreferences
+*/
+/**
+* @typedef {v.InferInput<typeof SamplingMessageSchema>} SamplingMessage
+*/
+/**
+* @typedef {v.InferInput<typeof ModelHintSchema>} ModelHint
+*/
+/**
+* @typedef {v.InferInput<typeof ResourceSchema>} Resource
+*/
+/**
+* @typedef {v.InferInput<typeof JSONRPCRequestSchema>} JSONRPCRequest
+*/
+/**
+* @typedef {v.InferInput<typeof JSONRPCMessageSchema>} JSONRPCMessage
+*/
+/**
+* @typedef {v.InferInput<typeof JSONRPCResponseSchema>} JSONRPCResponse
+*/
+/**
+* @typedef {v.InferInput<typeof LoggingLevelSchema>} LoggingLevel
+*/
+/**
+* @typedef {v.InferInput<typeof ToolAnnotationsSchema>} ToolAnnotations
+*/
+/**
+* @typedef {v.InferInput<typeof ElicitResultSchema>} ElicitResult
+*/
+/**
+* @typedef {v.InferInput<typeof InitializeResultSchema>} InitializeResult
+*/
+/**
+* @typedef {v.InferInput<typeof ListToolsResultSchema>} ListToolsResult
+*/
+/**
+* @typedef {v.InferInput<typeof ListPromptsResultSchema>} ListPromptsResult
+*/
+/**
+* @typedef {v.InferInput<typeof ListResourcesResultSchema>} ListResourcesResult
+*/
+/**
+* @typedef {v.InferInput<typeof ListResourceTemplatesResultSchema>} ListResourceTemplatesResult
+*/
+/**
+* @typedef {v.InferInput<typeof EmbeddedResourceSchema>} EmbeddedResource
+*/
+/**
+* @typedef {v.InferInput<typeof ResourceLinkSchema>} ResourceLink
+*/
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/validation/version.js
+/**
+* Supported MCP protocol versions in order of preference (newest first)
+*/
+const SUPPORTED_VERSIONS = [
+	"2025-06-18",
+	"2025-03-26",
+	"2024-11-05"
+];
+/**
+* Latest stable protocol version
+*/
+const LATEST_PROTOCOL_VERSION = SUPPORTED_VERSIONS[0];
+/**
+* Validate MCP protocol version format (YYYY-MM-DD)
+*/
+const ProtocolVersionSchema = pipe(string(), regex$2(/^\d{4}-\d{2}-\d{2}$/, "Protocol version must be in YYYY-MM-DD format"));
+/**
+* Validate that the protocol version is supported
+*/
+const SupportedProtocolVersionSchema = pipe(ProtocolVersionSchema, check((version) => SUPPORTED_VERSIONS.includes(version), "Unsupported protocol version"));
+/**
+* Check if a protocol version is supported
+* @param {string} version - The protocol version to check
+* @returns {boolean} True if the version is supported
+*/
+function is_supported_version(version) {
+	return SUPPORTED_VERSIONS.includes(version);
+}
+/**
+* Get the latest supported protocol version
+* @returns {string} The latest protocol version
+*/
+function get_latest_version() {
+	return LATEST_PROTOCOL_VERSION;
+}
+/**
+* Get all supported protocol versions
+* @returns {string[]} Array of supported protocol versions
+*/
+function get_supported_versions() {
+	return [...SUPPORTED_VERSIONS];
+}
+/**
+* Negotiate protocol version between client and server
+* According to MCP spec:
+* - If server supports client's version, return same version
+* - Otherwise, return server's latest supported version
+* @param {string} client_version - The protocol version requested by client
+* @returns {string} The negotiated protocol version
+*/
+function negotiate_protocol_version(client_version) {
+	if (is_supported_version(client_version)) return client_version;
+	return get_latest_version();
+}
+/**
+* Check if version negotiation should result in an error
+* @param {string} client_version - The protocol version requested by client
+* @returns {boolean} True if negotiation should fail
+*/
+function should_version_negotiation_fail(client_version) {
+	try {
+		const date = new Date(client_version);
+		return !/^\d{4}-\d{2}-\d{2}$/.test(client_version) || isNaN(date.getTime());
+	} catch {
+		return true;
+	}
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/internal/utils.js
+/**
+* @import {McpEvents} from "./internal.js"
+*/
+/**
+*	@template {keyof McpEvents} Key
+* @param {Key} type
+* @param {Parameters<McpEvents[Key]>[0]} detail
+* @returns
+*/
+function event(type, detail) {
+	return new CustomEvent(type, { detail });
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/sqids@0.3.0/node_modules/sqids/esm/sqids.js
+var sqids_exports = /* @__PURE__ */ __exportAll({
+	default: () => Sqids$1,
+	defaultOptions: () => defaultOptions
+});
+var defaultOptions, Sqids$1;
+var init_sqids = __esmMin((() => {
+	defaultOptions = {
+		alphabet: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+		minLength: 0,
+		blocklist: new Set([
+			"0rgasm",
+			"1d10t",
+			"1d1ot",
+			"1di0t",
+			"1diot",
+			"1eccacu10",
+			"1eccacu1o",
+			"1eccacul0",
+			"1eccaculo",
+			"1mbec11e",
+			"1mbec1le",
+			"1mbeci1e",
+			"1mbecile",
+			"a11upat0",
+			"a11upato",
+			"a1lupat0",
+			"a1lupato",
+			"aand",
+			"ah01e",
+			"ah0le",
+			"aho1e",
+			"ahole",
+			"al1upat0",
+			"al1upato",
+			"allupat0",
+			"allupato",
+			"ana1",
+			"ana1e",
+			"anal",
+			"anale",
+			"anus",
+			"arrapat0",
+			"arrapato",
+			"arsch",
+			"arse",
+			"ass",
+			"b00b",
+			"b00be",
+			"b01ata",
+			"b0ceta",
+			"b0iata",
+			"b0ob",
+			"b0obe",
+			"b0sta",
+			"b1tch",
+			"b1te",
+			"b1tte",
+			"ba1atkar",
+			"balatkar",
+			"bastard0",
+			"bastardo",
+			"batt0na",
+			"battona",
+			"bitch",
+			"bite",
+			"bitte",
+			"bo0b",
+			"bo0be",
+			"bo1ata",
+			"boceta",
+			"boiata",
+			"boob",
+			"boobe",
+			"bosta",
+			"bran1age",
+			"bran1er",
+			"bran1ette",
+			"bran1eur",
+			"bran1euse",
+			"branlage",
+			"branler",
+			"branlette",
+			"branleur",
+			"branleuse",
+			"c0ck",
+			"c0g110ne",
+			"c0g11one",
+			"c0g1i0ne",
+			"c0g1ione",
+			"c0gl10ne",
+			"c0gl1one",
+			"c0gli0ne",
+			"c0glione",
+			"c0na",
+			"c0nnard",
+			"c0nnasse",
+			"c0nne",
+			"c0u111es",
+			"c0u11les",
+			"c0u1l1es",
+			"c0u1lles",
+			"c0ui11es",
+			"c0ui1les",
+			"c0uil1es",
+			"c0uilles",
+			"c11t",
+			"c11t0",
+			"c11to",
+			"c1it",
+			"c1it0",
+			"c1ito",
+			"cabr0n",
+			"cabra0",
+			"cabrao",
+			"cabron",
+			"caca",
+			"cacca",
+			"cacete",
+			"cagante",
+			"cagar",
+			"cagare",
+			"cagna",
+			"cara1h0",
+			"cara1ho",
+			"caracu10",
+			"caracu1o",
+			"caracul0",
+			"caraculo",
+			"caralh0",
+			"caralho",
+			"cazz0",
+			"cazz1mma",
+			"cazzata",
+			"cazzimma",
+			"cazzo",
+			"ch00t1a",
+			"ch00t1ya",
+			"ch00tia",
+			"ch00tiya",
+			"ch0d",
+			"ch0ot1a",
+			"ch0ot1ya",
+			"ch0otia",
+			"ch0otiya",
+			"ch1asse",
+			"ch1avata",
+			"ch1er",
+			"ch1ng0",
+			"ch1ngadaz0s",
+			"ch1ngadazos",
+			"ch1ngader1ta",
+			"ch1ngaderita",
+			"ch1ngar",
+			"ch1ngo",
+			"ch1ngues",
+			"ch1nk",
+			"chatte",
+			"chiasse",
+			"chiavata",
+			"chier",
+			"ching0",
+			"chingadaz0s",
+			"chingadazos",
+			"chingader1ta",
+			"chingaderita",
+			"chingar",
+			"chingo",
+			"chingues",
+			"chink",
+			"cho0t1a",
+			"cho0t1ya",
+			"cho0tia",
+			"cho0tiya",
+			"chod",
+			"choot1a",
+			"choot1ya",
+			"chootia",
+			"chootiya",
+			"cl1t",
+			"cl1t0",
+			"cl1to",
+			"clit",
+			"clit0",
+			"clito",
+			"cock",
+			"cog110ne",
+			"cog11one",
+			"cog1i0ne",
+			"cog1ione",
+			"cogl10ne",
+			"cogl1one",
+			"cogli0ne",
+			"coglione",
+			"cona",
+			"connard",
+			"connasse",
+			"conne",
+			"cou111es",
+			"cou11les",
+			"cou1l1es",
+			"cou1lles",
+			"coui11es",
+			"coui1les",
+			"couil1es",
+			"couilles",
+			"cracker",
+			"crap",
+			"cu10",
+			"cu1att0ne",
+			"cu1attone",
+			"cu1er0",
+			"cu1ero",
+			"cu1o",
+			"cul0",
+			"culatt0ne",
+			"culattone",
+			"culer0",
+			"culero",
+			"culo",
+			"cum",
+			"cunt",
+			"d11d0",
+			"d11do",
+			"d1ck",
+			"d1ld0",
+			"d1ldo",
+			"damn",
+			"de1ch",
+			"deich",
+			"depp",
+			"di1d0",
+			"di1do",
+			"dick",
+			"dild0",
+			"dildo",
+			"dyke",
+			"encu1e",
+			"encule",
+			"enema",
+			"enf01re",
+			"enf0ire",
+			"enfo1re",
+			"enfoire",
+			"estup1d0",
+			"estup1do",
+			"estupid0",
+			"estupido",
+			"etr0n",
+			"etron",
+			"f0da",
+			"f0der",
+			"f0ttere",
+			"f0tters1",
+			"f0ttersi",
+			"f0tze",
+			"f0utre",
+			"f1ca",
+			"f1cker",
+			"f1ga",
+			"fag",
+			"fica",
+			"ficker",
+			"figa",
+			"foda",
+			"foder",
+			"fottere",
+			"fotters1",
+			"fottersi",
+			"fotze",
+			"foutre",
+			"fr0c10",
+			"fr0c1o",
+			"fr0ci0",
+			"fr0cio",
+			"fr0sc10",
+			"fr0sc1o",
+			"fr0sci0",
+			"fr0scio",
+			"froc10",
+			"froc1o",
+			"froci0",
+			"frocio",
+			"frosc10",
+			"frosc1o",
+			"frosci0",
+			"froscio",
+			"fuck",
+			"g00",
+			"g0o",
+			"g0u1ne",
+			"g0uine",
+			"gandu",
+			"go0",
+			"goo",
+			"gou1ne",
+			"gouine",
+			"gr0gnasse",
+			"grognasse",
+			"haram1",
+			"harami",
+			"haramzade",
+			"hund1n",
+			"hundin",
+			"id10t",
+			"id1ot",
+			"idi0t",
+			"idiot",
+			"imbec11e",
+			"imbec1le",
+			"imbeci1e",
+			"imbecile",
+			"j1zz",
+			"jerk",
+			"jizz",
+			"k1ke",
+			"kam1ne",
+			"kamine",
+			"kike",
+			"leccacu10",
+			"leccacu1o",
+			"leccacul0",
+			"leccaculo",
+			"m1erda",
+			"m1gn0tta",
+			"m1gnotta",
+			"m1nch1a",
+			"m1nchia",
+			"m1st",
+			"mam0n",
+			"mamahuev0",
+			"mamahuevo",
+			"mamon",
+			"masturbat10n",
+			"masturbat1on",
+			"masturbate",
+			"masturbati0n",
+			"masturbation",
+			"merd0s0",
+			"merd0so",
+			"merda",
+			"merde",
+			"merdos0",
+			"merdoso",
+			"mierda",
+			"mign0tta",
+			"mignotta",
+			"minch1a",
+			"minchia",
+			"mist",
+			"musch1",
+			"muschi",
+			"n1gger",
+			"neger",
+			"negr0",
+			"negre",
+			"negro",
+			"nerch1a",
+			"nerchia",
+			"nigger",
+			"orgasm",
+			"p00p",
+			"p011a",
+			"p01la",
+			"p0l1a",
+			"p0lla",
+			"p0mp1n0",
+			"p0mp1no",
+			"p0mpin0",
+			"p0mpino",
+			"p0op",
+			"p0rca",
+			"p0rn",
+			"p0rra",
+			"p0uff1asse",
+			"p0uffiasse",
+			"p1p1",
+			"p1pi",
+			"p1r1a",
+			"p1rla",
+			"p1sc10",
+			"p1sc1o",
+			"p1sci0",
+			"p1scio",
+			"p1sser",
+			"pa11e",
+			"pa1le",
+			"pal1e",
+			"palle",
+			"pane1e1r0",
+			"pane1e1ro",
+			"pane1eir0",
+			"pane1eiro",
+			"panele1r0",
+			"panele1ro",
+			"paneleir0",
+			"paneleiro",
+			"patakha",
+			"pec0r1na",
+			"pec0rina",
+			"pecor1na",
+			"pecorina",
+			"pen1s",
+			"pendej0",
+			"pendejo",
+			"penis",
+			"pip1",
+			"pipi",
+			"pir1a",
+			"pirla",
+			"pisc10",
+			"pisc1o",
+			"pisci0",
+			"piscio",
+			"pisser",
+			"po0p",
+			"po11a",
+			"po1la",
+			"pol1a",
+			"polla",
+			"pomp1n0",
+			"pomp1no",
+			"pompin0",
+			"pompino",
+			"poop",
+			"porca",
+			"porn",
+			"porra",
+			"pouff1asse",
+			"pouffiasse",
+			"pr1ck",
+			"prick",
+			"pussy",
+			"put1za",
+			"puta",
+			"puta1n",
+			"putain",
+			"pute",
+			"putiza",
+			"puttana",
+			"queca",
+			"r0mp1ba11e",
+			"r0mp1ba1le",
+			"r0mp1bal1e",
+			"r0mp1balle",
+			"r0mpiba11e",
+			"r0mpiba1le",
+			"r0mpibal1e",
+			"r0mpiballe",
+			"rand1",
+			"randi",
+			"rape",
+			"recch10ne",
+			"recch1one",
+			"recchi0ne",
+			"recchione",
+			"retard",
+			"romp1ba11e",
+			"romp1ba1le",
+			"romp1bal1e",
+			"romp1balle",
+			"rompiba11e",
+			"rompiba1le",
+			"rompibal1e",
+			"rompiballe",
+			"ruff1an0",
+			"ruff1ano",
+			"ruffian0",
+			"ruffiano",
+			"s1ut",
+			"sa10pe",
+			"sa1aud",
+			"sa1ope",
+			"sacanagem",
+			"sal0pe",
+			"salaud",
+			"salope",
+			"saugnapf",
+			"sb0rr0ne",
+			"sb0rra",
+			"sb0rrone",
+			"sbattere",
+			"sbatters1",
+			"sbattersi",
+			"sborr0ne",
+			"sborra",
+			"sborrone",
+			"sc0pare",
+			"sc0pata",
+			"sch1ampe",
+			"sche1se",
+			"sche1sse",
+			"scheise",
+			"scheisse",
+			"schlampe",
+			"schwachs1nn1g",
+			"schwachs1nnig",
+			"schwachsinn1g",
+			"schwachsinnig",
+			"schwanz",
+			"scopare",
+			"scopata",
+			"sexy",
+			"sh1t",
+			"shit",
+			"slut",
+			"sp0mp1nare",
+			"sp0mpinare",
+			"spomp1nare",
+			"spompinare",
+			"str0nz0",
+			"str0nza",
+			"str0nzo",
+			"stronz0",
+			"stronza",
+			"stronzo",
+			"stup1d",
+			"stupid",
+			"succh1am1",
+			"succh1ami",
+			"succhiam1",
+			"succhiami",
+			"sucker",
+			"t0pa",
+			"tapette",
+			"test1c1e",
+			"test1cle",
+			"testic1e",
+			"testicle",
+			"tette",
+			"topa",
+			"tr01a",
+			"tr0ia",
+			"tr0mbare",
+			"tr1ng1er",
+			"tr1ngler",
+			"tring1er",
+			"tringler",
+			"tro1a",
+			"troia",
+			"trombare",
+			"turd",
+			"twat",
+			"vaffancu10",
+			"vaffancu1o",
+			"vaffancul0",
+			"vaffanculo",
+			"vag1na",
+			"vagina",
+			"verdammt",
+			"verga",
+			"w1chsen",
+			"wank",
+			"wichsen",
+			"x0ch0ta",
+			"x0chota",
+			"xana",
+			"xoch0ta",
+			"xochota",
+			"z0cc01a",
+			"z0cc0la",
+			"z0cco1a",
+			"z0ccola",
+			"z1z1",
+			"z1zi",
+			"ziz1",
+			"zizi",
+			"zocc01a",
+			"zocc0la",
+			"zocco1a",
+			"zoccola"
+		])
+	};
+	Sqids$1 = class {
+		constructor(options) {
+			var _a, _b, _c;
+			const alphabet = (_a = options === null || options === void 0 ? void 0 : options.alphabet) !== null && _a !== void 0 ? _a : defaultOptions.alphabet;
+			const minLength = (_b = options === null || options === void 0 ? void 0 : options.minLength) !== null && _b !== void 0 ? _b : defaultOptions.minLength;
+			const blocklist = (_c = options === null || options === void 0 ? void 0 : options.blocklist) !== null && _c !== void 0 ? _c : defaultOptions.blocklist;
+			if (new Blob([alphabet]).size !== alphabet.length) throw new Error("Alphabet cannot contain multibyte characters");
+			const minAlphabetLength = 3;
+			if (alphabet.length < minAlphabetLength) throw new Error(`Alphabet length must be at least ${minAlphabetLength}`);
+			if (new Set(alphabet).size !== alphabet.length) throw new Error("Alphabet must contain unique characters");
+			const minLengthLimit = 255;
+			if (typeof minLength !== "number" || minLength < 0 || minLength > minLengthLimit) throw new Error(`Minimum length has to be between 0 and ${minLengthLimit}`);
+			const filteredBlocklist = /* @__PURE__ */ new Set();
+			const alphabetChars = alphabet.toLowerCase().split("");
+			for (const word of blocklist) if (word.length >= 3) {
+				const wordLowercased = word.toLowerCase();
+				const wordChars = wordLowercased.split("");
+				if (wordChars.filter((c) => alphabetChars.includes(c)).length === wordChars.length) filteredBlocklist.add(wordLowercased);
+			}
+			this.alphabet = this.shuffle(alphabet);
+			this.minLength = minLength;
+			this.blocklist = filteredBlocklist;
+		}
+		encode(numbers) {
+			if (numbers.length === 0) return "";
+			if (numbers.filter((n) => n >= 0 && n <= this.maxValue()).length !== numbers.length) throw new Error(`Encoding supports numbers between 0 and ${this.maxValue()}`);
+			return this.encodeNumbers(numbers);
+		}
+		decode(id) {
+			const ret = [];
+			if (id === "") return ret;
+			const alphabetChars = this.alphabet.split("");
+			for (const c of id.split("")) if (!alphabetChars.includes(c)) return ret;
+			const prefix = id.charAt(0);
+			const offset = this.alphabet.indexOf(prefix);
+			let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
+			alphabet = alphabet.split("").reverse().join("");
+			let slicedId = id.slice(1);
+			while (slicedId.length > 0) {
+				const separator = alphabet.slice(0, 1);
+				const chunks = slicedId.split(separator);
+				if (chunks.length > 0) {
+					if (chunks[0] === "") return ret;
+					ret.push(this.toNumber(chunks[0], alphabet.slice(1)));
+					if (chunks.length > 1) alphabet = this.shuffle(alphabet);
+				}
+				slicedId = chunks.slice(1).join(separator);
+			}
+			return ret;
+		}
+		encodeNumbers(numbers, increment = 0) {
+			if (increment > this.alphabet.length) throw new Error("Reached max attempts to re-generate the ID");
+			let offset = numbers.reduce((a, v, i) => this.alphabet[v % this.alphabet.length].codePointAt(0) + i + a, numbers.length) % this.alphabet.length;
+			offset = (offset + increment) % this.alphabet.length;
+			let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
+			const prefix = alphabet.charAt(0);
+			alphabet = alphabet.split("").reverse().join("");
+			const ret = [prefix];
+			for (let i = 0; i !== numbers.length; i++) {
+				const num = numbers[i];
+				ret.push(this.toId(num, alphabet.slice(1)));
+				if (i < numbers.length - 1) {
+					ret.push(alphabet.slice(0, 1));
+					alphabet = this.shuffle(alphabet);
+				}
+			}
+			let id = ret.join("");
+			if (this.minLength > id.length) {
+				id += alphabet.slice(0, 1);
+				while (this.minLength - id.length > 0) {
+					alphabet = this.shuffle(alphabet);
+					id += alphabet.slice(0, Math.min(this.minLength - id.length, alphabet.length));
+				}
+			}
+			if (this.isBlockedId(id)) id = this.encodeNumbers(numbers, increment + 1);
+			return id;
+		}
+		shuffle(alphabet) {
+			const chars = alphabet.split("");
+			for (let i = 0, j = chars.length - 1; j > 0; i++, j--) {
+				const r = (i * j + chars[i].codePointAt(0) + chars[j].codePointAt(0)) % chars.length;
+				[chars[i], chars[r]] = [chars[r], chars[i]];
+			}
+			return chars.join("");
+		}
+		toId(num, alphabet) {
+			const id = [];
+			const chars = alphabet.split("");
+			let result = num;
+			do {
+				id.unshift(chars[result % chars.length]);
+				result = Math.floor(result / chars.length);
+			} while (result > 0);
+			return id.join("");
+		}
+		toNumber(id, alphabet) {
+			const chars = alphabet.split("");
+			return id.split("").reduce((a, v) => a * chars.length + chars.indexOf(v), 0);
+		}
+		isBlockedId(id) {
+			const lowercaseId = id.toLowerCase();
+			for (const word of this.blocklist) if (word.length <= lowercaseId.length) {
+				if (lowercaseId.length <= 3 || word.length <= 3) {
+					if (lowercaseId === word) return true;
+				} else if (/\d/.test(word)) {
+					if (lowercaseId.startsWith(word) || lowercaseId.endsWith(word)) return true;
+				} else if (lowercaseId.includes(word)) return true;
+			}
+			return false;
+		}
+		maxValue() {
+			return Number.MAX_SAFE_INTEGER;
+		}
+	};
+}));
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/index.js
+/**
+* @import { StandardSchemaV1 } from "@standard-schema/spec";
+* @import SqidsType from "sqids";
+* @import { JSONRPCRequest, JSONRPCParams } from "json-rpc-2.0";
+* @import { ExtractURITemplateVariables } from "./internal/uri-template.js";
+* @import { CallToolResult as CallToolResultType, ReadResourceResult as ReadResourceResultType, GetPromptResult as GetPromptResultType, ServerInfo as ServerInfoType, ClientCapabilities as ClientCapabilitiesType, JSONRPCRequest as JSONRPCRequestType, JSONRPCResponse, CreateMessageRequestParams as CreateMessageRequestParamsType, CreateMessageResult as CreateMessageResultType, Resource as ResourceType, LoggingLevel as LoggingLevelType, ToolAnnotations, ClientInfo as ClientInfoType, ElicitResult as ElicitResultType, Icons as IconsType, JSONRPCMessage, InitializeResult as InitializeResultType, ListToolsResult as ListToolsResultType, ListPromptsResult as ListPromptsResultType, ListResourceTemplatesResult as ListResourceTemplatesResultType, ListResourcesResult as ListResourcesResultType, CompleteResult as CompleteResultType } from "./validation/index.js";
+* @import { Tool, Completion, Prompt, StoredResource, ServerOptions, SubscriptionsKeys, ChangedArgs, McpEvents, AllSame, TemplateOptions } from "./internal/internal.js";
+* @import { CreatedTool, ToolOptions, CreatedPrompt, PromptOptions, CreatedResource, CreatedTemplate, ResourceOptions } from "./internal/internal.js";
+*/
+/**
+* Information about a validated access token, provided to request handlers.
+* @typedef {Object} AuthInfo
+* @property {string} token - The access token.
+* @property {string} clientId - The client ID associated with this token.
+* @property {string[]} scopes - Scopes associated with this token.
+* @property {number} [expiresAt] - When the token expires (in seconds since epoch).
+* @property {URL} [resource] - The RFC 8707 resource server identifier for which this token is valid.
+*   If set, this MUST match the MCP server's resource identifier (minus hash fragment).
+* @property {Record<string, unknown>} [extra] - Additional data associated with the token.
+*   This field should be used for any additional data that needs to be attached to the auth info.
+*/
+/**
+* @template {Record<string, unknown> | undefined} [TCustom=undefined]
+* @typedef {Object} Context
+* @property {string} [sessionId]
+* @property {{ clientCapabilities?: ClientCapabilitiesType, clientInfo?: ClientInfoType, logLevel?: LoggingLevel }} [sessionInfo]
+* @property {AuthInfo} [auth]
+* @property {TCustom} [custom]
+*/
+/**
+* @typedef {IconsType} Icons
+*/
+/**
+* @typedef {Record<SubscriptionsKeys, string[]>} Subscriptions
+*/
+/**
+* @template {Record<string, unknown> | undefined} TStructuredContent
+* @typedef {CallToolResultType<TStructuredContent>} CallToolResult
+*/
+/**
+* @typedef {ReadResourceResultType} ReadResourceResult
+*/
+/**
+* @typedef {GetPromptResultType} GetPromptResult
+*/
+/**
+* @typedef {ClientCapabilitiesType} ClientCapabilities
+*/
+/**
+* @typedef {ServerInfoType} ServerInfo
+*/
+/**
+* @typedef {CreateMessageRequestParamsType} CreateMessageRequestParams
+*/
+/**
+* @typedef {CreateMessageResultType} CreateMessageResult
+*/
+/**
+* @typedef {ResourceType} Resource
+*/
+/**
+* @typedef  {LoggingLevelType} LoggingLevel
+*/
+/**
+* @typedef  {ClientInfoType} ClientInfo
+*/
+/**
+* @typedef  {ElicitResultType} ElicitResult
+*/
+/**
+* @typedef {InitializeResultType} InitializeResult
+*/
+/**
+* @typedef {ListToolsResultType} ListToolsResult
+*/
+/**
+* @typedef {ListPromptsResultType} ListPromptsResult
+*/
+/**
+* @typedef {ListResourceTemplatesResultType} ListResourceTemplatesResult
+*/
+/**
+* @typedef {ListResourcesResultType} ListResourcesResult
+*/
+/**
+* @typedef {CompleteResultType} CompleteResult
+*/
+/**
+* @type {SqidsType | undefined}
+*/
+let Sqids;
+async function get_sqids() {
+	if (!Sqids) Sqids = new (await (Promise.resolve().then(() => (init_sqids(), sqids_exports)))).default();
+	return Sqids;
+}
+/**
+* Encode a cursor for pagination
+* @param {number} offset
+*/
+async function encode_cursor(offset) {
+	return (await get_sqids()).encode([offset]);
+}
+/**
+* Decode a cursor from pagination
+* @param {string} cursor
+*/
+async function decode_cursor(cursor) {
+	const [decoded] = (await get_sqids()).decode(cursor);
+	return decoded;
+}
+/**
+* @param {()=>boolean | Promise<boolean>} enabled
+*/
+async function safe_enabled(enabled) {
+	try {
+		return await enabled();
+	} catch {
+		return false;
+	}
+}
+/**
+* @template {StandardSchemaV1 | undefined} [StandardSchema=undefined]
+* @template {Record<string, unknown> | undefined} [CustomContext=undefined]
+*/
+var McpServer = class {
+	#server = new import_dist.JSONRPCServer();
+	/**
+	* @type {JSONRPCClient<"broadcast" | "standalone"> | undefined}
+	*/
+	#client;
+	#options;
+	/**
+	* @type {Map<string, Tool<any, any>>}
+	*/
+	#tools = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, Prompt<any>>}
+	*/
+	#prompts = /* @__PURE__ */ new Map();
+	/**
+	* @type {Map<string, StoredResource>}
+	*/
+	#resources = /* @__PURE__ */ new Map();
+	#templates = new UriTemplateMatcher();
+	/**
+	* @type {Array<{uri: string, name?: string}>}
+	*/
+	roots = [];
+	/**
+	* @type {{ [ref: string]: Map<string, Partial<Record<string, Completion>>> }}
+	*/
+	#completions = {
+		"ref/prompt": /* @__PURE__ */ new Map(),
+		"ref/resource": /* @__PURE__ */ new Map()
+	};
+	#event_target = new EventTarget();
+	/**
+	* @type {AsyncLocalStorage<Context<CustomContext> & { progress_token?: string }>}
+	*/
+	#ctx_storage = new AsyncLocalStorage();
+	/**
+	* @param {ServerInfo} server_info
+	* @param {ServerOptions<StandardSchema>} options
+	*/
+	constructor(server_info, options) {
+		this.#options = options;
+		this.#server.addMethod("initialize", (initialize_request) => {
+			try {
+				const validated_initialize = parse$1(InitializeRequestParamsSchema, initialize_request);
+				if (should_version_negotiation_fail(validated_initialize.protocolVersion)) throw new McpError(-32602, "Invalid protocol version format");
+				const negotiated_version = negotiate_protocol_version(validated_initialize.protocolVersion);
+				this.#event_target.dispatchEvent(event("initialize", validated_initialize));
+				return {
+					protocolVersion: negotiated_version,
+					...options,
+					serverInfo: server_info
+				};
+			} catch (error) {
+				if (error instanceof McpError) throw error;
+				if (error.message?.includes("Protocol version")) throw new McpError(-32602, `Protocol version validation failed: ${error.message}. Server supports: ${get_supported_versions().join(", ")}`);
+				throw new McpError(-32603, `Initialization failed: ${error.message}`);
+			}
+		});
+		this.#server.addMethod("ping", () => {
+			return {};
+		});
+		this.#server.addMethod("notifications/initialized", () => {
+			return null;
+		});
+		this.#init_tools();
+		this.#init_prompts();
+		this.#init_resources();
+		this.#init_roots();
+		this.#init_completion();
+		this.#init_logging();
+	}
+	/**
+	* Utility method to specify the type of the custom context for this server instance without the need to specify the standard schema type.
+	* @example
+	* const server = new McpServer({ ... }, { ... }).withContext<{ name: string }>();
+	* @template {Record<string, unknown>} TCustom
+	* @returns {McpServer<StandardSchema, TCustom>}
+	*/
+	withContext() {
+		return this;
+	}
+	get #progress_token() {
+		return this.#ctx_storage.getStore()?.progress_token;
+	}
+	/**
+	* The context of the current request, include the session ID, any auth information, and custom data.
+	* @type {Context<CustomContext>}
+	*/
+	get ctx() {
+		const { progress_token, ...rest } = this.#ctx_storage.getStore() ?? {};
+		return rest;
+	}
+	get #client_capabilities() {
+		return this.#ctx_storage.getStore()?.sessionInfo?.clientCapabilities;
+	}
+	/**
+	* Get the client information (name, version, etc.) of the client that initiated the current request...useful if you want to do something different based on the client.
+	* @deprecated Use `server.ctx.sessionInfo.clientInfo` instead.
+	*/
+	currentClientInfo() {
+		return this.#ctx_storage.getStore()?.sessionInfo?.clientInfo;
+	}
+	/**
+	* Get the client capabilities of the client that initiated the current request, you can use this to verify the client support something before invoking the respective method.
+	* @deprecated Use `server.ctx.sessionInfo.clientCapabilities` instead.
+	*/
+	currentClientCapabilities() {
+		return this.#client_capabilities;
+	}
+	#lazyily_create_client() {
+		if (!this.#client) this.#client = new import_dist.JSONRPCClient((payload, kind) => {
+			if (kind === "broadcast") {
+				this.#event_target.dispatchEvent(event("broadcast", { request: payload }));
+				return;
+			}
+			this.#event_target.dispatchEvent(event("send", { request: payload }));
+		});
+	}
+	/**
+	* @template {keyof McpEvents} TEvent
+	* @param {TEvent} event
+	* @param {McpEvents[TEvent]} callback
+	* @param {AddEventListenerOptions} [options]
+	*/
+	on(event, callback, options) {
+		if (event === "send" || event === "broadcast") this.#lazyily_create_client();
+		/**
+		* @param {Event} e
+		*/
+		const listener = (e) => {
+			callback(
+				/** @type {CustomEvent} */
+				e.detail
+			);
+		};
+		this.#event_target.addEventListener(event, listener, options);
+		return () => {
+			this.#event_target.removeEventListener(event, listener, options);
+		};
+	}
+	/**
+	* @param {string} method
+	* @param {JSONRPCParams} [params]
+	* @param {"broadcast" | "standalone"} [kind]
+	*/
+	#notify(method, params, kind = "standalone") {
+		this.#client?.notify(method, params, kind);
+	}
+	/**
+	*
+	*/
+	#init_tools() {
+		if (!this.#options.capabilities?.tools) return;
+		this.#server.addMethod("tools/list", async ({ cursor } = {}) => {
+			const all_tools = (await Promise.all([...this.#tools].map(async ([name, tool]) => {
+				if (tool.enabled != null && await safe_enabled(tool.enabled) === false) return null;
+				return {
+					name,
+					title: tool.title || tool.description,
+					description: tool.description,
+					icons: tool.icons,
+					_meta: tool._meta,
+					inputSchema: tool.schema && this.#options.adapter ? await this.#options.adapter.toJsonSchema(tool.schema) : {
+						type: "object",
+						properties: {}
+					},
+					...tool.outputSchema && this.#options.adapter ? { outputSchema: await this.#options.adapter.toJsonSchema(tool.outputSchema) } : {},
+					...tool.annotations ? { annotations: tool.annotations } : {}
+				};
+			}))).filter((tool) => tool !== null);
+			const pagination_options = this.#options.pagination?.tools;
+			if (!pagination_options || pagination_options.size == null) return { tools: all_tools };
+			const page_length = pagination_options.size;
+			const start_index = cursor ? await decode_cursor(cursor) : 0;
+			const end_index = start_index + page_length;
+			const tools = all_tools.slice(start_index, end_index);
+			const next_cursor = end_index < all_tools.length ? await encode_cursor(end_index) : null;
+			return {
+				tools,
+				...next_cursor && { nextCursor: next_cursor }
+			};
+		});
+		this.#server.addMethod("tools/call", async ({ name, arguments: args }) => {
+			const tool = this.#tools.get(name);
+			if (!tool) return {
+				isError: true,
+				content: [{
+					type: "text",
+					text: `Tool ${name} not found`
+				}]
+			};
+			let validated_args = args;
+			if (tool.schema) {
+				let validation_result = tool.schema["~standard"].validate(args);
+				if (validation_result instanceof Promise) validation_result = await validation_result;
+				if (validation_result.issues) return {
+					isError: true,
+					content: [{
+						type: "text",
+						text: `Invalid arguments for tool ${name}: ${JSON.stringify(validation_result.issues)}`
+					}]
+				};
+				validated_args = validation_result.value;
+			}
+			const tool_result = tool.schema ? await tool.execute(validated_args) : await tool.execute();
+			const parsed_result = parse$1(CallToolResultSchema, tool_result);
+			if (tool.outputSchema && parsed_result.structuredContent !== void 0) {
+				let output_validation = tool.outputSchema["~standard"].validate(parsed_result.structuredContent);
+				if (output_validation instanceof Promise) output_validation = await output_validation;
+				if (output_validation.issues) return {
+					isError: true,
+					content: [{
+						type: "text",
+						text: `Tool ${name} returned invalid structured content: ${JSON.stringify(output_validation.issues)}`
+					}]
+				};
+				parsed_result.structuredContent = output_validation.value;
+			}
+			return parsed_result;
+		});
+	}
+	/**
+	*
+	*/
+	#init_prompts() {
+		if (!this.#options.capabilities?.prompts) return;
+		this.#server.addMethod("prompts/list", async ({ cursor } = {}) => {
+			const all_prompts = (await Promise.all([...this.#prompts].map(async ([name, prompt]) => {
+				if (prompt.enabled != null && await safe_enabled(prompt.enabled) === false) return null;
+				const arguments_schema = prompt.schema && this.#options.adapter ? await this.#options.adapter.toJsonSchema(prompt.schema) : {
+					type: "object",
+					properties: {},
+					required: []
+				};
+				const keys = Object.keys(arguments_schema.properties ?? {});
+				const required = arguments_schema.required ?? [];
+				return {
+					name,
+					title: prompt.title || prompt.description,
+					icons: prompt.icons,
+					description: prompt.description,
+					arguments: keys.map((key) => {
+						const property = arguments_schema.properties?.[key];
+						const description = property && property !== true ? property.description : key;
+						return {
+							name: key,
+							required: required.includes(key),
+							description
+						};
+					})
+				};
+			}))).filter((prompt) => prompt !== null);
+			const pagination_options = this.#options.pagination?.prompts;
+			if (!pagination_options || pagination_options.size == null) return { prompts: all_prompts };
+			const page_length = pagination_options.size;
+			const start_index = cursor ? await decode_cursor(cursor) : 0;
+			const end_index = start_index + page_length;
+			const prompts = all_prompts.slice(start_index, end_index);
+			const next_cursor = end_index < all_prompts.length ? await encode_cursor(end_index) : null;
+			return {
+				prompts,
+				...next_cursor && { nextCursor: next_cursor }
+			};
+		});
+		this.#server.addMethod("prompts/get", async ({ name, arguments: args }) => {
+			const prompt = this.#prompts.get(name);
+			if (!prompt) throw new McpError(-32601, `Prompt ${name} not found`);
+			if (!prompt.schema) return parse$1(GetPromptResultSchema, await prompt.execute());
+			let validated_args = prompt.schema["~standard"].validate(args);
+			if (validated_args instanceof Promise) validated_args = await validated_args;
+			if (validated_args.issues) throw new McpError(-32602, `Invalid arguments for prompt ${name}: ${JSON.stringify(validated_args.issues)}`);
+			return parse$1(GetPromptResultSchema, await prompt.execute(validated_args.value));
+		});
+	}
+	/**
+	*
+	*/
+	#init_resources() {
+		if (!this.#options.capabilities?.resources) return;
+		if (this.#options.capabilities?.resources?.subscribe) {
+			this.#server.addMethod("resources/subscribe", async ({ uri }) => {
+				this.#event_target.dispatchEvent(event("subscription", {
+					uri,
+					action: "add"
+				}));
+				return {};
+			});
+			this.#server.addMethod("resources/unsubscribe", async ({ uri }) => {
+				this.#event_target.dispatchEvent(event("subscription", {
+					uri,
+					action: "remove"
+				}));
+				return {};
+			});
+		}
+		this.#server.addMethod("resources/list", async ({ cursor } = {}) => {
+			const all_resources = [];
+			for (const [uri, resource] of this.#resources) if (!resource.template) {
+				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) continue;
+				all_resources.push({
+					name: resource.name,
+					title: resource.title || resource.description,
+					description: resource.description,
+					uri,
+					mimeType: resource.mimeType,
+					icons: resource.icons
+				});
+			} else if (resource.list_resources) {
+				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) continue;
+				const template_resources = await resource.list_resources();
+				all_resources.push(...template_resources);
+			}
+			const pagination_options = this.#options.pagination?.resources;
+			if (!pagination_options || pagination_options.size == null) return { resources: all_resources };
+			const page_length = pagination_options.size;
+			const start_index = cursor ? await decode_cursor(cursor) : 0;
+			const end_index = start_index + page_length;
+			const resources = all_resources.slice(start_index, end_index);
+			const next_cursor = end_index < all_resources.length ? await encode_cursor(end_index) : null;
+			return {
+				resources,
+				...next_cursor && { nextCursor: next_cursor }
+			};
+		});
+		this.#server.addMethod("resources/templates/list", async () => {
+			return { resourceTemplates: (await Promise.all([...this.#resources].map(async ([uri, resource]) => {
+				if (!resource.template) return null;
+				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) return null;
+				return {
+					name: resource.name,
+					icons: resource.icons,
+					title: resource.title || resource.description,
+					description: resource.description,
+					mimeType: resource.mimeType,
+					uriTemplate: uri
+				};
+			}))).filter((resource) => resource != null) };
+		});
+		this.#server.addMethod("resources/read", async ({ uri }) => {
+			let resource = this.#resources.get(uri);
+			let params;
+			if (!resource) {
+				const match = this.#templates.match(uri);
+				if (match) {
+					resource = this.#resources.get(match.template);
+					params = match.params;
+				}
+				if (!resource) throw new McpError(-32601, `Resource ${uri} not found`);
+			}
+			if (resource.template) {
+				if (!params) throw new McpError(-32602, "Missing parameters for template resource");
+				return parse$1(ReadResourceResultSchema, await resource.execute(uri, params));
+			}
+			return parse$1(ReadResourceResultSchema, await resource.execute(uri));
+		});
+	}
+	/**
+	*
+	*/
+	#init_roots() {
+		this.#server.addMethod("notifications/roots/list_changed", () => {
+			this.#refresh_roots();
+			return null;
+		});
+	}
+	/**
+	* Request roots list from client
+	*/
+	async #refresh_roots() {
+		if (!this.#client_capabilities?.roots) return;
+		this.#lazyily_create_client();
+		try {
+			this.roots = (await this.#client?.request("roots/list", void 0, "standalone"))?.roots || [];
+		} catch {
+			this.roots = [];
+		}
+	}
+	#init_completion() {
+		this.#server.addMethod("completion/complete", async ({ argument, ref, context }) => {
+			const completions = this.#completions[ref.type];
+			if (!completions) return null;
+			const complete = completions.get(ref.uri ?? ref.name);
+			if (!complete) return null;
+			const actual_complete = complete[argument.name];
+			if (!actual_complete) return null;
+			return parse$1(CompleteResultSchema, await actual_complete(argument.value, context));
+		});
+	}
+	#init_logging() {
+		if (!this.#options.capabilities?.logging) return;
+		this.#server.addMethod("logging/setLevel", ({ level }) => {
+			this.#event_target.dispatchEvent(event("loglevelchange", { level }));
+			return {};
+		});
+	}
+	#notify_tools_list_changed() {
+		if (this.#options.capabilities?.tools?.listChanged) this.#notify("notifications/tools/list_changed", {}, "broadcast");
+	}
+	#notify_prompts_list_changed() {
+		if (this.#options.capabilities?.prompts?.listChanged) this.#notify("notifications/prompts/list_changed", {}, "broadcast");
+	}
+	#notify_resources_list_changed() {
+		if (this.#options.capabilities?.resources?.listChanged) this.#notify("notifications/resources/list_changed", {}, "broadcast");
+	}
+	/**
+	* Use the `defineTool` utility to create a reusable tool and pass it to this method to add it to the server.
+	* @template {Array<CreatedTool<any, any>>} T
+	* @template {T extends Array<CreatedTool<infer TSchema, infer TOutputSchema>> ? AllSame<TSchema, StandardSchema | undefined> extends true ? AllSame<TOutputSchema, StandardSchema | undefined> extends true ? T : never : never : never} U
+	* @param {T & NoInfer<U>} tools
+	*/
+	tools(tools) {
+		for (const tool of tools) this.tool(tool);
+	}
+	/**
+	* Use the `definePrompt` utility to create a reusable tool and pass it to this method to add it to the server.
+	* @template {Array<CreatedPrompt<any>>} T
+	* @template {T extends Array<CreatedPrompt<infer TSchema>> ? AllSame<TSchema, StandardSchema | undefined> extends true ?  T : never : never} U
+	* @param {T & NoInfer<U>} prompts
+	*/
+	prompts(prompts) {
+		for (const prompt of prompts) this.prompt(prompt);
+	}
+	/**
+	* Use the `defineResource` utility to create a reusable resource and pass it to this method to add it to the server.
+	*
+	* @param {CreatedResource[]} resources
+	*/
+	resources(resources) {
+		for (const resource of resources) this.resource(resource);
+	}
+	/**
+	* Use the `defineTemplate` utility to create a reusable template and pass it to this method to add it to the server.
+	*
+	* @param {CreatedTemplate<any>[]} templates
+	*/
+	templates(templates) {
+		for (const template of templates) this.template(template);
+	}
+	/**
+	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
+	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
+	*
+	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
+	* @template {StandardSchema | undefined} [TSchema=undefined]
+	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
+	* @overload
+	* @param {CreatedTool<TSchema, TOutputSchema>} tool_or_options
+	* @returns {void}
+	*/
+	/**
+	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
+	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
+	*
+	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
+	* @template {StandardSchema | undefined} [TSchema=undefined]
+	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
+	* @overload
+	* @param {ToolOptions<TSchema, TOutputSchema>} tool_or_options
+	* @param {TSchema extends undefined ? (()=>Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
+	* @returns {void}
+	* */
+	/**
+	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
+	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
+	*
+	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
+	* @template {StandardSchema | undefined} [TSchema=undefined]
+	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
+	* @param {CreatedTool<TSchema, TOutputSchema> | ToolOptions<TSchema, TOutputSchema>} tool_or_options
+	* @param {undefined | TSchema extends undefined ? (()=>Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} [execute]
+	*/
+	tool(tool_or_options, execute) {
+		if ("execute" in tool_or_options) execute = tool_or_options.execute;
+		this.#notify_tools_list_changed();
+		const stored_tool = tool_or_options;
+		stored_tool.execute = execute;
+		this.#tools.set(tool_or_options.name, stored_tool);
+	}
+	/**
+	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
+	* Use the description and title to help the user to understand what the prompt does and when to use it.
+	*
+	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
+	* for each input that will be used to provide completions for the user.
+	* @template {StandardSchema | undefined} [TSchema=undefined]
+	* @overload
+	* @param {CreatedPrompt<TSchema>} prompt_or_options
+	* @returns {void}
+	*/
+	/**
+	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
+	* Use the description and title to help the user to understand what the prompt does and when to use it.
+	*
+	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
+	* for each input that will be used to provide completions for the user.
+	* @template {StandardSchema | undefined} [TSchema=undefined]
+	* @overload
+	* @param {PromptOptions<TSchema>} prompt_or_options
+	* @param {TSchema extends undefined ? (()=>Promise<GetPromptResult> | GetPromptResult) : (input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<GetPromptResult> | GetPromptResult} execute
+	* @returns {void}
+	* */
+	/**
+	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
+	* Use the description and title to help the user to understand what the prompt does and when to use it.
+	*
+	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
+	* for each input that will be used to provide completions for the user.
+	* @template {StandardSchema | undefined} [TSchema=undefined]
+	* @param {CreatedPrompt<TSchema> | PromptOptions<TSchema>} prompt_or_options
+	* @param {TSchema extends undefined ? (()=>Promise<GetPromptResult> | GetPromptResult) : (input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<GetPromptResult> | GetPromptResult} [execute]
+	*/
+	prompt(prompt_or_options, execute) {
+		if ("execute" in prompt_or_options) execute = prompt_or_options.execute;
+		if (prompt_or_options.complete) this.#completions["ref/prompt"].set(prompt_or_options.name, prompt_or_options.complete);
+		this.#notify_prompts_list_changed();
+		const stored_prompt = prompt_or_options;
+		stored_prompt.execute = execute;
+		this.#prompts.set(prompt_or_options.name, stored_prompt);
+	}
+	/**
+	* @type {(resource: StoredResource & { uri: string })=> void}
+	*/
+	#resource(resource) {
+		if (resource.template && resource.complete) this.#completions["ref/resource"].set(resource.uri, resource.complete);
+		if (resource.template) this.#templates.add(resource.uri);
+		this.#notify_resources_list_changed();
+		this.#resources.set(resource.uri, resource);
+	}
+	/**
+	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
+	* Use the description and title to help the user to understand what the resource is.
+	* @overload
+	* @param {CreatedResource} resource_or_options
+	* @returns {void}
+	*/
+	/**
+	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
+	* Use the description and title to help the user to understand what the resource is.
+	* @overload
+	* @param {ResourceOptions} resource_or_options
+	* @param {(uri: string) => Promise<ReadResourceResult> | ReadResourceResult} execute
+	* @returns {void}
+	*/
+	/**
+	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
+	* Use the description and title to help the user to understand what the resource is.
+	* @param {CreatedResource | ResourceOptions} resource_or_options
+	* @param {(uri: string) => Promise<ReadResourceResult> | ReadResourceResult} [execute]
+	*/
+	resource(resource_or_options, execute) {
+		if ("execute" in resource_or_options) execute = resource_or_options.execute;
+		const stored_resource = resource_or_options;
+		stored_resource.execute = execute;
+		stored_resource.template = false;
+		this.#resource(stored_resource);
+	}
+	/**
+	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
+	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
+	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
+	* be invoked to provide completions for the template variables to the user.
+	* Use the description and title to help the user to understand what the resource is.
+	* @template {string} TUri
+	* @template {ExtractURITemplateVariables<TUri>} TVariables
+	* @overload
+	* @param {CreatedTemplate<TUri>} template_or_options
+	* @returns {void}
+	*/
+	/**
+	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
+	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
+	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
+	* be invoked to provide completions for the template variables to the user.
+	* Use the description and title to help the user to understand what the resource is.
+	* @template {string} TUri
+	* @template {ExtractURITemplateVariables<TUri>} TVariables
+	* @overload
+	* @param {TemplateOptions<TUri>} template_or_options
+	* @param {(uri: string, params: Record<TVariables, string | string[]>) => Promise<ReadResourceResult> | ReadResourceResult} execute
+	* @returns {void}
+	*/
+	/**
+	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
+	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
+	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
+	* be invoked to provide completions for the template variables to the user.
+	* Use the description and title to help the user to understand what the resource is.
+	* @template {string} TUri
+	* @template {ExtractURITemplateVariables<TUri>} TVariables
+	* @param {CreatedTemplate<TUri> | TemplateOptions<TUri>} template_or_options
+	* @param {(uri: string, params: Record<TVariables, string | string[]>) => Promise<ReadResourceResult> | ReadResourceResult} [execute]
+	*/
+	template(template_or_options, execute) {
+		if ("execute" in template_or_options) execute = template_or_options.execute;
+		const stored_template = template_or_options;
+		stored_template.execute = execute;
+		stored_template.list_resources = template_or_options.list;
+		stored_template.template = true;
+		this.#resource(stored_template);
+	}
+	/**
+	* The main function that receive a JSONRpc message and either dispatch a `send` event or process the request.
+	*
+	* @param {JSONRPCMessage} message
+	* @param {Context<CustomContext>} [ctx]
+	* @returns {ReturnType<JSONRPCServer['receive']> | ReturnType<JSONRPCClient['receive'] | undefined>}
+	*/
+	receive(message, ctx) {
+		const validated_message = safeParse$1(union([JSONRPCRequestSchema, JSONRPCNotificationSchema]), message);
+		if (validated_message.success) {
+			const progress_token = validated_message.output.params?._meta?.progressToken;
+			return this.#ctx_storage.run({
+				...ctx ?? {},
+				progress_token
+			}, async () => await this.#server.receive(validated_message.output));
+		}
+		const validated_response = parse$1(union([JSONRPCResponseSchema, JSONRPCErrorSchema]), message);
+		this.#lazyily_create_client();
+		return this.#ctx_storage.run(ctx ?? {}, async () => this.#client?.receive(validated_response));
+	}
+	/**
+	* Lower level api to send a request to the client, mostly useful to call client methods that not yet supported by the server or
+	* if you want to send requests with json schema that is not expressible with your validation library.
+	* @param {{ method: string, params?: JSONRPCParams }} request
+	* @returns {Promise<unknown>}
+	*/
+	async request({ method, params }) {
+		this.#lazyily_create_client();
+		return this.#client?.request(method, params, "standalone");
+	}
+	/**
+	* Send a notification for subscriptions
+	* @template {keyof ChangedArgs} TWhat
+	* @param {[what: TWhat, ...ChangedArgs[TWhat]]} args
+	*/
+	changed(...args) {
+		const [what, id] = args;
+		if (what === "prompts") this.#notify_prompts_list_changed();
+		else if (what === "tools") this.#notify_tools_list_changed();
+		else if (what === "resources") this.#notify_resources_list_changed();
+		else {
+			const resource = this.#resources.get(id);
+			if (!resource) return;
+			this.#notify(`notifications/resources/updated`, {
+				uri: id,
+				title: resource.name
+			}, "broadcast");
+		}
+	}
+	/**
+	* Refresh roots list from client
+	*/
+	async refreshRoots() {
+		await this.#refresh_roots();
+	}
+	/**
+	* Emit an elicitation request to the client. Elicitations are used to ask the user for input in a structured way, the client will show a UI to the user to fill the input.
+	* The schema should be a valid Standard Schema V1 schema and should be an Object with the properties you need.
+	* The client will return the validated input as a JSON object that matches the schema.
+	*
+	* If the client doesn't support elicitation, it will throw an error.
+	*
+	* @template {StandardSchema extends undefined ? never : StandardSchema} TSchema
+	* @param {string} message
+	* @param {TSchema} schema
+	* @returns {Promise<ElicitResult & { content?: StandardSchemaV1.InferOutput<TSchema> }>}
+	*/
+	async elicitation(message, schema) {
+		if (!this.#client_capabilities?.elicitation) throw new McpError(-32601, "Client doesn't support elicitation");
+		this.#lazyily_create_client();
+		const result = await this.#client?.request("elicitation/create", {
+			message,
+			requestedSchema: await this.#options.adapter?.toJsonSchema(schema)
+		}, "standalone");
+		const elicit_result = parse$1(ElicitResultSchema, result);
+		let validated_result = schema["~standard"].validate(elicit_result.content);
+		if (validated_result instanceof Promise) validated_result = await validated_result;
+		if (validated_result.issues) throw new McpError(-32603, `Invalid elicitation result: ${JSON.stringify(validated_result.issues)}`);
+		return {
+			...elicit_result,
+			content: validated_result.value
+		};
+	}
+	/**
+	* Request language model sampling from the client
+	* @param {CreateMessageRequestParams} request
+	* @returns {Promise<CreateMessageResult>}
+	*/
+	async message(request) {
+		if (!this.#client_capabilities?.sampling) throw new McpError(-32601, "Client doesn't support sampling");
+		this.#lazyily_create_client();
+		const validated_request = parse$1(CreateMessageRequestParamsSchema, request);
+		const response = await this.#client?.request("sampling/createMessage", validated_request, "standalone");
+		return parse$1(CreateMessageResultSchema, response);
+	}
+	/**
+	* Send a progress notification to the client. This is useful for long-running operations where you want to inform the user about the progress.
+	*
+	* @param {number} progress The current progress value, it should be between 0 and total and should always increase
+	* @param {number} [total] The total value, defaults to 1
+	* @param {string} [message] An optional message to accompany the progress update
+	*/
+	progress(progress, total = 1, message = void 0) {
+		if (this.#progress_token != null) this.#notify("notifications/progress", {
+			progress,
+			total,
+			message,
+			progressToken: this.#progress_token
+		});
+	}
+	/**
+	* Log a message to the client if logging is enabled and the level is appropriate
+	*
+	* @param {LoggingLevel} level
+	* @param {unknown} data
+	* @param {string} [logger]
+	*/
+	log(level, data, logger) {
+		if (!this.#options.capabilities?.logging) throw new McpError(-32601, "The server doesn't support logging, please enable it in capabilities");
+		const current_session_level = this.#ctx_storage.getStore()?.sessionInfo?.logLevel ?? this.#options.logging?.default ?? "info";
+		if (current_session_level && this.#should_log(level, current_session_level)) this.#notify("notifications/message", {
+			level,
+			data,
+			logger
+		});
+	}
+	/**
+	* Check if a log message should be sent based on severity levels
+	* @param {LoggingLevel} message_level
+	* @param {LoggingLevel} session_level
+	* @returns {boolean}
+	*/
+	#should_log(message_level, session_level) {
+		const levels = [
+			"debug",
+			"info",
+			"notice",
+			"warning",
+			"error",
+			"critical",
+			"alert",
+			"emergency"
+		];
+		return levels.indexOf(message_level) >= levels.indexOf(session_level);
+	}
+};
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/tool.js
+/**
+* @import { StandardSchemaV1 } from "@standard-schema/spec";
+* @import { ToolOptions, CreatedTool } from "./internal/internal.js";
+*/
+/**
+* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
+* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
+*
+* @template {StandardSchemaV1 | undefined} [TSchema=undefined]
+* @template {StandardSchemaV1 | undefined} [TOutputSchema=undefined]
+* @param {ToolOptions<TSchema, TOutputSchema>} options
+* @param {TSchema extends undefined ? (()=>Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
+*/
+function defineTool(options, execute) {
+	return {
+		...options,
+		execute
+	};
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/utils/index.js
+/**
+* @import { EmbeddedResource, ResourceLink, CallToolResult, ReadResourceResult, GetPromptResult,  CompleteResult } from "../validation/index.js";
+*/
+/**
+* @satisfies {Record<string, (...args: any[])=>CallToolResult<any>>}
+*/
+const tool = {
+	text(text) {
+		return { content: [{
+			type: "text",
+			text
+		}] };
+	},
+	error(text) {
+		return {
+			isError: true,
+			content: [{
+				type: "text",
+				text
+			}]
+		};
+	},
+	media(type, data, mime_type) {
+		return { content: [{
+			type,
+			data,
+			mimeType: mime_type
+		}] };
+	},
+	resource(resource) {
+		return { content: [{
+			type: "resource",
+			resource
+		}] };
+	},
+	resourceLink(resource_link) {
+		return { content: [{
+			type: "resource_link",
+			...resource_link
+		}] };
+	},
+	structured(obj) {
+		return {
+			content: [{
+				type: "text",
+				text: JSON.stringify(obj)
+			}],
+			structuredContent: obj
+		};
+	},
+	mix(results, obj) {
+		return {
+			isError: results.some((r) => r.isError),
+			content: results.flatMap((r) => r.content ? r.content : []),
+			structuredContent: obj
+		};
+	}
+};
+
+//#endregion
 //#region ../../node_modules/.pnpm/universal-user-agent@7.0.3/node_modules/universal-user-agent/index.js
 function getUserAgent() {
 	if (typeof navigator === "object" && "userAgent" in navigator) return navigator.userAgent;
@@ -603,7 +7629,7 @@ function expand(template, context) {
 	if (template === "/") return template;
 	else return template.replace(/\/$/, "");
 }
-function parse$1(options) {
+function parse(options) {
 	let method = options.method.toUpperCase();
 	let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
 	let headers = Object.assign({}, options.headers);
@@ -640,7 +7666,7 @@ function parse$1(options) {
 	}, typeof body !== "undefined" ? { body } : null, options.request ? { request: options.request } : null);
 }
 function endpointWithDefaults(defaults, route, options) {
-	return parse$1(merge(defaults, route, options));
+	return parse(merge(defaults, route, options));
 }
 function withDefaults$2(oldDefaults, newDefaults) {
 	const DEFAULTS2 = merge(oldDefaults, newDefaults);
@@ -649,7 +7675,7 @@ function withDefaults$2(oldDefaults, newDefaults) {
 		DEFAULTS: DEFAULTS2,
 		defaults: withDefaults$2.bind(null, DEFAULTS2),
 		merge: merge.bind(null, DEFAULTS2),
-		parse: parse$1
+		parse
 	});
 }
 var endpoint = withDefaults$2(null, DEFAULTS);
@@ -6328,11 +13354,11 @@ var OAuthApp = OAuthApp$1.defaults({ Octokit });
 /* v8 ignore next no need to test internals of the throttle plugin -- @preserve */
 
 //#endregion
-//#region src/setup.ts
-let _runtimeContext = null;
+//#region src/setup/context.ts
+let runtimeContext = null;
 function requireRuntimeContext() {
-	if (!_runtimeContext) throw new Error("Clank8y runtime context is not initialized. Call setClank8yRuntimeContext first.");
-	return _runtimeContext;
+	if (!runtimeContext) throw new Error("Clank8y runtime context is not initialized. Call setClank8yRuntimeContext first.");
+	return runtimeContext;
 }
 function normalizeRuntimeContext(context) {
 	if (!context.promptContext.trim()) throw new Error("Clank8y runtime context requires a non-empty promptContext.");
@@ -6348,7 +13374,7 @@ function normalizeRuntimeContext(context) {
 	};
 }
 function setClank8yRuntimeContext(context) {
-	_runtimeContext = normalizeRuntimeContext(context);
+	runtimeContext = normalizeRuntimeContext(context);
 }
 function getClank8yRuntimeContext() {
 	return requireRuntimeContext();
@@ -6367,2124 +13393,1237 @@ async function getOctokit() {
 }
 
 //#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/adapter.js
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import { JSONSchema7 } from "json-schema";
-*/
-/**
-* @template {StandardSchemaV1} TSchema
-*/
-var JsonSchemaAdapter = class {
-	/**
-	* @param {TSchema} schema
-	* @returns {Promise<JSONSchema7>}
-	*/
-	toJsonSchema(schema) {
-		throw new Error("toJsonSchema method not implemented");
-	}
-};
-
-//#endregion
-//#region ../../node_modules/.pnpm/valibot@1.2.0_typescript@5.9.3/node_modules/valibot/dist/index.mjs
-let store$4;
-/**
-* Returns the global configuration.
-*
-* @param config The config to merge.
-*
-* @returns The configuration.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getGlobalConfig(config$1) {
+//#region src/utils/artifacts.ts
+const CLANK8Y_ARTIFACT_DIR = ".clank8y";
+const DIFF_ARTIFACT_FILE = "diff.txt";
+const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
+const REPORT_ARTIFACT_FILE = "report.md";
+function getClank8yArtifactDirPath() {
+	return path.join(process$1.cwd(), CLANK8Y_ARTIFACT_DIR);
+}
+function resolveClank8yArtifactPath(...segments) {
+	return path.join(getClank8yArtifactDirPath(), ...segments);
+}
+function getClank8yReposDirPath() {
+	return resolveClank8yArtifactPath("repos");
+}
+function isWithinClank8yArtifacts(targetPath) {
+	const artifactDir = getClank8yArtifactDirPath();
+	const relativePath = path.relative(artifactDir, targetPath);
+	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+}
+function getReviewArtifactPaths() {
 	return {
-		lang: config$1?.lang ?? store$4?.lang,
-		message: config$1?.message,
-		abortEarly: config$1?.abortEarly ?? store$4?.abortEarly,
-		abortPipeEarly: config$1?.abortPipeEarly ?? store$4?.abortPipeEarly
+		artifactDir: getClank8yArtifactDirPath(),
+		diffPath: resolveClank8yArtifactPath(DIFF_ARTIFACT_FILE),
+		reviewCommentsPath: resolveClank8yArtifactPath(REVIEW_COMMENTS_ARTIFACT_FILE)
 	};
 }
-let store$3;
-/**
-* Returns a global error message.
-*
-* @param lang The language of the message.
-*
-* @returns The error message.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getGlobalMessage(lang) {
-	return store$3?.get(lang);
+async function resetClank8yArtifacts() {
+	const artifactPaths = getReviewArtifactPaths();
+	await rm(artifactPaths.artifactDir, {
+		force: true,
+		recursive: true
+	});
+	await mkdir(artifactPaths.artifactDir, { recursive: true });
+	return artifactPaths;
 }
-let store$2;
-/**
-* Returns a schema error message.
-*
-* @param lang The language of the message.
-*
-* @returns The error message.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getSchemaMessage(lang) {
-	return store$2?.get(lang);
+function getReportArtifactPath() {
+	return resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE);
 }
-let store$1;
-/**
-* Returns a specific error message.
-*
-* @param reference The identifier reference.
-* @param lang The language of the message.
-*
-* @returns The error message.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getSpecificMessage(reference, lang) {
-	return store$1?.get(reference)?.get(lang);
+async function doesReportArtifactExist() {
+	return (await stat(getReportArtifactPath()).catch(() => null))?.isFile() ?? false;
 }
-/**
-* Stringifies an unknown input to a literal or type string.
-*
-* @param input The unknown input.
-*
-* @returns A literal or type string.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _stringify(input) {
-	const type = typeof input;
-	if (type === "string") return `"${input}"`;
-	if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
-	if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
-	return type;
+async function writeDiffArtifact(content) {
+	const { diffPath } = getReviewArtifactPaths();
+	await writeFile(diffPath, content, "utf-8");
 }
-/**
-* Adds an issue to the dataset.
-*
-* @param context The issue context.
-* @param label The issue label.
-* @param dataset The input dataset.
-* @param config The configuration.
-* @param other The optional props.
-*
-* @internal
-*/
-function _addIssue(context, label, dataset, config$1, other) {
-	const input = other && "input" in other ? other.input : dataset.value;
-	const expected = other?.expected ?? context.expects ?? null;
-	const received = other?.received ?? /* @__PURE__ */ _stringify(input);
-	const issue = {
-		kind: context.kind,
-		type: context.type,
-		input,
-		expected,
-		received,
-		message: `Invalid ${label}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
-		requirement: context.requirement,
-		path: other?.path,
-		issues: other?.issues,
-		lang: config$1.lang,
-		abortEarly: config$1.abortEarly,
-		abortPipeEarly: config$1.abortPipeEarly
-	};
-	const isSchema = context.kind === "schema";
-	const message$1 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
-	if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
-	if (isSchema) dataset.typed = false;
-	if (dataset.issues) dataset.issues.push(issue);
-	else dataset.issues = [issue];
-}
-/**
-* Returns the Standard Schema properties.
-*
-* @param context The schema context.
-*
-* @returns The Standard Schema properties.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _getStandardProps(context) {
-	return {
-		version: 1,
-		vendor: "valibot",
-		validate(value$1) {
-			return context["~run"]({ value: value$1 }, /* @__PURE__ */ getGlobalConfig());
-		}
-	};
-}
-/**
-* Disallows inherited object properties and prevents object prototype
-* pollution by disallowing certain keys.
-*
-* @param object The object to check.
-* @param key The key to check.
-*
-* @returns Whether the key is allowed.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _isValidObjectKey(object$1, key) {
-	return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
-}
-/**
-* Joins multiple `expects` values with the given separator.
-*
-* @param values The `expects` values.
-* @param separator The separator.
-*
-* @returns The joined `expects` property.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _joinExpects(values$1, separator) {
-	const list = [...new Set(values$1)];
-	if (list.length > 1) return `(${list.join(` ${separator} `)})`;
-	return list[0] ?? "never";
-}
-/**
-* A Valibot error with useful information.
-*/
-var ValiError = class extends Error {
-	/**
-	* Creates a Valibot error with useful information.
-	*
-	* @param issues The error issues.
-	*/
-	constructor(issues) {
-		super(issues[0].message);
-		this.name = "ValiError";
-		this.issues = issues;
-	}
-};
-/**
-* [Base64](https://en.wikipedia.org/wiki/Base64) regex.
-*/
-const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
-/* @__NO_SIDE_EFFECTS__ */
-function base64(message$1) {
-	return {
-		kind: "validation",
-		type: "base64",
-		reference: base64,
-		async: false,
-		expects: null,
-		requirement: BASE64_REGEX,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function check(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "check",
-		reference: check,
-		async: false,
-		expects: null,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Creates a description metadata action.
-*
-* @param description_ The description text.
-*
-* @returns A description action.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function description(description_) {
-	return {
-		kind: "metadata",
-		type: "description",
-		reference: description,
-		description: description_
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function integer(message$1) {
-	return {
-		kind: "validation",
-		type: "integer",
-		reference: integer,
-		async: false,
-		expects: null,
-		requirement: Number.isInteger,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function maxLength(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "max_length",
-		reference: maxLength,
-		async: false,
-		expects: `<=${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function maxValue(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "max_value",
-		reference: maxValue,
-		async: false,
-		expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function minLength(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "min_length",
-		reference: minLength,
-		async: false,
-		expects: `>=${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function minValue(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "min_value",
-		reference: minValue,
-		async: false,
-		expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function regex$2(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "regex",
-		reference: regex$2,
-		async: false,
-		expects: `${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "format", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function startsWith(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "starts_with",
-		reference: startsWith,
-		async: false,
-		expects: `"${requirement}"`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !dataset.value.startsWith(this.requirement)) _addIssue(this, "start", dataset, config$1, { received: `"${dataset.value.slice(0, this.requirement.length)}"` });
-			return dataset;
-		}
-	};
-}
-/**
-* Returns the fallback value of the schema.
-*
-* @param schema The schema to get it from.
-* @param dataset The output dataset if available.
-* @param config The config if available.
-*
-* @returns The fallback value.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getFallback(schema, dataset, config$1) {
-	return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
-}
-/**
-* Returns the default value of the schema.
-*
-* @param schema The schema to get it from.
-* @param dataset The input dataset if available.
-* @param config The config if available.
-*
-* @returns The default value.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function getDefault(schema, dataset, config$1) {
-	return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function array(item, message$1) {
-	return {
-		kind: "schema",
-		type: "array",
-		reference: array,
-		expects: "Array",
-		async: false,
-		item,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (Array.isArray(input)) {
-				dataset.typed = true;
-				dataset.value = [];
-				for (let key = 0; key < input.length; key++) {
-					const value$1 = input[key];
-					const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
-					if (itemDataset.issues) {
-						const pathItem = {
-							type: "array",
-							origin: "value",
-							input,
-							key,
-							value: value$1
-						};
-						for (const issue of itemDataset.issues) {
-							if (issue.path) issue.path.unshift(pathItem);
-							else issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = itemDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					if (!itemDataset.typed) dataset.typed = false;
-					dataset.value.push(itemDataset.value);
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function boolean(message$1) {
-	return {
-		kind: "schema",
-		type: "boolean",
-		reference: boolean,
-		expects: "boolean",
-		async: false,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (typeof dataset.value === "boolean") dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function literal(literal_, message$1) {
-	return {
-		kind: "schema",
-		type: "literal",
-		reference: literal,
-		expects: /* @__PURE__ */ _stringify(literal_),
-		async: false,
-		literal: literal_,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (dataset.value === this.literal) dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function looseObject(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "loose_object",
-		reference: looseObject,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-				if (!dataset.issues || !config$1.abortEarly) {
-					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function number(message$1) {
-	return {
-		kind: "schema",
-		type: "number",
-		reference: number,
-		expects: "number",
-		async: false,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function object(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "object",
-		reference: object,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function optional(wrapped, default_) {
-	return {
-		kind: "schema",
-		type: "optional",
-		reference: optional,
-		expects: `(${wrapped.expects} | undefined)`,
-		async: false,
-		wrapped,
-		default: default_,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (dataset.value === void 0) {
-				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
-				if (dataset.value === void 0) {
-					dataset.typed = true;
-					return dataset;
-				}
-			}
-			return this.wrapped["~run"](dataset, config$1);
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function picklist(options, message$1) {
-	return {
-		kind: "schema",
-		type: "picklist",
-		reference: picklist,
-		expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
-		async: false,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (this.options.includes(dataset.value)) dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function record(key, value$1, message$1) {
-	return {
-		kind: "schema",
-		type: "record",
-		reference: record,
-		expects: "Object",
-		async: false,
-		key,
-		value: value$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
-					const entryValue = input[entryKey];
-					const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
-					if (keyDataset.issues) {
-						const pathItem = {
-							type: "object",
-							origin: "key",
-							input,
-							key: entryKey,
-							value: entryValue
-						};
-						for (const issue of keyDataset.issues) {
-							issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = keyDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
-					if (valueDataset.issues) {
-						const pathItem = {
-							type: "object",
-							origin: "value",
-							input,
-							key: entryKey,
-							value: entryValue
-						};
-						for (const issue of valueDataset.issues) {
-							if (issue.path) issue.path.unshift(pathItem);
-							else issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = valueDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
-					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function strictObject(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "strict_object",
-		reference: strictObject,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-				if (!dataset.issues || !config$1.abortEarly) {
-					for (const key in input) if (!(key in this.entries)) {
-						_addIssue(this, "key", dataset, config$1, {
-							input: key,
-							expected: "never",
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						break;
-					}
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function string(message$1) {
-	return {
-		kind: "schema",
-		type: "string",
-		reference: string,
-		expects: "string",
-		async: false,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			if (typeof dataset.value === "string") dataset.typed = true;
-			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Returns the sub issues of the provided datasets for the union issue.
-*
-* @param datasets The datasets.
-*
-* @returns The sub issues.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _subIssues(datasets) {
-	let issues;
-	if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
-	else issues = dataset.issues;
-	return issues;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function union(options, message$1) {
-	return {
-		kind: "schema",
-		type: "union",
-		reference: union,
-		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
-		async: false,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			let validDataset;
-			let typedDatasets;
-			let untypedDatasets;
-			for (const schema of this.options) {
-				const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
-				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
-				else typedDatasets = [optionDataset];
-				else {
-					validDataset = optionDataset;
-					break;
-				}
-				else if (untypedDatasets) untypedDatasets.push(optionDataset);
-				else untypedDatasets = [optionDataset];
-			}
-			if (validDataset) return validDataset;
-			if (typedDatasets) {
-				if (typedDatasets.length === 1) return typedDatasets[0];
-				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
-				dataset.typed = true;
-			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
-			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
-			return dataset;
-		}
-	};
-}
-/**
-* Creates a unknown schema.
-*
-* @returns A unknown schema.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function unknown() {
-	return {
-		kind: "schema",
-		type: "unknown",
-		reference: unknown,
-		expects: "unknown",
-		async: false,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset) {
-			dataset.typed = true;
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function variant(key, options, message$1) {
-	return {
-		kind: "schema",
-		type: "variant",
-		reference: variant,
-		expects: "Object",
-		async: false,
-		key,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				let outputDataset;
-				let maxDiscriminatorPriority = 0;
-				let invalidDiscriminatorKey = this.key;
-				let expectedDiscriminators = [];
-				const parseOptions = (variant$1, allKeys) => {
-					for (const schema of variant$1.options) {
-						if (schema.type === "variant") parseOptions(schema, new Set(allKeys).add(schema.key));
-						else {
-							let keysAreValid = true;
-							let currentPriority = 0;
-							for (const currentKey of allKeys) {
-								const discriminatorSchema = schema.entries[currentKey];
-								if (currentKey in input ? discriminatorSchema["~run"]({
-									typed: false,
-									value: input[currentKey]
-								}, { abortEarly: true }).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
-									keysAreValid = false;
-									if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
-										maxDiscriminatorPriority = currentPriority;
-										invalidDiscriminatorKey = currentKey;
-										expectedDiscriminators = [];
-									}
-									if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
-									break;
-								}
-								currentPriority++;
-							}
-							if (keysAreValid) {
-								const optionDataset = schema["~run"]({ value: input }, config$1);
-								if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
-							}
-						}
-						if (outputDataset && !outputDataset.issues) break;
-					}
-				};
-				parseOptions(this, new Set([this.key]));
-				if (outputDataset) return outputDataset;
-				_addIssue(this, "type", dataset, config$1, {
-					input: input[invalidDiscriminatorKey],
-					expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
-					path: [{
-						type: "object",
-						origin: "value",
-						input,
-						key: invalidDiscriminatorKey,
-						value: input[invalidDiscriminatorKey]
-					}]
-				});
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Parses an unknown input based on a schema.
-*
-* @param schema The schema to be used.
-* @param input The input to be parsed.
-* @param config The parse configuration.
-*
-* @returns The parsed input.
-*/
-function parse(schema, input, config$1) {
-	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
-	if (dataset.issues) throw new ValiError(dataset.issues);
-	return dataset.value;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function pipe(...pipe$1) {
-	return {
-		...pipe$1[0],
-		pipe: pipe$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			for (const item of pipe$1) if (item.kind !== "metadata") {
-				if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
-					dataset.typed = false;
-					break;
-				}
-				if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = item["~run"](dataset, config$1);
-			}
-			return dataset;
-		}
-	};
-}
-/**
-* Parses an unknown input based on a schema.
-*
-* @param schema The schema to be used.
-* @param input The input to be parsed.
-* @param config The parse configuration.
-*
-* @returns The parse result.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function safeParse(schema, input, config$1) {
-	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
-	return {
-		typed: dataset.typed,
-		success: !dataset.issues,
-		output: dataset.value,
-		issues: dataset.issues
-	};
+async function writeReviewCommentsArtifact(content) {
+	const { reviewCommentsPath } = getReviewArtifactPaths();
+	await writeFile(reviewCommentsPath, content, "utf-8");
+	return reviewCommentsPath;
 }
 
 //#endregion
-//#region ../../node_modules/.pnpm/@valibot+to-json-schema@1.5.0_valibot@1.2.0_typescript@5.9.3_/node_modules/@valibot/to-json-schema/dist/index.mjs
-/**
-* Adds an error message to the errors array.
-*
-* @param errors The array of error messages.
-* @param message The error message to add.
-*
-* @returns The new errors.
-*/
-function addError(errors, message) {
-	if (errors) {
-		errors.push(message);
-		return errors;
-	}
-	return [message];
-}
-/**
-* Throws an error or logs a warning based on the configuration.
-*
-* @param message The message to throw or log.
-* @param config The conversion configuration.
-*/
-function handleError(message, config) {
-	switch (config?.errorMode) {
-		case "ignore": break;
-		case "warn":
-			console.warn(message);
-			break;
-		default: throw new Error(message);
-	}
-}
-/**
-* Converts any supported Valibot action to the JSON Schema format.
-*
-* @param jsonSchema The JSON Schema object.
-* @param valibotAction The Valibot action object.
-* @param config The conversion configuration.
-*
-* @returns The converted JSON Schema.
-*/
-function convertAction(jsonSchema, valibotAction, config) {
-	if (config?.ignoreActions?.includes(valibotAction.type)) return jsonSchema;
-	let errors;
-	switch (valibotAction.type) {
-		case "base64":
-			jsonSchema.contentEncoding = "base64";
-			break;
-		case "bic":
-		case "cuid2":
-		case "decimal":
-		case "digits":
-		case "emoji":
-		case "hexadecimal":
-		case "hex_color":
-		case "nanoid":
-		case "octal":
-		case "ulid":
-			jsonSchema.pattern = valibotAction.requirement.source;
-			break;
-		case "description":
-			jsonSchema.description = valibotAction.description;
-			break;
-		case "email":
-			jsonSchema.format = "email";
-			break;
-		case "empty":
-			if (jsonSchema.type === "array") jsonSchema.maxItems = 0;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.maxLength = 0;
-			}
-			break;
-		case "entries":
-			jsonSchema.minProperties = valibotAction.requirement;
-			jsonSchema.maxProperties = valibotAction.requirement;
-			break;
-		case "examples":
-			if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.examples];
-			else jsonSchema.examples = valibotAction.examples;
-			break;
-		case "integer":
-			jsonSchema.type = "integer";
-			break;
-		case "ipv4":
-			jsonSchema.format = "ipv4";
-			break;
-		case "ipv6":
-			jsonSchema.format = "ipv6";
-			break;
-		case "iso_date":
-			jsonSchema.format = "date";
-			break;
-		case "iso_date_time":
-		case "iso_timestamp":
-			jsonSchema.format = "date-time";
-			break;
-		case "iso_time":
-			jsonSchema.format = "time";
-			break;
-		case "length":
-			if (jsonSchema.type === "array") {
-				jsonSchema.minItems = valibotAction.requirement;
-				jsonSchema.maxItems = valibotAction.requirement;
-			} else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = valibotAction.requirement;
-				jsonSchema.maxLength = valibotAction.requirement;
-			}
-			break;
-		case "max_entries":
-			jsonSchema.maxProperties = valibotAction.requirement;
-			break;
-		case "max_length":
-			if (jsonSchema.type === "array") jsonSchema.maxItems = valibotAction.requirement;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.maxLength = valibotAction.requirement;
-			}
-			break;
-		case "max_value":
-			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "max_value" action is not supported on type "${jsonSchema.type}".`);
-			jsonSchema.maximum = valibotAction.requirement;
-			break;
-		case "metadata":
-			if (typeof valibotAction.metadata.title === "string") jsonSchema.title = valibotAction.metadata.title;
-			if (typeof valibotAction.metadata.description === "string") jsonSchema.description = valibotAction.metadata.description;
-			if (Array.isArray(valibotAction.metadata.examples)) if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.metadata.examples];
-			else jsonSchema.examples = valibotAction.metadata.examples;
-			break;
-		case "min_entries":
-			jsonSchema.minProperties = valibotAction.requirement;
-			break;
-		case "min_length":
-			if (jsonSchema.type === "array") jsonSchema.minItems = valibotAction.requirement;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = valibotAction.requirement;
-			}
-			break;
-		case "min_value":
-			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "min_value" action is not supported on type "${jsonSchema.type}".`);
-			jsonSchema.minimum = valibotAction.requirement;
-			break;
-		case "multiple_of":
-			jsonSchema.multipleOf = valibotAction.requirement;
-			break;
-		case "non_empty":
-			if (jsonSchema.type === "array") jsonSchema.minItems = 1;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = 1;
-			}
-			break;
-		case "regex":
-			if (valibotAction.requirement.flags) errors = addError(errors, "RegExp flags are not supported by JSON Schema.");
-			jsonSchema.pattern = valibotAction.requirement.source;
-			break;
-		case "title":
-			jsonSchema.title = valibotAction.title;
-			break;
-		case "url":
-			jsonSchema.format = "uri";
-			break;
-		case "uuid":
-			jsonSchema.format = "uuid";
-			break;
-		case "value":
-			jsonSchema.const = valibotAction.requirement;
-			break;
-		default: errors = addError(errors, `The "${valibotAction.type}" action cannot be converted to JSON Schema.`);
-	}
-	if (config?.overrideAction) {
-		const actionOverride = config.overrideAction({
-			valibotAction,
-			jsonSchema,
-			errors
+//#region ../../node_modules/.pnpm/tinyexec@1.0.2/node_modules/tinyexec/dist/main.js
+var l$1 = Object.create;
+var u$2 = Object.defineProperty;
+var d$2 = Object.getOwnPropertyDescriptor;
+var f$2 = Object.getOwnPropertyNames;
+var p = Object.getPrototypeOf;
+var m$1 = Object.prototype.hasOwnProperty;
+var h$1 = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
+var g$1 = (e, t, n, r) => {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f$2(t), a = 0, o = i.length, s; a < o; a++) {
+		s = i[a];
+		if (!m$1.call(e, s) && s !== n) u$2(e, s, {
+			get: ((e) => t[e]).bind(null, s),
+			enumerable: !(r = d$2(t, s)) || r.enumerable
 		});
-		if (actionOverride) return { ...actionOverride };
 	}
-	if (errors) for (const message of errors) handleError(message, config);
-	return jsonSchema;
-}
-/**
-* Flattens a Valibot pipe by recursively expanding nested pipes.
-*
-* @param pipe The pipeline to flatten.
-*
-* @returns A flat pipeline.
-*/
-function flattenPipe(pipe) {
-	return pipe.flatMap((item) => "pipe" in item ? flattenPipe(item.pipe) : item);
-}
-let refCount = 0;
-/**
-* Converts any supported Valibot schema to the JSON Schema format.
-*
-* @param jsonSchema The JSON Schema object.
-* @param valibotSchema The Valibot schema object.
-* @param config The conversion configuration.
-* @param context The conversion context.
-* @param skipRef Whether to skip using a reference.
-*
-* @returns The converted JSON Schema.
-*/
-function convertSchema(jsonSchema, valibotSchema, config, context, skipRef = false) {
-	if (!skipRef) {
-		const referenceId = context.referenceMap.get(valibotSchema);
-		if (referenceId) {
-			jsonSchema.$ref = `#/$defs/${referenceId}`;
-			if (config?.overrideRef) {
-				const refOverride = config.overrideRef({
-					...context,
-					referenceId,
-					valibotSchema,
-					jsonSchema
-				});
-				if (refOverride) jsonSchema.$ref = refOverride;
-			}
-			return jsonSchema;
-		}
-	}
-	if ("pipe" in valibotSchema) {
-		const flatPipe = flattenPipe(valibotSchema.pipe);
-		let startIndex = 0;
-		let stopIndex = flatPipe.length - 1;
-		if (config?.typeMode === "input") {
-			const inputStopIndex = flatPipe.slice(1).findIndex((item) => item.kind === "schema" || item.kind === "transformation" && (item.type === "find_item" || item.type === "parse_json" || item.type === "raw_transform" || item.type === "reduce_items" || item.type === "stringify_json" || item.type === "to_bigint" || item.type === "to_boolean" || item.type === "to_date" || item.type === "to_number" || item.type === "to_string" || item.type === "transform"));
-			if (inputStopIndex !== -1) stopIndex = inputStopIndex;
-		} else if (config?.typeMode === "output") {
-			const outputStartIndex = flatPipe.findLastIndex((item) => item.kind === "schema");
-			if (outputStartIndex !== -1) startIndex = outputStartIndex;
-		}
-		for (let index = startIndex; index <= stopIndex; index++) {
-			const valibotPipeItem = flatPipe[index];
-			if (valibotPipeItem.kind === "schema") {
-				if (index > startIndex) handleError("Set the \"typeMode\" config to \"input\" or \"output\" to convert pipelines with multiple schemas.", config);
-				jsonSchema = convertSchema(jsonSchema, valibotPipeItem, config, context, true);
-			} else jsonSchema = convertAction(jsonSchema, valibotPipeItem, config);
-		}
-		return jsonSchema;
-	}
-	let errors;
-	switch (valibotSchema.type) {
-		case "boolean":
-			jsonSchema.type = "boolean";
-			break;
-		case "null":
-			if (config?.target === "openapi-3.0") jsonSchema.enum = [null];
-			else jsonSchema.type = "null";
-			break;
-		case "number":
-			jsonSchema.type = "number";
-			break;
-		case "string":
-			jsonSchema.type = "string";
-			break;
-		case "array":
-			jsonSchema.type = "array";
-			jsonSchema.items = convertSchema({}, valibotSchema.item, config, context);
-			break;
-		case "tuple":
-		case "tuple_with_rest":
-		case "loose_tuple":
-		case "strict_tuple":
-			jsonSchema.type = "array";
-			if (config?.target === "openapi-3.0") {
-				jsonSchema.items = { anyOf: [] };
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.items.anyOf.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items.anyOf.push(convertSchema({}, valibotSchema.rest, config, context));
-				else if (valibotSchema.type === "strict_tuple" || valibotSchema.type === "tuple") jsonSchema.maxItems = valibotSchema.items.length;
-			} else if (config?.target === "draft-2020-12") {
-				jsonSchema.prefixItems = [];
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.prefixItems.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items = convertSchema({}, valibotSchema.rest, config, context);
-				else if (valibotSchema.type === "strict_tuple") jsonSchema.items = false;
-			} else {
-				jsonSchema.items = [];
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.items.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.additionalItems = convertSchema({}, valibotSchema.rest, config, context);
-				else if (valibotSchema.type === "strict_tuple") jsonSchema.additionalItems = false;
-			}
-			break;
-		case "object":
-		case "object_with_rest":
-		case "loose_object":
-		case "strict_object":
-			jsonSchema.type = "object";
-			jsonSchema.properties = {};
-			jsonSchema.required = [];
-			for (const key in valibotSchema.entries) {
-				const entry = valibotSchema.entries[key];
-				jsonSchema.properties[key] = convertSchema({}, entry, config, context);
-				if (entry.type !== "exact_optional" && entry.type !== "nullish" && entry.type !== "optional") jsonSchema.required.push(key);
-			}
-			if (valibotSchema.type === "object_with_rest") jsonSchema.additionalProperties = convertSchema({}, valibotSchema.rest, config, context);
-			else if (valibotSchema.type === "strict_object") jsonSchema.additionalProperties = false;
-			break;
-		case "record":
-			if (config?.target === "openapi-3.0" && "pipe" in valibotSchema.key) errors = addError(errors, "The \"record\" schema with a schema for the key that contains a \"pipe\" cannot be converted to JSON Schema.");
-			if (valibotSchema.key.type !== "string") errors = addError(errors, `The "record" schema with the "${valibotSchema.key.type}" schema for the key cannot be converted to JSON Schema.`);
-			jsonSchema.type = "object";
-			if (config?.target !== "openapi-3.0") jsonSchema.propertyNames = convertSchema({}, valibotSchema.key, config, context);
-			jsonSchema.additionalProperties = convertSchema({}, valibotSchema.value, config, context);
-			break;
-		case "any":
-		case "unknown": break;
-		case "nullable":
-		case "nullish":
-			if (config?.target === "openapi-3.0") {
-				const innerSchema = convertSchema({}, valibotSchema.wrapped, config, context);
-				Object.assign(jsonSchema, innerSchema);
-				jsonSchema.nullable = true;
-			} else jsonSchema.anyOf = [convertSchema({}, valibotSchema.wrapped, config, context), { type: "null" }];
-			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
-			break;
-		case "exact_optional":
-		case "optional":
-		case "undefinedable":
-			jsonSchema = convertSchema(jsonSchema, valibotSchema.wrapped, config, context);
-			if (valibotSchema.default !== void 0) jsonSchema.default = getDefault(valibotSchema);
-			break;
-		case "literal":
-			if (typeof valibotSchema.literal !== "boolean" && typeof valibotSchema.literal !== "number" && typeof valibotSchema.literal !== "string") errors = addError(errors, "The value of the \"literal\" schema is not JSON compatible.");
-			if (config?.target === "openapi-3.0") jsonSchema.enum = [valibotSchema.literal];
-			else jsonSchema.const = valibotSchema.literal;
-			break;
-		case "enum":
-			jsonSchema.enum = valibotSchema.options;
-			break;
-		case "picklist":
-			if (valibotSchema.options.some((option) => typeof option !== "number" && typeof option !== "string")) errors = addError(errors, "An option of the \"picklist\" schema is not JSON compatible.");
-			jsonSchema.enum = valibotSchema.options;
-			break;
-		case "union":
-			jsonSchema.anyOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "variant":
-			jsonSchema.oneOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "intersect":
-			jsonSchema.allOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "lazy": {
-			let wrappedValibotSchema = context.getterMap.get(valibotSchema.getter);
-			if (!wrappedValibotSchema) {
-				wrappedValibotSchema = valibotSchema.getter(void 0);
-				context.getterMap.set(valibotSchema.getter, wrappedValibotSchema);
-			}
-			let referenceId = context.referenceMap.get(wrappedValibotSchema);
-			if (!referenceId) {
-				referenceId = `${refCount++}`;
-				context.referenceMap.set(wrappedValibotSchema, referenceId);
-				context.definitions[referenceId] = convertSchema({}, wrappedValibotSchema, config, context, true);
-			}
-			jsonSchema.$ref = `#/$defs/${referenceId}`;
-			if (config?.overrideRef) {
-				const refOverride = config.overrideRef({
-					...context,
-					referenceId,
-					valibotSchema: wrappedValibotSchema,
-					jsonSchema
-				});
-				if (refOverride) jsonSchema.$ref = refOverride;
-			}
-			break;
-		}
-		default: errors = addError(errors, `The "${valibotSchema.type}" schema cannot be converted to JSON Schema.`);
-	}
-	if (config?.overrideSchema) {
-		const schemaOverride = config.overrideSchema({
-			...context,
-			referenceId: context.referenceMap.get(valibotSchema),
-			valibotSchema,
-			jsonSchema,
-			errors
-		});
-		if (schemaOverride) return { ...schemaOverride };
-	}
-	if (errors) for (const message of errors) handleError(message, config);
-	return jsonSchema;
-}
-let store;
-/**
-* Returns the current global schema definitions.
-*
-* @returns The schema definitions.
-*
-* @beta
-*/
-function getGlobalDefs() {
-	return store;
-}
-/**
-* Converts a Valibot schema to the JSON Schema format.
-*
-* @param schema The Valibot schema object.
-* @param config The JSON Schema configuration.
-*
-* @returns The converted JSON Schema.
-*/
-function toJsonSchema$1(schema, config) {
-	const context = {
-		definitions: {},
-		referenceMap: /* @__PURE__ */ new Map(),
-		getterMap: /* @__PURE__ */ new Map()
-	};
-	const definitions = config?.definitions ?? getGlobalDefs();
-	if (definitions) {
-		for (const key in definitions) context.referenceMap.set(definitions[key], key);
-		for (const key in definitions) context.definitions[key] = convertSchema({}, definitions[key], config, context, true);
-	}
-	const jsonSchema = convertSchema({}, schema, config, context);
-	const target = config?.target ?? "draft-07";
-	if (target === "draft-2020-12") jsonSchema.$schema = "https://json-schema.org/draft/2020-12/schema";
-	else if (target === "draft-07") jsonSchema.$schema = "http://json-schema.org/draft-07/schema#";
-	if (context.referenceMap.size) jsonSchema.$defs = context.definitions;
-	return jsonSchema;
-}
-
-//#endregion
-//#region ../../node_modules/.pnpm/@tmcp+adapter-valibot@0.1.5_tmcp@1.19.2_typescript@5.9.3__valibot@1.2.0_typescript@5.9.3_/node_modules/@tmcp/adapter-valibot/src/index.js
-/**
-* @import { GenericSchema } from "valibot";
-*/
-/**
-* Atrocious hack to satisfy the current version of the protocol that for some reason
-* requires `type: string` on enum fields despite JSON Schema spec not requiring it.
-*
-* TODO: Remove this once the protocol is fixed to align with JSON Schema spec.
-* @param {ReturnType<typeof toJsonSchema>} json_schema
-*/
-function add_type_to_enums(json_schema) {
-	for (let key in json_schema) {
-		const property = json_schema[key];
-		if (property != null && typeof property === "object" && !Array.isArray(property)) {
-			if ("enum" in property && !("type" in property)) property.type = "string";
-			add_type_to_enums(property);
-		}
-	}
-	return json_schema;
-}
-/**
-* Valibot adapter for converting Valibot schemas to JSON Schema format
-* @augments {JsonSchemaAdapter<GenericSchema>}
-*/
-var ValibotJsonSchemaAdapter = class extends JsonSchemaAdapter {
-	/**
-	* Converts a Valibot schema to JSON Schema format
-	* @param {GenericSchema} schema - The Valibot schema to convert
-	* @returns {Promise<ReturnType<typeof toJsonSchema>>} - The converted JSON Schema
-	*/
-	async toJsonSchema(schema) {
-		return add_type_to_enums(toJsonSchema$1(schema));
-	}
+	return e;
 };
-
-//#endregion
-//#region ../../node_modules/.pnpm/@tmcp+session-manager@0.2.1_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/session-manager/src/index.js
-/**
-* @import { Context } from "tmcp";
-*/
-/**
-* @abstract
-*/
-var StreamSessionManager = class {
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {ReadableStreamDefaultController} controller
-	* @returns {void | Promise<void>}
-	*/
-	create(id, controller) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {void | Promise<void>}
-	*/
-	delete(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {boolean | Promise<boolean>}
-	*/
-	has(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string[] | undefined} sessions
-	* @param {string} data
-	* @returns {void | Promise<void>}
-	*/
-	send(sessions, data) {
-		throw new Error("Method not implemented.");
-	}
+var _$2 = (e, t, n) => (n = e != null ? l$1(p(e)) : {}, g$1(t || !e || !e.__esModule ? u$2(n, "default", {
+	value: e,
+	enumerable: true
+}) : n, e));
+var v$1 = /* @__PURE__ */ createRequire$1(import.meta.url);
+const y$2 = /^path$/i;
+const b$1 = {
+	key: "PATH",
+	value: ""
 };
-var InMemoryStreamSessionManager = class extends StreamSessionManager {
-	/**
-	* @type {Map<string, ReadableStreamDefaultController>}
-	*/
-	#sessions = /* @__PURE__ */ new Map();
-	#text_encoder = new TextEncoder();
-	/**
-	* @param {string} id
-	* @param {ReadableStreamDefaultController} controller
-	*/
-	create(id, controller) {
-		this.#sessions.set(id, controller);
-	}
-	/**
-	* @param {string} id
-	*/
-	delete(id) {
-		const controller = this.#sessions.get(id);
-		if (controller) {
-			this.#sessions.delete(id);
-			try {
-				controller.close();
-			} catch {}
-		}
-	}
-	/**
-	* @param {string} id
-	* @returns {Promise<boolean>}
-	*/
-	async has(id) {
-		return this.#sessions.has(id);
-	}
-	/**
-	* @param {string[] | undefined} sessions
-	* @param {string} data
-	*/
-	send(sessions, data) {
-		for (const [id, controller] of this.#sessions.entries()) if (sessions == null || sessions.includes(id)) controller.enqueue(this.#text_encoder.encode(data));
-	}
-};
-/**
-* @abstract
-*/
-var InfoSessionManager = class {
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientInfo"]>}
-	*/
-	getClientInfo(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["clientInfo"]} client_info
-	*/
-	setClientInfo(id, client_info) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
-	*/
-	getClientCapabilities(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["clientCapabilities"]} client_capabilities
-	*/
-	setClientCapabilities(id, client_capabilities) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["logLevel"]>}
-	*/
-	getLogLevel(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["logLevel"]} log_level
-	*/
-	setLogLevel(id, log_level) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} uri
-	* @returns {Promise<string[]>}
-	*/
-	getSubscriptions(uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {string} uri
-	*/
-	addSubscription(id, uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {string} uri
-	*/
-	removeSubscription(id, uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	*/
-	delete(id) {
-		throw new Error("Method not implemented.");
-	}
-};
-var InMemoryInfoSessionManager = class extends InfoSessionManager {
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientInfo"]>}
-	*/
-	#client_info = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
-	*/
-	#client_capabilities = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["logLevel"]>}
-	*/
-	#log_level = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, Set<string>>}
-	*/
-	#subscriptions = /* @__PURE__ */ new Map();
-	/**
-	* @param {string} session
-	* @param {string} name
-	* @returns {Promise<never>}
-	*/
-	async #invariant(session, name) {
-		throw new Error(`${name} not found for session ${session}`);
-	}
-	/**
-	* @type {InfoSessionManager["getClientInfo"]}
-	*/
-	getClientInfo(id) {
-		return Promise.resolve(this.#client_info.get(id) ?? this.#invariant(id, "Client info"));
-	}
-	/**
-	* @type {InfoSessionManager["setClientInfo"]}
-	*/
-	setClientInfo(id, client_info) {
-		this.#client_info.set(id, client_info);
-	}
-	/**
-	* @type {InfoSessionManager["getClientCapabilities"]}
-	*/
-	getClientCapabilities(id) {
-		return Promise.resolve(this.#client_capabilities.get(id) ?? this.#invariant(id, "Client capabilities"));
-	}
-	/**
-	* @type {InfoSessionManager["setClientCapabilities"]}
-	*/
-	setClientCapabilities(id, client_capabilities) {
-		this.#client_capabilities.set(id, client_capabilities);
-	}
-	/**
-	* @type {InfoSessionManager["getLogLevel"]}
-	*/
-	getLogLevel(id) {
-		return Promise.resolve(this.#log_level.get(id) ?? this.#invariant(id, "Log Level"));
-	}
-	/**
-	* @type {InfoSessionManager["setLogLevel"]}
-	*/
-	setLogLevel(id, log_level) {
-		this.#log_level.set(id, log_level);
-	}
-	/**
-	* @type {InfoSessionManager["getSubscriptions"]}
-	*/
-	getSubscriptions(uri) {
-		return Promise.resolve([...this.#subscriptions.get(uri) ?? []]);
-	}
-	/**
-	* @type {InfoSessionManager["addSubscription"]}
-	*/
-	addSubscription(id, uri) {
-		let subscriptions = this.#subscriptions.get(uri);
-		if (!subscriptions) {
-			subscriptions = /* @__PURE__ */ new Set();
-			this.#subscriptions.set(uri, subscriptions);
-		}
-		subscriptions.add(id);
-	}
-	/**
-	* @type {InfoSessionManager["removeSubscription"]}
-	*/
-	removeSubscription(id, uri) {
-		let subscriptions = this.#subscriptions.get(uri);
-		if (subscriptions) subscriptions.delete(id);
-	}
-	/**
-	* @type {InfoSessionManager["delete"]}
-	*/
-	delete(id) {
-		this.#subscriptions.delete(id);
-		this.#log_level.delete(id);
-		this.#client_capabilities.delete(id);
-		this.#client_info.delete(id);
-	}
-};
-
-//#endregion
-//#region ../../node_modules/.pnpm/esm-env@1.2.2/node_modules/esm-env/dev-fallback.js
-const node_env = globalThis.process?.env?.NODE_ENV;
-var dev_fallback_default = node_env && !node_env.toLowerCase().startsWith("prod");
-
-//#endregion
-//#region ../../node_modules/.pnpm/@tmcp+transport-http@0.8.4_tmcp@1.19.2_typescript@5.9.3_/node_modules/@tmcp/transport-http/src/index.js
-/**
-* @import { AuthInfo, McpServer } from "tmcp";
-* @import { OAuth  } from "@tmcp/auth";
-* @import { StreamSessionManager, InfoSessionManager } from "@tmcp/session-manager";
-* @import { OptionalizeSessionManager } from "./type-utils.js"
-*/
-/**
-* @typedef {{
-* 	origin?: string | string[] | boolean
-* 	methods?: string[]
-* 	allowedHeaders?: string[]
-* 	exposedHeaders?: string[]
-* 	credentials?: boolean
-* 	maxAge?: number
-* }} CorsConfig
-*/
-/**
-* @typedef {{
-* 	getSessionId?: () => string
-* 	path?: string | null
-* 	oauth?: OAuth<"built">
-* 	cors?: CorsConfig | boolean,
-* 	sessionManager?: { streams?: StreamSessionManager, info?: OptionalizeSessionManager<InfoSessionManager> }
-* 	disableSse?: boolean
-* }} HttpTransportOptions
-*/
-/**
-* @template {Record<string, unknown> | undefined} [TCustom=undefined]
-*/
-var HttpTransport = class {
-	/**
-	* @typedef {NonNullable<Required<Pick<HttpTransportOptions, "sessionManager">["sessionManager"]>>} SessionManager
-	*/
-	/**
-	* @type {McpServer<any, TCustom>}
-	*/
-	#server;
-	/**
-	* @type {Required<Omit<HttpTransportOptions, 'oauth' | 'cors' | 'sessionManager' | 'disableSse'>> & { cors?: CorsConfig | boolean, sessionManager: SessionManager, disableSse?: boolean }}
-	*/
-	#options;
-	/**
-	* @type {string | null}
-	*/
-	#path;
-	/**
-	* @type {AsyncLocalStorage<ReadableStreamDefaultController | undefined>}
-	*/
-	#controller_storage = new AsyncLocalStorage();
-	/**
-	* @type {AsyncLocalStorage<string>}
-	*/
-	#session_id_storage = new AsyncLocalStorage();
-	/**
-	* @type {OAuth<"built"> | undefined}
-	*/
-	#oauth;
-	#text_encoder = new TextEncoder();
-	/**
-	*
-	* @param {McpServer<any, TCustom>} server
-	* @param {HttpTransportOptions} [options]
-	*/
-	constructor(server, options) {
-		this.#server = server;
-		const { getSessionId = () => crypto.randomUUID(), path = "/mcp", oauth, cors, disableSse, sessionManager: _sessionManager = {
-			streams: new InMemoryStreamSessionManager(),
-			info: new InMemoryInfoSessionManager()
-		} } = options ?? { getSessionId: () => crypto.randomUUID() };
-		/**
-		* @type {SessionManager}
-		*/
-		const sessionManager = {
-			streams: _sessionManager.streams ?? new InMemoryStreamSessionManager(),
-			info: _sessionManager.info ?? new InMemoryInfoSessionManager()
+function x$1(e) {
+	for (const t in e) {
+		if (!Object.prototype.hasOwnProperty.call(e, t) || !y$2.test(t)) continue;
+		const n = e[t];
+		if (!n) return b$1;
+		return {
+			key: t,
+			value: n
 		};
-		if (options?.path === void 0 && dev_fallback_default) console.warn("[tmcp][transport-http] `options.path` is undefined, in future versions passing `undefined` will default to respond on all paths. To keep the current behavior, explicitly set `path` to '/mcp' or your desired path.");
-		if (oauth) this.#oauth = oauth;
-		this.#options = {
-			getSessionId,
-			path,
-			cors,
-			sessionManager,
-			disableSse
-		};
-		this.#path = path;
-		this.#server.on("initialize", ({ capabilities, clientInfo }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			this.#options.sessionManager.info.setClientCapabilities(sessionId, capabilities);
-			this.#options.sessionManager.info.setClientInfo(sessionId, clientInfo);
-		});
-		this.#server.on("subscription", async ({ uri, action }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			if (action === "remove") this.#options.sessionManager.info.removeSubscription?.(sessionId, uri);
-			else this.#options.sessionManager.info.addSubscription(sessionId, uri);
-		});
-		this.#server.on("loglevelchange", ({ level }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			this.#options.sessionManager.info.setLogLevel(sessionId, level);
-		});
-		this.#server.on("broadcast", async ({ request }) => {
-			let sessions = void 0;
-			if (request.method === "notifications/resources/updated") sessions = await this.#options.sessionManager.info.getSubscriptions(request.params.uri);
-			await this.#options.sessionManager.streams.send(sessions, "event: message\ndata: " + JSON.stringify(request) + "\n\n");
-		});
-		this.#server.on("send", async ({ request }) => {
-			const controller = this.#controller_storage.getStore();
-			if (!controller) return;
-			controller.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(request) + "\n\n"));
+	}
+	return b$1;
+}
+function S$2(e, t) {
+	const i = t.value.split(delimiter);
+	let o = e;
+	let s;
+	do {
+		i.push(resolve(o, "node_modules", ".bin"));
+		s = o;
+		o = dirname(o);
+	} while (o !== s);
+	return {
+		key: t.key,
+		value: i.join(delimiter)
+	};
+}
+function C$2(e, t) {
+	const n = {
+		...process.env,
+		...t
+	};
+	const r = S$2(e, x$1(n));
+	n[r.key] = r.value;
+	return n;
+}
+const w$2 = (e) => {
+	let t = e.length;
+	const n = new PassThrough();
+	const r = () => {
+		if (--t === 0) n.emit("end");
+	};
+	for (const t of e) {
+		t.pipe(n, { end: false });
+		t.on("end", r);
+	}
+	return n;
+};
+var T$3 = h$1((exports, t) => {
+	t.exports = a;
+	a.sync = o;
+	var n = v$1("fs");
+	function r(e, t) {
+		var n = t.pathExt !== void 0 ? t.pathExt : process.env.PATHEXT;
+		if (!n) return true;
+		n = n.split(";");
+		if (n.indexOf("") !== -1) return true;
+		for (var r = 0; r < n.length; r++) {
+			var i = n[r].toLowerCase();
+			if (i && e.substr(-i.length).toLowerCase() === i) return true;
+		}
+		return false;
+	}
+	function i(e, t, n) {
+		if (!e.isSymbolicLink() && !e.isFile()) return false;
+		return r(t, n);
+	}
+	function a(e, t, r) {
+		n.stat(e, function(n, a) {
+			r(n, n ? false : i(a, e, t));
 		});
 	}
-	/**
-	* Applies CORS headers to a response based on the configuration
-	* @param {Response} response - The response to modify
-	* @param {Request} request - The original request
-	*/
-	#apply_cors_headers(response, request) {
-		const cors_config = this.#options.cors;
-		if (!cors_config) return;
-		if (cors_config === true) {
-			response.headers.set("Access-Control-Allow-Origin", "*");
-			response.headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-			response.headers.set("Access-Control-Allow-Headers", "*");
+	function o(e, t) {
+		return i(n.statSync(e), e, t);
+	}
+});
+var E = h$1((exports, t) => {
+	t.exports = r;
+	r.sync = i;
+	var n = v$1("fs");
+	function r(e, t, r) {
+		n.stat(e, function(e, n) {
+			r(e, e ? false : a(n, t));
+		});
+	}
+	function i(e, t) {
+		return a(n.statSync(e), t);
+	}
+	function a(e, t) {
+		return e.isFile() && o(e, t);
+	}
+	function o(e, t) {
+		var n = e.mode;
+		var r = e.uid;
+		var i = e.gid;
+		var a = t.uid !== void 0 ? t.uid : process.getuid && process.getuid();
+		var o = t.gid !== void 0 ? t.gid : process.getgid && process.getgid();
+		var s = parseInt("100", 8);
+		var c = parseInt("010", 8);
+		var l = parseInt("001", 8);
+		var u = s | c;
+		return n & l || n & c && i === o || n & s && r === a || n & u && a === 0;
+	}
+});
+var D$1 = h$1((exports, t) => {
+	v$1("fs");
+	var r;
+	if (process.platform === "win32" || global.TESTING_WINDOWS) r = T$3();
+	else r = E();
+	t.exports = i;
+	i.sync = a;
+	function i(e, t, n) {
+		if (typeof t === "function") {
+			n = t;
+			t = {};
+		}
+		if (!n) {
+			if (typeof Promise !== "function") throw new TypeError("callback not provided");
+			return new Promise(function(n, r) {
+				i(e, t || {}, function(e, t) {
+					if (e) r(e);
+					else n(t);
+				});
+			});
+		}
+		r(e, t || {}, function(e, r) {
+			if (e) {
+				if (e.code === "EACCES" || t && t.ignoreErrors) {
+					e = null;
+					r = false;
+				}
+			}
+			n(e, r);
+		});
+	}
+	function a(e, t) {
+		try {
+			return r.sync(e, t || {});
+		} catch (e) {
+			if (t && t.ignoreErrors || e.code === "EACCES") return false;
+			else throw e;
+		}
+	}
+});
+var O$2 = h$1((exports, t) => {
+	const n = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
+	const r = v$1("path");
+	const i = n ? ";" : ":";
+	const a = D$1();
+	const o = (e) => Object.assign(/* @__PURE__ */ new Error(`not found: ${e}`), { code: "ENOENT" });
+	const s = (e, t) => {
+		const r = t.colon || i;
+		const a = e.match(/\//) || n && e.match(/\\/) ? [""] : [...n ? [process.cwd()] : [], ...(t.path || process.env.PATH || "").split(r)];
+		const o = n ? t.pathExt || process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM" : "";
+		const s = n ? o.split(r) : [""];
+		if (n) {
+			if (e.indexOf(".") !== -1 && s[0] !== "") s.unshift("");
+		}
+		return {
+			pathEnv: a,
+			pathExt: s,
+			pathExtExe: o
+		};
+	};
+	const c = (e, t, n) => {
+		if (typeof t === "function") {
+			n = t;
+			t = {};
+		}
+		if (!t) t = {};
+		const { pathEnv: i, pathExt: c, pathExtExe: l } = s(e, t);
+		const u = [];
+		const d = (n) => new Promise((a, s) => {
+			if (n === i.length) return t.all && u.length ? a(u) : s(o(e));
+			const c = i[n];
+			const l = /^".*"$/.test(c) ? c.slice(1, -1) : c;
+			const d = r.join(l, e);
+			a(f(!l && /^\.[\\\/]/.test(e) ? e.slice(0, 2) + d : d, n, 0));
+		});
+		const f = (e, n, r) => new Promise((i, o) => {
+			if (r === c.length) return i(d(n + 1));
+			const s = c[r];
+			a(e + s, { pathExt: l }, (a, o) => {
+				if (!a && o) if (t.all) u.push(e + s);
+				else return i(e + s);
+				return i(f(e, n, r + 1));
+			});
+		});
+		return n ? d(0).then((e) => n(null, e), n) : d(0);
+	};
+	const l = (e, t) => {
+		t = t || {};
+		const { pathEnv: n, pathExt: i, pathExtExe: c } = s(e, t);
+		const l = [];
+		for (let o = 0; o < n.length; o++) {
+			const s = n[o];
+			const u = /^".*"$/.test(s) ? s.slice(1, -1) : s;
+			const d = r.join(u, e);
+			const f = !u && /^\.[\\\/]/.test(e) ? e.slice(0, 2) + d : d;
+			for (let e = 0; e < i.length; e++) {
+				const n = f + i[e];
+				try {
+					if (a.sync(n, { pathExt: c })) if (t.all) l.push(n);
+					else return n;
+				} catch (e) {}
+			}
+		}
+		if (t.all && l.length) return l;
+		if (t.nothrow) return null;
+		throw o(e);
+	};
+	t.exports = c;
+	c.sync = l;
+});
+var k$2 = h$1((exports, t) => {
+	const n = (e = {}) => {
+		const t = e.env || process.env;
+		if ((e.platform || process.platform) !== "win32") return "PATH";
+		return Object.keys(t).reverse().find((e) => e.toUpperCase() === "PATH") || "Path";
+	};
+	t.exports = n;
+	t.exports.default = n;
+});
+var A$3 = h$1((exports, t) => {
+	const n = v$1("path");
+	const r = O$2();
+	const i = k$2();
+	function a(e, t) {
+		const a = e.options.env || process.env;
+		const o = process.cwd();
+		const s = e.options.cwd != null;
+		const c = s && process.chdir !== void 0 && !process.chdir.disabled;
+		if (c) try {
+			process.chdir(e.options.cwd);
+		} catch (e) {}
+		let l;
+		try {
+			l = r.sync(e.command, {
+				path: a[i({ env: a })],
+				pathExt: t ? n.delimiter : void 0
+			});
+		} catch (e) {} finally {
+			if (c) process.chdir(o);
+		}
+		if (l) l = n.resolve(s ? e.options.cwd : "", l);
+		return l;
+	}
+	function o(e) {
+		return a(e) || a(e, true);
+	}
+	t.exports = o;
+});
+var j = h$1((exports, t) => {
+	const n = /([()\][%!^"`<>&|;, *?])/g;
+	function r(e) {
+		e = e.replace(n, "^$1");
+		return e;
+	}
+	function i(e, t) {
+		e = `${e}`;
+		e = e.replace(/(\\*)"/g, "$1$1\\\"");
+		e = e.replace(/(\\*)$/, "$1$1");
+		e = `"${e}"`;
+		e = e.replace(n, "^$1");
+		if (t) e = e.replace(n, "^$1");
+		return e;
+	}
+	t.exports.command = r;
+	t.exports.argument = i;
+});
+var M = h$1((exports, t) => {
+	t.exports = /^#!(.*)/;
+});
+var N$2 = h$1((exports, t) => {
+	const n = M();
+	t.exports = (e = "") => {
+		const t = e.match(n);
+		if (!t) return null;
+		const [r, i] = t[0].replace(/#! ?/, "").split(" ");
+		const a = r.split("/").pop();
+		if (a === "env") return i;
+		return i ? `${a} ${i}` : a;
+	};
+});
+var P$2 = h$1((exports, t) => {
+	const n = v$1("fs");
+	const r = N$2();
+	function i(e) {
+		const t = 150;
+		const i = Buffer.alloc(t);
+		let a;
+		try {
+			a = n.openSync(e, "r");
+			n.readSync(a, i, 0, t, 0);
+			n.closeSync(a);
+		} catch (e) {}
+		return r(i.toString());
+	}
+	t.exports = i;
+});
+var F$2 = h$1((exports, t) => {
+	const n = v$1("path");
+	const r = A$3();
+	const i = j();
+	const a = P$2();
+	const o = process.platform === "win32";
+	const s = /\.(?:com|exe)$/i;
+	const c = /node_modules[\\/].bin[\\/][^\\/]+\.cmd$/i;
+	function l(e) {
+		e.file = r(e);
+		const t = e.file && a(e.file);
+		if (t) {
+			e.args.unshift(e.file);
+			e.command = t;
+			return r(e);
+		}
+		return e.file;
+	}
+	function u(e) {
+		if (!o) return e;
+		const t = l(e);
+		const r = !s.test(t);
+		if (e.options.forceShell || r) {
+			const r = c.test(t);
+			e.command = n.normalize(e.command);
+			e.command = i.command(e.command);
+			e.args = e.args.map((e) => i.argument(e, r));
+			e.args = [
+				"/d",
+				"/s",
+				"/c",
+				`"${[e.command].concat(e.args).join(" ")}"`
+			];
+			e.command = process.env.comspec || "cmd.exe";
+			e.options.windowsVerbatimArguments = true;
+		}
+		return e;
+	}
+	function d(e, t, n) {
+		if (t && !Array.isArray(t)) {
+			n = t;
+			t = null;
+		}
+		t = t ? t.slice(0) : [];
+		n = Object.assign({}, n);
+		const r = {
+			command: e,
+			args: t,
+			options: n,
+			file: void 0,
+			original: {
+				command: e,
+				args: t
+			}
+		};
+		return n.shell ? r : u(r);
+	}
+	t.exports = d;
+});
+var I$2 = h$1((exports, t) => {
+	const n = process.platform === "win32";
+	function r(e, t) {
+		return Object.assign(/* @__PURE__ */ new Error(`${t} ${e.command} ENOENT`), {
+			code: "ENOENT",
+			errno: "ENOENT",
+			syscall: `${t} ${e.command}`,
+			path: e.command,
+			spawnargs: e.args
+		});
+	}
+	function i(e, t) {
+		if (!n) return;
+		const r = e.emit;
+		e.emit = function(n, i) {
+			if (n === "exit") {
+				const n = a(i, t, "spawn");
+				if (n) return r.call(e, "error", n);
+			}
+			return r.apply(e, arguments);
+		};
+	}
+	function a(e, t) {
+		if (n && e === 1 && !t.file) return r(t.original, "spawn");
+		return null;
+	}
+	function o(e, t) {
+		if (n && e === 1 && !t.file) return r(t.original, "spawnSync");
+		return null;
+	}
+	t.exports = {
+		hookChildProcess: i,
+		verifyENOENT: a,
+		verifyENOENTSync: o,
+		notFoundError: r
+	};
+});
+var R$2 = _$2(h$1((exports, t) => {
+	const n = v$1("child_process");
+	const r = F$2();
+	const i = I$2();
+	function a(e, t, a) {
+		const o = r(e, t, a);
+		const s = n.spawn(o.command, o.args, o.options);
+		i.hookChildProcess(s, o);
+		return s;
+	}
+	function o(e, t, a) {
+		const o = r(e, t, a);
+		const s = n.spawnSync(o.command, o.args, o.options);
+		s.error = s.error || i.verifyENOENTSync(s.status, o);
+		return s;
+	}
+	t.exports = a;
+	t.exports.spawn = a;
+	t.exports.sync = o;
+	t.exports._parse = r;
+	t.exports._enoent = i;
+})(), 1);
+var z$1 = class extends Error {
+	result;
+	output;
+	get exitCode() {
+		if (this.result.exitCode !== null) return this.result.exitCode;
+	}
+	constructor(e, t) {
+		super(`Process exited with non-zero status (${e.exitCode})`);
+		this.result = e;
+		this.output = t;
+	}
+};
+const B$1 = {
+	timeout: void 0,
+	persist: false
+};
+const V$2 = { windowsHide: true };
+function H(e, t) {
+	return {
+		command: normalize(e),
+		args: t ?? []
+	};
+}
+function U(e) {
+	const t = new AbortController();
+	for (const n of e) {
+		if (n.aborted) {
+			t.abort();
+			return n;
+		}
+		const e = () => {
+			t.abort(n.reason);
+		};
+		n.addEventListener("abort", e, { signal: t.signal });
+	}
+	return t.signal;
+}
+async function W$2(e) {
+	let t = "";
+	for await (const n of e) t += n.toString();
+	return t;
+}
+var G$2 = class {
+	_process;
+	_aborted = false;
+	_options;
+	_command;
+	_args;
+	_resolveClose;
+	_processClosed;
+	_thrownError;
+	get process() {
+		return this._process;
+	}
+	get pid() {
+		return this._process?.pid;
+	}
+	get exitCode() {
+		if (this._process && this._process.exitCode !== null) return this._process.exitCode;
+	}
+	constructor(e, t, n) {
+		this._options = {
+			...B$1,
+			...n
+		};
+		this._command = e;
+		this._args = t ?? [];
+		this._processClosed = new Promise((e) => {
+			this._resolveClose = e;
+		});
+	}
+	kill(e) {
+		return this._process?.kill(e) === true;
+	}
+	get aborted() {
+		return this._aborted;
+	}
+	get killed() {
+		return this._process?.killed === true;
+	}
+	pipe(e, t, n) {
+		return q$1(e, t, {
+			...n,
+			stdin: this
+		});
+	}
+	async *[Symbol.asyncIterator]() {
+		const e = this._process;
+		if (!e) return;
+		const t = [];
+		if (this._streamErr) t.push(this._streamErr);
+		if (this._streamOut) t.push(this._streamOut);
+		const n = w$2(t);
+		const r = f.createInterface({ input: n });
+		for await (const e of r) yield e.toString();
+		await this._processClosed;
+		e.removeAllListeners();
+		if (this._thrownError) throw this._thrownError;
+		if (this._options?.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z$1(this);
+	}
+	async _waitForOutput() {
+		const e = this._process;
+		if (!e) throw new Error("No process was started");
+		const [t, n] = await Promise.all([this._streamOut ? W$2(this._streamOut) : "", this._streamErr ? W$2(this._streamErr) : ""]);
+		await this._processClosed;
+		if (this._options?.stdin) await this._options.stdin;
+		e.removeAllListeners();
+		if (this._thrownError) throw this._thrownError;
+		const r = {
+			stderr: n,
+			stdout: t,
+			exitCode: this.exitCode
+		};
+		if (this._options.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z$1(this, r);
+		return r;
+	}
+	then(e, t) {
+		return this._waitForOutput().then(e, t);
+	}
+	_streamOut;
+	_streamErr;
+	spawn() {
+		const e = cwd();
+		const n = this._options;
+		const r = {
+			...V$2,
+			...n.nodeOptions
+		};
+		const i = [];
+		this._resetState();
+		if (n.timeout !== void 0) i.push(AbortSignal.timeout(n.timeout));
+		if (n.signal !== void 0) i.push(n.signal);
+		if (n.persist === true) r.detached = true;
+		if (i.length > 0) r.signal = U(i);
+		r.env = C$2(e, r.env);
+		const { command: a, args: s } = H(this._command, this._args);
+		const c = (0, R$2._parse)(a, s, r);
+		const l = spawn(c.command, c.args, c.options);
+		if (l.stderr) this._streamErr = l.stderr;
+		if (l.stdout) this._streamOut = l.stdout;
+		this._process = l;
+		l.once("error", this._onError);
+		l.once("close", this._onClose);
+		if (n.stdin !== void 0 && l.stdin && n.stdin.process) {
+			const { stdout: e } = n.stdin.process;
+			if (e) e.pipe(l.stdin);
+		}
+	}
+	_resetState() {
+		this._aborted = false;
+		this._processClosed = new Promise((e) => {
+			this._resolveClose = e;
+		});
+		this._thrownError = void 0;
+	}
+	_onError = (e) => {
+		if (e.name === "AbortError" && (!(e.cause instanceof Error) || e.cause.name !== "TimeoutError")) {
+			this._aborted = true;
 			return;
 		}
-		const config = cors_config;
-		const origin = request.headers.get("origin");
-		if (config.origin !== void 0) {
-			if (config.origin === true || config.origin === "*") response.headers.set("Access-Control-Allow-Origin", "*");
-			else if (typeof config.origin === "string") {
-				if (origin === config.origin) response.headers.set("Access-Control-Allow-Origin", config.origin);
-			} else if (Array.isArray(config.origin)) {
-				if (origin && config.origin.includes(origin)) response.headers.set("Access-Control-Allow-Origin", origin);
-			}
-		}
-		const methods = config.methods ?? [
-			"GET",
-			"POST",
-			"DELETE",
-			"OPTIONS"
-		];
-		response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
-		const allowed_headers = config.allowedHeaders ?? "*";
-		if (Array.isArray(allowed_headers)) response.headers.set("Access-Control-Allow-Headers", allowed_headers.join(", "));
-		else response.headers.set("Access-Control-Allow-Headers", allowed_headers);
-		if (config.exposedHeaders) response.headers.set("Access-Control-Expose-Headers", config.exposedHeaders.join(", "));
-		if (config.credentials) response.headers.set("Access-Control-Allow-Credentials", "true");
-		if (config.maxAge !== void 0) response.headers.set("Access-Control-Max-Age", config.maxAge.toString());
-	}
-	/**
-	* @param {string} session_id
-	*/
-	async #handle_delete(session_id) {
-		await this.#options.sessionManager.streams.delete(session_id);
-		await this.#options.sessionManager.info.delete(session_id);
-		return new Response(null, {
-			status: 200,
-			headers: { "mcp-session-id": session_id }
-		});
-	}
-	/**
-	*
-	* @param {string} session_id
-	* @returns
-	*/
-	async #handle_get(session_id) {
-		if (this.#options.disableSse) return new Response(null, {
-			status: 405,
-			headers: { Allow: "POST, DELETE, OPTIONS" }
-		});
-		const sessions = this.#options.sessionManager;
-		const text_encoder = this.#text_encoder;
-		if (await sessions.streams.has(session_id)) return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32e3,
-				message: "Conflict: Only one SSE stream is allowed per session"
-			},
-			id: null
-		}), {
-			headers: {
-				"Content-Type": "application/json",
-				"mcp-session-id": session_id
-			},
-			status: 409
-		});
-		const stream = new ReadableStream({
-			async start(controller) {
-				await sessions.streams.create(session_id, controller);
-				controller.enqueue(text_encoder.encode(": connected\n\n"));
-			},
-			async cancel() {
-				await sessions.streams.delete(session_id);
-			}
-		});
-		return new Response(stream, {
-			headers: {
-				"Content-Type": "text/event-stream",
-				"Cache-Control": "no-cache",
-				Connection: "keep-alive",
-				"mcp-session-id": session_id
-			},
-			status: 200
-		});
-	}
-	/**
-	*
-	* @param {string} session_id
-	* @param {Request} request
-	* @param {AuthInfo | null} auth_info
-	* @param {TCustom} [ctx]
-	*/
-	async #handle_post(session_id, request, auth_info, ctx) {
-		const content_type = request.headers.get("content-type");
-		if (!content_type || !content_type.includes("application/json")) return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32600,
-				message: "Invalid Request",
-				data: "Content-Type must be application/json"
-			}
-		}), {
-			status: 415,
-			headers: {
-				"Content-Type": "application/json",
-				"mcp-session-id": session_id
-			}
-		});
-		try {
-			const body = await request.clone().json();
-			/**
-			* @type {ReadableStreamDefaultController | undefined}
-			*/
-			let controller;
-			const stream = new ReadableStream({ start(_controller) {
-				controller = _controller;
-			} });
-			const session_id_storage = this.#session_id_storage;
-			const handle = async () => {
-				const client_capabilities = await this.#options.sessionManager.info.getClientCapabilities(session_id).catch(() => void 0);
-				const client_info = await this.#options.sessionManager.info.getClientInfo(session_id).catch(() => void 0);
-				const log_level = await this.#options.sessionManager.info.getLogLevel(session_id).catch(() => void 0);
-				const response = await this.#controller_storage.run(controller, () => session_id_storage.run(session_id, () => this.#server.receive(body, {
-					sessionId: session_id,
-					auth: auth_info ?? void 0,
-					sessionInfo: {
-						clientCapabilities: client_capabilities,
-						clientInfo: client_info,
-						logLevel: log_level
-					},
-					custom: ctx
-				})));
-				controller?.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(response) + "\n\n"));
-				controller?.close();
-			};
-			handle();
-			const has_request = (Array.isArray(body) ? body : [body]).some((message) => message.id != null);
-			const status = !has_request ? 202 : 200;
-			return new Response(has_request ? stream : null, {
-				headers: has_request ? {
-					"Content-Type": "text/event-stream",
-					"Cache-Control": "no-cache",
-					connection: "keep-alive",
-					"mcp-session-id": session_id
-				} : void 0,
-				status
-			});
-		} catch (error) {
-			return new Response(JSON.stringify({
-				jsonrpc: "2.0",
-				error: {
-					code: -32700,
-					message: "Parse error",
-					data: error.message
-				}
-			}), {
-				status: 400,
-				headers: {
-					"Content-Type": "application/json",
-					"mcp-session-id": session_id
-				}
-			});
-		}
-	}
-	/**
-	*
-	* @param {string} method
-	* @returns
-	*/
-	#handle_default(method) {
-		return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32601,
-				message: "Method not found",
-				data: `HTTP method ${method} not supported`
-			}
-		}), {
-			status: 405,
-			headers: {
-				"Content-Type": "application/json",
-				Allow: "GET, POST, DELETE, OPTIONS"
-			}
-		});
-	}
-	/**
-	*
-	* @param {Request} request
-	* @param {TCustom} [ctx]
-	* @returns {Promise<Response | null>}
-	*/
-	async respond(request, ctx) {
-		const url = new URL(request.url);
-		/**
-		* @type {AuthInfo | null}
-		*/
-		let auth_info = null;
-		if (this.#oauth) {
-			try {
-				const response = await this.#oauth.respond(request);
-				if (response) return response;
-			} catch (error) {
-				return new Response(JSON.stringify({
-					error: "server_error",
-					error_description: error.message
-				}), {
-					status: 500,
-					headers: { "Content-Type": "application/json" }
-				});
-			}
-			auth_info = await this.#oauth.verify(request);
-		}
-		if (url.pathname !== this.#path && this.#path !== null) return null;
-		const method = request.method;
-		const session_id = request.headers.get("mcp-session-id") || this.#options.getSessionId();
-		/**
-		* @type {Response | null}
-		*/
-		let response = null;
-		if (method === "OPTIONS") response = new Response(null, {
-			status: 204,
-			headers: { "Content-Type": "application/json" }
-		});
-		else if (method === "DELETE") response = await this.#handle_delete(session_id);
-		else if (method === "GET") response = await this.#handle_get(session_id);
-		else if (method === "POST") response = await this.#handle_post(session_id, request, auth_info, ctx);
-		else response = this.#handle_default(method);
-		if (response) this.#apply_cors_headers(response, request);
-		return response;
-	}
+		this._thrownError = e;
+	};
+	_onClose = () => {
+		if (this._resolveClose) this._resolveClose();
+	};
 };
+const K = (e, t, n) => {
+	const r = new G$2(e, t, n);
+	r.spawn();
+	return r;
+};
+const q$1 = K;
+
+//#endregion
+//#region src/utils/git.ts
+const GITHUB_HOST = "github.com";
+const CLANK8Y_BOT_LOGIN = "clank8y[bot]";
+const CLANK8Y_BOT_ID = 263439080;
+const CLANK8Y_GIT_USER_NAME = CLANK8Y_BOT_LOGIN;
+const CLANK8Y_GIT_USER_EMAIL = `${CLANK8Y_BOT_ID}+${CLANK8Y_BOT_LOGIN}@users.noreply.github.com`;
+function buildGitHubBasicAuthHeader(token) {
+	return `AUTHORIZATION: basic ${Buffer$1.from(`x-access-token:${token}`, "utf-8").toString("base64")}`;
+}
+function getClank8yGitEnv(options) {
+	const githubHost = options?.githubHost ?? GITHUB_HOST;
+	const env = {
+		...process$1.env,
+		GIT_TERMINAL_PROMPT: "0"
+	};
+	if (options?.token) {
+		env.GIT_CONFIG_COUNT = "1";
+		env.GIT_CONFIG_KEY_0 = `http.https://${githubHost}/.extraheader`;
+		env.GIT_CONFIG_VALUE_0 = buildGitHubBasicAuthHeader(options.token);
+	}
+	return env;
+}
+async function runClank8yGit(args, options) {
+	const result = await K("git", args, {
+		throwOnError: false,
+		nodeOptions: {
+			cwd: options?.cwd,
+			env: getClank8yGitEnv(options)
+		}
+	});
+	const stdout = result.stdout.trim();
+	const stderr = result.stderr.trim();
+	if (result.exitCode !== 0) {
+		const message = stderr || stdout || `git ${args.join(" ")} failed with exit code ${result.exitCode}`;
+		throw new Error(message);
+	}
+	return {
+		stdout,
+		stderr
+	};
+}
+async function configureClank8yGitRepository(repositoryPath) {
+	await runClank8yGit([
+		"config",
+		"--local",
+		"user.name",
+		CLANK8Y_GIT_USER_NAME
+	], { cwd: repositoryPath });
+	await runClank8yGit([
+		"config",
+		"--local",
+		"user.email",
+		CLANK8Y_GIT_USER_EMAIL
+	], { cwd: repositoryPath });
+	await runClank8yGit([
+		"config",
+		"--local",
+		"credential.helper",
+		""
+	], { cwd: repositoryPath });
+}
+
+//#endregion
+//#region src/utils/repositories.ts
+function splitRepository(repository) {
+	const parts = repository.split("/");
+	if (parts.length !== 2 || !parts[0] || !parts[1]) throw new Error(`Repository must be in owner/repo format. Received: ${repository}`);
+	return [parts[0], parts[1]];
+}
+function parseGitHubRepository(repository) {
+	const [owner, repo] = splitRepository(repository.trim());
+	return {
+		owner,
+		repo
+	};
+}
+function toGitHubRepositoryKey(repository) {
+	return `${repository.owner.toLowerCase()}--${repository.repo.toLowerCase()}`;
+}
+function ensurePathStaysWithinRoot(rootPath, targetPath) {
+	const relativePath = path.relative(rootPath, targetPath);
+	if (relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath)) return;
+	throw new Error(`Resolved repository path escaped the allowed root: ${targetPath}`);
+}
+function resolveRepositoryPath(repositoryRootPath, repository) {
+	const repositoryPath = path.join(repositoryRootPath, toGitHubRepositoryKey(repository));
+	try {
+		ensurePathStaysWithinRoot(repositoryRootPath, repositoryPath);
+	} catch {
+		throw new Error(`Resolved repository path escaped the allowed root: ${repositoryPath}`);
+	}
+	return repositoryPath;
+}
+async function doesGitRepositoryExist(repositoryPath) {
+	const repoStat = await stat(repositoryPath).catch(() => null);
+	const gitStat = await stat(path.join(repositoryPath, ".git")).catch(() => null);
+	return Boolean(repoStat?.isDirectory() && gitStat);
+}
+function repositoryRemoteUrl(repository) {
+	return `https://${GITHUB_HOST}/${repository.owner}/${repository.repo}.git`;
+}
+async function cloneRepository(params) {
+	const reposDir = getClank8yReposDirPath();
+	await mkdir(reposDir, { recursive: true });
+	const repositoryPath = resolveRepositoryPath(reposDir, params.repository);
+	if (await doesGitRepositoryExist(repositoryPath)) {
+		await configureClank8yGitRepository(repositoryPath);
+		return {
+			path: repositoryPath,
+			reusedExistingCheckout: true
+		};
+	}
+	await runClank8yGit([
+		"clone",
+		"--branch",
+		params.defaultBranch,
+		"--single-branch",
+		"--no-tags",
+		repositoryRemoteUrl(params.repository),
+		repositoryPath
+	], { token: params.token });
+	await configureClank8yGitRepository(repositoryPath);
+	return {
+		path: repositoryPath,
+		reusedExistingCheckout: false
+	};
+}
+async function fetchRepositoryBranch(params) {
+	const repositoryPath = resolveRepositoryPath(getClank8yReposDirPath(), params.repository);
+	if (!await doesGitRepositoryExist(repositoryPath)) throw new Error(`Repository checkout does not exist at ${repositoryPath}. Call clone-repo first.`);
+	await configureClank8yGitRepository(repositoryPath);
+	await runClank8yGit([
+		"fetch",
+		"--no-tags",
+		"origin",
+		`refs/heads/${params.branch}:refs/remotes/origin/${params.branch}`
+	], {
+		cwd: repositoryPath,
+		token: params.token
+	});
+	return {
+		path: repositoryPath,
+		localRef: `origin/${params.branch}`
+	};
+}
+async function getBranchLastCommitDate(octokit, repository, sha) {
+	const { data } = await octokit.rest.repos.getCommit({
+		owner: repository.owner,
+		repo: repository.repo,
+		ref: sha
+	});
+	return data.commit.committer?.date ?? data.commit.author?.date ?? null;
+}
+async function getAheadBehind(octokit, repository, defaultBranch, branch) {
+	if (branch === defaultBranch) return {
+		aheadBy: 0,
+		behindBy: 0
+	};
+	try {
+		const { data } = await octokit.rest.repos.compareCommits({
+			owner: repository.owner,
+			repo: repository.repo,
+			base: defaultBranch,
+			head: branch
+		});
+		return {
+			aheadBy: data.ahead_by,
+			behindBy: data.behind_by
+		};
+	} catch {
+		return {};
+	}
+}
+async function getRepositoryBranches(params) {
+	const { octokit, repository } = params;
+	const { data: repoData } = await octokit.rest.repos.get({
+		owner: repository.owner,
+		repo: repository.repo
+	});
+	const defaultBranch = repoData.default_branch;
+	const branches = await octokit.paginate(octokit.rest.repos.listBranches, {
+		owner: repository.owner,
+		repo: repository.repo,
+		per_page: 100
+	});
+	const enrichedBranches = await Promise.all(branches.map(async (branch) => {
+		const [lastCommitDate, comparison] = await Promise.all([getBranchLastCommitDate(octokit, repository, branch.commit.sha), getAheadBehind(octokit, repository, defaultBranch, branch.name)]);
+		return {
+			name: branch.name,
+			isDefault: branch.name === defaultBranch,
+			tipSha: branch.commit.sha,
+			lastCommitDate,
+			...comparison
+		};
+	}));
+	enrichedBranches.sort((left, right) => {
+		if (left.isDefault !== right.isDefault) return left.isDefault ? -1 : 1;
+		const leftTime = left.lastCommitDate ? Date.parse(left.lastCommitDate) : 0;
+		return (right.lastCommitDate ? Date.parse(right.lastCommitDate) : 0) - leftTime;
+	});
+	return {
+		defaultBranch,
+		branches: enrichedBranches
+	};
+}
+
+//#endregion
+//#region src/modes/incidentFix/mcps/github.ts
+const GET_REPO_BRANCHES_TOOL_NAME = "get-repo-branches";
+const CLONE_REPO_TOOL_NAME = "clone-repo";
+const FETCH_REPO_BRANCH_TOOL_NAME = "fetch-repo-branch";
+function incidentFixGitHubMCP() {
+	const mcp = new McpServer({
+		name: "clank8y-incident-fix-github-mcp",
+		description: "A MCP server that helps incident-fix workflows inspect branches and manage repo checkouts safely.",
+		version: "1.0.0"
+	}, {
+		adapter: new ValibotJsonSchemaAdapter(),
+		capabilities: { tools: { listChanged: true } }
+	});
+	const githubMcpTools = [
+		defineTool({
+			name: GET_REPO_BRANCHES_TOOL_NAME,
+			description: "Read-only GitHub-backed branch metadata for a repository. Call this near the start before deciding whether the default branch is the right base.",
+			title: "Get Repository Branches",
+			schema: pipe(object({ repository: pipe(string(), description("Repository in owner/repo format. Use this to inspect candidate branches before cloning or fetching additional branches.")) }), description("Arguments for fetching branch metadata for an IncidentFix target repository."))
+		}, async ({ repository }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsedRepository = parseGitHubRepository(repository);
+				const result = await getRepositoryBranches({
+					octokit,
+					repository: parsedRepository
+				});
+				return tool.structured({
+					repository: `${parsedRepository.owner}/${parsedRepository.repo}`,
+					defaultBranch: result.defaultBranch,
+					branches: result.branches
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to load repository branches: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CLONE_REPO_TOOL_NAME,
+			description: "Clone a repository into .clank8y/repos using only its default branch. Use get-repo-branches first if you need branch context before cloning.",
+			title: "Clone Repository",
+			schema: pipe(object({ repository: pipe(string(), description("Repository in owner/repo format to clone into .clank8y/repos. The tool clones only the default branch to minimize bandwidth.")) }), description("Arguments for cloning an IncidentFix repository checkout."))
+		}, async ({ repository }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsedRepository = parseGitHubRepository(repository);
+				const { data: repoData } = await octokit.rest.repos.get({
+					owner: parsedRepository.owner,
+					repo: parsedRepository.repo
+				});
+				const result = await cloneRepository({
+					repository: parsedRepository,
+					defaultBranch: repoData.default_branch,
+					token: getClank8yRuntimeContext().auth.githubToken
+				});
+				return tool.structured({
+					repository: `${parsedRepository.owner}/${parsedRepository.repo}`,
+					path: result.path,
+					defaultBranch: repoData.default_branch,
+					reusedExistingCheckout: result.reusedExistingCheckout
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to clone repository: ${message}`);
+			}
+		}),
+		defineTool({
+			name: FETCH_REPO_BRANCH_TOOL_NAME,
+			description: "Fetch one specific remote branch into an existing IncidentFix checkout. Use this when get-repo-branches suggests a better base than the default branch.",
+			title: "Fetch Repository Branch",
+			schema: pipe(object({
+				repository: pipe(string(), description("Repository in owner/repo format. The repo must already be cloned with clone-repo.")),
+				branch: pipe(string(), description("Remote branch name to fetch. This fetches only the requested branch to avoid pulling every branch locally."))
+			}), description("Arguments for fetching a single additional branch into an IncidentFix repository checkout."))
+		}, async ({ repository, branch }) => {
+			try {
+				const parsedRepository = parseGitHubRepository(repository);
+				const result = await fetchRepositoryBranch({
+					repository: parsedRepository,
+					branch,
+					token: getClank8yRuntimeContext().auth.githubToken
+				});
+				return tool.structured({
+					repository: `${parsedRepository.owner}/${parsedRepository.repo}`,
+					branch,
+					path: result.path,
+					localRef: result.localRef
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to fetch repository branch: ${message}`);
+			}
+		})
+	];
+	mcp.tools(githubMcpTools);
+	const transport = new HttpTransport(mcp, { path: "/mcp" });
+	const server = serve({
+		manual: true,
+		port: 0,
+		fetch: async (req) => {
+			const response = await transport.respond(req);
+			if (!response) return new NodeResponse("Not found", { status: 404 });
+			return response;
+		}
+	});
+	let status = { state: "stopped" };
+	return {
+		serverType: "http",
+		allowedTools: githubMcpTools.map((definedTool) => definedTool.name),
+		get status() {
+			return status;
+		},
+		start: async () => {
+			await server.serve();
+			const { url } = await server.ready();
+			if (!url) {
+				await server.close(true);
+				throw new Error("Failed to start IncidentFix GitHub MCP server");
+			}
+			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
+			status = {
+				state: "running",
+				url: actualUrl
+			};
+			return {
+				url: actualUrl,
+				toolNames: githubMcpTools.map((definedTool) => definedTool.name)
+			};
+		},
+		stop: async () => {
+			await server.close(true);
+			status = { state: "stopped" };
+		}
+	};
+}
+
+//#endregion
+//#region src/modes/incidentFix/mcps/index.ts
+function incidentFixMCPs() {
+	return {
+		github: incidentFixGitHubMCP(),
+		codex: codexMCP(),
+		angular: angularMCP()
+	};
+}
+
+//#endregion
+//#region src/modes/basePrompts.ts
+const PERSONA = [
+	"## Persona",
+	"",
+	"You are **clank8y** — a precise, sharp-eyed code review bot for Cumulocity IoT frontend applications.",
+	"You speak with mechanical confidence: direct, concise, no fluff.",
+	"You are friendly but never waste words — every sentence carries signal.",
+	"When you are unsure, you say so honestly instead of guessing.",
+	"",
+	"Tone guidelines:",
+	"- Be constructive, not condescending. You are a teammate, not a gatekeeper.",
+	"- Use dry wit sparingly — keep it professional.",
+	"- Prefer concrete over vague. \"Use `AlertService` from `@c8y/ngx-components`\" beats \"consider using the platform service\".",
+	"- Adapt to the repository's existing code style and conventions.",
+	"- Never use emdashes (—). Rather break up sentences into shorter ones."
+].join("\n");
+const KNOWLEDGE_VERIFICATION = [
+	"## Knowledge verification — MANDATORY",
+	"",
+	"Angular evolves rapidly. Your training data may be stale.",
+	"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
+	"",
+	"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
+	"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
+	"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
+	"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
+	"",
+	"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
+	"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
+	"- Use `get_best_practices` to verify the pattern you are evaluating.",
+	"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
+	"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
+	"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
+	"",
+	"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
+	"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
+	"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
+	"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
+	"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
+	"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
+	"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
+	"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
+	"- Specifically check whether the platform already provides what the developer is building or importing.",
+	"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
+	"",
+	"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
+].join("\n");
+
+//#endregion
+//#region src/modes/incidentFix/prompt.ts
+const BASE_INCIDENT_FIX_PROMPT = [
+	PERSONA,
+	"",
+	KNOWLEDGE_VERIFICATION,
+	"",
+	[
+		"## Mission",
+		"",
+		"You are operating in **IncidentFix** mode.",
+		"This mode is for sandboxed incident investigation and repair preparation across one or more repositories in the Cumulocity context.",
+		"Your job is to inspect the evidence, validate or reject the supplied hypotheses, investigate the right repositories, and leave behind a clear technical outcome.",
+		"Do not treat the incoming incident description as ground truth. It is a starting point, not a conclusion.",
+		"",
+		"Core rules:",
+		"- Prefer confirmed facts over plausible stories.",
+		"- Keep uncertainty explicit. If you do not know, say so.",
+		"- Do not mutate remote state unless a dedicated MCP tool exists for that action.",
+		"- Local repo edits, builds, tests, and local git operations are allowed once a repo has been prepared.",
+		"- Remote authenticated operations must stay behind MCP tools."
+	].join("\n"),
+	"",
+	[
+		"## Scope",
+		"",
+		"You operate in a **Cumulocity IoT engineering environment**.",
+		"This is not frontend-exclusive.",
+		"The incident may involve Angular applications, Node.js or plain JavaScript services, Java microservices, C# microservices, or shared integration code around the Cumulocity platform.",
+		"Use Angular MCP when the investigation touches Angular-specific behavior.",
+		"Use Codex MCP whenever the work touches Cumulocity APIs, platform capabilities, widgets, hooks, services, microservice contracts, styling utilities, or design tokens.",
+		"",
+		"Typical IncidentFix work in this mode:",
+		"- inspect incident context and identify likely repositories or components",
+		"- compare likely base branches before choosing where to work",
+		"- prepare one or more local repo checkouts for investigation",
+		"- validate whether the reported failure is real and reproducible",
+		"- narrow down likely root cause and identify a fix direction",
+		"- leave a deterministic markdown report at `.clank8y/report.md`",
+		"",
+		"At this stage, the MCP surface is intentionally narrow.",
+		"You can inspect branches and prepare authenticated local checkouts. Do not invent issue, PR, or push capabilities that are not exposed by tools yet."
+	].join("\n"),
+	"",
+	[
+		"## Required workflow",
+		"",
+		"You have three MCP servers available:",
+		"- **GitHub MCP** for branch discovery and authenticated repo checkout preparation.",
+		"- **Angular MCP** for Angular API, syntax, and best-practice verification.",
+		"- **Codex MCP** for Cumulocity Web SDK and design-system verification.",
+		"",
+		"### Step-by-step:",
+		"",
+		"1) **Read the incident context carefully.**",
+		"   Extract the observed symptoms, claimed hypotheses, likely repositories, and any explicit uncertainty.",
+		"   Treat every hypothesis as unverified until you confirm it.",
+		"",
+		`2) **Inspect branch metadata early** with \`${GET_REPO_BRANCHES_TOOL_NAME}\` for each candidate repository before cloning.`,
+		"   - Use this to understand the default branch and plausible fresher branches.",
+		"   - Do not assume the default branch is always the right base for an incident investigation.",
+		"   - If multiple repos are implicated, inspect them one at a time and keep the reasoning explicit.",
+		"",
+		`3) **Prepare a checkout** with \`${CLONE_REPO_TOOL_NAME}\` once you know which repository you need locally.`,
+		"   - This clones only the default branch initially. That is expected.",
+		"   - Reuse the prepared checkout if it already exists for the current run.",
+		"",
+		`4) **Fetch a specific non-default branch only when needed** via \`${FETCH_REPO_BRANCH_TOOL_NAME}\`.`,
+		"   - Use this when branch metadata suggests a better base branch than the default branch.",
+		"   - Fetch only the branch you actually need.",
+		"   - After fetching, local git branch creation and checkout can happen with normal local git commands.",
+		"",
+		"5) **Investigate locally.**",
+		"   - Read code, trace execution paths, inspect configuration, run focused tests, and verify assumptions.",
+		"   - Prefer the smallest set of files and commands needed to confirm or reject a hypothesis.",
+		"   - If the problem touches Angular, verify the relevant behavior with Angular MCP instead of relying on memory.",
+		"   - If the problem touches Cumulocity platform behavior, APIs, services, microservice contracts, or platform concepts, verify the relevant behavior with Codex MCP instead of relying on memory.",
+		"",
+		"6) **Record the real outcome in `.clank8y/report.md`.**",
+		"   - Create the file yourself if it does not exist yet. Do not wait for a special tool.",
+		"   - Normal file tools are allowed for writing this report because it is a local artifact.",
+		"   - Treat this file as persistent investigation memory during the run, not just as a final write-up at the end.",
+		"   - Update it as you confirm facts, reject hypotheses, choose repositories or branches, and make changes.",
+		"   - If the run gets long or context becomes unclear, reread `.clank8y/report.md` before proceeding so your decisions stay consistent.",
+		"   The report should include:",
+		"   - incident summary",
+		"   - confirmed facts",
+		"   - rejected or still-unverified hypotheses",
+		"   - repositories inspected",
+		"   - branches inspected or used",
+		"   - repositories changed, if any",
+		"   - current fix direction or why no safe action was taken",
+		"   - open questions or follow-up work",
+		"",
+		"### Completion criteria:",
+		"- Do not finish without writing `.clank8y/report.md`.",
+		"- Do not present a hypothesis as a fact unless you verified it.",
+		"- If you changed code locally, say exactly which repositories changed and what remains unvalidated.",
+		"- If no safe fix was found, say that plainly. Report-only is a valid outcome.",
+		"- If the investigation involved Angular or Cumulocity-specific behavior, confirm you checked Angular MCP or Codex MCP before concluding.",
+		"",
+		"### Tooling constraints:",
+		"- Use GitHub MCP for authenticated clone and fetch operations.",
+		"- Use Angular MCP for Angular-specific guidance and API verification.",
+		"- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.",
+		"- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally.",
+		"- Do not claim remote actions were performed if no MCP tool exists for them."
+	].join("\n"),
+	"",
+	[
+		"## Report guidance",
+		"",
+		"The final report is part of the contract for this mode.",
+		"Write it to `.clank8y/report.md`.",
+		"Create the file if it does not exist.",
+		"Use it as working memory throughout the investigation.",
+		"Do not wait until the very end if you have already made important decisions or confirmed facts.",
+		"When your context gets fuzzy, reread the report before continuing.",
+		"Aim for a crisp engineering report, not a stream-of-consciousness log.",
+		"",
+		"Recommended structure:",
+		"- `# IncidentFix Report`",
+		"- `## Incident summary`",
+		"- `## Confirmed findings`",
+		"- `## Decision log`",
+		"- `## Repositories inspected`",
+		"- `## Branches inspected`",
+		"- `## Changes made`",
+		"- `## Remaining uncertainty`",
+		"- `## Next steps`",
+		"",
+		"For `## Decision log`, keep short dated or ordered notes about key investigation decisions, discarded paths, and why you moved to a different repo or branch.",
+		"For `## Repositories inspected`, list each repository with its purpose in the investigation.",
+		"For `## Branches inspected`, note the default branch and any additional fetched branches that mattered.",
+		"If no code changes were made, say so explicitly under `## Changes made`.",
+		"If a hypothesis was disproved, include that. Negative findings are useful here.",
+		"If no safe fix was found, say that explicitly and explain what evidence is still missing."
+	].join("\n")
+].join("\n");
+function buildIncidentFixPrompt(promptContext) {
+	const normalized = promptContext.trim();
+	if (!normalized) return BASE_INCIDENT_FIX_PROMPT;
+	return [
+		BASE_INCIDENT_FIX_PROMPT,
+		"",
+		"Here is the incident context for this run:",
+		normalized
+	].join("\n");
+}
+
+//#endregion
+//#region src/modes/incidentFix/index.ts
+function getIncidentFixModeRuntime(promptContext) {
+	return {
+		prompt: buildIncidentFixPrompt(promptContext),
+		mcps: incidentFixMCPs()
+	};
+}
 
 //#endregion
 //#region ../../node_modules/.pnpm/@toon-format+toon@2.1.0/node_modules/@toon-format/toon/dist/index.mjs
@@ -9055,4843 +15194,6 @@ function resolveOptions(options) {
 }
 
 //#endregion
-//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_utils.mjs
-const noColor = /* @__PURE__ */ (() => {
-	const env = globalThis.process?.env ?? {};
-	return env.NO_COLOR === "1" || env.TERM === "dumb";
-})();
-const _c = (c, r = 39) => (t) => noColor ? t : `\u001B[${c}m${t}\u001B[${r}m`;
-const bold = /* @__PURE__ */ _c(1, 22);
-const red = /* @__PURE__ */ _c(31);
-const green = /* @__PURE__ */ _c(32);
-const gray = /* @__PURE__ */ _c(90);
-
-//#endregion
-//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_url.mjs
-function lazyInherit(target, source, sourceKey) {
-	for (const key of [...Object.getOwnPropertyNames(source), ...Object.getOwnPropertySymbols(source)]) {
-		if (key === "constructor") continue;
-		const targetDesc = Object.getOwnPropertyDescriptor(target, key);
-		const desc = Object.getOwnPropertyDescriptor(source, key);
-		let modified = false;
-		if (desc.get) {
-			modified = true;
-			desc.get = targetDesc?.get || function() {
-				return this[sourceKey][key];
-			};
-		}
-		if (desc.set) {
-			modified = true;
-			desc.set = targetDesc?.set || function(value) {
-				this[sourceKey][key] = value;
-			};
-		}
-		if (!targetDesc?.value && typeof desc.value === "function") {
-			modified = true;
-			desc.value = function(...args) {
-				return this[sourceKey][key](...args);
-			};
-		}
-		if (modified) Object.defineProperty(target, key, desc);
-	}
-}
-/**
-* URL wrapper with fast paths to access to the following props:
-*
-*  - `url.pathname`
-*  - `url.search`
-*  - `url.searchParams`
-*  - `url.protocol`
-*
-* **NOTES:**
-*
-* - It is assumed that the input URL is **already encoded** and formatted from an HTTP request and contains no hash.
-* - Triggering the setters or getters on other props will deoptimize to full URL parsing.
-* - Changes to `searchParams` will be discarded as we don't track them.
-*/
-const FastURL = /* @__PURE__ */ (() => {
-	const NativeURL = globalThis.URL;
-	const FastURL = class URL {
-		#url;
-		#href;
-		#protocol;
-		#host;
-		#pathname;
-		#search;
-		#searchParams;
-		#pos;
-		constructor(url) {
-			if (typeof url === "string") this.#href = url;
-			else {
-				this.#protocol = url.protocol;
-				this.#host = url.host;
-				this.#pathname = url.pathname;
-				this.#search = url.search;
-			}
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeURL;
-		}
-		get _url() {
-			if (this.#url) return this.#url;
-			this.#url = new NativeURL(this.href);
-			this.#href = void 0;
-			this.#protocol = void 0;
-			this.#host = void 0;
-			this.#pathname = void 0;
-			this.#search = void 0;
-			this.#searchParams = void 0;
-			this.#pos = void 0;
-			return this.#url;
-		}
-		get href() {
-			if (this.#url) return this.#url.href;
-			if (!this.#href) this.#href = `${this.#protocol || "http:"}//${this.#host || "localhost"}${this.#pathname || "/"}${this.#search || ""}`;
-			return this.#href;
-		}
-		#getPos() {
-			if (!this.#pos) {
-				const url = this.href;
-				const protoIndex = url.indexOf("://");
-				const pathnameIndex = protoIndex === -1 ? -1 : url.indexOf("/", protoIndex + 4);
-				this.#pos = [
-					protoIndex,
-					pathnameIndex,
-					pathnameIndex === -1 ? -1 : url.indexOf("?", pathnameIndex)
-				];
-			}
-			return this.#pos;
-		}
-		get pathname() {
-			if (this.#url) return this.#url.pathname;
-			if (this.#pathname === void 0) {
-				const [, pathnameIndex, queryIndex] = this.#getPos();
-				if (pathnameIndex === -1) return this._url.pathname;
-				this.#pathname = this.href.slice(pathnameIndex, queryIndex === -1 ? void 0 : queryIndex);
-			}
-			return this.#pathname;
-		}
-		get search() {
-			if (this.#url) return this.#url.search;
-			if (this.#search === void 0) {
-				const [, pathnameIndex, queryIndex] = this.#getPos();
-				if (pathnameIndex === -1) return this._url.search;
-				const url = this.href;
-				this.#search = queryIndex === -1 || queryIndex === url.length - 1 ? "" : url.slice(queryIndex);
-			}
-			return this.#search;
-		}
-		get searchParams() {
-			if (this.#url) return this.#url.searchParams;
-			if (!this.#searchParams) this.#searchParams = new URLSearchParams(this.search);
-			return this.#searchParams;
-		}
-		get protocol() {
-			if (this.#url) return this.#url.protocol;
-			if (this.#protocol === void 0) {
-				const [protocolIndex] = this.#getPos();
-				if (protocolIndex === -1) return this._url.protocol;
-				this.#protocol = this.href.slice(0, protocolIndex + 1);
-			}
-			return this.#protocol;
-		}
-		toString() {
-			return this.href;
-		}
-		toJSON() {
-			return this.href;
-		}
-	};
-	lazyInherit(FastURL.prototype, NativeURL.prototype, "_url");
-	Object.setPrototypeOf(FastURL.prototype, NativeURL.prototype);
-	Object.setPrototypeOf(FastURL, NativeURL);
-	return FastURL;
-})();
-
-//#endregion
-//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_utils2.mjs
-function resolvePortAndHost(opts) {
-	const _port = opts.port ?? globalThis.process?.env.PORT ?? 3e3;
-	const port = typeof _port === "number" ? _port : Number.parseInt(_port, 10);
-	if (port < 0 || port > 65535) throw new RangeError(`Port must be between 0 and 65535 (got "${port}").`);
-	return {
-		port,
-		hostname: opts.hostname ?? globalThis.process?.env.HOST
-	};
-}
-function fmtURL(host, port, secure) {
-	if (!host || !port) return;
-	if (host.includes(":")) host = `[${host}]`;
-	return `http${secure ? "s" : ""}://${host}:${port}/`;
-}
-function printListening(opts, url) {
-	if (!url || (opts.silent ?? globalThis.process?.env?.TEST)) return;
-	let additionalInfo = "";
-	try {
-		const _url = new URL(url);
-		if (_url.hostname === "[::]" || _url.hostname === "0.0.0.0") {
-			_url.hostname = "localhost";
-			url = _url.href;
-			additionalInfo = " (all interfaces)";
-		}
-	} catch {}
-	let listeningOn = `➜ Listening on:`;
-	if (globalThis.process.stdout?.isTTY) {
-		listeningOn = `\u001B[32m${listeningOn}\u001B[0m`;
-		url = `\u001B[36m${url}\u001B[0m`;
-		additionalInfo = `\u001B[2m${additionalInfo}\u001B[0m`;
-	}
-	console.log(`${listeningOn} ${url}${additionalInfo}`);
-}
-function resolveTLSOptions(opts) {
-	if (!opts.tls || opts.protocol === "http") return;
-	const cert = resolveCertOrKey(opts.tls.cert);
-	const key = resolveCertOrKey(opts.tls.key);
-	if (!cert && !key) {
-		if (opts.protocol === "https") throw new TypeError("TLS `cert` and `key` must be provided for `https` protocol.");
-		return;
-	}
-	if (!cert || !key) throw new TypeError("TLS `cert` and `key` must be provided together.");
-	return {
-		cert,
-		key,
-		passphrase: opts.tls.passphrase
-	};
-}
-function resolveCertOrKey(value) {
-	if (!value) return;
-	if (typeof value !== "string") throw new TypeError("TLS certificate and key must be strings in PEM format or file paths.");
-	if (value.startsWith("-----BEGIN ")) return value;
-	const { readFileSync } = process.getBuiltinModule("node:fs");
-	return readFileSync(value, "utf8");
-}
-function createWaitUntil() {
-	const promises = /* @__PURE__ */ new Set();
-	return {
-		waitUntil: (promise) => {
-			if (typeof promise?.then !== "function") return;
-			promises.add(Promise.resolve(promise).catch(console.error).finally(() => {
-				promises.delete(promise);
-			}));
-		},
-		wait: () => {
-			return Promise.all(promises);
-		}
-	};
-}
-
-//#endregion
-//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/_chunks/_plugins.mjs
-function wrapFetch(server) {
-	const fetchHandler = server.options.fetch;
-	const middleware = server.options.middleware || [];
-	return middleware.length === 0 ? fetchHandler : (request) => callMiddleware(request, fetchHandler, middleware, 0);
-}
-function callMiddleware(request, fetchHandler, middleware, index) {
-	if (index === middleware.length) return fetchHandler(request);
-	return middleware[index](request, () => callMiddleware(request, fetchHandler, middleware, index + 1));
-}
-const errorPlugin = (server) => {
-	const errorHandler = server.options.error;
-	if (!errorHandler) return;
-	server.options.middleware.unshift((_req, next) => {
-		try {
-			const res = next();
-			return res instanceof Promise ? res.catch((error) => errorHandler(error)) : res;
-		} catch (error) {
-			return errorHandler(error);
-		}
-	});
-};
-const gracefulShutdownPlugin = (server) => {
-	const config = server.options?.gracefulShutdown;
-	if (!globalThis.process?.on || config === false || config === void 0 && (process.env.CI || process.env.TEST)) return;
-	const gracefulTimeout = config === true || !config?.gracefulTimeout ? Number.parseInt(process.env.SERVER_SHUTDOWN_TIMEOUT || "") || 5 : config.gracefulTimeout;
-	let isClosing = false;
-	let isClosed = false;
-	const w = server.options.silent ? () => {} : process.stderr.write.bind(process.stderr);
-	const forceClose = async () => {
-		if (isClosed) return;
-		w(red("\x1B[2K\rForcibly closing connections...\n"));
-		isClosed = true;
-		await server.close(true);
-	};
-	const shutdown = async () => {
-		if (isClosing || isClosed) return;
-		setTimeout(() => {
-			globalThis.process.once("SIGINT", forceClose);
-		}, 100);
-		isClosing = true;
-		const closePromise = server.close();
-		for (let remaining = gracefulTimeout; remaining > 0; remaining--) {
-			w(gray(`\rStopping server gracefully (${remaining}s)... Press ${bold("Ctrl+C")} again to force close.`));
-			if (await Promise.race([closePromise.then(() => true), new Promise((r) => setTimeout(() => r(false), 1e3))])) {
-				w("\x1B[2K\r" + green("Server closed successfully.\n"));
-				isClosed = true;
-				return;
-			}
-		}
-		w("\x1B[2K\rGraceful shutdown timed out.\n");
-		await forceClose();
-	};
-	for (const sig of ["SIGINT", "SIGTERM"]) globalThis.process.on(sig, shutdown);
-};
-
-//#endregion
-//#region ../../node_modules/.pnpm/srvx@0.11.8/node_modules/srvx/dist/adapters/node.mjs
-async function sendNodeResponse(nodeRes, webRes) {
-	if (!webRes) {
-		nodeRes.statusCode = 500;
-		return endNodeResponse(nodeRes);
-	}
-	if (webRes._toNodeResponse) {
-		const res = webRes._toNodeResponse();
-		writeHead(nodeRes, res.status, res.statusText, res.headers);
-		if (res.body) {
-			if (res.body instanceof ReadableStream) return streamBody(res.body, nodeRes);
-			else if (typeof res.body?.pipe === "function") {
-				res.body.pipe(nodeRes);
-				return new Promise((resolve) => nodeRes.on("close", resolve));
-			}
-			nodeRes.write(res.body);
-		}
-		return endNodeResponse(nodeRes);
-	}
-	const rawHeaders = [...webRes.headers];
-	writeHead(nodeRes, webRes.status, webRes.statusText, rawHeaders);
-	return webRes.body ? streamBody(webRes.body, nodeRes) : endNodeResponse(nodeRes);
-}
-function writeHead(nodeRes, status, statusText, rawHeaders) {
-	const writeHeaders = globalThis.Deno ? rawHeaders : rawHeaders.flat();
-	if (!nodeRes.headersSent) if (nodeRes.req?.httpVersion === "2.0") nodeRes.writeHead(status, writeHeaders);
-	else nodeRes.writeHead(status, statusText, writeHeaders);
-}
-function endNodeResponse(nodeRes) {
-	return new Promise((resolve) => nodeRes.end(resolve));
-}
-function streamBody(stream, nodeRes) {
-	if (nodeRes.destroyed) {
-		stream.cancel();
-		return;
-	}
-	const reader = stream.getReader();
-	function streamCancel(error) {
-		reader.cancel(error).catch(() => {});
-		if (error) nodeRes.destroy(error);
-	}
-	function streamHandle({ done, value }) {
-		try {
-			if (done) nodeRes.end();
-			else if (nodeRes.write(value)) reader.read().then(streamHandle, streamCancel);
-			else nodeRes.once("drain", () => reader.read().then(streamHandle, streamCancel));
-		} catch (error) {
-			streamCancel(error instanceof Error ? error : void 0);
-		}
-	}
-	nodeRes.on("close", streamCancel);
-	nodeRes.on("error", streamCancel);
-	reader.read().then(streamHandle, streamCancel);
-	return reader.closed.catch(streamCancel).finally(() => {
-		nodeRes.off("close", streamCancel);
-		nodeRes.off("error", streamCancel);
-	});
-}
-/**
-* Validates an HTTP Host header value (domain, IPv4, or bracketed IPv6) with optional port.
-* Intended for preliminary filtering invalid values like "localhost:3000/foobar?"
-*/
-const HOST_RE = /^(\[(?:[A-Fa-f0-9:.]+)\]|(?:[A-Za-z0-9_-]+\.)*[A-Za-z0-9_-]+|(?:\d{1,3}\.){3}\d{1,3})(:\d{1,5})?$/;
-var NodeRequestURL = class extends FastURL {
-	#req;
-	constructor({ req }) {
-		const path = req.url || "/";
-		if (path[0] === "/") {
-			const qIndex = path.indexOf("?");
-			const pathname = qIndex === -1 ? path : path?.slice(0, qIndex) || "/";
-			const search = qIndex === -1 ? "" : path?.slice(qIndex) || "";
-			let host = req.headers.host || req.headers[":authority"];
-			if (host) {
-				if (!HOST_RE.test(host)) throw new TypeError(`Invalid host header: ${host}`);
-			} else if (req.socket) host = `${req.socket.localFamily === "IPv6" ? "[" + req.socket.localAddress + "]" : req.socket.localAddress}:${req.socket?.localPort || "80"}`;
-			else host = "localhost";
-			const protocol = req.socket?.encrypted || req.headers["x-forwarded-proto"] === "https" || req.headers[":scheme"] === "https" ? "https:" : "http:";
-			super({
-				protocol,
-				host,
-				pathname,
-				search
-			});
-		} else super(path);
-		this.#req = req;
-	}
-	get pathname() {
-		return super.pathname;
-	}
-	set pathname(value) {
-		this._url.pathname = value;
-		this.#req.url = this._url.pathname + this._url.search;
-	}
-};
-const NodeRequestHeaders = /* @__PURE__ */ (() => {
-	const NativeHeaders = globalThis.Headers;
-	class Headers {
-		#req;
-		#headers;
-		constructor(req) {
-			this.#req = req;
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeHeaders;
-		}
-		get _headers() {
-			if (!this.#headers) {
-				const headers = new NativeHeaders();
-				const rawHeaders = this.#req.rawHeaders;
-				const len = rawHeaders.length;
-				for (let i = 0; i < len; i += 2) {
-					const key = rawHeaders[i];
-					if (key.charCodeAt(0) === 58) continue;
-					const value = rawHeaders[i + 1];
-					headers.append(key, value);
-				}
-				this.#headers = headers;
-			}
-			return this.#headers;
-		}
-		get(name) {
-			if (this.#headers) return this.#headers.get(name);
-			const value = this.#req.headers[name.toLowerCase()];
-			return Array.isArray(value) ? value.join(", ") : value || null;
-		}
-		has(name) {
-			if (this.#headers) return this.#headers.has(name);
-			return name.toLowerCase() in this.#req.headers;
-		}
-		getSetCookie() {
-			if (this.#headers) return this.#headers.getSetCookie();
-			const value = this.#req.headers["set-cookie"];
-			return Array.isArray(value) ? value : value ? [value] : [];
-		}
-		*_entries() {
-			const rawHeaders = this.#req.rawHeaders;
-			const len = rawHeaders.length;
-			for (let i = 0; i < len; i += 2) {
-				const key = rawHeaders[i];
-				if (key.charCodeAt(0) === 58) continue;
-				yield [key.toLowerCase(), rawHeaders[i + 1]];
-			}
-		}
-		entries() {
-			return this.#headers ? this.#headers.entries() : this._entries();
-		}
-		[Symbol.iterator]() {
-			return this.entries();
-		}
-	}
-	lazyInherit(Headers.prototype, NativeHeaders.prototype, "_headers");
-	Object.setPrototypeOf(Headers, NativeHeaders);
-	Object.setPrototypeOf(Headers.prototype, NativeHeaders.prototype);
-	return Headers;
-})();
-const NodeRequest = /* @__PURE__ */ (() => {
-	const NativeRequest = globalThis.Request;
-	class Request {
-		runtime;
-		#req;
-		#url;
-		#bodyStream;
-		#request;
-		#headers;
-		#abortController;
-		constructor(ctx) {
-			this.#req = ctx.req;
-			this.runtime = {
-				name: "node",
-				node: ctx
-			};
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeRequest;
-		}
-		get ip() {
-			return this.#req.socket?.remoteAddress;
-		}
-		get method() {
-			if (this.#request) return this.#request.method;
-			return this.#req.method || "GET";
-		}
-		get _url() {
-			return this.#url ||= new NodeRequestURL({ req: this.#req });
-		}
-		set _url(url) {
-			this.#url = url;
-		}
-		get url() {
-			if (this.#request) return this.#request.url;
-			return this._url.href;
-		}
-		get headers() {
-			if (this.#request) return this.#request.headers;
-			return this.#headers ||= new NodeRequestHeaders(this.#req);
-		}
-		get _abortController() {
-			if (!this.#abortController) {
-				this.#abortController = new AbortController();
-				const { req, res } = this.runtime.node;
-				const abortController = this.#abortController;
-				const abort = (err) => abortController.abort?.(err);
-				if (res) res.once("close", () => {
-					const reqError = req.errored;
-					if (reqError) abort(reqError);
-					else if (!res.writableEnded) abort();
-				});
-				else req.once("close", () => {
-					if (!req.complete) abort();
-				});
-			}
-			return this.#abortController;
-		}
-		get signal() {
-			return this.#request ? this.#request.signal : this._abortController.signal;
-		}
-		get body() {
-			if (this.#request) return this.#request.body;
-			if (this.#bodyStream === void 0) {
-				const method = this.method;
-				this.#bodyStream = !(method === "GET" || method === "HEAD") ? Readable.toWeb(this.#req) : null;
-			}
-			return this.#bodyStream;
-		}
-		text() {
-			if (this.#request) return this.#request.text();
-			if (this.#bodyStream !== void 0) return this.#bodyStream ? new Response(this.#bodyStream).text() : Promise.resolve("");
-			return readBody(this.#req).then((buf) => buf.toString());
-		}
-		json() {
-			if (this.#request) return this.#request.json();
-			return this.text().then((text) => JSON.parse(text));
-		}
-		get _request() {
-			if (!this.#request) {
-				const body = this.body;
-				this.#request = new NativeRequest(this.url, {
-					method: this.method,
-					headers: this.headers,
-					signal: this._abortController.signal,
-					body,
-					duplex: body ? "half" : void 0
-				});
-				this.#headers = void 0;
-				this.#bodyStream = void 0;
-			}
-			return this.#request;
-		}
-	}
-	lazyInherit(Request.prototype, NativeRequest.prototype, "_request");
-	Object.setPrototypeOf(Request.prototype, NativeRequest.prototype);
-	return Request;
-})();
-function readBody(req) {
-	if ("rawBody" in req && Buffer.isBuffer(req.rawBody)) return Promise.resolve(req.rawBody);
-	return new Promise((resolve, reject) => {
-		const chunks = [];
-		const onData = (chunk) => {
-			chunks.push(chunk);
-		};
-		const onError = (err) => {
-			reject(err);
-		};
-		const onEnd = () => {
-			req.off("error", onError);
-			req.off("data", onData);
-			resolve(Buffer.concat(chunks));
-		};
-		req.on("data", onData).once("end", onEnd).once("error", onError);
-	});
-}
-/**
-* Fast Response for Node.js runtime
-*
-* It is faster because in most cases it doesn't create a full Response instance.
-*/
-const NodeResponse = /* @__PURE__ */ (() => {
-	const NativeResponse = globalThis.Response;
-	const STATUS_CODES = globalThis.process?.getBuiltinModule?.("node:http")?.STATUS_CODES || {};
-	class NodeResponse {
-		#body;
-		#init;
-		#headers;
-		#response;
-		constructor(body, init) {
-			this.#body = body;
-			this.#init = init;
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeResponse;
-		}
-		get status() {
-			return this.#response?.status || this.#init?.status || 200;
-		}
-		get statusText() {
-			return this.#response?.statusText || this.#init?.statusText || STATUS_CODES[this.status] || "";
-		}
-		get headers() {
-			if (this.#response) return this.#response.headers;
-			if (this.#headers) return this.#headers;
-			const initHeaders = this.#init?.headers;
-			return this.#headers = initHeaders instanceof Headers ? initHeaders : new Headers(initHeaders);
-		}
-		get ok() {
-			if (this.#response) return this.#response.ok;
-			const status = this.status;
-			return status >= 200 && status < 300;
-		}
-		get _response() {
-			if (this.#response) return this.#response;
-			let body = this.#body;
-			if (body && typeof body.pipe === "function" && !(body instanceof Readable)) {
-				const stream = new PassThrough();
-				body.pipe(stream);
-				const abort = body.abort;
-				if (abort) stream.once("close", () => abort());
-				body = stream;
-			}
-			this.#response = new NativeResponse(body, this.#headers ? {
-				...this.#init,
-				headers: this.#headers
-			} : this.#init);
-			this.#init = void 0;
-			this.#headers = void 0;
-			this.#body = void 0;
-			return this.#response;
-		}
-		_toNodeResponse() {
-			const status = this.status;
-			const statusText = this.statusText;
-			let body;
-			let contentType;
-			let contentLength;
-			if (this.#response) body = this.#response.body;
-			else if (this.#body) if (this.#body instanceof ReadableStream) body = this.#body;
-			else if (typeof this.#body === "string") {
-				body = this.#body;
-				contentType = "text/plain; charset=UTF-8";
-				contentLength = Buffer.byteLength(this.#body);
-			} else if (this.#body instanceof ArrayBuffer) {
-				body = Buffer.from(this.#body);
-				contentLength = this.#body.byteLength;
-			} else if (this.#body instanceof Uint8Array) {
-				body = this.#body;
-				contentLength = this.#body.byteLength;
-			} else if (this.#body instanceof DataView) {
-				body = Buffer.from(this.#body.buffer);
-				contentLength = this.#body.byteLength;
-			} else if (this.#body instanceof Blob) {
-				body = this.#body.stream();
-				contentType = this.#body.type;
-				contentLength = this.#body.size;
-			} else if (typeof this.#body.pipe === "function") body = this.#body;
-			else body = this._response.body;
-			const headers = [];
-			const initHeaders = this.#init?.headers;
-			const headerEntries = this.#response?.headers || this.#headers || (initHeaders ? Array.isArray(initHeaders) ? initHeaders : initHeaders?.entries ? initHeaders.entries() : Object.entries(initHeaders).map(([k, v]) => [k.toLowerCase(), v]) : void 0);
-			let hasContentTypeHeader;
-			let hasContentLength;
-			if (headerEntries) for (const [key, value] of headerEntries) {
-				if (Array.isArray(value)) for (const v of value) headers.push([key, v]);
-				else headers.push([key, value]);
-				if (key === "content-type") hasContentTypeHeader = true;
-				else if (key === "content-length") hasContentLength = true;
-			}
-			if (contentType && !hasContentTypeHeader) headers.push(["content-type", contentType]);
-			if (contentLength && !hasContentLength) headers.push(["content-length", String(contentLength)]);
-			this.#init = void 0;
-			this.#headers = void 0;
-			this.#response = void 0;
-			this.#body = void 0;
-			return {
-				status,
-				statusText,
-				headers,
-				body
-			};
-		}
-	}
-	lazyInherit(NodeResponse.prototype, NativeResponse.prototype, "_response");
-	Object.setPrototypeOf(NodeResponse, NativeResponse);
-	Object.setPrototypeOf(NodeResponse.prototype, NativeResponse.prototype);
-	return NodeResponse;
-})();
-function serve(options) {
-	return new NodeServer(options);
-}
-var NodeServer = class {
-	runtime = "node";
-	options;
-	node;
-	serveOptions;
-	fetch;
-	waitUntil;
-	#isSecure;
-	#listeningPromise;
-	#wait;
-	constructor(options) {
-		this.options = {
-			...options,
-			middleware: [...options.middleware || []]
-		};
-		for (const plugin of options.plugins || []) plugin(this);
-		errorPlugin(this);
-		const fetchHandler = this.fetch = wrapFetch(this);
-		const handler = (nodeReq, nodeRes) => {
-			const request = new NodeRequest({
-				req: nodeReq,
-				res: nodeRes
-			});
-			request.waitUntil = this.#wait?.waitUntil;
-			const res = fetchHandler(request);
-			return res instanceof Promise ? res.then((resolvedRes) => sendNodeResponse(nodeRes, resolvedRes)) : sendNodeResponse(nodeRes, res);
-		};
-		this.node = {
-			handler,
-			server: void 0
-		};
-		const loader = globalThis.__srvxLoader__;
-		if (loader) {
-			loader({ server: this });
-			return;
-		}
-		gracefulShutdownPlugin(this);
-		this.#wait = createWaitUntil();
-		this.waitUntil = this.#wait.waitUntil;
-		const tls = resolveTLSOptions(this.options);
-		const { port, hostname: host } = resolvePortAndHost(this.options);
-		this.serveOptions = {
-			port,
-			host,
-			exclusive: !this.options.reusePort,
-			...tls ? {
-				cert: tls.cert,
-				key: tls.key,
-				passphrase: tls.passphrase
-			} : {},
-			...this.options.node
-		};
-		let server;
-		this.#isSecure = !!this.serveOptions.cert && this.options.protocol !== "http";
-		if (this.options.node?.http2 ?? this.#isSecure) if (this.#isSecure) server = nodeHTTP2.createSecureServer({
-			allowHTTP1: true,
-			...this.serveOptions
-		}, handler);
-		else throw new Error("node.http2 option requires tls certificate!");
-		else if (this.#isSecure) server = nodeHTTPS.createServer(this.serveOptions, handler);
-		else server = nodeHTTP.createServer(this.serveOptions, handler);
-		this.node.server = server;
-		if (!options.manual) this.serve();
-	}
-	serve() {
-		if (this.#listeningPromise) return Promise.resolve(this.#listeningPromise).then(() => this);
-		this.#listeningPromise = new Promise((resolve) => {
-			this.node.server.listen(this.serveOptions, () => {
-				printListening(this.options, this.url);
-				resolve();
-			});
-		});
-	}
-	get url() {
-		const addr = this.node?.server?.address();
-		if (!addr) return;
-		return typeof addr === "string" ? addr : fmtURL(addr.address, addr.port, this.#isSecure);
-	}
-	ready() {
-		return Promise.resolve(this.#listeningPromise).then(() => this);
-	}
-	async close(closeAll) {
-		await Promise.all([this.#wait?.wait(), new Promise((resolve, reject) => {
-			const server = this.node?.server;
-			if (server && closeAll && "closeAllConnections" in server) server.closeAllConnections();
-			if (!server || !server.listening) return resolve();
-			server.close((error) => error ? reject(error) : resolve());
-		})]);
-	}
-};
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/models.js
-var require_models = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __extends = exports && exports.__extends || (function() {
-		var extendStatics = function(d, b) {
-			extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d, b) {
-				d.__proto__ = b;
-			} || function(d, b) {
-				for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-			};
-			return extendStatics(d, b);
-		};
-		return function(d, b) {
-			if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-			extendStatics(d, b);
-			function __() {
-				this.constructor = d;
-			}
-			d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-		};
-	})();
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.createJSONRPCNotification = exports.createJSONRPCRequest = exports.createJSONRPCSuccessResponse = exports.createJSONRPCErrorResponse = exports.JSONRPCErrorCode = exports.JSONRPCErrorException = exports.isJSONRPCResponses = exports.isJSONRPCResponse = exports.isJSONRPCRequests = exports.isJSONRPCRequest = exports.isJSONRPCID = exports.JSONRPC = void 0;
-	exports.JSONRPC = "2.0";
-	var isJSONRPCID = function(id) {
-		return typeof id === "string" || typeof id === "number" || id === null;
-	};
-	exports.isJSONRPCID = isJSONRPCID;
-	var isJSONRPCRequest = function(payload) {
-		return payload.jsonrpc === exports.JSONRPC && payload.method !== void 0 && payload.result === void 0 && payload.error === void 0;
-	};
-	exports.isJSONRPCRequest = isJSONRPCRequest;
-	var isJSONRPCRequests = function(payload) {
-		return Array.isArray(payload) && payload.every(exports.isJSONRPCRequest);
-	};
-	exports.isJSONRPCRequests = isJSONRPCRequests;
-	var isJSONRPCResponse = function(payload) {
-		return payload.jsonrpc === exports.JSONRPC && payload.id !== void 0 && (payload.result !== void 0 || payload.error !== void 0);
-	};
-	exports.isJSONRPCResponse = isJSONRPCResponse;
-	var isJSONRPCResponses = function(payload) {
-		return Array.isArray(payload) && payload.every(exports.isJSONRPCResponse);
-	};
-	exports.isJSONRPCResponses = isJSONRPCResponses;
-	var createJSONRPCError = function(code, message, data) {
-		var error = {
-			code,
-			message
-		};
-		if (data != null) error.data = data;
-		return error;
-	};
-	var JSONRPCErrorException = function(_super) {
-		__extends(JSONRPCErrorException, _super);
-		function JSONRPCErrorException(message, code, data) {
-			var _this = _super.call(this, message) || this;
-			Object.setPrototypeOf(_this, JSONRPCErrorException.prototype);
-			_this.code = code;
-			_this.data = data;
-			return _this;
-		}
-		JSONRPCErrorException.prototype.toObject = function() {
-			return createJSONRPCError(this.code, this.message, this.data);
-		};
-		return JSONRPCErrorException;
-	}(Error);
-	exports.JSONRPCErrorException = JSONRPCErrorException;
-	(function(JSONRPCErrorCode) {
-		JSONRPCErrorCode[JSONRPCErrorCode["ParseError"] = -32700] = "ParseError";
-		JSONRPCErrorCode[JSONRPCErrorCode["InvalidRequest"] = -32600] = "InvalidRequest";
-		JSONRPCErrorCode[JSONRPCErrorCode["MethodNotFound"] = -32601] = "MethodNotFound";
-		JSONRPCErrorCode[JSONRPCErrorCode["InvalidParams"] = -32602] = "InvalidParams";
-		JSONRPCErrorCode[JSONRPCErrorCode["InternalError"] = -32603] = "InternalError";
-	})(exports.JSONRPCErrorCode || (exports.JSONRPCErrorCode = {}));
-	var createJSONRPCErrorResponse = function(id, code, message, data) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			id,
-			error: createJSONRPCError(code, message, data)
-		};
-	};
-	exports.createJSONRPCErrorResponse = createJSONRPCErrorResponse;
-	var createJSONRPCSuccessResponse = function(id, result) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			id,
-			result: result !== null && result !== void 0 ? result : null
-		};
-	};
-	exports.createJSONRPCSuccessResponse = createJSONRPCSuccessResponse;
-	var createJSONRPCRequest = function(id, method, params) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			id,
-			method,
-			params
-		};
-	};
-	exports.createJSONRPCRequest = createJSONRPCRequest;
-	var createJSONRPCNotification = function(method, params) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			method,
-			params
-		};
-	};
-	exports.createJSONRPCNotification = createJSONRPCNotification;
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/internal.js
-var require_internal = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.DefaultErrorCode = void 0;
-	exports.DefaultErrorCode = 0;
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/client.js
-var require_client = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
-		function adopt(value) {
-			return value instanceof P ? value : new P(function(resolve) {
-				resolve(value);
-			});
-		}
-		return new (P || (P = Promise))(function(resolve, reject) {
-			function fulfilled(value) {
-				try {
-					step(generator.next(value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function rejected(value) {
-				try {
-					step(generator["throw"](value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function step(result) {
-				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-			}
-			step((generator = generator.apply(thisArg, _arguments || [])).next());
-		});
-	};
-	var __generator = exports && exports.__generator || function(thisArg, body) {
-		var _ = {
-			label: 0,
-			sent: function() {
-				if (t[0] & 1) throw t[1];
-				return t[1];
-			},
-			trys: [],
-			ops: []
-		}, f, y, t, g;
-		return g = {
-			next: verb(0),
-			"throw": verb(1),
-			"return": verb(2)
-		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-			return this;
-		}), g;
-		function verb(n) {
-			return function(v) {
-				return step([n, v]);
-			};
-		}
-		function step(op) {
-			if (f) throw new TypeError("Generator is already executing.");
-			while (g && (g = 0, op[0] && (_ = 0)), _) try {
-				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-				if (y = 0, t) op = [op[0] & 2, t.value];
-				switch (op[0]) {
-					case 0:
-					case 1:
-						t = op;
-						break;
-					case 4:
-						_.label++;
-						return {
-							value: op[1],
-							done: false
-						};
-					case 5:
-						_.label++;
-						y = op[1];
-						op = [0];
-						continue;
-					case 7:
-						op = _.ops.pop();
-						_.trys.pop();
-						continue;
-					default:
-						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-							_ = 0;
-							continue;
-						}
-						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-							_.label = op[1];
-							break;
-						}
-						if (op[0] === 6 && _.label < t[1]) {
-							_.label = t[1];
-							t = op;
-							break;
-						}
-						if (t && _.label < t[2]) {
-							_.label = t[2];
-							_.ops.push(op);
-							break;
-						}
-						if (t[2]) _.ops.pop();
-						_.trys.pop();
-						continue;
-				}
-				op = body.call(thisArg, _);
-			} catch (e) {
-				op = [6, e];
-				y = 0;
-			} finally {
-				f = t = 0;
-			}
-			if (op[0] & 5) throw op[1];
-			return {
-				value: op[0] ? op[1] : void 0,
-				done: true
-			};
-		}
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.JSONRPCClient = void 0;
-	var models_1 = require_models();
-	var internal_1 = require_internal();
-	var JSONRPCClient = function() {
-		function JSONRPCClient(_send, createID) {
-			this._send = _send;
-			this.createID = createID;
-			this.idToResolveMap = /* @__PURE__ */ new Map();
-			this.id = 0;
-		}
-		JSONRPCClient.prototype._createID = function() {
-			if (this.createID) return this.createID();
-			else return ++this.id;
-		};
-		JSONRPCClient.prototype.timeout = function(delay, overrideCreateJSONRPCErrorResponse) {
-			var _this = this;
-			if (overrideCreateJSONRPCErrorResponse === void 0) overrideCreateJSONRPCErrorResponse = function(id) {
-				return (0, models_1.createJSONRPCErrorResponse)(id, internal_1.DefaultErrorCode, "Request timeout");
-			};
-			var timeoutRequest = function(ids, request) {
-				var timeoutID = setTimeout(function() {
-					ids.forEach(function(id) {
-						var resolve = _this.idToResolveMap.get(id);
-						if (resolve) {
-							_this.idToResolveMap.delete(id);
-							resolve(overrideCreateJSONRPCErrorResponse(id));
-						}
-					});
-				}, delay);
-				return request().then(function(result) {
-					clearTimeout(timeoutID);
-					return result;
-				}, function(error) {
-					clearTimeout(timeoutID);
-					return Promise.reject(error);
-				});
-			};
-			var requestAdvanced = function(request, clientParams) {
-				return timeoutRequest((!Array.isArray(request) ? [request] : request).map(function(request) {
-					return request.id;
-				}).filter(isDefinedAndNonNull), function() {
-					return _this.requestAdvanced(request, clientParams);
-				});
-			};
-			return {
-				request: function(method, params, clientParams) {
-					var id = _this._createID();
-					return timeoutRequest([id], function() {
-						return _this.requestWithID(method, params, clientParams, id);
-					});
-				},
-				requestAdvanced: function(request, clientParams) {
-					return requestAdvanced(request, clientParams);
-				}
-			};
-		};
-		JSONRPCClient.prototype.request = function(method, params, clientParams) {
-			return this.requestWithID(method, params, clientParams, this._createID());
-		};
-		JSONRPCClient.prototype.requestWithID = function(method, params, clientParams, id) {
-			return __awaiter(this, void 0, void 0, function() {
-				var request, response;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0:
-							request = (0, models_1.createJSONRPCRequest)(id, method, params);
-							return [4, this.requestAdvanced(request, clientParams)];
-						case 1:
-							response = _a.sent();
-							if (response.result !== void 0 && !response.error) return [2, response.result];
-							else if (response.result === void 0 && response.error) return [2, Promise.reject(new models_1.JSONRPCErrorException(response.error.message, response.error.code, response.error.data))];
-							else return [2, Promise.reject(/* @__PURE__ */ new Error("An unexpected error occurred"))];
-							return [2];
-					}
-				});
-			});
-		};
-		JSONRPCClient.prototype.requestAdvanced = function(requests, clientParams) {
-			var _this = this;
-			var areRequestsOriginallyArray = Array.isArray(requests);
-			if (!Array.isArray(requests)) requests = [requests];
-			var requestsWithID = requests.filter(function(request) {
-				return isDefinedAndNonNull(request.id);
-			});
-			var promises = requestsWithID.map(function(request) {
-				return new Promise(function(resolve) {
-					return _this.idToResolveMap.set(request.id, resolve);
-				});
-			});
-			var promise = Promise.all(promises).then(function(responses) {
-				if (areRequestsOriginallyArray || !responses.length) return responses;
-				else return responses[0];
-			});
-			return this.send(areRequestsOriginallyArray ? requests : requests[0], clientParams).then(function() {
-				return promise;
-			}, function(error) {
-				requestsWithID.forEach(function(request) {
-					_this.receive((0, models_1.createJSONRPCErrorResponse)(request.id, internal_1.DefaultErrorCode, error && error.message || "Failed to send a request"));
-				});
-				return promise;
-			});
-		};
-		JSONRPCClient.prototype.notify = function(method, params, clientParams) {
-			var request = (0, models_1.createJSONRPCNotification)(method, params);
-			this.send(request, clientParams).then(void 0, function() {});
-		};
-		JSONRPCClient.prototype.send = function(payload, clientParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				return __generator(this, function(_a) {
-					return [2, this._send(payload, clientParams)];
-				});
-			});
-		};
-		JSONRPCClient.prototype.rejectAllPendingRequests = function(message) {
-			this.idToResolveMap.forEach(function(resolve, id) {
-				return resolve((0, models_1.createJSONRPCErrorResponse)(id, internal_1.DefaultErrorCode, message));
-			});
-			this.idToResolveMap.clear();
-		};
-		JSONRPCClient.prototype.receive = function(responses) {
-			var _this = this;
-			if (!Array.isArray(responses)) responses = [responses];
-			responses.forEach(function(response) {
-				var resolve = _this.idToResolveMap.get(response.id);
-				if (resolve) {
-					_this.idToResolveMap.delete(response.id);
-					resolve(response);
-				}
-			});
-		};
-		return JSONRPCClient;
-	}();
-	exports.JSONRPCClient = JSONRPCClient;
-	var isDefinedAndNonNull = function(value) {
-		return value !== void 0 && value !== null;
-	};
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/interfaces.js
-var require_interfaces = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/server.js
-var require_server = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __assign = exports && exports.__assign || function() {
-		__assign = Object.assign || function(t) {
-			for (var s, i = 1, n = arguments.length; i < n; i++) {
-				s = arguments[i];
-				for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-			}
-			return t;
-		};
-		return __assign.apply(this, arguments);
-	};
-	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
-		function adopt(value) {
-			return value instanceof P ? value : new P(function(resolve) {
-				resolve(value);
-			});
-		}
-		return new (P || (P = Promise))(function(resolve, reject) {
-			function fulfilled(value) {
-				try {
-					step(generator.next(value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function rejected(value) {
-				try {
-					step(generator["throw"](value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function step(result) {
-				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-			}
-			step((generator = generator.apply(thisArg, _arguments || [])).next());
-		});
-	};
-	var __generator = exports && exports.__generator || function(thisArg, body) {
-		var _ = {
-			label: 0,
-			sent: function() {
-				if (t[0] & 1) throw t[1];
-				return t[1];
-			},
-			trys: [],
-			ops: []
-		}, f, y, t, g;
-		return g = {
-			next: verb(0),
-			"throw": verb(1),
-			"return": verb(2)
-		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-			return this;
-		}), g;
-		function verb(n) {
-			return function(v) {
-				return step([n, v]);
-			};
-		}
-		function step(op) {
-			if (f) throw new TypeError("Generator is already executing.");
-			while (g && (g = 0, op[0] && (_ = 0)), _) try {
-				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-				if (y = 0, t) op = [op[0] & 2, t.value];
-				switch (op[0]) {
-					case 0:
-					case 1:
-						t = op;
-						break;
-					case 4:
-						_.label++;
-						return {
-							value: op[1],
-							done: false
-						};
-					case 5:
-						_.label++;
-						y = op[1];
-						op = [0];
-						continue;
-					case 7:
-						op = _.ops.pop();
-						_.trys.pop();
-						continue;
-					default:
-						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-							_ = 0;
-							continue;
-						}
-						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-							_.label = op[1];
-							break;
-						}
-						if (op[0] === 6 && _.label < t[1]) {
-							_.label = t[1];
-							t = op;
-							break;
-						}
-						if (t && _.label < t[2]) {
-							_.label = t[2];
-							_.ops.push(op);
-							break;
-						}
-						if (t[2]) _.ops.pop();
-						_.trys.pop();
-						continue;
-				}
-				op = body.call(thisArg, _);
-			} catch (e) {
-				op = [6, e];
-				y = 0;
-			} finally {
-				f = t = 0;
-			}
-			if (op[0] & 5) throw op[1];
-			return {
-				value: op[0] ? op[1] : void 0,
-				done: true
-			};
-		}
-	};
-	var __spreadArray = exports && exports.__spreadArray || function(to, from, pack) {
-		if (pack || arguments.length === 2) {
-			for (var i = 0, l = from.length, ar; i < l; i++) if (ar || !(i in from)) {
-				if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-				ar[i] = from[i];
-			}
-		}
-		return to.concat(ar || Array.prototype.slice.call(from));
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.JSONRPCServer = void 0;
-	var models_1 = require_models();
-	var internal_1 = require_internal();
-	var createParseErrorResponse = function() {
-		return (0, models_1.createJSONRPCErrorResponse)(null, models_1.JSONRPCErrorCode.ParseError, "Parse error");
-	};
-	var createInvalidRequestResponse = function(request) {
-		return (0, models_1.createJSONRPCErrorResponse)((0, models_1.isJSONRPCID)(request.id) ? request.id : null, models_1.JSONRPCErrorCode.InvalidRequest, "Invalid Request");
-	};
-	var createMethodNotFoundResponse = function(id) {
-		return (0, models_1.createJSONRPCErrorResponse)(id, models_1.JSONRPCErrorCode.MethodNotFound, "Method not found");
-	};
-	var JSONRPCServer = function() {
-		function JSONRPCServer(options) {
-			if (options === void 0) options = {};
-			var _a;
-			this.mapErrorToJSONRPCErrorResponse = defaultMapErrorToJSONRPCErrorResponse;
-			this.nameToMethodDictionary = {};
-			this.middleware = null;
-			this.errorListener = (_a = options.errorListener) !== null && _a !== void 0 ? _a : console.warn;
-		}
-		JSONRPCServer.prototype.hasMethod = function(name) {
-			return !!this.nameToMethodDictionary[name];
-		};
-		JSONRPCServer.prototype.addMethod = function(name, method) {
-			this.addMethodAdvanced(name, this.toJSONRPCMethod(method));
-		};
-		JSONRPCServer.prototype.removeMethod = function(name) {
-			delete this.nameToMethodDictionary[name];
-		};
-		JSONRPCServer.prototype.toJSONRPCMethod = function(method) {
-			return function(request, serverParams) {
-				var response = method(request.params, serverParams);
-				return Promise.resolve(response).then(function(result) {
-					return mapResultToJSONRPCResponse(request.id, result);
-				});
-			};
-		};
-		JSONRPCServer.prototype.addMethodAdvanced = function(name, method) {
-			var _a;
-			this.nameToMethodDictionary = __assign(__assign({}, this.nameToMethodDictionary), (_a = {}, _a[name] = method, _a));
-		};
-		JSONRPCServer.prototype.receiveJSON = function(json, serverParams) {
-			var request = this.tryParseRequestJSON(json);
-			if (request) return this.receive(request, serverParams);
-			else return Promise.resolve(createParseErrorResponse());
-		};
-		JSONRPCServer.prototype.tryParseRequestJSON = function(json) {
-			try {
-				return JSON.parse(json);
-			} catch (_a) {
-				return null;
-			}
-		};
-		JSONRPCServer.prototype.receive = function(request, serverParams) {
-			if (Array.isArray(request)) return this.receiveMultiple(request, serverParams);
-			else return this.receiveSingle(request, serverParams);
-		};
-		JSONRPCServer.prototype.receiveMultiple = function(requests, serverParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				var responses;
-				var _this = this;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0: return [4, Promise.all(requests.map(function(request) {
-							return _this.receiveSingle(request, serverParams);
-						}))];
-						case 1:
-							responses = _a.sent().filter(isNonNull);
-							if (responses.length === 1) return [2, responses[0]];
-							else if (responses.length) return [2, responses];
-							else return [2, null];
-							return [2];
-					}
-				});
-			});
-		};
-		JSONRPCServer.prototype.receiveSingle = function(request, serverParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				var method, response;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0:
-							method = this.nameToMethodDictionary[request.method];
-							if (!!(0, models_1.isJSONRPCRequest)(request)) return [3, 1];
-							return [2, createInvalidRequestResponse(request)];
-						case 1: return [4, this.callMethod(method, request, serverParams)];
-						case 2:
-							response = _a.sent();
-							return [2, mapResponse(request, response)];
-					}
-				});
-			});
-		};
-		JSONRPCServer.prototype.applyMiddleware = function() {
-			var middlewares = [];
-			for (var _i = 0; _i < arguments.length; _i++) middlewares[_i] = arguments[_i];
-			if (this.middleware) this.middleware = this.combineMiddlewares(__spreadArray([this.middleware], middlewares, true));
-			else this.middleware = this.combineMiddlewares(middlewares);
-		};
-		JSONRPCServer.prototype.combineMiddlewares = function(middlewares) {
-			if (!middlewares.length) return null;
-			else return middlewares.reduce(this.middlewareReducer);
-		};
-		JSONRPCServer.prototype.middlewareReducer = function(prevMiddleware, nextMiddleware) {
-			return function(next, request, serverParams) {
-				return prevMiddleware(function(request, serverParams) {
-					return nextMiddleware(next, request, serverParams);
-				}, request, serverParams);
-			};
-		};
-		JSONRPCServer.prototype.callMethod = function(method, request, serverParams) {
-			var _this = this;
-			var callMethod = function(request, serverParams) {
-				if (method) return method(request, serverParams);
-				else if (request.id !== void 0) return Promise.resolve(createMethodNotFoundResponse(request.id));
-				else return Promise.resolve(null);
-			};
-			var onError = function(error) {
-				_this.errorListener("An unexpected error occurred while executing \"".concat(request.method, "\" JSON-RPC method:"), error);
-				return Promise.resolve(_this.mapErrorToJSONRPCErrorResponseIfNecessary(request.id, error));
-			};
-			try {
-				return (this.middleware || noopMiddleware)(callMethod, request, serverParams).then(void 0, onError);
-			} catch (error) {
-				return onError(error);
-			}
-		};
-		JSONRPCServer.prototype.mapErrorToJSONRPCErrorResponseIfNecessary = function(id, error) {
-			if (id !== void 0) return this.mapErrorToJSONRPCErrorResponse(id, error);
-			else return null;
-		};
-		return JSONRPCServer;
-	}();
-	exports.JSONRPCServer = JSONRPCServer;
-	var isNonNull = function(value) {
-		return value !== null;
-	};
-	var noopMiddleware = function(next, request, serverParams) {
-		return next(request, serverParams);
-	};
-	var mapResultToJSONRPCResponse = function(id, result) {
-		if (id !== void 0) return (0, models_1.createJSONRPCSuccessResponse)(id, result);
-		else return null;
-	};
-	var defaultMapErrorToJSONRPCErrorResponse = function(id, error) {
-		var _a;
-		var message = (_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : "An unexpected error occurred";
-		var code = internal_1.DefaultErrorCode;
-		var data;
-		if (error instanceof models_1.JSONRPCErrorException) {
-			code = error.code;
-			data = error.data;
-		}
-		return (0, models_1.createJSONRPCErrorResponse)(id, code, message, data);
-	};
-	var mapResponse = function(request, response) {
-		if (response) return response;
-		else if (request.id !== void 0) return (0, models_1.createJSONRPCErrorResponse)(request.id, models_1.JSONRPCErrorCode.InternalError, "Internal error");
-		else return null;
-	};
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/server-and-client.js
-var require_server_and_client = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
-		function adopt(value) {
-			return value instanceof P ? value : new P(function(resolve) {
-				resolve(value);
-			});
-		}
-		return new (P || (P = Promise))(function(resolve, reject) {
-			function fulfilled(value) {
-				try {
-					step(generator.next(value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function rejected(value) {
-				try {
-					step(generator["throw"](value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function step(result) {
-				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-			}
-			step((generator = generator.apply(thisArg, _arguments || [])).next());
-		});
-	};
-	var __generator = exports && exports.__generator || function(thisArg, body) {
-		var _ = {
-			label: 0,
-			sent: function() {
-				if (t[0] & 1) throw t[1];
-				return t[1];
-			},
-			trys: [],
-			ops: []
-		}, f, y, t, g;
-		return g = {
-			next: verb(0),
-			"throw": verb(1),
-			"return": verb(2)
-		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-			return this;
-		}), g;
-		function verb(n) {
-			return function(v) {
-				return step([n, v]);
-			};
-		}
-		function step(op) {
-			if (f) throw new TypeError("Generator is already executing.");
-			while (g && (g = 0, op[0] && (_ = 0)), _) try {
-				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-				if (y = 0, t) op = [op[0] & 2, t.value];
-				switch (op[0]) {
-					case 0:
-					case 1:
-						t = op;
-						break;
-					case 4:
-						_.label++;
-						return {
-							value: op[1],
-							done: false
-						};
-					case 5:
-						_.label++;
-						y = op[1];
-						op = [0];
-						continue;
-					case 7:
-						op = _.ops.pop();
-						_.trys.pop();
-						continue;
-					default:
-						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-							_ = 0;
-							continue;
-						}
-						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-							_.label = op[1];
-							break;
-						}
-						if (op[0] === 6 && _.label < t[1]) {
-							_.label = t[1];
-							t = op;
-							break;
-						}
-						if (t && _.label < t[2]) {
-							_.label = t[2];
-							_.ops.push(op);
-							break;
-						}
-						if (t[2]) _.ops.pop();
-						_.trys.pop();
-						continue;
-				}
-				op = body.call(thisArg, _);
-			} catch (e) {
-				op = [6, e];
-				y = 0;
-			} finally {
-				f = t = 0;
-			}
-			if (op[0] & 5) throw op[1];
-			return {
-				value: op[0] ? op[1] : void 0,
-				done: true
-			};
-		}
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.JSONRPCServerAndClient = void 0;
-	var models_1 = require_models();
-	var JSONRPCServerAndClient = function() {
-		function JSONRPCServerAndClient(server, client, options) {
-			if (options === void 0) options = {};
-			var _a;
-			this.server = server;
-			this.client = client;
-			this.errorListener = (_a = options.errorListener) !== null && _a !== void 0 ? _a : console.warn;
-		}
-		JSONRPCServerAndClient.prototype.applyServerMiddleware = function() {
-			var _a;
-			var middlewares = [];
-			for (var _i = 0; _i < arguments.length; _i++) middlewares[_i] = arguments[_i];
-			(_a = this.server).applyMiddleware.apply(_a, middlewares);
-		};
-		JSONRPCServerAndClient.prototype.hasMethod = function(name) {
-			return this.server.hasMethod(name);
-		};
-		JSONRPCServerAndClient.prototype.addMethod = function(name, method) {
-			this.server.addMethod(name, method);
-		};
-		JSONRPCServerAndClient.prototype.addMethodAdvanced = function(name, method) {
-			this.server.addMethodAdvanced(name, method);
-		};
-		JSONRPCServerAndClient.prototype.removeMethod = function(name) {
-			this.server.removeMethod(name);
-		};
-		JSONRPCServerAndClient.prototype.timeout = function(delay) {
-			return this.client.timeout(delay);
-		};
-		JSONRPCServerAndClient.prototype.request = function(method, params, clientParams) {
-			return this.client.request(method, params, clientParams);
-		};
-		JSONRPCServerAndClient.prototype.requestAdvanced = function(jsonRPCRequest, clientParams) {
-			return this.client.requestAdvanced(jsonRPCRequest, clientParams);
-		};
-		JSONRPCServerAndClient.prototype.notify = function(method, params, clientParams) {
-			this.client.notify(method, params, clientParams);
-		};
-		JSONRPCServerAndClient.prototype.rejectAllPendingRequests = function(message) {
-			this.client.rejectAllPendingRequests(message);
-		};
-		JSONRPCServerAndClient.prototype.receiveAndSend = function(payload, serverParams, clientParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				var response, message;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0:
-							if (!((0, models_1.isJSONRPCResponse)(payload) || (0, models_1.isJSONRPCResponses)(payload))) return [3, 1];
-							this.client.receive(payload);
-							return [3, 4];
-						case 1:
-							if (!((0, models_1.isJSONRPCRequest)(payload) || (0, models_1.isJSONRPCRequests)(payload))) return [3, 3];
-							return [4, this.server.receive(payload, serverParams)];
-						case 2:
-							response = _a.sent();
-							if (response) return [2, this.client.send(response, clientParams)];
-							return [3, 4];
-						case 3:
-							message = "Received an invalid JSON-RPC message";
-							this.errorListener(message, payload);
-							return [2, Promise.reject(new Error(message))];
-						case 4: return [2];
-					}
-				});
-			});
-		};
-		return JSONRPCServerAndClient;
-	}();
-	exports.JSONRPCServerAndClient = JSONRPCServerAndClient;
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/json-rpc-2.0@1.7.1/node_modules/json-rpc-2.0/dist/index.js
-var require_dist = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
-		if (k2 === void 0) k2 = k;
-		var desc = Object.getOwnPropertyDescriptor(m, k);
-		if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) desc = {
-			enumerable: true,
-			get: function() {
-				return m[k];
-			}
-		};
-		Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-		if (k2 === void 0) k2 = k;
-		o[k2] = m[k];
-	}));
-	var __exportStar = exports && exports.__exportStar || function(m, exports$2) {
-		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$2, p)) __createBinding(exports$2, m, p);
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	__exportStar(require_client(), exports);
-	__exportStar(require_interfaces(), exports);
-	__exportStar(require_models(), exports);
-	__exportStar(require_server(), exports);
-	__exportStar(require_server_and_client(), exports);
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/uri-template-matcher@1.1.2/node_modules/uri-template-matcher/src/parser.js
-/**
-* @fileoverview URI template parser implementation without regex
-*/
-/**
-* @typedef {import('./types.js').ParsedTemplate} ParsedTemplate
-* @typedef {import('./types.js').TemplateExpression} TemplateExpression
-* @typedef {import('./types.js').TemplatePart} TemplatePart
-* @typedef {import('./types.js').ExpressionPart} ExpressionPart
-*/
-/**
-* Parse a URI template string into its component parts
-* @param {string} template - The URI template to parse
-* @returns {ParsedTemplate} Parsed template representation
-*/
-function parse_template(template) {
-	/** @type {TemplatePart[]} */
-	const parts = [];
-	let current_literal = "";
-	let i = 0;
-	while (i < template.length) {
-		const char = template[i];
-		if (char === "{") {
-			if (current_literal) {
-				parts.push({
-					type: "literal",
-					value: current_literal
-				});
-				current_literal = "";
-			}
-			const expression_start = i + 1;
-			let expression_end = expression_start;
-			let brace_count = 1;
-			while (expression_end < template.length && brace_count > 0) {
-				if (template[expression_end] === "{") brace_count++;
-				else if (template[expression_end] === "}") brace_count--;
-				expression_end++;
-			}
-			if (brace_count > 0) throw new Error(`Unclosed expression in template: ${template}`);
-			const parsed_expression = parse_expression(template.slice(expression_start, expression_end - 1));
-			parts.push(parsed_expression);
-			i = expression_end;
-		} else {
-			current_literal += char;
-			i++;
-		}
-	}
-	if (current_literal) parts.push({
-		type: "literal",
-		value: current_literal
-	});
-	return {
-		template,
-		parts
-	};
-}
-/**
-* Parse an expression content (without braces)
-* @param {string} content - Expression content
-* @returns {TemplatePart} Parsed expression part
-*/
-function parse_expression(content) {
-	if (!content.trim()) throw new Error("Empty expression");
-	const first_char = content[0];
-	const operators = [
-		"+",
-		"#",
-		".",
-		"/",
-		";",
-		"?",
-		"&"
-	];
-	/** @type {string | undefined} */
-	let operator = void 0;
-	let variables_part = content;
-	if (operators.includes(first_char)) {
-		operator = first_char;
-		variables_part = content.slice(1);
-	}
-	return {
-		type: "expression",
-		expressions: split_variables(variables_part).map(parse_variable),
-		operator
-	};
-}
-/**
-* Split variables by comma, handling nested structures
-* @param {string} variables - Variables string
-* @returns {string[]} Array of variable strings
-*/
-function split_variables(variables) {
-	/** @type {string[]} */
-	const result = [];
-	let current = "";
-	let i = 0;
-	while (i < variables.length) {
-		const char = variables[i];
-		if (char === ",") {
-			if (current.trim()) {
-				result.push(current.trim());
-				current = "";
-			}
-		} else current += char;
-		i++;
-	}
-	if (current.trim()) result.push(current.trim());
-	return result;
-}
-/**
-* Parse a single variable specification
-* @param {string} variable - Variable string
-* @returns {TemplateExpression} Parsed variable expression
-*/
-function parse_variable(variable) {
-	let name = variable;
-	/** @type {number | undefined} */
-	let prefix = void 0;
-	let explode = false;
-	if (name.endsWith("*")) {
-		explode = true;
-		name = name.slice(0, -1);
-	}
-	const colon_index = name.indexOf(":");
-	if (colon_index !== -1) {
-		const prefix_str = name.slice(colon_index + 1);
-		prefix = parseInt(prefix_str, 10);
-		if (isNaN(prefix) || prefix < 0) throw new Error(`Invalid prefix length: ${prefix_str}`);
-		name = name.slice(0, colon_index);
-	}
-	if (!name) throw new Error("Empty variable name");
-	return {
-		name,
-		prefix,
-		explode
-	};
-}
-/**
-* Match a URI against a parsed template
-* @param {string} uri - URI to match
-* @param {ParsedTemplate} parsed_template - Parsed template
-* @returns {Record<string, string | string[]> | null} Extracted parameters or null
-*/
-function match_uri(uri, parsed_template) {
-	/** @type {Record<string, string | string[]>} */
-	const params = {};
-	const result = match_parts(uri, 0, parsed_template.parts, 0, params);
-	if (!result || result.uri_index !== uri.length) return null;
-	return params;
-}
-/**
-* Recursively match template parts with backtracking for consecutive variables
-* @param {string} uri - URI to match
-* @param {number} uri_index - Current position in URI
-* @param {TemplatePart[]} parts - Template parts to match
-* @param {number} part_index - Current template part index
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {{ uri_index: number } | null} Match result or null
-*/
-function match_parts(uri, uri_index, parts, part_index, params) {
-	if (part_index >= parts.length) return { uri_index };
-	const part = parts[part_index];
-	if (part.type === "literal") {
-		if (!uri.slice(uri_index).startsWith(part.value)) return null;
-		return match_parts(uri, uri_index + part.value.length, parts, part_index + 1, params);
-	} else {
-		const next_part = parts[part_index + 1];
-		const sorted_boundaries = find_expression_boundaries(uri, uri_index, next_part).sort((a, b) => {
-			if (next_part && next_part.type === "expression" && !next_part.operator) return b - a;
-			return a - b;
-		});
-		for (const boundary of sorted_boundaries) {
-			const segment = uri.slice(uri_index, boundary);
-			const temp_params = { ...params };
-			if (match_simple_expression(segment, part, temp_params, uri, uri_index)) {
-				const rest_result = match_parts(uri, boundary, parts, part_index + 1, temp_params);
-				if (rest_result) {
-					Object.assign(params, temp_params);
-					return rest_result;
-				}
-			}
-		}
-		return null;
-	}
-}
-/**
-* Find possible boundaries for an expression
-* @param {string} uri - URI to search
-* @param {number} start_index - Start position
-* @param {TemplatePart | undefined} next_part - Next template part
-* @returns {number[]} Array of possible boundary positions
-*/
-function find_expression_boundaries(uri, start_index, next_part) {
-	/** @type {number[]} */
-	const boundaries = [];
-	if (next_part && next_part.type === "literal") {
-		let search_index = start_index;
-		while (search_index < uri.length) {
-			const found_index = uri.indexOf(next_part.value, search_index);
-			if (found_index === -1) break;
-			boundaries.push(found_index);
-			search_index = found_index + 1;
-		}
-		if (boundaries.length === 0) return [];
-	} else if (next_part && next_part.type === "expression") {
-		const next_expr = next_part;
-		if (next_expr.operator === ".") {
-			for (let i = start_index; i < uri.length; i++) if (uri[i] === ".") boundaries.push(i);
-			boundaries.push(uri.length);
-		} else if (next_expr.operator === "/") {
-			for (let i = start_index; i < uri.length; i++) if (uri[i] === "/") boundaries.push(i);
-		} else for (let i = start_index; i <= uri.length; i++) boundaries.push(i);
-	} else boundaries.push(uri.length);
-	return boundaries.sort((a, b) => a - b);
-}
-/**
-* Match a simple expression (no complex operators)
-* @param {string} segment - URI segment to match
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @param {string} uri - Full URI
-* @param {number} uri_index - Current URI index
-* @returns {boolean} Whether the match was successful
-*/
-function match_simple_expression(segment, expression, params, uri, uri_index) {
-	if (expression.type !== "expression") return false;
-	switch (expression.operator) {
-		case "+": return handle_reserved_match(segment, expression, params);
-		case "#": return handle_fragment_match(segment, expression, params);
-		case ".": return handle_dot_match(segment, expression, params);
-		case "/": return handle_path_match(segment, expression, params);
-		case ";": return handle_semicolon_match(segment, expression, params);
-		case "?":
-		case "&": return handle_query_match(segment, expression, params);
-		default: return handle_simple_match(segment, expression, params, uri, uri_index);
-	}
-}
-/**
-* Handle fragment match (# operator)
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_fragment_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	if (!segment.startsWith("#")) {
-		for (const expr of expression.expressions) params[expr.name] = "";
-		return segment === "";
-	}
-	const fragment_content = segment.slice(1);
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		let value = fragment_content;
-		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-		params[expr.name] = decodeURIComponent(value);
-		return true;
-	} else {
-		const values = fragment_content.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle reserved string match (+ operator)
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_reserved_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		let value = segment;
-		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-		params[expr.name] = decodeURIComponent(value);
-		return true;
-	} else {
-		const values = segment.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle simple string match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @param {string} uri - Full URI
-* @param {number} uri_index - Current URI index
-* @returns {boolean} Whether the match was successful
-*/
-function handle_simple_match(segment, expression, params, uri, uri_index) {
-	if (expression.type !== "expression") return false;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		let value = segment;
-		if (value.includes("/")) return false;
-		if (value === "" && uri_index + segment.length === uri.length && uri.endsWith("/")) return false;
-		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-		params[expr.name] = decodeURIComponent(value);
-		return true;
-	} else {
-		const values = segment.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (value.includes("/")) return false;
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle dot notation match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_dot_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	if (segment === "") {
-		for (const expr of expression.expressions) params[expr.name] = "";
-		return true;
-	}
-	const clean_segment = segment.startsWith(".") ? segment.slice(1) : segment;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		if (expr.explode) {
-			const values = clean_segment.split(".");
-			params[expr.name] = values.map((v) => decodeURIComponent(v));
-		} else params[expr.name] = decodeURIComponent(clean_segment);
-		return true;
-	} else {
-		const values = clean_segment.split(".");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle path match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_path_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	const clean_segment = segment.startsWith("/") ? segment.slice(1) : segment;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		params[expr.name] = decodeURIComponent(clean_segment);
-		return true;
-	} else {
-		const values = clean_segment.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle semicolon match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_semicolon_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	const parts = segment.split(";").filter((p) => p);
-	for (const part of parts) {
-		const eq_index = part.indexOf("=");
-		if (eq_index !== -1) {
-			const key = part.slice(0, eq_index);
-			const value = part.slice(eq_index + 1);
-			const expr = expression.expressions.find((e) => e.name === key);
-			if (expr) params[expr.name] = decodeURIComponent(value);
-		}
-	}
-	return true;
-}
-/**
-* Handle query match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_query_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	const clean_segment = segment.replace(/^[?&]/, "");
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		if (expr.explode) {
-			const values = clean_segment.split("&");
-			params[expr.name] = values.map((v) => decodeURIComponent(v));
-		} else {
-			const parts = clean_segment.split("&");
-			for (const part of parts) {
-				const eq_index = part.indexOf("=");
-				if (eq_index !== -1) {
-					const key = part.slice(0, eq_index);
-					const value = part.slice(eq_index + 1);
-					if (key === expr.name) params[expr.name] = decodeURIComponent(value);
-				}
-			}
-		}
-	} else {
-		const parts = clean_segment.split("&");
-		for (const part of parts) {
-			const eq_index = part.indexOf("=");
-			if (eq_index !== -1) {
-				const key = part.slice(0, eq_index);
-				const value = part.slice(eq_index + 1);
-				const expr = expression.expressions.find((e) => e.name === key);
-				if (expr) params[expr.name] = decodeURIComponent(value);
-			}
-		}
-	}
-	return true;
-}
-
-//#endregion
-//#region ../../node_modules/.pnpm/uri-template-matcher@1.1.2/node_modules/uri-template-matcher/src/matcher.js
-/**
-* @fileoverview Main UriTemplateMatcher class
-*/
-/**
-* @typedef {import('./types.js').MatchResult} MatchResult
-* @typedef {import('./types.js').ParsedTemplate} ParsedTemplate
-*/
-/**
-* URI Template Matcher class for registering and matching URI templates
-*/
-var UriTemplateMatcher = class {
-	/**
-	* Create a new UriTemplateMatcher instance
-	*/
-	constructor() {
-		/** @type {ParsedTemplate[]} */
-		this.templates = [];
-	}
-	/**
-	* Add a URI template to the matcher
-	* @param {string} template - The URI template string to add
-	* @throws {Error} If template is invalid
-	*/
-	add(template) {
-		if (typeof template !== "string") throw new Error("Template must be a string");
-		if (template !== "" && template.trim() === "") throw new Error("Template cannot be empty");
-		try {
-			const parsed = parse_template(template);
-			this.templates.push(parsed);
-		} catch (error) {
-			throw new Error(`Invalid template: ${template} - ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
-	/**
-	* Match a URI against all registered templates
-	* @param {string} uri - The URI to match
-	* @returns {MatchResult | null} Match result or null if no match found
-	* @throws {Error} If URI is invalid
-	*/
-	match(uri) {
-		if (typeof uri !== "string") throw new Error("URI must be a string");
-		for (const template of this.templates) {
-			const params = match_uri(uri, template);
-			if (params !== null) return {
-				template: template.template,
-				params
-			};
-		}
-		return null;
-	}
-	/**
-	* Clear all registered templates
-	*/
-	clear() {
-		this.templates = [];
-	}
-	/**
-	* Get all registered template strings
-	* @returns {string[]} Array of template strings
-	*/
-	all() {
-		return this.templates.map((t) => t.template);
-	}
-};
-
-//#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/validation/index.js
-var import_dist = require_dist();
-const JSONRPC_VERSION = "2.0";
-var McpError = class extends Error {
-	/**
-	* @param {number} code
-	* @param {string} message
-	*/
-	constructor(code, message) {
-		super(`MCP error ${code}: ${message}`);
-		this.name = "McpError";
-	}
-};
-/**
-* A progress token, used to associate progress notifications with the original request.
-*/
-const ProgressTokenSchema = union([string(), pipe(number(), integer())]);
-/**
-* An opaque token used to represent a cursor for pagination.
-*/
-const CursorSchema = string();
-const RequestMetaSchema = looseObject({ progressToken: optional(ProgressTokenSchema) });
-const BaseRequestParamsSchema = looseObject({ _meta: optional(RequestMetaSchema) });
-const RequestSchema = object({
-	method: string(),
-	params: optional(BaseRequestParamsSchema)
-});
-const BaseNotificationParamsSchema = looseObject({ _meta: optional(looseObject({})) });
-const NotificationSchema = object({
-	method: string(),
-	params: optional(BaseNotificationParamsSchema)
-});
-const ResultSchema = looseObject({ _meta: optional(looseObject({})) });
-/**
-* A uniquely identifying ID for a request in JSON-RPC.
-*/
-const RequestIdSchema = union([string(), pipe(number(), integer())]);
-/**
-* A request that expects a response.
-*/
-const JSONRPCRequestSchema = object({
-	jsonrpc: literal(JSONRPC_VERSION),
-	id: RequestIdSchema,
-	...RequestSchema.entries
-});
-/**
-* A notification which does not expect a response.
-*/
-const JSONRPCNotificationSchema = object({
-	jsonrpc: literal(JSONRPC_VERSION),
-	...NotificationSchema.entries
-});
-/**
-* A successful (non-error) response to a request.
-*/
-const JSONRPCResponseSchema = strictObject({
-	jsonrpc: literal(JSONRPC_VERSION),
-	id: RequestIdSchema,
-	result: ResultSchema
-});
-/**
-* A response to a request that indicates an error occurred.
-*/
-const JSONRPCErrorSchema = strictObject({
-	jsonrpc: literal(JSONRPC_VERSION),
-	id: RequestIdSchema,
-	error: object({
-		code: pipe(number(), integer()),
-		message: string(),
-		data: optional(unknown())
-	})
-});
-const JSONRPCMessageSchema = union([
-	JSONRPCRequestSchema,
-	JSONRPCNotificationSchema,
-	JSONRPCResponseSchema,
-	JSONRPCErrorSchema
-]);
-/**
-* A response that indicates success but carries no data.
-*/
-const EmptyResultSchema = strictObject({ ...ResultSchema.entries });
-/**
-* This notification can be sent by either side to indicate that it is cancelling a previously-issued request.
-*
-* The request SHOULD still be in-flight, but due to communication latency, it is always possible that this notification MAY arrive after the request has already finished.
-*
-* This notification indicates that the result will be unused, so any associated processing SHOULD cease.
-*
-* A client MUST NOT attempt to cancel its `initialize` request.
-*/
-const CancelledNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/cancelled"),
-	params: object({
-		...BaseNotificationParamsSchema.entries,
-		requestId: RequestIdSchema,
-		reason: optional(string())
-	})
-});
-/**
-* Base metadata interface for common properties across resources, tools, prompts, and implementations.
-*/
-const BaseMetadataSchema = object({
-	name: string(),
-	title: optional(string())
-});
-/**
-* Icon schema for use in tools, prompts, resources, and implementations.
-*/
-const IconSchema = object({
-	src: string(),
-	mimeType: optional(string()),
-	sizes: optional(array(string()))
-});
-const IconsSchema = object({ icons: optional(array(IconSchema)) });
-/**
-* Describes the name and version of an MCP implementation.
-*/
-const ImplementationSchema = object({
-	...BaseMetadataSchema.entries,
-	version: string(),
-	websiteUrl: optional(string()),
-	...IconsSchema.entries
-});
-/**
-* Capabilities a client may support. Known capabilities are defined here, in this schema, but this is not a closed set: any client can define its own, additional capabilities.
-*/
-const ClientCapabilitiesSchema = object({
-	experimental: optional(object({})),
-	sampling: optional(object({})),
-	elicitation: optional(object({})),
-	roots: optional(object({ listChanged: optional(boolean()) }))
-});
-const InitializeRequestParamsSchema = object({
-	...BaseRequestParamsSchema.entries,
-	protocolVersion: string(),
-	capabilities: ClientCapabilitiesSchema,
-	clientInfo: ImplementationSchema
-});
-/**
-* This request is sent from the client to the server when it first connects, asking it to begin initialization.
-*/
-const InitializeRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("initialize"),
-	params: InitializeRequestParamsSchema
-});
-/**
-* Capabilities that a server may support. Known capabilities are defined here, in this schema, but this is not a closed set: any server can define its own, additional capabilities.
-*/
-const ServerCapabilitiesSchema = object({
-	experimental: optional(object({})),
-	logging: optional(object({})),
-	completions: optional(object({})),
-	prompts: optional(object({ listChanged: optional(boolean()) })),
-	resources: optional(object({
-		subscribe: optional(boolean()),
-		listChanged: optional(boolean())
-	})),
-	tools: optional(object({ listChanged: optional(boolean()) }))
-});
-/**
-* After receiving an initialize request from the client, the server sends this response.
-*/
-const InitializeResultSchema = object({
-	...ResultSchema.entries,
-	protocolVersion: string(),
-	capabilities: ServerCapabilitiesSchema,
-	serverInfo: ImplementationSchema,
-	instructions: optional(string())
-});
-/**
-* This notification is sent from the client to the server after initialization has finished.
-*/
-const InitializedNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/initialized")
-});
-/**
-* A ping, issued by either the server or the client, to check that the other party is still alive. The receiver must promptly respond, or else may be disconnected.
-*/
-const PingRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("ping")
-});
-const ProgressSchema = object({
-	progress: number(),
-	total: optional(number()),
-	message: optional(string())
-});
-/**
-* An out-of-band notification used to inform the receiver of a progress update for a long-running request.
-*/
-const ProgressNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/progress"),
-	params: object({
-		...BaseNotificationParamsSchema.entries,
-		...ProgressSchema.entries,
-		progressToken: ProgressTokenSchema
-	})
-});
-const PaginatedRequestSchema = object({
-	...RequestSchema.entries,
-	params: optional(object({
-		...BaseRequestParamsSchema.entries,
-		cursor: optional(CursorSchema)
-	}))
-});
-const PaginatedResultSchema = object({
-	...ResultSchema.entries,
-	nextCursor: optional(CursorSchema)
-});
-/**
-* The contents of a specific resource or sub-resource.
-*/
-const ResourceContentsSchema = object({
-	uri: string(),
-	mimeType: optional(string()),
-	_meta: optional(looseObject({}))
-});
-const TextResourceContentsSchema = object({
-	...ResourceContentsSchema.entries,
-	text: string()
-});
-const BlobResourceContentsSchema = object({
-	...ResourceContentsSchema.entries,
-	blob: pipe(string(), base64())
-});
-/**
-* A known resource that the server is capable of reading.
-*/
-const ResourceSchema = object({
-	...BaseMetadataSchema.entries,
-	uri: string(),
-	description: optional(string()),
-	mimeType: optional(string()),
-	_meta: optional(looseObject({})),
-	...IconsSchema.entries
-});
-/**
-* A template description for resources available on the server.
-*/
-const ResourceTemplateSchema = object({
-	...BaseMetadataSchema.entries,
-	uriTemplate: string(),
-	description: optional(string()),
-	mimeType: optional(string()),
-	_meta: optional(looseObject({})),
-	...IconsSchema.entries
-});
-/**
-* Sent from the client to request a list of resources the server has.
-*/
-const ListResourcesRequestSchema = object({
-	...PaginatedRequestSchema.entries,
-	method: literal("resources/list")
-});
-/**
-* The server's response to a resources/list request from the client.
-*/
-const ListResourcesResultSchema = object({
-	...PaginatedResultSchema.entries,
-	resources: array(ResourceSchema)
-});
-/**
-* Sent from the client to request a list of resource templates the server has.
-*/
-const ListResourceTemplatesRequestSchema = object({
-	...PaginatedRequestSchema.entries,
-	method: literal("resources/templates/list")
-});
-/**
-* The server's response to a resources/templates/list request from the client.
-*/
-const ListResourceTemplatesResultSchema = object({
-	...PaginatedResultSchema.entries,
-	resourceTemplates: array(ResourceTemplateSchema)
-});
-/**
-* Sent from the client to the server, to read a specific resource URI.
-*/
-const ReadResourceRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("resources/read"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		uri: string()
-	})
-});
-/**
-* The server's response to a resources/read request from the client.
-*/
-const ReadResourceResultSchema = object({
-	...ResultSchema.entries,
-	contents: array(union([TextResourceContentsSchema, BlobResourceContentsSchema]))
-});
-/**
-* An optional notification from the server to the client, informing it that the list of resources it can read from has changed. This may be issued by servers without any previous subscription from the client.
-*/
-const ResourceListChangedNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/resources/list_changed")
-});
-/**
-* Sent from the client to request resources/updated notifications from the server whenever a particular resource changes.
-*/
-const SubscribeRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("resources/subscribe"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		uri: string()
-	})
-});
-/**
-* Sent from the client to request cancellation of resources/updated notifications from the server. This should follow a previous resources/subscribe request.
-*/
-const UnsubscribeRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("resources/unsubscribe"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		uri: string()
-	})
-});
-/**
-* A notification from the server to the client, informing it that a resource has changed and may need to be read again. This should only be sent if the client previously sent a resources/subscribe request.
-*/
-const ResourceUpdatedNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/resources/updated"),
-	params: object({
-		...BaseNotificationParamsSchema.entries,
-		uri: string()
-	})
-});
-/**
-* Describes an argument that a prompt can accept.
-*/
-const PromptArgumentSchema = object({
-	name: string(),
-	description: optional(string()),
-	required: optional(boolean())
-});
-/**
-* A prompt or prompt template that the server offers.
-*/
-const PromptSchema = object({
-	...BaseMetadataSchema.entries,
-	description: optional(string()),
-	arguments: optional(array(PromptArgumentSchema)),
-	_meta: optional(looseObject({})),
-	...IconsSchema.entries
-});
-/**
-* Sent from the client to request a list of prompts and prompt templates the server has.
-*/
-const ListPromptsRequestSchema = object({
-	...PaginatedRequestSchema.entries,
-	method: literal("prompts/list")
-});
-/**
-* The server's response to a prompts/list request from the client.
-*/
-const ListPromptsResultSchema = object({
-	...PaginatedResultSchema.entries,
-	prompts: array(PromptSchema)
-});
-/**
-* Used by the client to get a prompt provided by the server.
-*/
-const GetPromptRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("prompts/get"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		name: string(),
-		arguments: optional(record(string(), string()))
-	})
-});
-/**
-* Text provided to or from an LLM.
-*/
-const TextContentSchema = object({
-	type: literal("text"),
-	text: string(),
-	_meta: optional(looseObject({}))
-});
-/**
-* An image provided to or from an LLM.
-*/
-const ImageContentSchema = object({
-	type: literal("image"),
-	data: pipe(string(), base64()),
-	mimeType: string(),
-	_meta: optional(looseObject({}))
-});
-/**
-* An Audio provided to or from an LLM.
-*/
-const AudioContentSchema = object({
-	type: literal("audio"),
-	data: pipe(string(), base64()),
-	mimeType: string(),
-	_meta: optional(looseObject({}))
-});
-/**
-* The contents of a resource, embedded into a prompt or tool call result.
-*/
-const EmbeddedResourceSchema = object({
-	type: literal("resource"),
-	resource: union([TextResourceContentsSchema, BlobResourceContentsSchema]),
-	_meta: optional(looseObject({}))
-});
-/**
-* A resource that the server is capable of reading, included in a prompt or tool call result.
-*
-* Note: resource links returned by tools are not guaranteed to appear in the results of `resources/list` requests.
-*/
-const ResourceLinkSchema = object({
-	...ResourceSchema.entries,
-	type: literal("resource_link")
-});
-/**
-* A content block that can be used in prompts and tool results.
-*/
-const ContentBlockSchema = union([
-	TextContentSchema,
-	ImageContentSchema,
-	AudioContentSchema,
-	ResourceLinkSchema,
-	EmbeddedResourceSchema
-]);
-/**
-* Describes a message returned as part of a prompt.
-*/
-const PromptMessageSchema = object({
-	role: picklist(["user", "assistant"]),
-	content: ContentBlockSchema
-});
-/**
-* The server's response to a prompts/get request from the client.
-*/
-const GetPromptResultSchema = object({
-	...ResultSchema.entries,
-	description: optional(string()),
-	messages: array(PromptMessageSchema)
-});
-/**
-* An optional notification from the server to the client, informing it that the list of prompts it offers has changed. This may be issued by servers without any previous subscription from the client.
-*/
-const PromptListChangedNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/prompts/list_changed")
-});
-/**
-* Additional properties describing a Tool to clients.
-*
-* NOTE: all properties in ToolAnnotations are **hints**.
-* They are not guaranteed to provide a faithful description of
-* tool behavior (including descriptive properties like `title`).
-*
-* Clients should never make tool use decisions based on ToolAnnotations
-* received from untrusted servers.
-*/
-const ToolAnnotationsSchema = object({
-	title: optional(string()),
-	readOnlyHint: optional(boolean()),
-	destructiveHint: optional(boolean()),
-	idempotentHint: optional(boolean()),
-	openWorldHint: optional(boolean())
-});
-/**
-* Definition for a tool the client can call.
-*/
-const ToolSchema = object({
-	...BaseMetadataSchema.entries,
-	description: optional(string()),
-	inputSchema: object({
-		type: literal("object"),
-		properties: optional(object({})),
-		required: optional(array(string()))
-	}),
-	outputSchema: optional(object({
-		type: literal("object"),
-		properties: optional(object({})),
-		required: optional(array(string()))
-	})),
-	annotations: optional(ToolAnnotationsSchema),
-	_meta: optional(looseObject({})),
-	...IconsSchema.entries
-});
-/**
-* Sent from the client to request a list of tools the server has.
-*/
-const ListToolsRequestSchema = object({
-	...PaginatedRequestSchema.entries,
-	method: literal("tools/list")
-});
-/**
-* The server's response to a tools/list request from the client.
-*/
-const ListToolsResultSchema = object({
-	...PaginatedResultSchema.entries,
-	tools: array(ToolSchema)
-});
-/**
-* The server's response to a tool call.
-*/
-const CallToolResultSchema = object({
-	...ResultSchema.entries,
-	content: optional(array(ContentBlockSchema), []),
-	structuredContent: optional(looseObject({})),
-	isError: optional(boolean())
-});
-/**
-* CallToolResultSchema extended with backwards compatibility to protocol version 2024-10-07.
-*/
-const CompatibilityCallToolResultSchema = union([CallToolResultSchema, object({
-	...ResultSchema.entries,
-	toolResult: unknown()
-})]);
-/**
-* Used by the client to invoke a tool provided by the server.
-*/
-const CallToolRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("tools/call"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		name: string(),
-		arguments: optional(record(string(), unknown()))
-	})
-});
-/**
-* An optional notification from the server to the client, informing it that the list of tools it offers has changed. This may be issued by servers without any previous subscription from the client.
-*/
-const ToolListChangedNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/tools/list_changed")
-});
-/**
-* The severity of a log message.
-*/
-const LoggingLevelSchema = picklist([
-	"debug",
-	"info",
-	"notice",
-	"warning",
-	"error",
-	"critical",
-	"alert",
-	"emergency"
-]);
-/**
-* A request from the client to the server, to enable or adjust logging.
-*/
-const SetLevelRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("logging/setLevel"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		level: LoggingLevelSchema
-	})
-});
-/**
-* Notification of a log message passed from server to client. If no logging/setLevel request has been sent from the client, the server MAY decide which messages to send automatically.
-*/
-const LoggingMessageNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/message"),
-	params: object({
-		...BaseNotificationParamsSchema.entries,
-		level: LoggingLevelSchema,
-		logger: optional(string()),
-		data: unknown()
-	})
-});
-/**
-* Hints to use for model selection.
-*/
-const ModelHintSchema = object({ name: optional(string()) });
-/**
-* The server's preferences for model selection, requested of the client during sampling.
-*/
-const ModelPreferencesSchema = object({
-	hints: optional(array(ModelHintSchema)),
-	costPriority: optional(pipe(number(), minValue(0), maxValue(1))),
-	speedPriority: optional(pipe(number(), minValue(0), maxValue(1))),
-	intelligencePriority: optional(pipe(number(), minValue(0), maxValue(1)))
-});
-/**
-* Describes a message issued to or received from an LLM API.
-*/
-const SamplingMessageSchema = object({
-	role: picklist(["user", "assistant"]),
-	content: union([
-		TextContentSchema,
-		ImageContentSchema,
-		AudioContentSchema
-	])
-});
-const CreateMessageRequestParamsSchema = object({
-	...BaseRequestParamsSchema.entries,
-	messages: array(SamplingMessageSchema),
-	systemPrompt: optional(string()),
-	includeContext: optional(picklist([
-		"none",
-		"thisServer",
-		"allServers"
-	])),
-	temperature: optional(number()),
-	maxTokens: pipe(number(), integer()),
-	stopSequences: optional(array(string())),
-	metadata: optional(object({})),
-	modelPreferences: optional(ModelPreferencesSchema)
-});
-/**
-* A request from the server to sample an LLM via the client. The client has full discretion over which model to select. The client should also inform the user before beginning sampling, to allow them to inspect the request (human in the loop) and decide whether to approve it.
-*/
-const CreateMessageRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("sampling/createMessage"),
-	params: CreateMessageRequestParamsSchema
-});
-/**
-* The client's response to a sampling/create_message request from the server. The client should inform the user before returning the sampled message, to allow them to inspect the response (human in the loop) and decide whether to allow the server to see it.
-*/
-const CreateMessageResultSchema = object({
-	...ResultSchema.entries,
-	model: string(),
-	stopReason: optional(union([picklist([
-		"endTurn",
-		"stopSequence",
-		"maxTokens"
-	]), string()])),
-	role: picklist(["user", "assistant"]),
-	content: variant("type", [
-		TextContentSchema,
-		ImageContentSchema,
-		AudioContentSchema
-	])
-});
-/**
-* Primitive schema definition for boolean fields.
-*/
-const BooleanSchemaSchema = object({
-	type: literal("boolean"),
-	title: optional(string()),
-	description: optional(string()),
-	default: optional(boolean())
-});
-/**
-* Primitive schema definition for string fields.
-*/
-const StringSchemaSchema = object({
-	type: literal("string"),
-	title: optional(string()),
-	description: optional(string()),
-	minLength: optional(number()),
-	maxLength: optional(number()),
-	format: optional(picklist([
-		"email",
-		"uri",
-		"date",
-		"date-time"
-	]))
-});
-/**
-* Primitive schema definition for number fields.
-*/
-const NumberSchemaSchema = object({
-	type: picklist(["number", "integer"]),
-	title: optional(string()),
-	description: optional(string()),
-	minimum: optional(number()),
-	maximum: optional(number())
-});
-/**
-* Primitive schema definition for enum fields.
-*/
-const EnumSchemaSchema = object({
-	type: literal("string"),
-	title: optional(string()),
-	description: optional(string()),
-	enum: array(string()),
-	enumNames: optional(array(string()))
-});
-/**
-* Union of all primitive schema definitions.
-*/
-const PrimitiveSchemaDefinitionSchema = union([
-	BooleanSchemaSchema,
-	StringSchemaSchema,
-	NumberSchemaSchema,
-	EnumSchemaSchema
-]);
-/**
-* A request from the server to elicit user input via the client.
-* The client should present the message and form fields to the user.
-*/
-const ElicitRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("elicitation/create"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		message: string(),
-		requestedSchema: object({
-			type: literal("object"),
-			properties: record(string(), PrimitiveSchemaDefinitionSchema),
-			required: optional(array(string()))
-		})
-	})
-});
-/**
-* The client's response to an elicitation/create request from the server.
-*/
-const ElicitResultSchema = object({
-	...ResultSchema.entries,
-	action: picklist([
-		"accept",
-		"decline",
-		"cancel"
-	]),
-	content: optional(record(string(), unknown()))
-});
-/**
-* A reference to a resource or resource template definition.
-*/
-const ResourceTemplateReferenceSchema = object({
-	type: literal("ref/resource"),
-	uri: string()
-});
-/**
-* Identifies a prompt.
-*/
-const PromptReferenceSchema = object({
-	type: literal("ref/prompt"),
-	name: string()
-});
-/**
-* A request from the client to the server, to ask for completion options.
-*/
-const CompleteRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("completion/complete"),
-	params: object({
-		...BaseRequestParamsSchema.entries,
-		ref: union([PromptReferenceSchema, ResourceTemplateReferenceSchema]),
-		argument: object({
-			name: string(),
-			value: string()
-		}),
-		context: optional(object({ arguments: optional(record(string(), string())) }))
-	})
-});
-/**
-* The server's response to a completion/complete request
-*/
-const CompleteResultSchema = object({
-	...ResultSchema.entries,
-	completion: object({
-		values: pipe(array(string()), maxLength(100)),
-		total: optional(pipe(number(), integer())),
-		hasMore: optional(boolean())
-	})
-});
-/**
-* Represents a root directory or file that the server can operate on.
-*/
-const RootSchema = object({
-	uri: pipe(string(), startsWith("file://")),
-	name: optional(string()),
-	_meta: optional(looseObject({}))
-});
-/**
-* Sent from the server to request a list of root URIs from the client.
-*/
-const ListRootsRequestSchema = object({
-	...RequestSchema.entries,
-	method: literal("roots/list")
-});
-/**
-* The client's response to a roots/list request from the server.
-*/
-const ListRootsResultSchema = object({
-	...ResultSchema.entries,
-	roots: array(RootSchema)
-});
-/**
-* A notification from the client to the server, informing it that the list of roots has changed.
-*/
-const RootsListChangedNotificationSchema = object({
-	...NotificationSchema.entries,
-	method: literal("notifications/roots/list_changed")
-});
-const ClientRequestSchema = union([
-	PingRequestSchema,
-	InitializeRequestSchema,
-	CompleteRequestSchema,
-	SetLevelRequestSchema,
-	GetPromptRequestSchema,
-	ListPromptsRequestSchema,
-	ListResourcesRequestSchema,
-	ListResourceTemplatesRequestSchema,
-	ReadResourceRequestSchema,
-	SubscribeRequestSchema,
-	UnsubscribeRequestSchema,
-	CallToolRequestSchema,
-	ListToolsRequestSchema
-]);
-const ClientNotificationSchema = union([
-	CancelledNotificationSchema,
-	ProgressNotificationSchema,
-	InitializedNotificationSchema,
-	RootsListChangedNotificationSchema
-]);
-const ClientResultSchema = union([
-	EmptyResultSchema,
-	CreateMessageResultSchema,
-	ElicitResultSchema,
-	ListRootsResultSchema
-]);
-const ServerRequestSchema = union([
-	PingRequestSchema,
-	CreateMessageRequestSchema,
-	ElicitRequestSchema,
-	ListRootsRequestSchema
-]);
-const ServerNotificationSchema = union([
-	CancelledNotificationSchema,
-	ProgressNotificationSchema,
-	LoggingMessageNotificationSchema,
-	ResourceUpdatedNotificationSchema,
-	ResourceListChangedNotificationSchema,
-	ToolListChangedNotificationSchema,
-	PromptListChangedNotificationSchema
-]);
-const ServerResultSchema = union([
-	EmptyResultSchema,
-	InitializeResultSchema,
-	CompleteResultSchema,
-	GetPromptResultSchema,
-	ListPromptsResultSchema,
-	ListResourcesResultSchema,
-	ListResourceTemplatesResultSchema,
-	ReadResourceResultSchema,
-	CallToolResultSchema,
-	ListToolsResultSchema
-]);
-/**
-* @typedef {v.InferInput<typeof IconsSchema>} Icons
-*/
-/**
-* @typedef {v.InferInput<typeof ClientCapabilitiesSchema>} ClientCapabilities
-*/
-/**
-* @typedef {v.InferInput<typeof ServerCapabilitiesSchema>} ServerCapabilities
-*/
-/**
-* @typedef {v.InferInput<typeof ImplementationSchema>} ClientInfo
-*/
-/**
-* @typedef {v.InferInput<typeof ImplementationSchema> & { description?: string }} ServerInfo
-*/
-/**
-* @typedef {v.InferInput<typeof InitializeRequestParamsSchema>} InitializeRequestParams
-*/
-/**
-* @template {Record<string, unknown> | undefined} TStructuredContent
-* @typedef {Omit<v.InferInput<typeof CallToolResultSchema>, "structuredContent" | "isError"> & (undefined extends TStructuredContent ? { structuredContent?: undefined, isError?: boolean } : ({ structuredContent: TStructuredContent, isError?: false } | { isError: true, structuredContent?: TStructuredContent }))} CallToolResult
-*/
-/**
-* @typedef {v.InferInput<typeof ReadResourceResultSchema>} ReadResourceResult
-*/
-/**
-* @typedef {v.InferInput<typeof GetPromptResultSchema>} GetPromptResult
-*/
-/**
-* @typedef {v.InferInput<typeof CompleteResultSchema>} CompleteResult
-*/
-/**
-* @typedef {v.InferInput<typeof CreateMessageRequestParamsSchema>} CreateMessageRequestParams
-*/
-/**
-* @typedef {v.InferInput<typeof CreateMessageResultSchema>} CreateMessageResult
-*/
-/**
-* @typedef {v.InferInput<typeof ModelPreferencesSchema>} ModelPreferences
-*/
-/**
-* @typedef {v.InferInput<typeof SamplingMessageSchema>} SamplingMessage
-*/
-/**
-* @typedef {v.InferInput<typeof ModelHintSchema>} ModelHint
-*/
-/**
-* @typedef {v.InferInput<typeof ResourceSchema>} Resource
-*/
-/**
-* @typedef {v.InferInput<typeof JSONRPCRequestSchema>} JSONRPCRequest
-*/
-/**
-* @typedef {v.InferInput<typeof JSONRPCMessageSchema>} JSONRPCMessage
-*/
-/**
-* @typedef {v.InferInput<typeof JSONRPCResponseSchema>} JSONRPCResponse
-*/
-/**
-* @typedef {v.InferInput<typeof LoggingLevelSchema>} LoggingLevel
-*/
-/**
-* @typedef {v.InferInput<typeof ToolAnnotationsSchema>} ToolAnnotations
-*/
-/**
-* @typedef {v.InferInput<typeof ElicitResultSchema>} ElicitResult
-*/
-/**
-* @typedef {v.InferInput<typeof InitializeResultSchema>} InitializeResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListToolsResultSchema>} ListToolsResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListPromptsResultSchema>} ListPromptsResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListResourcesResultSchema>} ListResourcesResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListResourceTemplatesResultSchema>} ListResourceTemplatesResult
-*/
-/**
-* @typedef {v.InferInput<typeof EmbeddedResourceSchema>} EmbeddedResource
-*/
-/**
-* @typedef {v.InferInput<typeof ResourceLinkSchema>} ResourceLink
-*/
-
-//#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/validation/version.js
-/**
-* Supported MCP protocol versions in order of preference (newest first)
-*/
-const SUPPORTED_VERSIONS = [
-	"2025-06-18",
-	"2025-03-26",
-	"2024-11-05"
-];
-/**
-* Latest stable protocol version
-*/
-const LATEST_PROTOCOL_VERSION = SUPPORTED_VERSIONS[0];
-/**
-* Validate MCP protocol version format (YYYY-MM-DD)
-*/
-const ProtocolVersionSchema = pipe(string(), regex$2(/^\d{4}-\d{2}-\d{2}$/, "Protocol version must be in YYYY-MM-DD format"));
-/**
-* Validate that the protocol version is supported
-*/
-const SupportedProtocolVersionSchema = pipe(ProtocolVersionSchema, check((version) => SUPPORTED_VERSIONS.includes(version), "Unsupported protocol version"));
-/**
-* Check if a protocol version is supported
-* @param {string} version - The protocol version to check
-* @returns {boolean} True if the version is supported
-*/
-function is_supported_version(version) {
-	return SUPPORTED_VERSIONS.includes(version);
-}
-/**
-* Get the latest supported protocol version
-* @returns {string} The latest protocol version
-*/
-function get_latest_version() {
-	return LATEST_PROTOCOL_VERSION;
-}
-/**
-* Get all supported protocol versions
-* @returns {string[]} Array of supported protocol versions
-*/
-function get_supported_versions() {
-	return [...SUPPORTED_VERSIONS];
-}
-/**
-* Negotiate protocol version between client and server
-* According to MCP spec:
-* - If server supports client's version, return same version
-* - Otherwise, return server's latest supported version
-* @param {string} client_version - The protocol version requested by client
-* @returns {string} The negotiated protocol version
-*/
-function negotiate_protocol_version(client_version) {
-	if (is_supported_version(client_version)) return client_version;
-	return get_latest_version();
-}
-/**
-* Check if version negotiation should result in an error
-* @param {string} client_version - The protocol version requested by client
-* @returns {boolean} True if negotiation should fail
-*/
-function should_version_negotiation_fail(client_version) {
-	try {
-		const date = new Date(client_version);
-		return !/^\d{4}-\d{2}-\d{2}$/.test(client_version) || isNaN(date.getTime());
-	} catch {
-		return true;
-	}
-}
-
-//#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/internal/utils.js
-/**
-* @import {McpEvents} from "./internal.js"
-*/
-/**
-*	@template {keyof McpEvents} Key
-* @param {Key} type
-* @param {Parameters<McpEvents[Key]>[0]} detail
-* @returns
-*/
-function event(type, detail) {
-	return new CustomEvent(type, { detail });
-}
-
-//#endregion
-//#region ../../node_modules/.pnpm/sqids@0.3.0/node_modules/sqids/esm/sqids.js
-var sqids_exports = /* @__PURE__ */ __exportAll({
-	default: () => Sqids$1,
-	defaultOptions: () => defaultOptions
-});
-var defaultOptions, Sqids$1;
-var init_sqids = __esmMin((() => {
-	defaultOptions = {
-		alphabet: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-		minLength: 0,
-		blocklist: new Set([
-			"0rgasm",
-			"1d10t",
-			"1d1ot",
-			"1di0t",
-			"1diot",
-			"1eccacu10",
-			"1eccacu1o",
-			"1eccacul0",
-			"1eccaculo",
-			"1mbec11e",
-			"1mbec1le",
-			"1mbeci1e",
-			"1mbecile",
-			"a11upat0",
-			"a11upato",
-			"a1lupat0",
-			"a1lupato",
-			"aand",
-			"ah01e",
-			"ah0le",
-			"aho1e",
-			"ahole",
-			"al1upat0",
-			"al1upato",
-			"allupat0",
-			"allupato",
-			"ana1",
-			"ana1e",
-			"anal",
-			"anale",
-			"anus",
-			"arrapat0",
-			"arrapato",
-			"arsch",
-			"arse",
-			"ass",
-			"b00b",
-			"b00be",
-			"b01ata",
-			"b0ceta",
-			"b0iata",
-			"b0ob",
-			"b0obe",
-			"b0sta",
-			"b1tch",
-			"b1te",
-			"b1tte",
-			"ba1atkar",
-			"balatkar",
-			"bastard0",
-			"bastardo",
-			"batt0na",
-			"battona",
-			"bitch",
-			"bite",
-			"bitte",
-			"bo0b",
-			"bo0be",
-			"bo1ata",
-			"boceta",
-			"boiata",
-			"boob",
-			"boobe",
-			"bosta",
-			"bran1age",
-			"bran1er",
-			"bran1ette",
-			"bran1eur",
-			"bran1euse",
-			"branlage",
-			"branler",
-			"branlette",
-			"branleur",
-			"branleuse",
-			"c0ck",
-			"c0g110ne",
-			"c0g11one",
-			"c0g1i0ne",
-			"c0g1ione",
-			"c0gl10ne",
-			"c0gl1one",
-			"c0gli0ne",
-			"c0glione",
-			"c0na",
-			"c0nnard",
-			"c0nnasse",
-			"c0nne",
-			"c0u111es",
-			"c0u11les",
-			"c0u1l1es",
-			"c0u1lles",
-			"c0ui11es",
-			"c0ui1les",
-			"c0uil1es",
-			"c0uilles",
-			"c11t",
-			"c11t0",
-			"c11to",
-			"c1it",
-			"c1it0",
-			"c1ito",
-			"cabr0n",
-			"cabra0",
-			"cabrao",
-			"cabron",
-			"caca",
-			"cacca",
-			"cacete",
-			"cagante",
-			"cagar",
-			"cagare",
-			"cagna",
-			"cara1h0",
-			"cara1ho",
-			"caracu10",
-			"caracu1o",
-			"caracul0",
-			"caraculo",
-			"caralh0",
-			"caralho",
-			"cazz0",
-			"cazz1mma",
-			"cazzata",
-			"cazzimma",
-			"cazzo",
-			"ch00t1a",
-			"ch00t1ya",
-			"ch00tia",
-			"ch00tiya",
-			"ch0d",
-			"ch0ot1a",
-			"ch0ot1ya",
-			"ch0otia",
-			"ch0otiya",
-			"ch1asse",
-			"ch1avata",
-			"ch1er",
-			"ch1ng0",
-			"ch1ngadaz0s",
-			"ch1ngadazos",
-			"ch1ngader1ta",
-			"ch1ngaderita",
-			"ch1ngar",
-			"ch1ngo",
-			"ch1ngues",
-			"ch1nk",
-			"chatte",
-			"chiasse",
-			"chiavata",
-			"chier",
-			"ching0",
-			"chingadaz0s",
-			"chingadazos",
-			"chingader1ta",
-			"chingaderita",
-			"chingar",
-			"chingo",
-			"chingues",
-			"chink",
-			"cho0t1a",
-			"cho0t1ya",
-			"cho0tia",
-			"cho0tiya",
-			"chod",
-			"choot1a",
-			"choot1ya",
-			"chootia",
-			"chootiya",
-			"cl1t",
-			"cl1t0",
-			"cl1to",
-			"clit",
-			"clit0",
-			"clito",
-			"cock",
-			"cog110ne",
-			"cog11one",
-			"cog1i0ne",
-			"cog1ione",
-			"cogl10ne",
-			"cogl1one",
-			"cogli0ne",
-			"coglione",
-			"cona",
-			"connard",
-			"connasse",
-			"conne",
-			"cou111es",
-			"cou11les",
-			"cou1l1es",
-			"cou1lles",
-			"coui11es",
-			"coui1les",
-			"couil1es",
-			"couilles",
-			"cracker",
-			"crap",
-			"cu10",
-			"cu1att0ne",
-			"cu1attone",
-			"cu1er0",
-			"cu1ero",
-			"cu1o",
-			"cul0",
-			"culatt0ne",
-			"culattone",
-			"culer0",
-			"culero",
-			"culo",
-			"cum",
-			"cunt",
-			"d11d0",
-			"d11do",
-			"d1ck",
-			"d1ld0",
-			"d1ldo",
-			"damn",
-			"de1ch",
-			"deich",
-			"depp",
-			"di1d0",
-			"di1do",
-			"dick",
-			"dild0",
-			"dildo",
-			"dyke",
-			"encu1e",
-			"encule",
-			"enema",
-			"enf01re",
-			"enf0ire",
-			"enfo1re",
-			"enfoire",
-			"estup1d0",
-			"estup1do",
-			"estupid0",
-			"estupido",
-			"etr0n",
-			"etron",
-			"f0da",
-			"f0der",
-			"f0ttere",
-			"f0tters1",
-			"f0ttersi",
-			"f0tze",
-			"f0utre",
-			"f1ca",
-			"f1cker",
-			"f1ga",
-			"fag",
-			"fica",
-			"ficker",
-			"figa",
-			"foda",
-			"foder",
-			"fottere",
-			"fotters1",
-			"fottersi",
-			"fotze",
-			"foutre",
-			"fr0c10",
-			"fr0c1o",
-			"fr0ci0",
-			"fr0cio",
-			"fr0sc10",
-			"fr0sc1o",
-			"fr0sci0",
-			"fr0scio",
-			"froc10",
-			"froc1o",
-			"froci0",
-			"frocio",
-			"frosc10",
-			"frosc1o",
-			"frosci0",
-			"froscio",
-			"fuck",
-			"g00",
-			"g0o",
-			"g0u1ne",
-			"g0uine",
-			"gandu",
-			"go0",
-			"goo",
-			"gou1ne",
-			"gouine",
-			"gr0gnasse",
-			"grognasse",
-			"haram1",
-			"harami",
-			"haramzade",
-			"hund1n",
-			"hundin",
-			"id10t",
-			"id1ot",
-			"idi0t",
-			"idiot",
-			"imbec11e",
-			"imbec1le",
-			"imbeci1e",
-			"imbecile",
-			"j1zz",
-			"jerk",
-			"jizz",
-			"k1ke",
-			"kam1ne",
-			"kamine",
-			"kike",
-			"leccacu10",
-			"leccacu1o",
-			"leccacul0",
-			"leccaculo",
-			"m1erda",
-			"m1gn0tta",
-			"m1gnotta",
-			"m1nch1a",
-			"m1nchia",
-			"m1st",
-			"mam0n",
-			"mamahuev0",
-			"mamahuevo",
-			"mamon",
-			"masturbat10n",
-			"masturbat1on",
-			"masturbate",
-			"masturbati0n",
-			"masturbation",
-			"merd0s0",
-			"merd0so",
-			"merda",
-			"merde",
-			"merdos0",
-			"merdoso",
-			"mierda",
-			"mign0tta",
-			"mignotta",
-			"minch1a",
-			"minchia",
-			"mist",
-			"musch1",
-			"muschi",
-			"n1gger",
-			"neger",
-			"negr0",
-			"negre",
-			"negro",
-			"nerch1a",
-			"nerchia",
-			"nigger",
-			"orgasm",
-			"p00p",
-			"p011a",
-			"p01la",
-			"p0l1a",
-			"p0lla",
-			"p0mp1n0",
-			"p0mp1no",
-			"p0mpin0",
-			"p0mpino",
-			"p0op",
-			"p0rca",
-			"p0rn",
-			"p0rra",
-			"p0uff1asse",
-			"p0uffiasse",
-			"p1p1",
-			"p1pi",
-			"p1r1a",
-			"p1rla",
-			"p1sc10",
-			"p1sc1o",
-			"p1sci0",
-			"p1scio",
-			"p1sser",
-			"pa11e",
-			"pa1le",
-			"pal1e",
-			"palle",
-			"pane1e1r0",
-			"pane1e1ro",
-			"pane1eir0",
-			"pane1eiro",
-			"panele1r0",
-			"panele1ro",
-			"paneleir0",
-			"paneleiro",
-			"patakha",
-			"pec0r1na",
-			"pec0rina",
-			"pecor1na",
-			"pecorina",
-			"pen1s",
-			"pendej0",
-			"pendejo",
-			"penis",
-			"pip1",
-			"pipi",
-			"pir1a",
-			"pirla",
-			"pisc10",
-			"pisc1o",
-			"pisci0",
-			"piscio",
-			"pisser",
-			"po0p",
-			"po11a",
-			"po1la",
-			"pol1a",
-			"polla",
-			"pomp1n0",
-			"pomp1no",
-			"pompin0",
-			"pompino",
-			"poop",
-			"porca",
-			"porn",
-			"porra",
-			"pouff1asse",
-			"pouffiasse",
-			"pr1ck",
-			"prick",
-			"pussy",
-			"put1za",
-			"puta",
-			"puta1n",
-			"putain",
-			"pute",
-			"putiza",
-			"puttana",
-			"queca",
-			"r0mp1ba11e",
-			"r0mp1ba1le",
-			"r0mp1bal1e",
-			"r0mp1balle",
-			"r0mpiba11e",
-			"r0mpiba1le",
-			"r0mpibal1e",
-			"r0mpiballe",
-			"rand1",
-			"randi",
-			"rape",
-			"recch10ne",
-			"recch1one",
-			"recchi0ne",
-			"recchione",
-			"retard",
-			"romp1ba11e",
-			"romp1ba1le",
-			"romp1bal1e",
-			"romp1balle",
-			"rompiba11e",
-			"rompiba1le",
-			"rompibal1e",
-			"rompiballe",
-			"ruff1an0",
-			"ruff1ano",
-			"ruffian0",
-			"ruffiano",
-			"s1ut",
-			"sa10pe",
-			"sa1aud",
-			"sa1ope",
-			"sacanagem",
-			"sal0pe",
-			"salaud",
-			"salope",
-			"saugnapf",
-			"sb0rr0ne",
-			"sb0rra",
-			"sb0rrone",
-			"sbattere",
-			"sbatters1",
-			"sbattersi",
-			"sborr0ne",
-			"sborra",
-			"sborrone",
-			"sc0pare",
-			"sc0pata",
-			"sch1ampe",
-			"sche1se",
-			"sche1sse",
-			"scheise",
-			"scheisse",
-			"schlampe",
-			"schwachs1nn1g",
-			"schwachs1nnig",
-			"schwachsinn1g",
-			"schwachsinnig",
-			"schwanz",
-			"scopare",
-			"scopata",
-			"sexy",
-			"sh1t",
-			"shit",
-			"slut",
-			"sp0mp1nare",
-			"sp0mpinare",
-			"spomp1nare",
-			"spompinare",
-			"str0nz0",
-			"str0nza",
-			"str0nzo",
-			"stronz0",
-			"stronza",
-			"stronzo",
-			"stup1d",
-			"stupid",
-			"succh1am1",
-			"succh1ami",
-			"succhiam1",
-			"succhiami",
-			"sucker",
-			"t0pa",
-			"tapette",
-			"test1c1e",
-			"test1cle",
-			"testic1e",
-			"testicle",
-			"tette",
-			"topa",
-			"tr01a",
-			"tr0ia",
-			"tr0mbare",
-			"tr1ng1er",
-			"tr1ngler",
-			"tring1er",
-			"tringler",
-			"tro1a",
-			"troia",
-			"trombare",
-			"turd",
-			"twat",
-			"vaffancu10",
-			"vaffancu1o",
-			"vaffancul0",
-			"vaffanculo",
-			"vag1na",
-			"vagina",
-			"verdammt",
-			"verga",
-			"w1chsen",
-			"wank",
-			"wichsen",
-			"x0ch0ta",
-			"x0chota",
-			"xana",
-			"xoch0ta",
-			"xochota",
-			"z0cc01a",
-			"z0cc0la",
-			"z0cco1a",
-			"z0ccola",
-			"z1z1",
-			"z1zi",
-			"ziz1",
-			"zizi",
-			"zocc01a",
-			"zocc0la",
-			"zocco1a",
-			"zoccola"
-		])
-	};
-	Sqids$1 = class {
-		constructor(options) {
-			var _a, _b, _c;
-			const alphabet = (_a = options === null || options === void 0 ? void 0 : options.alphabet) !== null && _a !== void 0 ? _a : defaultOptions.alphabet;
-			const minLength = (_b = options === null || options === void 0 ? void 0 : options.minLength) !== null && _b !== void 0 ? _b : defaultOptions.minLength;
-			const blocklist = (_c = options === null || options === void 0 ? void 0 : options.blocklist) !== null && _c !== void 0 ? _c : defaultOptions.blocklist;
-			if (new Blob([alphabet]).size !== alphabet.length) throw new Error("Alphabet cannot contain multibyte characters");
-			const minAlphabetLength = 3;
-			if (alphabet.length < minAlphabetLength) throw new Error(`Alphabet length must be at least ${minAlphabetLength}`);
-			if (new Set(alphabet).size !== alphabet.length) throw new Error("Alphabet must contain unique characters");
-			const minLengthLimit = 255;
-			if (typeof minLength !== "number" || minLength < 0 || minLength > minLengthLimit) throw new Error(`Minimum length has to be between 0 and ${minLengthLimit}`);
-			const filteredBlocklist = /* @__PURE__ */ new Set();
-			const alphabetChars = alphabet.toLowerCase().split("");
-			for (const word of blocklist) if (word.length >= 3) {
-				const wordLowercased = word.toLowerCase();
-				const wordChars = wordLowercased.split("");
-				if (wordChars.filter((c) => alphabetChars.includes(c)).length === wordChars.length) filteredBlocklist.add(wordLowercased);
-			}
-			this.alphabet = this.shuffle(alphabet);
-			this.minLength = minLength;
-			this.blocklist = filteredBlocklist;
-		}
-		encode(numbers) {
-			if (numbers.length === 0) return "";
-			if (numbers.filter((n) => n >= 0 && n <= this.maxValue()).length !== numbers.length) throw new Error(`Encoding supports numbers between 0 and ${this.maxValue()}`);
-			return this.encodeNumbers(numbers);
-		}
-		decode(id) {
-			const ret = [];
-			if (id === "") return ret;
-			const alphabetChars = this.alphabet.split("");
-			for (const c of id.split("")) if (!alphabetChars.includes(c)) return ret;
-			const prefix = id.charAt(0);
-			const offset = this.alphabet.indexOf(prefix);
-			let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
-			alphabet = alphabet.split("").reverse().join("");
-			let slicedId = id.slice(1);
-			while (slicedId.length > 0) {
-				const separator = alphabet.slice(0, 1);
-				const chunks = slicedId.split(separator);
-				if (chunks.length > 0) {
-					if (chunks[0] === "") return ret;
-					ret.push(this.toNumber(chunks[0], alphabet.slice(1)));
-					if (chunks.length > 1) alphabet = this.shuffle(alphabet);
-				}
-				slicedId = chunks.slice(1).join(separator);
-			}
-			return ret;
-		}
-		encodeNumbers(numbers, increment = 0) {
-			if (increment > this.alphabet.length) throw new Error("Reached max attempts to re-generate the ID");
-			let offset = numbers.reduce((a, v, i) => this.alphabet[v % this.alphabet.length].codePointAt(0) + i + a, numbers.length) % this.alphabet.length;
-			offset = (offset + increment) % this.alphabet.length;
-			let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
-			const prefix = alphabet.charAt(0);
-			alphabet = alphabet.split("").reverse().join("");
-			const ret = [prefix];
-			for (let i = 0; i !== numbers.length; i++) {
-				const num = numbers[i];
-				ret.push(this.toId(num, alphabet.slice(1)));
-				if (i < numbers.length - 1) {
-					ret.push(alphabet.slice(0, 1));
-					alphabet = this.shuffle(alphabet);
-				}
-			}
-			let id = ret.join("");
-			if (this.minLength > id.length) {
-				id += alphabet.slice(0, 1);
-				while (this.minLength - id.length > 0) {
-					alphabet = this.shuffle(alphabet);
-					id += alphabet.slice(0, Math.min(this.minLength - id.length, alphabet.length));
-				}
-			}
-			if (this.isBlockedId(id)) id = this.encodeNumbers(numbers, increment + 1);
-			return id;
-		}
-		shuffle(alphabet) {
-			const chars = alphabet.split("");
-			for (let i = 0, j = chars.length - 1; j > 0; i++, j--) {
-				const r = (i * j + chars[i].codePointAt(0) + chars[j].codePointAt(0)) % chars.length;
-				[chars[i], chars[r]] = [chars[r], chars[i]];
-			}
-			return chars.join("");
-		}
-		toId(num, alphabet) {
-			const id = [];
-			const chars = alphabet.split("");
-			let result = num;
-			do {
-				id.unshift(chars[result % chars.length]);
-				result = Math.floor(result / chars.length);
-			} while (result > 0);
-			return id.join("");
-		}
-		toNumber(id, alphabet) {
-			const chars = alphabet.split("");
-			return id.split("").reduce((a, v) => a * chars.length + chars.indexOf(v), 0);
-		}
-		isBlockedId(id) {
-			const lowercaseId = id.toLowerCase();
-			for (const word of this.blocklist) if (word.length <= lowercaseId.length) {
-				if (lowercaseId.length <= 3 || word.length <= 3) {
-					if (lowercaseId === word) return true;
-				} else if (/\d/.test(word)) {
-					if (lowercaseId.startsWith(word) || lowercaseId.endsWith(word)) return true;
-				} else if (lowercaseId.includes(word)) return true;
-			}
-			return false;
-		}
-		maxValue() {
-			return Number.MAX_SAFE_INTEGER;
-		}
-	};
-}));
-
-//#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/index.js
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import SqidsType from "sqids";
-* @import { JSONRPCRequest, JSONRPCParams } from "json-rpc-2.0";
-* @import { ExtractURITemplateVariables } from "./internal/uri-template.js";
-* @import { CallToolResult as CallToolResultType, ReadResourceResult as ReadResourceResultType, GetPromptResult as GetPromptResultType, ServerInfo as ServerInfoType, ClientCapabilities as ClientCapabilitiesType, JSONRPCRequest as JSONRPCRequestType, JSONRPCResponse, CreateMessageRequestParams as CreateMessageRequestParamsType, CreateMessageResult as CreateMessageResultType, Resource as ResourceType, LoggingLevel as LoggingLevelType, ToolAnnotations, ClientInfo as ClientInfoType, ElicitResult as ElicitResultType, Icons as IconsType, JSONRPCMessage, InitializeResult as InitializeResultType, ListToolsResult as ListToolsResultType, ListPromptsResult as ListPromptsResultType, ListResourceTemplatesResult as ListResourceTemplatesResultType, ListResourcesResult as ListResourcesResultType, CompleteResult as CompleteResultType } from "./validation/index.js";
-* @import { Tool, Completion, Prompt, StoredResource, ServerOptions, SubscriptionsKeys, ChangedArgs, McpEvents, AllSame, TemplateOptions } from "./internal/internal.js";
-* @import { CreatedTool, ToolOptions, CreatedPrompt, PromptOptions, CreatedResource, CreatedTemplate, ResourceOptions } from "./internal/internal.js";
-*/
-/**
-* Information about a validated access token, provided to request handlers.
-* @typedef {Object} AuthInfo
-* @property {string} token - The access token.
-* @property {string} clientId - The client ID associated with this token.
-* @property {string[]} scopes - Scopes associated with this token.
-* @property {number} [expiresAt] - When the token expires (in seconds since epoch).
-* @property {URL} [resource] - The RFC 8707 resource server identifier for which this token is valid.
-*   If set, this MUST match the MCP server's resource identifier (minus hash fragment).
-* @property {Record<string, unknown>} [extra] - Additional data associated with the token.
-*   This field should be used for any additional data that needs to be attached to the auth info.
-*/
-/**
-* @template {Record<string, unknown> | undefined} [TCustom=undefined]
-* @typedef {Object} Context
-* @property {string} [sessionId]
-* @property {{ clientCapabilities?: ClientCapabilitiesType, clientInfo?: ClientInfoType, logLevel?: LoggingLevel }} [sessionInfo]
-* @property {AuthInfo} [auth]
-* @property {TCustom} [custom]
-*/
-/**
-* @typedef {IconsType} Icons
-*/
-/**
-* @typedef {Record<SubscriptionsKeys, string[]>} Subscriptions
-*/
-/**
-* @template {Record<string, unknown> | undefined} TStructuredContent
-* @typedef {CallToolResultType<TStructuredContent>} CallToolResult
-*/
-/**
-* @typedef {ReadResourceResultType} ReadResourceResult
-*/
-/**
-* @typedef {GetPromptResultType} GetPromptResult
-*/
-/**
-* @typedef {ClientCapabilitiesType} ClientCapabilities
-*/
-/**
-* @typedef {ServerInfoType} ServerInfo
-*/
-/**
-* @typedef {CreateMessageRequestParamsType} CreateMessageRequestParams
-*/
-/**
-* @typedef {CreateMessageResultType} CreateMessageResult
-*/
-/**
-* @typedef {ResourceType} Resource
-*/
-/**
-* @typedef  {LoggingLevelType} LoggingLevel
-*/
-/**
-* @typedef  {ClientInfoType} ClientInfo
-*/
-/**
-* @typedef  {ElicitResultType} ElicitResult
-*/
-/**
-* @typedef {InitializeResultType} InitializeResult
-*/
-/**
-* @typedef {ListToolsResultType} ListToolsResult
-*/
-/**
-* @typedef {ListPromptsResultType} ListPromptsResult
-*/
-/**
-* @typedef {ListResourceTemplatesResultType} ListResourceTemplatesResult
-*/
-/**
-* @typedef {ListResourcesResultType} ListResourcesResult
-*/
-/**
-* @typedef {CompleteResultType} CompleteResult
-*/
-/**
-* @type {SqidsType | undefined}
-*/
-let Sqids;
-async function get_sqids() {
-	if (!Sqids) Sqids = new (await (Promise.resolve().then(() => (init_sqids(), sqids_exports)))).default();
-	return Sqids;
-}
-/**
-* Encode a cursor for pagination
-* @param {number} offset
-*/
-async function encode_cursor(offset) {
-	return (await get_sqids()).encode([offset]);
-}
-/**
-* Decode a cursor from pagination
-* @param {string} cursor
-*/
-async function decode_cursor(cursor) {
-	const [decoded] = (await get_sqids()).decode(cursor);
-	return decoded;
-}
-/**
-* @param {()=>boolean | Promise<boolean>} enabled
-*/
-async function safe_enabled(enabled) {
-	try {
-		return await enabled();
-	} catch {
-		return false;
-	}
-}
-/**
-* @template {StandardSchemaV1 | undefined} [StandardSchema=undefined]
-* @template {Record<string, unknown> | undefined} [CustomContext=undefined]
-*/
-var McpServer = class {
-	#server = new import_dist.JSONRPCServer();
-	/**
-	* @type {JSONRPCClient<"broadcast" | "standalone"> | undefined}
-	*/
-	#client;
-	#options;
-	/**
-	* @type {Map<string, Tool<any, any>>}
-	*/
-	#tools = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, Prompt<any>>}
-	*/
-	#prompts = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, StoredResource>}
-	*/
-	#resources = /* @__PURE__ */ new Map();
-	#templates = new UriTemplateMatcher();
-	/**
-	* @type {Array<{uri: string, name?: string}>}
-	*/
-	roots = [];
-	/**
-	* @type {{ [ref: string]: Map<string, Partial<Record<string, Completion>>> }}
-	*/
-	#completions = {
-		"ref/prompt": /* @__PURE__ */ new Map(),
-		"ref/resource": /* @__PURE__ */ new Map()
-	};
-	#event_target = new EventTarget();
-	/**
-	* @type {AsyncLocalStorage<Context<CustomContext> & { progress_token?: string }>}
-	*/
-	#ctx_storage = new AsyncLocalStorage();
-	/**
-	* @param {ServerInfo} server_info
-	* @param {ServerOptions<StandardSchema>} options
-	*/
-	constructor(server_info, options) {
-		this.#options = options;
-		this.#server.addMethod("initialize", (initialize_request) => {
-			try {
-				const validated_initialize = parse(InitializeRequestParamsSchema, initialize_request);
-				if (should_version_negotiation_fail(validated_initialize.protocolVersion)) throw new McpError(-32602, "Invalid protocol version format");
-				const negotiated_version = negotiate_protocol_version(validated_initialize.protocolVersion);
-				this.#event_target.dispatchEvent(event("initialize", validated_initialize));
-				return {
-					protocolVersion: negotiated_version,
-					...options,
-					serverInfo: server_info
-				};
-			} catch (error) {
-				if (error instanceof McpError) throw error;
-				if (error.message?.includes("Protocol version")) throw new McpError(-32602, `Protocol version validation failed: ${error.message}. Server supports: ${get_supported_versions().join(", ")}`);
-				throw new McpError(-32603, `Initialization failed: ${error.message}`);
-			}
-		});
-		this.#server.addMethod("ping", () => {
-			return {};
-		});
-		this.#server.addMethod("notifications/initialized", () => {
-			return null;
-		});
-		this.#init_tools();
-		this.#init_prompts();
-		this.#init_resources();
-		this.#init_roots();
-		this.#init_completion();
-		this.#init_logging();
-	}
-	/**
-	* Utility method to specify the type of the custom context for this server instance without the need to specify the standard schema type.
-	* @example
-	* const server = new McpServer({ ... }, { ... }).withContext<{ name: string }>();
-	* @template {Record<string, unknown>} TCustom
-	* @returns {McpServer<StandardSchema, TCustom>}
-	*/
-	withContext() {
-		return this;
-	}
-	get #progress_token() {
-		return this.#ctx_storage.getStore()?.progress_token;
-	}
-	/**
-	* The context of the current request, include the session ID, any auth information, and custom data.
-	* @type {Context<CustomContext>}
-	*/
-	get ctx() {
-		const { progress_token, ...rest } = this.#ctx_storage.getStore() ?? {};
-		return rest;
-	}
-	get #client_capabilities() {
-		return this.#ctx_storage.getStore()?.sessionInfo?.clientCapabilities;
-	}
-	/**
-	* Get the client information (name, version, etc.) of the client that initiated the current request...useful if you want to do something different based on the client.
-	* @deprecated Use `server.ctx.sessionInfo.clientInfo` instead.
-	*/
-	currentClientInfo() {
-		return this.#ctx_storage.getStore()?.sessionInfo?.clientInfo;
-	}
-	/**
-	* Get the client capabilities of the client that initiated the current request, you can use this to verify the client support something before invoking the respective method.
-	* @deprecated Use `server.ctx.sessionInfo.clientCapabilities` instead.
-	*/
-	currentClientCapabilities() {
-		return this.#client_capabilities;
-	}
-	#lazyily_create_client() {
-		if (!this.#client) this.#client = new import_dist.JSONRPCClient((payload, kind) => {
-			if (kind === "broadcast") {
-				this.#event_target.dispatchEvent(event("broadcast", { request: payload }));
-				return;
-			}
-			this.#event_target.dispatchEvent(event("send", { request: payload }));
-		});
-	}
-	/**
-	* @template {keyof McpEvents} TEvent
-	* @param {TEvent} event
-	* @param {McpEvents[TEvent]} callback
-	* @param {AddEventListenerOptions} [options]
-	*/
-	on(event, callback, options) {
-		if (event === "send" || event === "broadcast") this.#lazyily_create_client();
-		/**
-		* @param {Event} e
-		*/
-		const listener = (e) => {
-			callback(
-				/** @type {CustomEvent} */
-				e.detail
-			);
-		};
-		this.#event_target.addEventListener(event, listener, options);
-		return () => {
-			this.#event_target.removeEventListener(event, listener, options);
-		};
-	}
-	/**
-	* @param {string} method
-	* @param {JSONRPCParams} [params]
-	* @param {"broadcast" | "standalone"} [kind]
-	*/
-	#notify(method, params, kind = "standalone") {
-		this.#client?.notify(method, params, kind);
-	}
-	/**
-	*
-	*/
-	#init_tools() {
-		if (!this.#options.capabilities?.tools) return;
-		this.#server.addMethod("tools/list", async ({ cursor } = {}) => {
-			const all_tools = (await Promise.all([...this.#tools].map(async ([name, tool]) => {
-				if (tool.enabled != null && await safe_enabled(tool.enabled) === false) return null;
-				return {
-					name,
-					title: tool.title || tool.description,
-					description: tool.description,
-					icons: tool.icons,
-					_meta: tool._meta,
-					inputSchema: tool.schema && this.#options.adapter ? await this.#options.adapter.toJsonSchema(tool.schema) : {
-						type: "object",
-						properties: {}
-					},
-					...tool.outputSchema && this.#options.adapter ? { outputSchema: await this.#options.adapter.toJsonSchema(tool.outputSchema) } : {},
-					...tool.annotations ? { annotations: tool.annotations } : {}
-				};
-			}))).filter((tool) => tool !== null);
-			const pagination_options = this.#options.pagination?.tools;
-			if (!pagination_options || pagination_options.size == null) return { tools: all_tools };
-			const page_length = pagination_options.size;
-			const start_index = cursor ? await decode_cursor(cursor) : 0;
-			const end_index = start_index + page_length;
-			const tools = all_tools.slice(start_index, end_index);
-			const next_cursor = end_index < all_tools.length ? await encode_cursor(end_index) : null;
-			return {
-				tools,
-				...next_cursor && { nextCursor: next_cursor }
-			};
-		});
-		this.#server.addMethod("tools/call", async ({ name, arguments: args }) => {
-			const tool = this.#tools.get(name);
-			if (!tool) return {
-				isError: true,
-				content: [{
-					type: "text",
-					text: `Tool ${name} not found`
-				}]
-			};
-			let validated_args = args;
-			if (tool.schema) {
-				let validation_result = tool.schema["~standard"].validate(args);
-				if (validation_result instanceof Promise) validation_result = await validation_result;
-				if (validation_result.issues) return {
-					isError: true,
-					content: [{
-						type: "text",
-						text: `Invalid arguments for tool ${name}: ${JSON.stringify(validation_result.issues)}`
-					}]
-				};
-				validated_args = validation_result.value;
-			}
-			const tool_result = tool.schema ? await tool.execute(validated_args) : await tool.execute();
-			const parsed_result = parse(CallToolResultSchema, tool_result);
-			if (tool.outputSchema && parsed_result.structuredContent !== void 0) {
-				let output_validation = tool.outputSchema["~standard"].validate(parsed_result.structuredContent);
-				if (output_validation instanceof Promise) output_validation = await output_validation;
-				if (output_validation.issues) return {
-					isError: true,
-					content: [{
-						type: "text",
-						text: `Tool ${name} returned invalid structured content: ${JSON.stringify(output_validation.issues)}`
-					}]
-				};
-				parsed_result.structuredContent = output_validation.value;
-			}
-			return parsed_result;
-		});
-	}
-	/**
-	*
-	*/
-	#init_prompts() {
-		if (!this.#options.capabilities?.prompts) return;
-		this.#server.addMethod("prompts/list", async ({ cursor } = {}) => {
-			const all_prompts = (await Promise.all([...this.#prompts].map(async ([name, prompt]) => {
-				if (prompt.enabled != null && await safe_enabled(prompt.enabled) === false) return null;
-				const arguments_schema = prompt.schema && this.#options.adapter ? await this.#options.adapter.toJsonSchema(prompt.schema) : {
-					type: "object",
-					properties: {},
-					required: []
-				};
-				const keys = Object.keys(arguments_schema.properties ?? {});
-				const required = arguments_schema.required ?? [];
-				return {
-					name,
-					title: prompt.title || prompt.description,
-					icons: prompt.icons,
-					description: prompt.description,
-					arguments: keys.map((key) => {
-						const property = arguments_schema.properties?.[key];
-						const description = property && property !== true ? property.description : key;
-						return {
-							name: key,
-							required: required.includes(key),
-							description
-						};
-					})
-				};
-			}))).filter((prompt) => prompt !== null);
-			const pagination_options = this.#options.pagination?.prompts;
-			if (!pagination_options || pagination_options.size == null) return { prompts: all_prompts };
-			const page_length = pagination_options.size;
-			const start_index = cursor ? await decode_cursor(cursor) : 0;
-			const end_index = start_index + page_length;
-			const prompts = all_prompts.slice(start_index, end_index);
-			const next_cursor = end_index < all_prompts.length ? await encode_cursor(end_index) : null;
-			return {
-				prompts,
-				...next_cursor && { nextCursor: next_cursor }
-			};
-		});
-		this.#server.addMethod("prompts/get", async ({ name, arguments: args }) => {
-			const prompt = this.#prompts.get(name);
-			if (!prompt) throw new McpError(-32601, `Prompt ${name} not found`);
-			if (!prompt.schema) return parse(GetPromptResultSchema, await prompt.execute());
-			let validated_args = prompt.schema["~standard"].validate(args);
-			if (validated_args instanceof Promise) validated_args = await validated_args;
-			if (validated_args.issues) throw new McpError(-32602, `Invalid arguments for prompt ${name}: ${JSON.stringify(validated_args.issues)}`);
-			return parse(GetPromptResultSchema, await prompt.execute(validated_args.value));
-		});
-	}
-	/**
-	*
-	*/
-	#init_resources() {
-		if (!this.#options.capabilities?.resources) return;
-		if (this.#options.capabilities?.resources?.subscribe) {
-			this.#server.addMethod("resources/subscribe", async ({ uri }) => {
-				this.#event_target.dispatchEvent(event("subscription", {
-					uri,
-					action: "add"
-				}));
-				return {};
-			});
-			this.#server.addMethod("resources/unsubscribe", async ({ uri }) => {
-				this.#event_target.dispatchEvent(event("subscription", {
-					uri,
-					action: "remove"
-				}));
-				return {};
-			});
-		}
-		this.#server.addMethod("resources/list", async ({ cursor } = {}) => {
-			const all_resources = [];
-			for (const [uri, resource] of this.#resources) if (!resource.template) {
-				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) continue;
-				all_resources.push({
-					name: resource.name,
-					title: resource.title || resource.description,
-					description: resource.description,
-					uri,
-					mimeType: resource.mimeType,
-					icons: resource.icons
-				});
-			} else if (resource.list_resources) {
-				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) continue;
-				const template_resources = await resource.list_resources();
-				all_resources.push(...template_resources);
-			}
-			const pagination_options = this.#options.pagination?.resources;
-			if (!pagination_options || pagination_options.size == null) return { resources: all_resources };
-			const page_length = pagination_options.size;
-			const start_index = cursor ? await decode_cursor(cursor) : 0;
-			const end_index = start_index + page_length;
-			const resources = all_resources.slice(start_index, end_index);
-			const next_cursor = end_index < all_resources.length ? await encode_cursor(end_index) : null;
-			return {
-				resources,
-				...next_cursor && { nextCursor: next_cursor }
-			};
-		});
-		this.#server.addMethod("resources/templates/list", async () => {
-			return { resourceTemplates: (await Promise.all([...this.#resources].map(async ([uri, resource]) => {
-				if (!resource.template) return null;
-				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) return null;
-				return {
-					name: resource.name,
-					icons: resource.icons,
-					title: resource.title || resource.description,
-					description: resource.description,
-					mimeType: resource.mimeType,
-					uriTemplate: uri
-				};
-			}))).filter((resource) => resource != null) };
-		});
-		this.#server.addMethod("resources/read", async ({ uri }) => {
-			let resource = this.#resources.get(uri);
-			let params;
-			if (!resource) {
-				const match = this.#templates.match(uri);
-				if (match) {
-					resource = this.#resources.get(match.template);
-					params = match.params;
-				}
-				if (!resource) throw new McpError(-32601, `Resource ${uri} not found`);
-			}
-			if (resource.template) {
-				if (!params) throw new McpError(-32602, "Missing parameters for template resource");
-				return parse(ReadResourceResultSchema, await resource.execute(uri, params));
-			}
-			return parse(ReadResourceResultSchema, await resource.execute(uri));
-		});
-	}
-	/**
-	*
-	*/
-	#init_roots() {
-		this.#server.addMethod("notifications/roots/list_changed", () => {
-			this.#refresh_roots();
-			return null;
-		});
-	}
-	/**
-	* Request roots list from client
-	*/
-	async #refresh_roots() {
-		if (!this.#client_capabilities?.roots) return;
-		this.#lazyily_create_client();
-		try {
-			this.roots = (await this.#client?.request("roots/list", void 0, "standalone"))?.roots || [];
-		} catch {
-			this.roots = [];
-		}
-	}
-	#init_completion() {
-		this.#server.addMethod("completion/complete", async ({ argument, ref, context }) => {
-			const completions = this.#completions[ref.type];
-			if (!completions) return null;
-			const complete = completions.get(ref.uri ?? ref.name);
-			if (!complete) return null;
-			const actual_complete = complete[argument.name];
-			if (!actual_complete) return null;
-			return parse(CompleteResultSchema, await actual_complete(argument.value, context));
-		});
-	}
-	#init_logging() {
-		if (!this.#options.capabilities?.logging) return;
-		this.#server.addMethod("logging/setLevel", ({ level }) => {
-			this.#event_target.dispatchEvent(event("loglevelchange", { level }));
-			return {};
-		});
-	}
-	#notify_tools_list_changed() {
-		if (this.#options.capabilities?.tools?.listChanged) this.#notify("notifications/tools/list_changed", {}, "broadcast");
-	}
-	#notify_prompts_list_changed() {
-		if (this.#options.capabilities?.prompts?.listChanged) this.#notify("notifications/prompts/list_changed", {}, "broadcast");
-	}
-	#notify_resources_list_changed() {
-		if (this.#options.capabilities?.resources?.listChanged) this.#notify("notifications/resources/list_changed", {}, "broadcast");
-	}
-	/**
-	* Use the `defineTool` utility to create a reusable tool and pass it to this method to add it to the server.
-	* @template {Array<CreatedTool<any, any>>} T
-	* @template {T extends Array<CreatedTool<infer TSchema, infer TOutputSchema>> ? AllSame<TSchema, StandardSchema | undefined> extends true ? AllSame<TOutputSchema, StandardSchema | undefined> extends true ? T : never : never : never} U
-	* @param {T & NoInfer<U>} tools
-	*/
-	tools(tools) {
-		for (const tool of tools) this.tool(tool);
-	}
-	/**
-	* Use the `definePrompt` utility to create a reusable tool and pass it to this method to add it to the server.
-	* @template {Array<CreatedPrompt<any>>} T
-	* @template {T extends Array<CreatedPrompt<infer TSchema>> ? AllSame<TSchema, StandardSchema | undefined> extends true ?  T : never : never} U
-	* @param {T & NoInfer<U>} prompts
-	*/
-	prompts(prompts) {
-		for (const prompt of prompts) this.prompt(prompt);
-	}
-	/**
-	* Use the `defineResource` utility to create a reusable resource and pass it to this method to add it to the server.
-	*
-	* @param {CreatedResource[]} resources
-	*/
-	resources(resources) {
-		for (const resource of resources) this.resource(resource);
-	}
-	/**
-	* Use the `defineTemplate` utility to create a reusable template and pass it to this method to add it to the server.
-	*
-	* @param {CreatedTemplate<any>[]} templates
-	*/
-	templates(templates) {
-		for (const template of templates) this.template(template);
-	}
-	/**
-	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-	*
-	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
-	* @overload
-	* @param {CreatedTool<TSchema, TOutputSchema>} tool_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-	*
-	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
-	* @overload
-	* @param {ToolOptions<TSchema, TOutputSchema>} tool_or_options
-	* @param {TSchema extends undefined ? (()=>Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
-	* @returns {void}
-	* */
-	/**
-	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-	*
-	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
-	* @param {CreatedTool<TSchema, TOutputSchema> | ToolOptions<TSchema, TOutputSchema>} tool_or_options
-	* @param {undefined | TSchema extends undefined ? (()=>Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} [execute]
-	*/
-	tool(tool_or_options, execute) {
-		if ("execute" in tool_or_options) execute = tool_or_options.execute;
-		this.#notify_tools_list_changed();
-		const stored_tool = tool_or_options;
-		stored_tool.execute = execute;
-		this.#tools.set(tool_or_options.name, stored_tool);
-	}
-	/**
-	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
-	* Use the description and title to help the user to understand what the prompt does and when to use it.
-	*
-	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
-	* for each input that will be used to provide completions for the user.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @overload
-	* @param {CreatedPrompt<TSchema>} prompt_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
-	* Use the description and title to help the user to understand what the prompt does and when to use it.
-	*
-	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
-	* for each input that will be used to provide completions for the user.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @overload
-	* @param {PromptOptions<TSchema>} prompt_or_options
-	* @param {TSchema extends undefined ? (()=>Promise<GetPromptResult> | GetPromptResult) : (input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<GetPromptResult> | GetPromptResult} execute
-	* @returns {void}
-	* */
-	/**
-	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
-	* Use the description and title to help the user to understand what the prompt does and when to use it.
-	*
-	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
-	* for each input that will be used to provide completions for the user.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @param {CreatedPrompt<TSchema> | PromptOptions<TSchema>} prompt_or_options
-	* @param {TSchema extends undefined ? (()=>Promise<GetPromptResult> | GetPromptResult) : (input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<GetPromptResult> | GetPromptResult} [execute]
-	*/
-	prompt(prompt_or_options, execute) {
-		if ("execute" in prompt_or_options) execute = prompt_or_options.execute;
-		if (prompt_or_options.complete) this.#completions["ref/prompt"].set(prompt_or_options.name, prompt_or_options.complete);
-		this.#notify_prompts_list_changed();
-		const stored_prompt = prompt_or_options;
-		stored_prompt.execute = execute;
-		this.#prompts.set(prompt_or_options.name, stored_prompt);
-	}
-	/**
-	* @type {(resource: StoredResource & { uri: string })=> void}
-	*/
-	#resource(resource) {
-		if (resource.template && resource.complete) this.#completions["ref/resource"].set(resource.uri, resource.complete);
-		if (resource.template) this.#templates.add(resource.uri);
-		this.#notify_resources_list_changed();
-		this.#resources.set(resource.uri, resource);
-	}
-	/**
-	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Use the description and title to help the user to understand what the resource is.
-	* @overload
-	* @param {CreatedResource} resource_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Use the description and title to help the user to understand what the resource is.
-	* @overload
-	* @param {ResourceOptions} resource_or_options
-	* @param {(uri: string) => Promise<ReadResourceResult> | ReadResourceResult} execute
-	* @returns {void}
-	*/
-	/**
-	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Use the description and title to help the user to understand what the resource is.
-	* @param {CreatedResource | ResourceOptions} resource_or_options
-	* @param {(uri: string) => Promise<ReadResourceResult> | ReadResourceResult} [execute]
-	*/
-	resource(resource_or_options, execute) {
-		if ("execute" in resource_or_options) execute = resource_or_options.execute;
-		const stored_resource = resource_or_options;
-		stored_resource.execute = execute;
-		stored_resource.template = false;
-		this.#resource(stored_resource);
-	}
-	/**
-	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
-	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
-	* be invoked to provide completions for the template variables to the user.
-	* Use the description and title to help the user to understand what the resource is.
-	* @template {string} TUri
-	* @template {ExtractURITemplateVariables<TUri>} TVariables
-	* @overload
-	* @param {CreatedTemplate<TUri>} template_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
-	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
-	* be invoked to provide completions for the template variables to the user.
-	* Use the description and title to help the user to understand what the resource is.
-	* @template {string} TUri
-	* @template {ExtractURITemplateVariables<TUri>} TVariables
-	* @overload
-	* @param {TemplateOptions<TUri>} template_or_options
-	* @param {(uri: string, params: Record<TVariables, string | string[]>) => Promise<ReadResourceResult> | ReadResourceResult} execute
-	* @returns {void}
-	*/
-	/**
-	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
-	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
-	* be invoked to provide completions for the template variables to the user.
-	* Use the description and title to help the user to understand what the resource is.
-	* @template {string} TUri
-	* @template {ExtractURITemplateVariables<TUri>} TVariables
-	* @param {CreatedTemplate<TUri> | TemplateOptions<TUri>} template_or_options
-	* @param {(uri: string, params: Record<TVariables, string | string[]>) => Promise<ReadResourceResult> | ReadResourceResult} [execute]
-	*/
-	template(template_or_options, execute) {
-		if ("execute" in template_or_options) execute = template_or_options.execute;
-		const stored_template = template_or_options;
-		stored_template.execute = execute;
-		stored_template.list_resources = template_or_options.list;
-		stored_template.template = true;
-		this.#resource(stored_template);
-	}
-	/**
-	* The main function that receive a JSONRpc message and either dispatch a `send` event or process the request.
-	*
-	* @param {JSONRPCMessage} message
-	* @param {Context<CustomContext>} [ctx]
-	* @returns {ReturnType<JSONRPCServer['receive']> | ReturnType<JSONRPCClient['receive'] | undefined>}
-	*/
-	receive(message, ctx) {
-		const validated_message = safeParse(union([JSONRPCRequestSchema, JSONRPCNotificationSchema]), message);
-		if (validated_message.success) {
-			const progress_token = validated_message.output.params?._meta?.progressToken;
-			return this.#ctx_storage.run({
-				...ctx ?? {},
-				progress_token
-			}, async () => await this.#server.receive(validated_message.output));
-		}
-		const validated_response = parse(union([JSONRPCResponseSchema, JSONRPCErrorSchema]), message);
-		this.#lazyily_create_client();
-		return this.#ctx_storage.run(ctx ?? {}, async () => this.#client?.receive(validated_response));
-	}
-	/**
-	* Lower level api to send a request to the client, mostly useful to call client methods that not yet supported by the server or
-	* if you want to send requests with json schema that is not expressible with your validation library.
-	* @param {{ method: string, params?: JSONRPCParams }} request
-	* @returns {Promise<unknown>}
-	*/
-	async request({ method, params }) {
-		this.#lazyily_create_client();
-		return this.#client?.request(method, params, "standalone");
-	}
-	/**
-	* Send a notification for subscriptions
-	* @template {keyof ChangedArgs} TWhat
-	* @param {[what: TWhat, ...ChangedArgs[TWhat]]} args
-	*/
-	changed(...args) {
-		const [what, id] = args;
-		if (what === "prompts") this.#notify_prompts_list_changed();
-		else if (what === "tools") this.#notify_tools_list_changed();
-		else if (what === "resources") this.#notify_resources_list_changed();
-		else {
-			const resource = this.#resources.get(id);
-			if (!resource) return;
-			this.#notify(`notifications/resources/updated`, {
-				uri: id,
-				title: resource.name
-			}, "broadcast");
-		}
-	}
-	/**
-	* Refresh roots list from client
-	*/
-	async refreshRoots() {
-		await this.#refresh_roots();
-	}
-	/**
-	* Emit an elicitation request to the client. Elicitations are used to ask the user for input in a structured way, the client will show a UI to the user to fill the input.
-	* The schema should be a valid Standard Schema V1 schema and should be an Object with the properties you need.
-	* The client will return the validated input as a JSON object that matches the schema.
-	*
-	* If the client doesn't support elicitation, it will throw an error.
-	*
-	* @template {StandardSchema extends undefined ? never : StandardSchema} TSchema
-	* @param {string} message
-	* @param {TSchema} schema
-	* @returns {Promise<ElicitResult & { content?: StandardSchemaV1.InferOutput<TSchema> }>}
-	*/
-	async elicitation(message, schema) {
-		if (!this.#client_capabilities?.elicitation) throw new McpError(-32601, "Client doesn't support elicitation");
-		this.#lazyily_create_client();
-		const result = await this.#client?.request("elicitation/create", {
-			message,
-			requestedSchema: await this.#options.adapter?.toJsonSchema(schema)
-		}, "standalone");
-		const elicit_result = parse(ElicitResultSchema, result);
-		let validated_result = schema["~standard"].validate(elicit_result.content);
-		if (validated_result instanceof Promise) validated_result = await validated_result;
-		if (validated_result.issues) throw new McpError(-32603, `Invalid elicitation result: ${JSON.stringify(validated_result.issues)}`);
-		return {
-			...elicit_result,
-			content: validated_result.value
-		};
-	}
-	/**
-	* Request language model sampling from the client
-	* @param {CreateMessageRequestParams} request
-	* @returns {Promise<CreateMessageResult>}
-	*/
-	async message(request) {
-		if (!this.#client_capabilities?.sampling) throw new McpError(-32601, "Client doesn't support sampling");
-		this.#lazyily_create_client();
-		const validated_request = parse(CreateMessageRequestParamsSchema, request);
-		const response = await this.#client?.request("sampling/createMessage", validated_request, "standalone");
-		return parse(CreateMessageResultSchema, response);
-	}
-	/**
-	* Send a progress notification to the client. This is useful for long-running operations where you want to inform the user about the progress.
-	*
-	* @param {number} progress The current progress value, it should be between 0 and total and should always increase
-	* @param {number} [total] The total value, defaults to 1
-	* @param {string} [message] An optional message to accompany the progress update
-	*/
-	progress(progress, total = 1, message = void 0) {
-		if (this.#progress_token != null) this.#notify("notifications/progress", {
-			progress,
-			total,
-			message,
-			progressToken: this.#progress_token
-		});
-	}
-	/**
-	* Log a message to the client if logging is enabled and the level is appropriate
-	*
-	* @param {LoggingLevel} level
-	* @param {unknown} data
-	* @param {string} [logger]
-	*/
-	log(level, data, logger) {
-		if (!this.#options.capabilities?.logging) throw new McpError(-32601, "The server doesn't support logging, please enable it in capabilities");
-		const current_session_level = this.#ctx_storage.getStore()?.sessionInfo?.logLevel ?? this.#options.logging?.default ?? "info";
-		if (current_session_level && this.#should_log(level, current_session_level)) this.#notify("notifications/message", {
-			level,
-			data,
-			logger
-		});
-	}
-	/**
-	* Check if a log message should be sent based on severity levels
-	* @param {LoggingLevel} message_level
-	* @param {LoggingLevel} session_level
-	* @returns {boolean}
-	*/
-	#should_log(message_level, session_level) {
-		const levels = [
-			"debug",
-			"info",
-			"notice",
-			"warning",
-			"error",
-			"critical",
-			"alert",
-			"emergency"
-		];
-		return levels.indexOf(message_level) >= levels.indexOf(session_level);
-	}
-};
-
-//#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/tool.js
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import { ToolOptions, CreatedTool } from "./internal/internal.js";
-*/
-/**
-* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-*
-* @template {StandardSchemaV1 | undefined} [TSchema=undefined]
-* @template {StandardSchemaV1 | undefined} [TOutputSchema=undefined]
-* @param {ToolOptions<TSchema, TOutputSchema>} options
-* @param {TSchema extends undefined ? (()=>Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
-*/
-function defineTool(options, execute) {
-	return {
-		...options,
-		execute
-	};
-}
-
-//#endregion
-//#region ../../node_modules/.pnpm/tmcp@1.19.2_typescript@5.9.3/node_modules/tmcp/src/utils/index.js
-/**
-* @import { EmbeddedResource, ResourceLink, CallToolResult, ReadResourceResult, GetPromptResult,  CompleteResult } from "../validation/index.js";
-*/
-/**
-* @satisfies {Record<string, (...args: any[])=>CallToolResult<any>>}
-*/
-const tool = {
-	text(text) {
-		return { content: [{
-			type: "text",
-			text
-		}] };
-	},
-	error(text) {
-		return {
-			isError: true,
-			content: [{
-				type: "text",
-				text
-			}]
-		};
-	},
-	media(type, data, mime_type) {
-		return { content: [{
-			type,
-			data,
-			mimeType: mime_type
-		}] };
-	},
-	resource(resource) {
-		return { content: [{
-			type: "resource",
-			resource
-		}] };
-	},
-	resourceLink(resource_link) {
-		return { content: [{
-			type: "resource_link",
-			...resource_link
-		}] };
-	},
-	structured(obj) {
-		return {
-			content: [{
-				type: "text",
-				text: JSON.stringify(obj)
-			}],
-			structuredContent: obj
-		};
-	},
-	mix(results, obj) {
-		return {
-			isError: results.some((r) => r.isError),
-			content: results.flatMap((r) => r.content ? r.content : []),
-			structuredContent: obj
-		};
-	}
-};
-
-//#endregion
 //#region shared/comment.ts
 const CLANK8Y_REPO_URL = "https://github.com/clank8y/clank8y";
 const CUMULOCITY_URL = "https://cumulocity.com";
@@ -13914,48 +15216,6 @@ function buildClank8yCommentBody(rawBody, options) {
 		"",
 		`<sub>${footer}</sub>`
 	].join("\n");
-}
-
-//#endregion
-//#region src/utils/artifacts.ts
-const CLANK8Y_ARTIFACT_DIR = ".clank8y";
-const DIFF_ARTIFACT_FILE = "diff.txt";
-const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
-function getClank8yArtifactDirPath() {
-	return path.join(process$1.cwd(), CLANK8Y_ARTIFACT_DIR);
-}
-function resolveClank8yArtifactPath(...segments) {
-	return path.join(getClank8yArtifactDirPath(), ...segments);
-}
-function isWithinClank8yArtifacts(targetPath) {
-	const artifactDir = getClank8yArtifactDirPath();
-	const relativePath = path.relative(artifactDir, targetPath);
-	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
-}
-function getReviewArtifactPaths() {
-	return {
-		artifactDir: getClank8yArtifactDirPath(),
-		diffPath: resolveClank8yArtifactPath(DIFF_ARTIFACT_FILE),
-		reviewCommentsPath: resolveClank8yArtifactPath(REVIEW_COMMENTS_ARTIFACT_FILE)
-	};
-}
-async function resetClank8yArtifacts() {
-	const artifactPaths = getReviewArtifactPaths();
-	await rm(artifactPaths.artifactDir, {
-		force: true,
-		recursive: true
-	});
-	await mkdir(artifactPaths.artifactDir, { recursive: true });
-	return artifactPaths;
-}
-async function writeDiffArtifact(content) {
-	const { diffPath } = getReviewArtifactPaths();
-	await writeFile(diffPath, content, "utf-8");
-}
-async function writeReviewCommentsArtifact(content) {
-	const { reviewCommentsPath } = getReviewArtifactPaths();
-	await writeFile(reviewCommentsPath, content, "utf-8");
-	return reviewCommentsPath;
 }
 
 //#endregion
@@ -14577,55 +15837,6 @@ function getActivePullRequestContext() {
 }
 
 //#endregion
-//#region src/modes/basePrompts.ts
-const PERSONA = [
-	"## Persona",
-	"",
-	"You are **clank8y** — a precise, sharp-eyed code review bot for Cumulocity IoT frontend applications.",
-	"You speak with mechanical confidence: direct, concise, no fluff.",
-	"You are friendly but never waste words — every sentence carries signal.",
-	"When you are unsure, you say so honestly instead of guessing.",
-	"",
-	"Tone guidelines:",
-	"- Be constructive, not condescending. You are a teammate, not a gatekeeper.",
-	"- Use dry wit sparingly — keep it professional.",
-	"- Prefer concrete over vague. \"Use `AlertService` from `@c8y/ngx-components`\" beats \"consider using the platform service\".",
-	"- Adapt to the repository's existing code style and conventions.",
-	"- Never use emdashes (—). Rather break up sentences into shorter ones."
-].join("\n");
-const KNOWLEDGE_VERIFICATION = [
-	"## Knowledge verification — MANDATORY",
-	"",
-	"Angular evolves rapidly. Your training data may be stale.",
-	"Cumulocity's Web SDK has its own component library and conventions that you cannot infer from generic Angular knowledge.",
-	"",
-	"**You must verify framework- and platform-specific code against the MCP docs during the review.**",
-	"Do not rely on memory for Angular or Cumulocity-specific claims. If you did not verify it, treat it as unverified.",
-	"**For anything Cumulocity-specific, Codex MCP is the source of truth.**",
-	"If the code touches Cumulocity APIs, components, hooks, widgets, CSS utilities, style classes, design tokens, extension points, or platform services, you should expect to use Codex MCP before making a judgment.",
-	"",
-	"### Angular MCP — targeted verification (required when Angular-specific concerns appear)",
-	"- If the diff touches components, templates, signals, DI, control flow, forms, change detection, or RxJS interop, call Angular MCP.",
-	"- Use `get_best_practices` to verify the pattern you are evaluating.",
-	"- Use `find_examples` when template syntax, signals usage, or component structure needs a concrete reference.",
-	"- Use `search_documentation` for any Angular API or syntax you are uncertain about.",
-	"- If Angular MCP confirms a pattern is valid — do NOT flag it, even if it looks unfamiliar to you.",
-	"",
-	"### Codex MCP — targeted verification (required when Cumulocity-specific concerns appear)",
-	"- Treat Codex MCP as mandatory, not optional, for Cumulocity-specific review decisions.",
-	"- If a changed file imports `@c8y/*`, call Codex MCP unless the change is obviously unrelated boilerplate.",
-	"- If the diff touches `@c8y/ngx-components`, extension hooks, platform services, widgets, navigator/action bar integrations, CSS utilities, or design tokens, call Codex MCP.",
-	"- If the diff touches Cumulocity CSS classes, styling helpers, color tokens, spacing tokens, icon usage, or design-system conventions, call Codex MCP.",
-	"- Use `get-codex-structure` when you need to orient yourself within the documentation surface.",
-	"- Use `query-codex` to identify the relevant platform service, component, hook, pipe, or design-system concept.",
-	"- Use `get-codex-documents` to read the FULL documentation page before deciding whether something is correct, missing, or reinvented.",
-	"- Specifically check whether the platform already provides what the developer is building or importing.",
-	"- Verify CSS classes, color values, spacing tokens, icons, and design tokens against the Codex design system documentation.",
-	"",
-	"DO NOT hallucinate APIs. If you cannot verify something exists via MCP tools, say so explicitly."
-].join("\n");
-
-//#endregion
 //#region src/modes/review/prompt.ts
 const BASE_REVIEW_PROMPT = [
 	PERSONA,
@@ -14816,75 +16027,6 @@ function buildReviewPrompt(promptContext) {
 }
 
 //#endregion
-//#region src/mcp/angular.ts
-const ANGULAR_MCP_COMMAND = "npx";
-const ANGULAR_MCP_ARGS = [
-	"-y",
-	"@angular/cli",
-	"mcp"
-];
-/**
-* Tools exposed from the Angular CLI MCP server.
-* - `find_examples`       — authoritative Angular code examples (local)
-* - `get_best_practices`  — Angular best practices guide (local)
-* - `search_documentation`— searches angular.dev (remote)
-*/
-const ANGULAR_ALLOWED_TOOLS = [
-	"find_examples",
-	"get_best_practices",
-	"search_documentation"
-];
-let _angularMCP = null;
-function angularMCP() {
-	if (!_angularMCP) _angularMCP = createAngularMCP();
-	return _angularMCP;
-}
-function createAngularMCP() {
-	let status = { state: "stopped" };
-	return {
-		serverType: "stdio",
-		allowedTools: ANGULAR_ALLOWED_TOOLS,
-		get status() {
-			return status;
-		},
-		start: async () => {
-			status = { state: "running" };
-			return {
-				command: ANGULAR_MCP_COMMAND,
-				args: ANGULAR_MCP_ARGS,
-				toolNames: ANGULAR_ALLOWED_TOOLS
-			};
-		},
-		stop: async () => {
-			status = { state: "stopped" };
-		}
-	};
-}
-
-//#endregion
-//#region src/mcp/codex.ts
-const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
-let _codexMCP = null;
-function codexMCP() {
-	if (!_codexMCP) _codexMCP = createCodexMCP();
-	return _codexMCP;
-}
-function createCodexMCP() {
-	return {
-		serverType: "http",
-		allowedTools: ["*"],
-		get status() {
-			return { state: "running" };
-		},
-		start: async () => ({
-			url: CODEX_MCP_URL,
-			toolNames: []
-		}),
-		stop: async () => {}
-	};
-}
-
-//#endregion
 //#region src/modes/review/mcps/index.ts
 function reviewMCPs() {
 	return {
@@ -14912,29 +16054,41 @@ const MODE_SELECTION_TOOL_DESCRIPTION = "Select the best clank8y execution mode 
 
 //#endregion
 //#region src/modeSelection/schema.ts
-const CLANK8Y_MODES = ["Review"];
-const clank8yModeSchema = pipe(picklist(CLANK8Y_MODES), description("The execution mode selected for the current clank8y run."));
-const clank8yModeSelectionSchema = object({
-	mode: clank8yModeSchema,
-	reason: pipe(string(), minLength(1, "Mode selection reason is required."), description("A concise explanation for why this mode fits the current run."))
-});
+const CLANK8Y_MODES = ["Review", "IncidentFix"];
+const MODE_DESCRIPTIONS = {
+	Review: "Review: choose this for pull request review in a repository context.",
+	IncidentFix: "IncidentFix: choose this for sandboxed incident investigation or deep-fix workflows that may inspect one or more repositories and produce a .clank8y/report.md artifact."
+};
+function createClank8yModeSchema(disabledModes = {}) {
+	const enabledModes = CLANK8Y_MODES.filter((mode) => disabledModes[mode] !== true);
+	if (enabledModes.length === 0) throw new Error("No clank8y modes are enabled for this run.");
+	const modeSchemas = enabledModes.map((mode) => pipe(literal(mode), description(MODE_DESCRIPTIONS[mode])));
+	return pipe(union(modeSchemas), description("The execution mode selected for the current clank8y run."));
+}
+function createClank8yModeSelectionSchema(disabledModes = {}) {
+	return object({
+		mode: createClank8yModeSchema(disabledModes),
+		reason: pipe(string(), minLength(1, "Mode selection reason is required."), description("A concise explanation for why this mode fits the current run."))
+	});
+}
 
 //#endregion
 //#region src/modes/selectMode/prompt.ts
-const BASE_MODE_SELECTION_PROMPT = [[
+const MODE_SELECTION_WORKFLOW = [
 	"## Mode selection",
 	"",
 	"You are an agent for choosing the best clank8y execution mode for this run.",
 	`Call \`${MODE_SELECTION_TOOL_NAME}\` exactly once with a valid mode and a concise reason.`,
 	`Tool intent: ${MODE_SELECTION_TOOL_DESCRIPTION}`,
-	"Choose `Review` when the instructions are about pull request review.",
+	"Use the tool schema descriptions for the exact meaning of each selectable mode.",
 	"Do not do any other work in this step."
-].join("\n")].join("\n");
+];
 function buildModeSelectionPrompt(promptContext) {
+	const basePrompt = MODE_SELECTION_WORKFLOW.join("\n");
 	const normalized = promptContext.trim();
-	if (!normalized) return BASE_MODE_SELECTION_PROMPT;
+	if (!normalized) return basePrompt;
 	return [
-		BASE_MODE_SELECTION_PROMPT,
+		basePrompt,
 		"",
 		"Here is the prompt context for this run:",
 		normalized
@@ -14943,7 +16097,7 @@ function buildModeSelectionPrompt(promptContext) {
 
 //#endregion
 //#region src/modes/selectMode/mcps/selectMode.ts
-function createSelectModeMCPRuntime() {
+function createSelectModeMCPRuntime(options) {
 	let selection = null;
 	const mcp = new McpServer({
 		name: "clank8y-select-mode-mcp",
@@ -14957,7 +16111,7 @@ function createSelectModeMCPRuntime() {
 		name: MODE_SELECTION_TOOL_NAME,
 		description: MODE_SELECTION_TOOL_DESCRIPTION,
 		title: MODE_SELECTION_TOOL_TITLE,
-		schema: clank8yModeSelectionSchema
+		schema: createClank8yModeSelectionSchema(options.disabledModes)
 	}, async (input) => {
 		selection = input;
 		return tool.text(`${MODE_SELECTION_TOOL_TITLE} received: ${input.mode}.`);
@@ -15009,8 +16163,8 @@ function createSelectModeMCPRuntime() {
 
 //#endregion
 //#region src/modes/selectMode/index.ts
-function getSelectModeRuntime(promptContext) {
-	const runtime = createSelectModeMCPRuntime();
+function getSelectModeRuntime(promptContext, disabledModes = {}) {
+	const runtime = createSelectModeMCPRuntime({ disabledModes });
 	return {
 		prompt: buildModeSelectionPrompt(promptContext),
 		...runtime
@@ -15022,6 +16176,7 @@ function getSelectModeRuntime(promptContext) {
 function getModeRuntime(mode, promptContext) {
 	switch (mode) {
 		case "Review": return getReviewModeRuntime(promptContext);
+		case "IncidentFix": return getIncidentFixModeRuntime(promptContext);
 		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
 	}
 }
@@ -15609,18 +16764,18 @@ function J({ onlyFirst: t = false } = {}) {
 	const F = ["[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))", "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
 	return new RegExp(F, t ? void 0 : "g");
 }
-function T$1$1(t) {
+function T$1(t) {
 	if (typeof t != "string") throw new TypeError(`Expected a \`string\`, got \`${typeof t}\``);
 	return t.replace(Q, "");
 }
-function O$2(t) {
+function O$1(t) {
 	return t && t.__esModule && Object.prototype.hasOwnProperty.call(t, "default") ? t.default : t;
 }
-function A$1$1(t, u = {}) {
+function A$1(t, u = {}) {
 	if (typeof t != "string" || t.length === 0 || (u = {
 		ambiguousIsNarrow: true,
 		...u
-	}, t = T$1$1(t), t.length === 0)) return 0;
+	}, t = T$1(t), t.length === 0)) return 0;
 	t = t.replace(FD(), "  ");
 	const F = u.ambiguousIsNarrow ? 1 : 2;
 	let e = 0;
@@ -15655,7 +16810,7 @@ function sD() {
 	return Object.defineProperty(r$1, "codes", {
 		value: t,
 		enumerable: false
-	}), r$1.color.close = "\x1B[39m", r$1.bgColor.close = "\x1B[49m", r$1.color.ansi = L$1(), r$1.color.ansi256 = N$2(), r$1.color.ansi16m = I$2(), r$1.bgColor.ansi = L$1(m$1), r$1.bgColor.ansi256 = N$2(m$1), r$1.bgColor.ansi16m = I$2(m$1), Object.defineProperties(r$1, {
+	}), r$1.color.close = "\x1B[39m", r$1.bgColor.close = "\x1B[49m", r$1.color.ansi = L$1(), r$1.color.ansi256 = N$1(), r$1.color.ansi16m = I$1(), r$1.bgColor.ansi = L$1(m), r$1.bgColor.ansi256 = N$1(m), r$1.bgColor.ansi16m = I$1(m), Object.defineProperties(r$1, {
 		rgbToAnsi256: {
 			value: (u, F, e) => u === F && F === e ? u < 8 ? 16 : u > 248 ? 231 : Math.round((u - 8) / 247 * 24) + 232 : 16 + 36 * Math.round(u / 255 * 5) + 6 * Math.round(F / 255 * 5) + Math.round(e / 255 * 5),
 			enumerable: false
@@ -15711,7 +16866,7 @@ function sD() {
 		}
 	}), r$1;
 }
-function G$2(t, u, F) {
+function G$1(t, u, F) {
 	return String(t).normalize().replace(/\r\n/g, `
 `).split(`
 `).map((e) => oD(e, u, F)).join(`
@@ -15783,7 +16938,7 @@ async function prompt(message, opts = {}) {
 	}).then(handleCancel);
 	throw new Error(`Unknown prompt type: ${opts.type}`);
 }
-var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$1, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
+var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m, L$1, N$1, I$1, r$1, tD, eD, iD, v, CD, w$1, W$1, rD, R$1, y$1, V$1, z, ED, _$1, nD, oD, c$1, S$1, AD, pD, h, x, fD, bD, mD, Y, wD, SD, $D, q, jD, PD, V, u$1, le, L$2, W, C$1, o$1, d, k, P, A$2, T$2, F$1, w, B, he, ye, ve, fe, kCancel;
 var init_prompt = __esmMin((() => {
 	;
 	;
@@ -15820,12 +16975,12 @@ var init_prompt = __esmMin((() => {
 		};
 	})(P$1);
 	X = P$1.exports;
-	DD = O$2(X);
+	DD = O$1(X);
 	uD = function() {
 		return /\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62(?:\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73|\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74|\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67)\uDB40\uDC7F|(?:\uD83E\uDDD1\uD83C\uDFFF\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFF\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFE])|(?:\uD83E\uDDD1\uD83C\uDFFE\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFE\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFD\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFD\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFC\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFC\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFB\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFC-\uDFFF])|\uD83D\uDC68(?:\uD83C\uDFFB(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFC-\uDFFF])|[\u2695\u2696\u2708]\uFE0F|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))?|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83D\uDC68|(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFE])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])\uFE0F|\u200D(?:(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D[\uDC66\uDC67])|\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC)?|(?:\uD83D\uDC69(?:\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69]))|\uD83E\uDDD1(?:\uD83C[\uDFFB-\uDFFF])\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1)(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC69(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83E\uDDD1(?:\u200D(?:\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83D\uDC69\u200D\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D\uDC69\u200D\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|(?:\uD83D\uDC41\uFE0F\u200D\uD83D\uDDE8|\uD83E\uDDD1(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDC69(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDE36\u200D\uD83C\uDF2B|\uD83C\uDFF3\uFE0F\u200D\u26A7|\uD83D\uDC3B\u200D\u2744|(?:(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF])\u200D[\u2640\u2642]|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])\u200D[\u2640\u2642]|\uD83C\uDFF4\u200D\u2620|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])\u200D[\u2640\u2642]|[\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u2328\u23CF\u23ED-\u23EF\u23F1\u23F2\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB\u25FC\u2600-\u2604\u260E\u2611\u2618\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u2692\u2694-\u2697\u2699\u269B\u269C\u26A0\u26A7\u26B0\u26B1\u26C8\u26CF\u26D1\u26D3\u26E9\u26F0\u26F1\u26F4\u26F7\u26F8\u2702\u2708\u2709\u270F\u2712\u2714\u2716\u271D\u2721\u2733\u2734\u2744\u2747\u2763\u27A1\u2934\u2935\u2B05-\u2B07\u3030\u303D\u3297\u3299]|\uD83C[\uDD70\uDD71\uDD7E\uDD7F\uDE02\uDE37\uDF21\uDF24-\uDF2C\uDF36\uDF7D\uDF96\uDF97\uDF99-\uDF9B\uDF9E\uDF9F\uDFCD\uDFCE\uDFD4-\uDFDF\uDFF5\uDFF7]|\uD83D[\uDC3F\uDCFD\uDD49\uDD4A\uDD6F\uDD70\uDD73\uDD76-\uDD79\uDD87\uDD8A-\uDD8D\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA\uDECB\uDECD-\uDECF\uDEE0-\uDEE5\uDEE9\uDEF0\uDEF3])\uFE0F|\uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08|\uD83D\uDC69\u200D\uD83D\uDC67|\uD83D\uDC69\u200D\uD83D\uDC66|\uD83D\uDE35\u200D\uD83D\uDCAB|\uD83D\uDE2E\u200D\uD83D\uDCA8|\uD83D\uDC15\u200D\uD83E\uDDBA|\uD83E\uDDD1(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83D\uDC69(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83C\uDDFD\uD83C\uDDF0|\uD83C\uDDF6\uD83C\uDDE6|\uD83C\uDDF4\uD83C\uDDF2|\uD83D\uDC08\u200D\u2B1B|\u2764\uFE0F\u200D(?:\uD83D\uDD25|\uD83E\uDE79)|\uD83D\uDC41\uFE0F|\uD83C\uDFF3\uFE0F|\uD83C\uDDFF(?:\uD83C[\uDDE6\uDDF2\uDDFC])|\uD83C\uDDFE(?:\uD83C[\uDDEA\uDDF9])|\uD83C\uDDFC(?:\uD83C[\uDDEB\uDDF8])|\uD83C\uDDFB(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA])|\uD83C\uDDFA(?:\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF])|\uD83C\uDDF9(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF])|\uD83C\uDDF8(?:\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF])|\uD83C\uDDF7(?:\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC])|\uD83C\uDDF5(?:\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE])|\uD83C\uDDF3(?:\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF])|\uD83C\uDDF2(?:\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF])|\uD83C\uDDF1(?:\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE])|\uD83C\uDDF0(?:\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF])|\uD83C\uDDEF(?:\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5])|\uD83C\uDDEE(?:\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9])|\uD83C\uDDED(?:\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA])|\uD83C\uDDEC(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE])|\uD83C\uDDEB(?:\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7])|\uD83C\uDDEA(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA])|\uD83C\uDDE9(?:\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF])|\uD83C\uDDE8(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF5\uDDF7\uDDFA-\uDDFF])|\uD83C\uDDE7(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF])|\uD83C\uDDE6(?:\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF])|[#\*0-9]\uFE0F\u20E3|\u2764\uFE0F|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|\uD83C\uDFF4|(?:[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5])(?:\uD83C[\uDFFB-\uDFFF])|(?:[\u261D\u270C\u270D]|\uD83D[\uDD74\uDD90])(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC08\uDC15\uDC3B\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE2E\uDE35\uDE36\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5]|\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD]|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF]|[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF84\uDF86-\uDF93\uDFA0-\uDFC1\uDFC5\uDFC6\uDFC8\uDFC9\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC07\uDC09-\uDC14\uDC16-\uDC3A\uDC3C-\uDC3E\uDC40\uDC44\uDC45\uDC51-\uDC65\uDC6A\uDC79-\uDC7B\uDC7D-\uDC80\uDC84\uDC88-\uDC8E\uDC90\uDC92-\uDCA9\uDCAB-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDDA4\uDDFB-\uDE2D\uDE2F-\uDE34\uDE37-\uDE44\uDE48-\uDE4A\uDE80-\uDEA2\uDEA4-\uDEB3\uDEB7-\uDEBF\uDEC1-\uDEC5\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0D\uDD0E\uDD10-\uDD17\uDD1D\uDD20-\uDD25\uDD27-\uDD2F\uDD3A\uDD3F-\uDD45\uDD47-\uDD76\uDD78\uDD7A-\uDDB4\uDDB7\uDDBA\uDDBC-\uDDCB\uDDD0\uDDE0-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6]|(?:[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF93\uDFA0-\uDFCA\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF4\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC3E\uDC40\uDC42-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDD7A\uDD95\uDD96\uDDA4\uDDFB-\uDE4F\uDE80-\uDEC5\uDECC\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])|(?:[#\*0-9\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB-\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u261D\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692-\u2697\u2699\u269B\u269C\u26A0\u26A1\u26A7\u26AA\u26AB\u26B0\u26B1\u26BD\u26BE\u26C4\u26C5\u26C8\u26CE\u26CF\u26D1\u26D3\u26D4\u26E9\u26EA\u26F0-\u26F5\u26F7-\u26FA\u26FD\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716\u271D\u2721\u2728\u2733\u2734\u2744\u2747\u274C\u274E\u2753-\u2755\u2757\u2763\u2764\u2795-\u2797\u27A1\u27B0\u27BF\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B50\u2B55\u3030\u303D\u3297\u3299]|\uD83C[\uDC04\uDCCF\uDD70\uDD71\uDD7E\uDD7F\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE1A\uDE2F\uDE32-\uDE3A\uDE50\uDE51\uDF00-\uDF21\uDF24-\uDF93\uDF96\uDF97\uDF99-\uDF9B\uDF9E-\uDFF0\uDFF3-\uDFF5\uDFF7-\uDFFF]|\uD83D[\uDC00-\uDCFD\uDCFF-\uDD3D\uDD49-\uDD4E\uDD50-\uDD67\uDD6F\uDD70\uDD73-\uDD7A\uDD87\uDD8A-\uDD8D\uDD90\uDD95\uDD96\uDDA4\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA-\uDE4F\uDE80-\uDEC5\uDECB-\uDED2\uDED5-\uDED7\uDEE0-\uDEE5\uDEE9\uDEEB\uDEEC\uDEF0\uDEF3-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])\uFE0F|(?:[\u261D\u26F9\u270A-\u270D]|\uD83C[\uDF85\uDFC2-\uDFC4\uDFC7\uDFCA-\uDFCC]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66-\uDC78\uDC7C\uDC81-\uDC83\uDC85-\uDC87\uDC8F\uDC91\uDCAA\uDD74\uDD75\uDD7A\uDD90\uDD95\uDD96\uDE45-\uDE47\uDE4B-\uDE4F\uDEA3\uDEB4-\uDEB6\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1F\uDD26\uDD30-\uDD39\uDD3C-\uDD3E\uDD77\uDDB5\uDDB6\uDDB8\uDDB9\uDDBB\uDDCD-\uDDCF\uDDD1-\uDDDD])/g;
 	};
-	FD = O$2(uD);
-	m$1 = 10, L$1 = (t = 0) => (u) => `\x1B[${u + t}m`, N$2 = (t = 0) => (u) => `\x1B[${38 + t};5;${u}m`, I$2 = (t = 0) => (u, F, e) => `\x1B[${38 + t};2;${u};${F};${e}m`, r$1 = {
+	FD = O$1(uD);
+	m = 10, L$1 = (t = 0) => (u) => `\x1B[${u + t}m`, N$1 = (t = 0) => (u) => `\x1B[${38 + t};5;${u}m`, I$1 = (t = 0) => (u, F, e) => `\x1B[${38 + t};2;${u};${F};${e}m`, r$1 = {
 		modifier: {
 			reset: [0, 0],
 			bold: [1, 22],
@@ -15881,13 +17036,13 @@ var init_prompt = __esmMin((() => {
 	Object.keys(r$1.modifier);
 	tD = Object.keys(r$1.color), eD = Object.keys(r$1.bgColor);
 	[...tD, ...eD];
-	iD = sD(), v$1 = new Set(["\x1B", ""]), CD = 39, w$1 = "\x07", W$1 = "[", rD = "]", R$2 = "m", y$2 = `${rD}8;;`, V$1 = (t) => `${v$1.values().next().value}${W$1}${t}${R$2}`, z$1 = (t) => `${v$1.values().next().value}${y$2}${t}${w$1}`, ED = (t) => t.split(" ").map((u) => A$1$1(u)), _$2 = (t, u, F) => {
+	iD = sD(), v = new Set(["\x1B", ""]), CD = 39, w$1 = "\x07", W$1 = "[", rD = "]", R$1 = "m", y$1 = `${rD}8;;`, V$1 = (t) => `${v.values().next().value}${W$1}${t}${R$1}`, z = (t) => `${v.values().next().value}${y$1}${t}${w$1}`, ED = (t) => t.split(" ").map((u) => A$1(u)), _$1 = (t, u, F) => {
 		const e = [...u];
-		let s = false, i = false, D = A$1$1(T$1$1(t[t.length - 1]));
+		let s = false, i = false, D = A$1(T$1(t[t.length - 1]));
 		for (const [C, o] of e.entries()) {
-			const E = A$1$1(o);
-			if (D + E <= F ? t[t.length - 1] += o : (t.push(o), D = 0), v$1.has(o) && (s = true, i = e.slice(C + 1).join("").startsWith(y$2)), s) {
-				i ? o === w$1 && (s = false, i = false) : o === R$2 && (s = false);
+			const E = A$1(o);
+			if (D + E <= F ? t[t.length - 1] += o : (t.push(o), D = 0), v.has(o) && (s = true, i = e.slice(C + 1).join("").startsWith(y$1)), s) {
+				i ? o === w$1 && (s = false, i = false) : o === R$1 && (s = false);
 				continue;
 			}
 			D += E, D === F && C < e.length - 1 && (t.push(""), D = 0);
@@ -15896,7 +17051,7 @@ var init_prompt = __esmMin((() => {
 	}, nD = (t) => {
 		const u = t.split(" ");
 		let F = u.length;
-		for (; F > 0 && !(A$1$1(u[F - 1]) > 0);) F--;
+		for (; F > 0 && !(A$1(u[F - 1]) > 0);) F--;
 		return F === u.length ? t : u.slice(0, F).join(" ") + u.slice(F).join("");
 	}, oD = (t, u, F = {}) => {
 		if (F.trim !== false && t.trim() === "") return "";
@@ -15905,21 +17060,21 @@ var init_prompt = __esmMin((() => {
 		let C = [""];
 		for (const [E, a] of t.split(" ").entries()) {
 			F.trim !== false && (C[C.length - 1] = C[C.length - 1].trimStart());
-			let n = A$1$1(C[C.length - 1]);
+			let n = A$1(C[C.length - 1]);
 			if (E !== 0 && (n >= u && (F.wordWrap === false || F.trim === false) && (C.push(""), n = 0), (n > 0 || F.trim === false) && (C[C.length - 1] += " ", n++)), F.hard && D[E] > u) {
 				const B = u - n, p = 1 + Math.floor((D[E] - B - 1) / u);
-				Math.floor((D[E] - 1) / u) < p && C.push(""), _$2(C, a, u);
+				Math.floor((D[E] - 1) / u) < p && C.push(""), _$1(C, a, u);
 				continue;
 			}
 			if (n + D[E] > u && n > 0 && D[E] > 0) {
 				if (F.wordWrap === false && n < u) {
-					_$2(C, a, u);
+					_$1(C, a, u);
 					continue;
 				}
 				C.push("");
 			}
 			if (n + D[E] > u && F.wordWrap === false) {
-				_$2(C, a, u);
+				_$1(C, a, u);
 				continue;
 			}
 			C[C.length - 1] += a;
@@ -15928,8 +17083,8 @@ var init_prompt = __esmMin((() => {
 		const o = [...C.join(`
 `)];
 		for (const [E, a] of o.entries()) {
-			if (e += a, v$1.has(a)) {
-				const { groups: B } = new RegExp(`(?:\\${W$1}(?<code>\\d+)m|\\${y$2}(?<uri>.*)${w$1})`).exec(o.slice(E).join("")) || { groups: {} };
+			if (e += a, v.has(a)) {
+				const { groups: B } = new RegExp(`(?:\\${W$1}(?<code>\\d+)m|\\${y$1}(?<uri>.*)${w$1})`).exec(o.slice(E).join("")) || { groups: {} };
 				if (B.code !== void 0) {
 					const p = Number.parseFloat(B.code);
 					s = p === CD ? void 0 : p;
@@ -15937,8 +17092,8 @@ var init_prompt = __esmMin((() => {
 			}
 			const n = iD.codes.get(Number(s));
 			o[E + 1] === `
-` ? (i && (e += z$1("")), s && n && (e += V$1(n))) : a === `
-` && (s && n && (e += V$1(s)), i && (e += z$1(i)));
+` ? (i && (e += z("")), s && n && (e += V$1(n))) : a === `
+` && (s && n && (e += V$1(s)), i && (e += z(i)));
 		}
 		return e;
 	};
@@ -15962,16 +17117,16 @@ var init_prompt = __esmMin((() => {
 		])
 	};
 	globalThis.process.platform.startsWith("win");
-	S$2 = Symbol("clack:cancel");
+	S$1 = Symbol("clack:cancel");
 	AD = Object.defineProperty, pD = (t, u, F) => u in t ? AD(t, u, {
 		enumerable: true,
 		configurable: true,
 		writable: true,
 		value: F
-	}) : t[u] = F, h$1 = (t, u, F) => (pD(t, typeof u != "symbol" ? u + "" : u, F), F);
-	x$1 = class {
+	}) : t[u] = F, h = (t, u, F) => (pD(t, typeof u != "symbol" ? u + "" : u, F), F);
+	x = class {
 		constructor(u, F = true) {
-			h$1(this, "input"), h$1(this, "output"), h$1(this, "_abortSignal"), h$1(this, "rl"), h$1(this, "opts"), h$1(this, "_render"), h$1(this, "_track", false), h$1(this, "_prevFrame", ""), h$1(this, "_subscribers", /* @__PURE__ */ new Map()), h$1(this, "_cursor", 0), h$1(this, "state", "initial"), h$1(this, "error", ""), h$1(this, "value");
+			h(this, "input"), h(this, "output"), h(this, "_abortSignal"), h(this, "rl"), h(this, "opts"), h(this, "_render"), h(this, "_track", false), h(this, "_prevFrame", ""), h(this, "_subscribers", /* @__PURE__ */ new Map()), h(this, "_cursor", 0), h(this, "state", "initial"), h(this, "error", ""), h(this, "value");
 			const { input: e = stdin, output: s = stdout, render: i, signal: D, ...C } = u;
 			this.opts = C, this.onKeypress = this.onKeypress.bind(this), this.close = this.close.bind(this), this.render = this.render.bind(this), this._render = i.bind(this), this._track = F, this._abortSignal = D, this.input = e, this.output = s;
 		}
@@ -15999,7 +17154,7 @@ var init_prompt = __esmMin((() => {
 		prompt() {
 			return new Promise((u, F) => {
 				if (this._abortSignal) {
-					if (this._abortSignal.aborted) return this.state = "cancel", this.close(), u(S$2);
+					if (this._abortSignal.aborted) return this.state = "cancel", this.close(), u(S$1);
 					this._abortSignal.addEventListener("abort", () => {
 						this.state = "cancel", this.close();
 					}, { once: true });
@@ -16016,7 +17171,7 @@ var init_prompt = __esmMin((() => {
 				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
 					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
 				}), this.once("cancel", () => {
-					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$2);
+					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$1);
 				});
 			});
 		}
@@ -16039,12 +17194,12 @@ var init_prompt = __esmMin((() => {
 `), d$1(this.input, false), this.rl?.close(), this.rl = void 0, this.emit(`${this.state}`, this.value), this.unsubscribe();
 		}
 		restoreCursor() {
-			const u = G$2(this._prevFrame, process.stdout.columns, { hard: true }).split(`
+			const u = G$1(this._prevFrame, process.stdout.columns, { hard: true }).split(`
 `).length - 1;
 			this.output.write(srcExports.cursor.move(-999, u * -1));
 		}
 		render() {
-			const u = G$2(this._render(this) ?? "", process.stdout.columns, { hard: true });
+			const u = G$1(this._render(this) ?? "", process.stdout.columns, { hard: true });
 			if (u !== this._prevFrame) {
 				if (this.state === "initial") this.output.write(srcExports.cursor.hide);
 				else {
@@ -16072,7 +17227,7 @@ var init_prompt = __esmMin((() => {
 			}
 		}
 	};
-	fD = class extends x$1 {
+	fD = class extends x {
 		get cursor() {
 			return this.value ? 0 : 1;
 		}
@@ -16095,7 +17250,7 @@ var init_prompt = __esmMin((() => {
 		writable: true,
 		value: F
 	}) : t[u] = F, Y = (t, u, F) => (mD(t, typeof u != "symbol" ? u + "" : u, F), F);
-	wD = class extends x$1 {
+	wD = class extends x {
 		constructor(u) {
 			super(u, false), Y(this, "options"), Y(this, "cursor", 0), this.options = u.options, this.value = [...u.initialValues ?? []], this.cursor = Math.max(this.options.findIndex(({ value: F }) => F === u.cursorAt), 0), this.on("key", (F) => {
 				F === "a" && this.toggleAll();
@@ -16130,10 +17285,10 @@ var init_prompt = __esmMin((() => {
 		configurable: true,
 		writable: true,
 		value: F
-	}) : t[u] = F, q$1 = (t, u, F) => ($D(t, typeof u != "symbol" ? u + "" : u, F), F);
-	jD = class extends x$1 {
+	}) : t[u] = F, q = (t, u, F) => ($D(t, typeof u != "symbol" ? u + "" : u, F), F);
+	jD = class extends x {
 		constructor(u) {
-			super(u, false), q$1(this, "options"), q$1(this, "cursor", 0), this.options = u.options, this.cursor = this.options.findIndex(({ value: F }) => F === u.initialValue), this.cursor === -1 && (this.cursor = 0), this.changeValue(), this.on("cursor", (F) => {
+			super(u, false), q(this, "options"), q(this, "cursor", 0), this.options = u.options, this.cursor = this.options.findIndex(({ value: F }) => F === u.initialValue), this.cursor === -1 && (this.cursor = 0), this.changeValue(), this.on("cursor", (F) => {
 				switch (F) {
 					case "left":
 					case "up":
@@ -16154,7 +17309,7 @@ var init_prompt = __esmMin((() => {
 			this.value = this._value.value;
 		}
 	};
-	PD = class extends x$1 {
+	PD = class extends x {
 		get valueWithCursor() {
 			if (this.state === "submit") return this.value;
 			if (this.cursor >= this.value.length) return `${this.value}\u2588`;
@@ -16170,15 +17325,15 @@ var init_prompt = __esmMin((() => {
 			});
 		}
 	};
-	V$2 = ce(), u$2 = (t, n) => V$2 ? t : n, le = u$2("❯", ">"), L$2 = u$2("■", "x"), W$2 = u$2("▲", "x"), C$2 = u$2("✔", "√"), o$1 = u$2(""), d$2 = u$2(""), k$2 = u$2("●", ">"), P$2 = u$2("○", " "), A$2 = u$2("◻", "[•]"), T$2 = u$2("◼", "[+]"), F$2 = u$2("◻", "[ ]"), w$2 = (t) => {
+	V = ce(), u$1 = (t, n) => V ? t : n, le = u$1("❯", ">"), L$2 = u$1("■", "x"), W = u$1("▲", "x"), C$1 = u$1("✔", "√"), o$1 = u$1(""), d = u$1(""), k = u$1("●", ">"), P = u$1("○", " "), A$2 = u$1("◻", "[•]"), T$2 = u$1("◼", "[+]"), F$1 = u$1("◻", "[ ]"), w = (t) => {
 		switch (t) {
 			case "initial":
 			case "active": return e.cyan(le);
 			case "cancel": return e.red(L$2);
-			case "error": return e.yellow(W$2);
-			case "submit": return e.green(C$2);
+			case "error": return e.yellow(W);
+			case "submit": return e.green(C$1);
 		}
-	}, B$1 = (t) => {
+	}, B = (t) => {
 		const { cursor: n, options: s, style: r } = t, i = t.maxItems ?? Number.POSITIVE_INFINITY, a = Math.max(process.stdout.rows - 4, 0), c = Math.min(a, Math.max(i, 5));
 		let l = 0;
 		n >= l + c - 3 ? l = Math.max(Math.min(n - c + 3, s.length - c), 0) : n < l + 2 && (l = Math.max(n - 2, 0));
@@ -16194,18 +17349,18 @@ var init_prompt = __esmMin((() => {
 		initialValue: t.initialValue,
 		render() {
 			const n = `${e.gray(o$1)}
-${w$2(this.state)} ${t.message}
+${w(this.state)} ${t.message}
 `, s = t.placeholder ? e.inverse(t.placeholder[0]) + e.dim(t.placeholder.slice(1)) : e.inverse(e.hidden("_")), r = this.value ? this.valueWithCursor : s;
 			switch (this.state) {
 				case "error": return `${n.trim()}
 ${e.yellow(o$1)} ${r}
-${e.yellow(d$2)} ${e.yellow(this.error)}
+${e.yellow(d)} ${e.yellow(this.error)}
 `;
 				case "submit": return `${n}${e.gray(o$1)} ${e.dim(this.value || t.placeholder)}`;
 				case "cancel": return `${n}${e.gray(o$1)} ${e.strikethrough(e.dim(this.value ?? ""))}${this.value?.trim() ? `
 ${e.gray(o$1)}` : ""}`;
 				default: return `${n}${e.cyan(o$1)} ${r}
-${e.cyan(d$2)}
+${e.cyan(d)}
 `;
 			}
 		}
@@ -16217,14 +17372,14 @@ ${e.cyan(d$2)}
 			initialValue: t.initialValue ?? true,
 			render() {
 				const r = `${e.gray(o$1)}
-${w$2(this.state)} ${t.message}
+${w(this.state)} ${t.message}
 `, i = this.value ? n : s;
 				switch (this.state) {
 					case "submit": return `${r}${e.gray(o$1)} ${e.dim(i)}`;
 					case "cancel": return `${r}${e.gray(o$1)} ${e.strikethrough(e.dim(i))}
 ${e.gray(o$1)}`;
-					default: return `${r}${e.cyan(o$1)} ${this.value ? `${e.green(k$2)} ${n}` : `${e.dim(P$2)} ${e.dim(n)}`} ${e.dim("/")} ${this.value ? `${e.dim(P$2)} ${e.dim(s)}` : `${e.green(k$2)} ${s}`}
-${e.cyan(d$2)}
+					default: return `${r}${e.cyan(o$1)} ${this.value ? `${e.green(k)} ${n}` : `${e.dim(P)} ${e.dim(n)}`} ${e.dim("/")} ${this.value ? `${e.dim(P)} ${e.dim(s)}` : `${e.green(k)} ${s}`}
+${e.cyan(d)}
 `;
 				}
 			}
@@ -16234,9 +17389,9 @@ ${e.cyan(d$2)}
 			const i = s.label ?? String(s.value);
 			switch (r) {
 				case "selected": return `${e.dim(i)}`;
-				case "active": return `${e.green(k$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}`;
+				case "active": return `${e.green(k)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}`;
 				case "cancelled": return `${e.strikethrough(e.dim(i))}`;
-				default: return `${e.dim(P$2)} ${e.dim(i)}`;
+				default: return `${e.dim(P)} ${e.dim(i)}`;
 			}
 		};
 		return new jD({
@@ -16244,20 +17399,20 @@ ${e.cyan(d$2)}
 			initialValue: t.initialValue,
 			render() {
 				const s = `${e.gray(o$1)}
-${w$2(this.state)} ${t.message}
+${w(this.state)} ${t.message}
 `;
 				switch (this.state) {
 					case "submit": return `${s}${e.gray(o$1)} ${n(this.options[this.cursor], "selected")}`;
 					case "cancel": return `${s}${e.gray(o$1)} ${n(this.options[this.cursor], "cancelled")}
 ${e.gray(o$1)}`;
-					default: return `${s}${e.cyan(o$1)} ${B$1({
+					default: return `${s}${e.cyan(o$1)} ${B({
 						cursor: this.cursor,
 						options: this.options,
 						maxItems: t.maxItems,
 						style: (r, i) => n(r, i ? "active" : "inactive")
 					}).join(`
 ${e.cyan(o$1)}  `)}
-${e.cyan(d$2)}
+${e.cyan(d)}
 `;
 				}
 			}
@@ -16265,7 +17420,7 @@ ${e.cyan(d$2)}
 	}, fe = (t) => {
 		const n = (s, r) => {
 			const i = s.label ?? String(s.value);
-			return r === "active" ? `${e.cyan(A$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "selected" ? `${e.green(T$2)} ${e.dim(i)}` : r === "cancelled" ? `${e.strikethrough(e.dim(i))}` : r === "active-selected" ? `${e.green(T$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "submitted" ? `${e.dim(i)}` : `${e.dim(F$2)} ${e.dim(i)}`;
+			return r === "active" ? `${e.cyan(A$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "selected" ? `${e.green(T$2)} ${e.dim(i)}` : r === "cancelled" ? `${e.strikethrough(e.dim(i))}` : r === "active-selected" ? `${e.green(T$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "submitted" ? `${e.dim(i)}` : `${e.dim(F$1)} ${e.dim(i)}`;
 		};
 		return new wD({
 			options: t.options,
@@ -16278,7 +17433,7 @@ ${e.reset(e.dim(`Press ${e.gray(e.bgWhite(e.inverse(" space ")))} to select, ${e
 			},
 			render() {
 				const s = `${e.gray(o$1)}
-${w$2(this.state)} ${t.message}
+${w(this.state)} ${t.message}
 `, r = (i, a) => {
 					const c = this.value.includes(i.value);
 					return a && c ? n(i, "active-selected") : c ? n(i, "selected") : n(i, a ? "active" : "inactive");
@@ -16292,9 +17447,9 @@ ${e.gray(o$1)}` : ""}`;
 					}
 					case "error": {
 						const i = this.error.split(`
-`).map((a, c) => c === 0 ? `${e.yellow(d$2)} ${e.yellow(a)}` : `   ${a}`).join(`
+`).map((a, c) => c === 0 ? `${e.yellow(d)} ${e.yellow(a)}` : `   ${a}`).join(`
 `);
-						return `${s + e.yellow(o$1)} ${B$1({
+						return `${s + e.yellow(o$1)} ${B({
 							options: this.options,
 							cursor: this.cursor,
 							maxItems: t.maxItems,
@@ -16304,14 +17459,14 @@ ${e.yellow(o$1)}  `)}
 ${i}
 `;
 					}
-					default: return `${s}${e.cyan(o$1)} ${B$1({
+					default: return `${s}${e.cyan(o$1)} ${B({
 						options: this.options,
 						cursor: this.cursor,
 						maxItems: t.maxItems,
 						style: r
 					}).join(`
 ${e.cyan(o$1)}  `)}
-${e.cyan(d$2)}
+${e.cyan(d)}
 `;
 				}
 			}
@@ -16343,7 +17498,7 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		const e = i(true);
 		return Object.keys(e);
 	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
 	["APPVEYOR"],
 	[
 		"AWS_AMPLIFY",
@@ -16434,8 +17589,8 @@ const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta
 		{ ci: true }
 	]
 ];
-function b$1() {
-	if (globalThis.process?.env) for (const e of f$2) {
+function b() {
+	if (globalThis.process?.env) for (const e of f$1) {
 		const s = e[1] || e[0];
 		if (globalThis.process?.env[s]) return {
 			name: e[0].toLowerCase(),
@@ -16450,37 +17605,37 @@ function b$1() {
 		ci: false
 	};
 }
-const l$1 = b$1();
-l$1.name;
+const l = b();
+l.name;
 function n(e) {
 	return e ? e !== "false" : false;
 }
-const I$1 = globalThis.process?.platform || "", T$1 = n(o.CI) || l$1.ci !== false, a = n(globalThis.process?.stdout && globalThis.process?.stdout.isTTY), g$1 = n(o.DEBUG), R$1 = t === "test" || n(o.TEST);
+const I = globalThis.process?.platform || "", T = n(o.CI) || l.ci !== false, a = n(globalThis.process?.stdout && globalThis.process?.stdout.isTTY), g = n(o.DEBUG), R = t === "test" || n(o.TEST);
 n(o.MINIMAL);
-const A$1 = /^win/i.test(I$1);
-!n(o.NO_COLOR) && (n(o.FORCE_COLOR) || (a || A$1) && o.TERM);
-const C$1 = (globalThis.process?.versions?.node || "").replace(/^v/, "") || null;
-Number(C$1?.split(".")[0]);
-const y$1 = globalThis.process || Object.create(null), _$1 = { versions: {} };
-new Proxy(y$1, { get(e, s) {
+const A = /^win/i.test(I);
+!n(o.NO_COLOR) && (n(o.FORCE_COLOR) || (a || A) && o.TERM);
+const C = (globalThis.process?.versions?.node || "").replace(/^v/, "") || null;
+Number(C?.split(".")[0]);
+const y = globalThis.process || Object.create(null), _ = { versions: {} };
+new Proxy(y, { get(e, s) {
 	if (s === "env") return o;
 	if (s in e) return e[s];
-	if (s in _$1) return _$1[s];
+	if (s in _) return _[s];
 } });
-const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
-	[S$1, "netlify"],
-	[u$1, "edge-light"],
-	[N$1, "workerd"],
+const c = globalThis.process?.release?.name === "node", O = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D = !!globalThis.Deno, L = !!globalThis.fastly, S = !!globalThis.Netlify, u = !!globalThis.EdgeRuntime, N = globalThis.navigator?.userAgent === "Cloudflare-Workers", F = [
+	[S, "netlify"],
+	[u, "edge-light"],
+	[N, "workerd"],
 	[L, "fastly"],
-	[D$1, "deno"],
-	[O$1, "bun"],
+	[D, "deno"],
+	[O, "bun"],
 	[c, "node"]
 ];
-function G$1() {
-	const e = F$1.find((s) => s[0]);
+function G() {
+	const e = F.find((s) => s[0]);
 	if (e) return { name: e[1] };
 }
-G$1()?.name;
+G()?.name;
 function ansiRegex({ onlyFirst = false } = {}) {
 	const pattern = [`[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))`, "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
 	return new RegExp(pattern, onlyFirst ? void 0 : "g");
@@ -16626,13 +17781,13 @@ function createConsola(options = {}) {
 		stdout: process.stdout,
 		stderr: process.stderr,
 		prompt: (...args) => Promise.resolve().then(() => (init_prompt(), prompt_exports)).then((m) => m.prompt(...args)),
-		reporters: options.reporters || [options.fancy ?? !(T$1 || R$1) ? new FancyReporter() : new BasicReporter()],
+		reporters: options.reporters || [options.fancy ?? !(T || R) ? new FancyReporter() : new BasicReporter()],
 		...options
 	});
 }
 function _getDefaultLogLevel() {
-	if (g$1) return LogLevels.debug;
-	if (R$1) return LogLevels.warn;
+	if (g) return LogLevels.debug;
+	if (R) return LogLevels.warn;
 	return LogLevels.info;
 }
 const consola = createConsola();
@@ -21126,625 +22281,6 @@ stderr: ${stderrOutput}`));
 };
 
 //#endregion
-//#region ../../node_modules/.pnpm/tinyexec@1.0.2/node_modules/tinyexec/dist/main.js
-var l = Object.create;
-var u = Object.defineProperty;
-var d = Object.getOwnPropertyDescriptor;
-var f$1 = Object.getOwnPropertyNames;
-var p = Object.getPrototypeOf;
-var m = Object.prototype.hasOwnProperty;
-var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
-var g = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
-		s = i[a];
-		if (!m.call(e, s) && s !== n) u(e, s, {
-			get: ((e) => t[e]).bind(null, s),
-			enumerable: !(r = d(t, s)) || r.enumerable
-		});
-	}
-	return e;
-};
-var _ = (e, t, n) => (n = e != null ? l(p(e)) : {}, g(t || !e || !e.__esModule ? u(n, "default", {
-	value: e,
-	enumerable: true
-}) : n, e));
-var v = /* @__PURE__ */ createRequire$1(import.meta.url);
-const y = /^path$/i;
-const b = {
-	key: "PATH",
-	value: ""
-};
-function x(e) {
-	for (const t in e) {
-		if (!Object.prototype.hasOwnProperty.call(e, t) || !y.test(t)) continue;
-		const n = e[t];
-		if (!n) return b;
-		return {
-			key: t,
-			value: n
-		};
-	}
-	return b;
-}
-function S(e, t) {
-	const i = t.value.split(delimiter);
-	let o = e;
-	let s;
-	do {
-		i.push(resolve(o, "node_modules", ".bin"));
-		s = o;
-		o = dirname(o);
-	} while (o !== s);
-	return {
-		key: t.key,
-		value: i.join(delimiter)
-	};
-}
-function C(e, t) {
-	const n = {
-		...process.env,
-		...t
-	};
-	const r = S(e, x(n));
-	n[r.key] = r.value;
-	return n;
-}
-const w = (e) => {
-	let t = e.length;
-	const n = new PassThrough();
-	const r = () => {
-		if (--t === 0) n.emit("end");
-	};
-	for (const t of e) {
-		t.pipe(n, { end: false });
-		t.on("end", r);
-	}
-	return n;
-};
-var T = h((exports, t) => {
-	t.exports = a;
-	a.sync = o;
-	var n = v("fs");
-	function r(e, t) {
-		var n = t.pathExt !== void 0 ? t.pathExt : process.env.PATHEXT;
-		if (!n) return true;
-		n = n.split(";");
-		if (n.indexOf("") !== -1) return true;
-		for (var r = 0; r < n.length; r++) {
-			var i = n[r].toLowerCase();
-			if (i && e.substr(-i.length).toLowerCase() === i) return true;
-		}
-		return false;
-	}
-	function i(e, t, n) {
-		if (!e.isSymbolicLink() && !e.isFile()) return false;
-		return r(t, n);
-	}
-	function a(e, t, r) {
-		n.stat(e, function(n, a) {
-			r(n, n ? false : i(a, e, t));
-		});
-	}
-	function o(e, t) {
-		return i(n.statSync(e), e, t);
-	}
-});
-var E = h((exports, t) => {
-	t.exports = r;
-	r.sync = i;
-	var n = v("fs");
-	function r(e, t, r) {
-		n.stat(e, function(e, n) {
-			r(e, e ? false : a(n, t));
-		});
-	}
-	function i(e, t) {
-		return a(n.statSync(e), t);
-	}
-	function a(e, t) {
-		return e.isFile() && o(e, t);
-	}
-	function o(e, t) {
-		var n = e.mode;
-		var r = e.uid;
-		var i = e.gid;
-		var a = t.uid !== void 0 ? t.uid : process.getuid && process.getuid();
-		var o = t.gid !== void 0 ? t.gid : process.getgid && process.getgid();
-		var s = parseInt("100", 8);
-		var c = parseInt("010", 8);
-		var l = parseInt("001", 8);
-		var u = s | c;
-		return n & l || n & c && i === o || n & s && r === a || n & u && a === 0;
-	}
-});
-var D = h((exports, t) => {
-	v("fs");
-	var r;
-	if (process.platform === "win32" || global.TESTING_WINDOWS) r = T();
-	else r = E();
-	t.exports = i;
-	i.sync = a;
-	function i(e, t, n) {
-		if (typeof t === "function") {
-			n = t;
-			t = {};
-		}
-		if (!n) {
-			if (typeof Promise !== "function") throw new TypeError("callback not provided");
-			return new Promise(function(n, r) {
-				i(e, t || {}, function(e, t) {
-					if (e) r(e);
-					else n(t);
-				});
-			});
-		}
-		r(e, t || {}, function(e, r) {
-			if (e) {
-				if (e.code === "EACCES" || t && t.ignoreErrors) {
-					e = null;
-					r = false;
-				}
-			}
-			n(e, r);
-		});
-	}
-	function a(e, t) {
-		try {
-			return r.sync(e, t || {});
-		} catch (e) {
-			if (t && t.ignoreErrors || e.code === "EACCES") return false;
-			else throw e;
-		}
-	}
-});
-var O = h((exports, t) => {
-	const n = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-	const r = v("path");
-	const i = n ? ";" : ":";
-	const a = D();
-	const o = (e) => Object.assign(/* @__PURE__ */ new Error(`not found: ${e}`), { code: "ENOENT" });
-	const s = (e, t) => {
-		const r = t.colon || i;
-		const a = e.match(/\//) || n && e.match(/\\/) ? [""] : [...n ? [process.cwd()] : [], ...(t.path || process.env.PATH || "").split(r)];
-		const o = n ? t.pathExt || process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM" : "";
-		const s = n ? o.split(r) : [""];
-		if (n) {
-			if (e.indexOf(".") !== -1 && s[0] !== "") s.unshift("");
-		}
-		return {
-			pathEnv: a,
-			pathExt: s,
-			pathExtExe: o
-		};
-	};
-	const c = (e, t, n) => {
-		if (typeof t === "function") {
-			n = t;
-			t = {};
-		}
-		if (!t) t = {};
-		const { pathEnv: i, pathExt: c, pathExtExe: l } = s(e, t);
-		const u = [];
-		const d = (n) => new Promise((a, s) => {
-			if (n === i.length) return t.all && u.length ? a(u) : s(o(e));
-			const c = i[n];
-			const l = /^".*"$/.test(c) ? c.slice(1, -1) : c;
-			const d = r.join(l, e);
-			a(f(!l && /^\.[\\\/]/.test(e) ? e.slice(0, 2) + d : d, n, 0));
-		});
-		const f = (e, n, r) => new Promise((i, o) => {
-			if (r === c.length) return i(d(n + 1));
-			const s = c[r];
-			a(e + s, { pathExt: l }, (a, o) => {
-				if (!a && o) if (t.all) u.push(e + s);
-				else return i(e + s);
-				return i(f(e, n, r + 1));
-			});
-		});
-		return n ? d(0).then((e) => n(null, e), n) : d(0);
-	};
-	const l = (e, t) => {
-		t = t || {};
-		const { pathEnv: n, pathExt: i, pathExtExe: c } = s(e, t);
-		const l = [];
-		for (let o = 0; o < n.length; o++) {
-			const s = n[o];
-			const u = /^".*"$/.test(s) ? s.slice(1, -1) : s;
-			const d = r.join(u, e);
-			const f = !u && /^\.[\\\/]/.test(e) ? e.slice(0, 2) + d : d;
-			for (let e = 0; e < i.length; e++) {
-				const n = f + i[e];
-				try {
-					if (a.sync(n, { pathExt: c })) if (t.all) l.push(n);
-					else return n;
-				} catch (e) {}
-			}
-		}
-		if (t.all && l.length) return l;
-		if (t.nothrow) return null;
-		throw o(e);
-	};
-	t.exports = c;
-	c.sync = l;
-});
-var k = h((exports, t) => {
-	const n = (e = {}) => {
-		const t = e.env || process.env;
-		if ((e.platform || process.platform) !== "win32") return "PATH";
-		return Object.keys(t).reverse().find((e) => e.toUpperCase() === "PATH") || "Path";
-	};
-	t.exports = n;
-	t.exports.default = n;
-});
-var A = h((exports, t) => {
-	const n = v("path");
-	const r = O();
-	const i = k();
-	function a(e, t) {
-		const a = e.options.env || process.env;
-		const o = process.cwd();
-		const s = e.options.cwd != null;
-		const c = s && process.chdir !== void 0 && !process.chdir.disabled;
-		if (c) try {
-			process.chdir(e.options.cwd);
-		} catch (e) {}
-		let l;
-		try {
-			l = r.sync(e.command, {
-				path: a[i({ env: a })],
-				pathExt: t ? n.delimiter : void 0
-			});
-		} catch (e) {} finally {
-			if (c) process.chdir(o);
-		}
-		if (l) l = n.resolve(s ? e.options.cwd : "", l);
-		return l;
-	}
-	function o(e) {
-		return a(e) || a(e, true);
-	}
-	t.exports = o;
-});
-var j = h((exports, t) => {
-	const n = /([()\][%!^"`<>&|;, *?])/g;
-	function r(e) {
-		e = e.replace(n, "^$1");
-		return e;
-	}
-	function i(e, t) {
-		e = `${e}`;
-		e = e.replace(/(\\*)"/g, "$1$1\\\"");
-		e = e.replace(/(\\*)$/, "$1$1");
-		e = `"${e}"`;
-		e = e.replace(n, "^$1");
-		if (t) e = e.replace(n, "^$1");
-		return e;
-	}
-	t.exports.command = r;
-	t.exports.argument = i;
-});
-var M = h((exports, t) => {
-	t.exports = /^#!(.*)/;
-});
-var N = h((exports, t) => {
-	const n = M();
-	t.exports = (e = "") => {
-		const t = e.match(n);
-		if (!t) return null;
-		const [r, i] = t[0].replace(/#! ?/, "").split(" ");
-		const a = r.split("/").pop();
-		if (a === "env") return i;
-		return i ? `${a} ${i}` : a;
-	};
-});
-var P = h((exports, t) => {
-	const n = v("fs");
-	const r = N();
-	function i(e) {
-		const t = 150;
-		const i = Buffer.alloc(t);
-		let a;
-		try {
-			a = n.openSync(e, "r");
-			n.readSync(a, i, 0, t, 0);
-			n.closeSync(a);
-		} catch (e) {}
-		return r(i.toString());
-	}
-	t.exports = i;
-});
-var F = h((exports, t) => {
-	const n = v("path");
-	const r = A();
-	const i = j();
-	const a = P();
-	const o = process.platform === "win32";
-	const s = /\.(?:com|exe)$/i;
-	const c = /node_modules[\\/].bin[\\/][^\\/]+\.cmd$/i;
-	function l(e) {
-		e.file = r(e);
-		const t = e.file && a(e.file);
-		if (t) {
-			e.args.unshift(e.file);
-			e.command = t;
-			return r(e);
-		}
-		return e.file;
-	}
-	function u(e) {
-		if (!o) return e;
-		const t = l(e);
-		const r = !s.test(t);
-		if (e.options.forceShell || r) {
-			const r = c.test(t);
-			e.command = n.normalize(e.command);
-			e.command = i.command(e.command);
-			e.args = e.args.map((e) => i.argument(e, r));
-			e.args = [
-				"/d",
-				"/s",
-				"/c",
-				`"${[e.command].concat(e.args).join(" ")}"`
-			];
-			e.command = process.env.comspec || "cmd.exe";
-			e.options.windowsVerbatimArguments = true;
-		}
-		return e;
-	}
-	function d(e, t, n) {
-		if (t && !Array.isArray(t)) {
-			n = t;
-			t = null;
-		}
-		t = t ? t.slice(0) : [];
-		n = Object.assign({}, n);
-		const r = {
-			command: e,
-			args: t,
-			options: n,
-			file: void 0,
-			original: {
-				command: e,
-				args: t
-			}
-		};
-		return n.shell ? r : u(r);
-	}
-	t.exports = d;
-});
-var I = h((exports, t) => {
-	const n = process.platform === "win32";
-	function r(e, t) {
-		return Object.assign(/* @__PURE__ */ new Error(`${t} ${e.command} ENOENT`), {
-			code: "ENOENT",
-			errno: "ENOENT",
-			syscall: `${t} ${e.command}`,
-			path: e.command,
-			spawnargs: e.args
-		});
-	}
-	function i(e, t) {
-		if (!n) return;
-		const r = e.emit;
-		e.emit = function(n, i) {
-			if (n === "exit") {
-				const n = a(i, t, "spawn");
-				if (n) return r.call(e, "error", n);
-			}
-			return r.apply(e, arguments);
-		};
-	}
-	function a(e, t) {
-		if (n && e === 1 && !t.file) return r(t.original, "spawn");
-		return null;
-	}
-	function o(e, t) {
-		if (n && e === 1 && !t.file) return r(t.original, "spawnSync");
-		return null;
-	}
-	t.exports = {
-		hookChildProcess: i,
-		verifyENOENT: a,
-		verifyENOENTSync: o,
-		notFoundError: r
-	};
-});
-var R = _(h((exports, t) => {
-	const n = v("child_process");
-	const r = F();
-	const i = I();
-	function a(e, t, a) {
-		const o = r(e, t, a);
-		const s = n.spawn(o.command, o.args, o.options);
-		i.hookChildProcess(s, o);
-		return s;
-	}
-	function o(e, t, a) {
-		const o = r(e, t, a);
-		const s = n.spawnSync(o.command, o.args, o.options);
-		s.error = s.error || i.verifyENOENTSync(s.status, o);
-		return s;
-	}
-	t.exports = a;
-	t.exports.spawn = a;
-	t.exports.sync = o;
-	t.exports._parse = r;
-	t.exports._enoent = i;
-})(), 1);
-var z = class extends Error {
-	result;
-	output;
-	get exitCode() {
-		if (this.result.exitCode !== null) return this.result.exitCode;
-	}
-	constructor(e, t) {
-		super(`Process exited with non-zero status (${e.exitCode})`);
-		this.result = e;
-		this.output = t;
-	}
-};
-const B = {
-	timeout: void 0,
-	persist: false
-};
-const V = { windowsHide: true };
-function H(e, t) {
-	return {
-		command: normalize(e),
-		args: t ?? []
-	};
-}
-function U(e) {
-	const t = new AbortController();
-	for (const n of e) {
-		if (n.aborted) {
-			t.abort();
-			return n;
-		}
-		const e = () => {
-			t.abort(n.reason);
-		};
-		n.addEventListener("abort", e, { signal: t.signal });
-	}
-	return t.signal;
-}
-async function W(e) {
-	let t = "";
-	for await (const n of e) t += n.toString();
-	return t;
-}
-var G = class {
-	_process;
-	_aborted = false;
-	_options;
-	_command;
-	_args;
-	_resolveClose;
-	_processClosed;
-	_thrownError;
-	get process() {
-		return this._process;
-	}
-	get pid() {
-		return this._process?.pid;
-	}
-	get exitCode() {
-		if (this._process && this._process.exitCode !== null) return this._process.exitCode;
-	}
-	constructor(e, t, n) {
-		this._options = {
-			...B,
-			...n
-		};
-		this._command = e;
-		this._args = t ?? [];
-		this._processClosed = new Promise((e) => {
-			this._resolveClose = e;
-		});
-	}
-	kill(e) {
-		return this._process?.kill(e) === true;
-	}
-	get aborted() {
-		return this._aborted;
-	}
-	get killed() {
-		return this._process?.killed === true;
-	}
-	pipe(e, t, n) {
-		return q(e, t, {
-			...n,
-			stdin: this
-		});
-	}
-	async *[Symbol.asyncIterator]() {
-		const e = this._process;
-		if (!e) return;
-		const t = [];
-		if (this._streamErr) t.push(this._streamErr);
-		if (this._streamOut) t.push(this._streamOut);
-		const n = w(t);
-		const r = f.createInterface({ input: n });
-		for await (const e of r) yield e.toString();
-		await this._processClosed;
-		e.removeAllListeners();
-		if (this._thrownError) throw this._thrownError;
-		if (this._options?.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z(this);
-	}
-	async _waitForOutput() {
-		const e = this._process;
-		if (!e) throw new Error("No process was started");
-		const [t, n] = await Promise.all([this._streamOut ? W(this._streamOut) : "", this._streamErr ? W(this._streamErr) : ""]);
-		await this._processClosed;
-		if (this._options?.stdin) await this._options.stdin;
-		e.removeAllListeners();
-		if (this._thrownError) throw this._thrownError;
-		const r = {
-			stderr: n,
-			stdout: t,
-			exitCode: this.exitCode
-		};
-		if (this._options.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z(this, r);
-		return r;
-	}
-	then(e, t) {
-		return this._waitForOutput().then(e, t);
-	}
-	_streamOut;
-	_streamErr;
-	spawn() {
-		const e = cwd();
-		const n = this._options;
-		const r = {
-			...V,
-			...n.nodeOptions
-		};
-		const i = [];
-		this._resetState();
-		if (n.timeout !== void 0) i.push(AbortSignal.timeout(n.timeout));
-		if (n.signal !== void 0) i.push(n.signal);
-		if (n.persist === true) r.detached = true;
-		if (i.length > 0) r.signal = U(i);
-		r.env = C(e, r.env);
-		const { command: a, args: s } = H(this._command, this._args);
-		const c = (0, R._parse)(a, s, r);
-		const l = spawn(c.command, c.args, c.options);
-		if (l.stderr) this._streamErr = l.stderr;
-		if (l.stdout) this._streamOut = l.stdout;
-		this._process = l;
-		l.once("error", this._onError);
-		l.once("close", this._onClose);
-		if (n.stdin !== void 0 && l.stdin && n.stdin.process) {
-			const { stdout: e } = n.stdin.process;
-			if (e) e.pipe(l.stdin);
-		}
-	}
-	_resetState() {
-		this._aborted = false;
-		this._processClosed = new Promise((e) => {
-			this._resolveClose = e;
-		});
-		this._thrownError = void 0;
-	}
-	_onError = (e) => {
-		if (e.name === "AbortError" && (!(e.cause instanceof Error) || e.cause.name !== "TimeoutError")) {
-			this._aborted = true;
-			return;
-		}
-		this._thrownError = e;
-	};
-	_onClose = () => {
-		if (this._resolveClose) this._resolveClose();
-	};
-};
-const K = (e, t, n) => {
-	const r = new G(e, t, n);
-	r.spawn();
-	return r;
-};
-const q = K;
-
-//#endregion
 //#region src/agents/copilot/client.ts
 const COPILOT_CLI_PACKAGE = "@github/copilot";
 const COPILOT_CLI_VERSION = "1.0.2";
@@ -21840,6 +22376,102 @@ const copilotPermissionHandler = (request) => {
 	return {
 		kind: "denied-by-rules",
 		rules: ["Only MCP, mode selection, and native file access inside .clank8y are allowed."]
+	};
+};
+const BLOCKED_SHELL_COMMANDS = new Set([
+	"rm",
+	"rmdir",
+	"shred",
+	"mkfs",
+	"dd",
+	"truncate",
+	"curl",
+	"wget",
+	"ssh",
+	"scp",
+	"rsync",
+	"nc",
+	"ncat",
+	"socat",
+	"telnet",
+	"nmap",
+	"docker",
+	"podman",
+	"kubectl",
+	"systemctl",
+	"service",
+	"crontab",
+	"at",
+	"shutdown",
+	"reboot",
+	"halt",
+	"poweroff",
+	"mount",
+	"umount",
+	"chown",
+	"chmod",
+	"chgrp",
+	"su",
+	"sudo",
+	"passwd",
+	"useradd",
+	"userdel",
+	"groupadd",
+	"iptables",
+	"nft",
+	"eval"
+]);
+const BLOCKED_SHELL_PATTERNS = [
+	/\/dev\/(?:tcp|udp)\//i,
+	/base64\s+(?:--decode|-d)\s*\|/i,
+	/\brm\s+(?:-\w*[rR]\w*\s+|--recursive\s+)/
+];
+function extractCommandNames(fullCommandText) {
+	return fullCommandText.split(/&&|\|\||[;|]/).map((segment) => segment.trim()).filter(Boolean).map((segment) => {
+		return (segment.replace(/^(?:\w+=\S*\s+)+/, "").split(/\s/)[0] ?? "").split("/").pop()?.toLowerCase() ?? "";
+	}).filter(Boolean);
+}
+function isBlockedShellCommand(request) {
+	if ("fullCommandText" in request && typeof request.fullCommandText === "string") {
+		const cmdNames = extractCommandNames(request.fullCommandText);
+		for (const name of cmdNames) if (BLOCKED_SHELL_COMMANDS.has(name)) return `Blocked command: '${name}' is not allowed.`;
+		for (const pattern of BLOCKED_SHELL_PATTERNS) if (pattern.test(request.fullCommandText)) return `Blocked: command matches a disallowed pattern.`;
+	}
+	return null;
+}
+const copilotIncidentFixPermissionHandler = (request) => {
+	if (request.kind === "mcp" || request.kind === "custom-tool") return { kind: "approved" };
+	if (request.kind === "read") {
+		const targetPath = resolveRequestPath("path" in request && typeof request.path === "string" ? request.path : void 0);
+		if (targetPath && isWithinClank8yArtifacts(targetPath)) return { kind: "approved" };
+		return {
+			kind: "denied-by-rules",
+			rules: ["Native file reads are only allowed inside .clank8y."]
+		};
+	}
+	if (request.kind === "write") {
+		const targetPath = resolveRequestPath("fileName" in request && typeof request.fileName === "string" ? request.fileName : void 0);
+		if (targetPath && isWithinClank8yArtifacts(targetPath)) return { kind: "approved" };
+		return {
+			kind: "denied-by-rules",
+			rules: ["Native file writes are only allowed inside .clank8y."]
+		};
+	}
+	if (request.kind === "shell") {
+		const blockedCmd = isBlockedShellCommand(request);
+		if (blockedCmd) return {
+			kind: "denied-by-rules",
+			rules: [blockedCmd]
+		};
+		return { kind: "approved" };
+	}
+	if (request.kind === "url") return {
+		kind: "denied-by-rules",
+		rules: ["URL access is disabled."]
+	};
+	return {
+		kind: "denied-by-rules",
+		rules: ["Only MCP, file, and shell access are allowed in IncidentFix mode."]
 	};
 };
 let _client = null;
@@ -22063,6 +22695,131 @@ async function selectCopilotMode(options) {
 }
 
 //#endregion
+//#region src/agents/copilot/incidentFix.ts
+/**
+* IncidentFix keeps the agent administrative tools blocked but unlocks
+* shell, file creation, and glob so the agent can clone repos, run
+* builds/tests, read code trees, and write the report + local fixes.
+*/
+const COPILOT_INCIDENT_FIX_EXCLUDED_TOOLS = ["github-say-hello", "web_fetch"];
+async function runCopilotIncidentFix(prompt, profile, mcps) {
+	const client = await getCopilotClient();
+	const thoughtStarts = /* @__PURE__ */ new Map();
+	const totals = {
+		inputTokens: 0,
+		outputTokens: 0,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		cost: 0
+	};
+	const servers = mcps;
+	const startResults = await startAll(servers);
+	try {
+		const session = await client.createSession({
+			excludedTools: COPILOT_INCIDENT_FIX_EXCLUDED_TOOLS,
+			model: profile.model,
+			onPermissionRequest: copilotIncidentFixPermissionHandler,
+			mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: profile.timeOutMs })
+		});
+		const collectedMessages = [];
+		session.on("assistant.turn_start", (event) => {
+			thoughtStarts.set(event.data.turnId, Date.now());
+		});
+		session.on("assistant.turn_end", (event) => {
+			const thoughtStart = thoughtStarts.get(event.data.turnId);
+			thoughtStarts.delete(event.data.turnId);
+			if (thoughtStart) consola.info(`thought for ${((Date.now() - thoughtStart) / 1e3).toFixed(1)}s`);
+		});
+		session.on("tool.execution_start", (event) => {
+			const { toolName, mcpServerName, mcpToolName, arguments: args } = event.data;
+			const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName;
+			if (label === "report_intent") {
+				const intent = args?.intent;
+				if (!intent) return;
+				consola.info(`🤖 clanking next... ${intent}`);
+				return;
+			}
+			consola.info(`→ tool: ${label}${args !== void 0 ? ` ${JSON.stringify(args)}` : ""}`);
+		});
+		session.on("assistant.message", (event) => {
+			collectedMessages.push({
+				content: event.data.content || void 0,
+				reasoningText: event.data.reasoningText || void 0
+			});
+			if (event.data.reasoningText) logAgentMessage({
+				agent: COPILOT_AGENT_NAME,
+				model: profile.model
+			}, event.data.reasoningText);
+		});
+		session.on("assistant.usage", (usage) => {
+			totals.inputTokens += usage.data.inputTokens ?? 0;
+			totals.outputTokens += usage.data.outputTokens ?? 0;
+			totals.cacheReadTokens += usage.data.cacheReadTokens ?? 0;
+			totals.cacheWriteTokens += usage.data.cacheWriteTokens ?? 0;
+			totals.cost += usage.data.cost ?? 0;
+		});
+		const MAX_REPORT_RETRIES = 3;
+		const REPORT_REMINDER_PROMPT = [
+			"Your investigation report file at `.clank8y/report.md` is missing.",
+			"You MUST create this file now using a normal file write tool.",
+			"Include: incident summary, confirmed facts, rejected hypotheses,",
+			"repositories inspected, branches inspected, changes made (if any),",
+			"fix direction, and open questions."
+		].join(" ");
+		try {
+			consola.info("clank8y getting to work...");
+			const response = await session.sendAndWait({ prompt }, profile.timeOutMs);
+			if (response?.data.content) logAgentMessage({
+				agent: COPILOT_AGENT_NAME,
+				model: profile.model
+			}, response.data.content);
+			else consola.warn("No response received");
+			let reportExists = await doesReportArtifactExist();
+			for (let attempt = 1; attempt <= MAX_REPORT_RETRIES && !reportExists; attempt++) {
+				consola.warn(`report.md not found after run (attempt ${attempt}/${MAX_REPORT_RETRIES}), re-prompting agent...`);
+				const retryResponse = await session.sendAndWait({ prompt: REPORT_REMINDER_PROMPT }, profile.timeOutMs);
+				if (retryResponse?.data.content) logAgentMessage({
+					agent: COPILOT_AGENT_NAME,
+					model: profile.model
+				}, retryResponse.data.content);
+				reportExists = await doesReportArtifactExist();
+			}
+			if (!reportExists) {
+				consola.warn("Agent did not produce report.md after retries — generating fallback report from collected messages.");
+				const fallbackReport = buildFallbackReport(collectedMessages);
+				await writeFile(getReportArtifactPath(), fallbackReport, "utf-8");
+				consola.info(`Fallback report written to ${getReportArtifactPath()}`);
+			}
+		} finally {
+			await client.deleteSession(session.sessionId);
+		}
+	} finally {
+		logUsageSummary(totals);
+		await stopAll(servers);
+	}
+}
+function buildFallbackReport(messages) {
+	const sections = [
+		"# IncidentFix Report (auto-generated fallback)",
+		"",
+		"> This report was generated automatically because the agent did not produce `.clank8y/report.md`.",
+		""
+	];
+	const reasoning = messages.map((m) => m.reasoningText).filter(Boolean);
+	const content = messages.map((m) => m.content).filter(Boolean);
+	if (reasoning.length > 0) {
+		sections.push("## Agent Reasoning", "");
+		for (const text of reasoning) sections.push(text, "");
+	}
+	if (content.length > 0) {
+		sections.push("## Agent Responses", "");
+		for (const text of content) sections.push(text, "");
+	}
+	if (reasoning.length === 0 && content.length === 0) sections.push("No agent messages were captured during this run.", "");
+	return sections.join("\n");
+}
+
+//#endregion
 //#region src/agents/copilot/index.ts
 const COPILOT_AGENT_NAME = "github-copilot";
 const githubCopilotAgent = async (profile) => {
@@ -22080,6 +22837,9 @@ const githubCopilotAgent = async (profile) => {
 			switch (mode) {
 				case "Review":
 					await runCopilotReview(prompt, profile, mcps);
+					break;
+				case "IncidentFix":
+					await runCopilotIncidentFix(prompt, profile, mcps);
 					break;
 				default: throw new Error(`Unsupported mode for GitHub Copilot agent: ${mode}`);
 			}
@@ -22109,7 +22869,8 @@ const DEFAULT_CONFIGURATION = {
 		maxCalls: 60,
 		maxRuntimeMs: 6e4
 	},
-	agent: "github-copilot"
+	agent: "github-copilot",
+	disabledModes: {}
 };
 async function getClank8y(options) {
 	const { agent: agentName, ...profile } = defu$1(options, DEFAULT_CONFIGURATION);
@@ -22130,7 +22891,7 @@ async function executeClank8yAgent(options) {
 	const { agent, profile } = await getClank8y(options);
 	await resetClank8yArtifacts();
 	consola.success("Reset .clank8y artifacts directory.");
-	const { mcp, getSelection, prompt: selectModePrompt } = getSelectModeRuntime(options.promptContext);
+	const { mcp, getSelection, prompt: selectModePrompt } = getSelectModeRuntime(options.promptContext, profile.disabledModes);
 	await mcp.start();
 	await agent.selectMode({
 		prompt: selectModePrompt,
@@ -22139,6 +22900,7 @@ async function executeClank8yAgent(options) {
 	await mcp.stop();
 	const selection = getSelection();
 	if (!selection) throw new Error("Mode selection failed: the model did not provide a valid clank8y mode selection.");
+	if (profile.disabledModes[selection.mode] === true) throw new Error(`Mode selection failed: selected mode '${selection.mode}' is not enabled for this run.`);
 	const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext);
 	logAgentMessage({
 		agent: agent.name,
@@ -22172,6 +22934,7 @@ async function runClank8y(options) {
 	});
 	const selection = await executeClank8yAgent({
 		promptContext: getClank8yRuntimeContext().promptContext,
+		disabledModes: options.disabledModes,
 		model: options.model,
 		timeOutMs: options.timeOutMs,
 		tools: options.tools
