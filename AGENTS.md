@@ -21,7 +21,8 @@ packages/
   │   ├── formatters/         # Reusable pure formatting helpers shared across MCPs
   │   ├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
   │   │   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
-  │   │   ├── incidentFix/    # IncidentFix mode foundation (repo/branch MCPs first, prompt later)
+  │   │   ├── incidentFix/    # IncidentFix mode runtime for sandboxed repo investigation
+  │   │   │   ├── prompt.ts   # IncidentFix investigation prompt builder
   │   │   │   └── mcps/       # IncidentFix-specific GitHub/repository MCP servers
   │   │   ├── review/         # Review mode runtime
   │   │   │   ├── prompt.ts   # Review prompt builder
