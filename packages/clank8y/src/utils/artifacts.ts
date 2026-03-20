@@ -20,6 +20,10 @@ export function resolveClank8yArtifactPath(...segments: string[]): string {
   return path.join(getClank8yArtifactDirPath(), ...segments)
 }
 
+export function getClank8yReposDirPath(): string {
+  return resolveClank8yArtifactPath('repos')
+}
+
 export function isWithinClank8yArtifacts(targetPath: string): boolean {
   const artifactDir = getClank8yArtifactDirPath()
   const relativePath = path.relative(artifactDir, targetPath)

@@ -22,14 +22,14 @@ export interface Clank8yRuntimeContext {
   }
 }
 
-let _runtimeContext: Clank8yRuntimeContext | null = null
+let runtimeContext: Clank8yRuntimeContext | null = null
 
 function requireRuntimeContext(): Clank8yRuntimeContext {
-  if (!_runtimeContext) {
+  if (!runtimeContext) {
     throw new Error('Clank8y runtime context is not initialized. Call setClank8yRuntimeContext first.')
   }
 
-  return _runtimeContext
+  return runtimeContext
 }
 
 function normalizeRuntimeContext(context: Clank8yRuntimeContext): Clank8yRuntimeContext {
@@ -56,13 +56,9 @@ function normalizeRuntimeContext(context: Clank8yRuntimeContext): Clank8yRuntime
 }
 
 export function setClank8yRuntimeContext(context: Clank8yRuntimeContext): void {
-  _runtimeContext = normalizeRuntimeContext(context)
+  runtimeContext = normalizeRuntimeContext(context)
 }
 
 export function getClank8yRuntimeContext(): Clank8yRuntimeContext {
   return requireRuntimeContext()
-}
-
-export function resetClank8yRuntimeContextForTests(): void {
-  _runtimeContext = null
 }
