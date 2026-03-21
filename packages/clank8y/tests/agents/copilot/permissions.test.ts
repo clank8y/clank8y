@@ -110,7 +110,7 @@ describe('copilotIncidentFixPermissionHandler', () => {
   })
 
   describe('file writes', () => {
-    test('approves writes inside .clank8y', () => {
+    test('approves writes to report.md', () => {
       const result = copilotIncidentFixPermissionHandler({
         kind: 'write',
         toolCallId: 'tooluse_test',
@@ -119,6 +119,39 @@ describe('copilotIncidentFixPermissionHandler', () => {
         newFileContents: '# Report\n',
       }, sessionCtx)
       expect(result.kind).toBe('approved')
+    })
+
+    test('approves writes inside .clank8y/repos', () => {
+      const result = copilotIncidentFixPermissionHandler({
+        kind: 'write',
+        toolCallId: 'tooluse_test',
+        intention: 'Edit file',
+        fileName: '.clank8y/repos/some-repo/src/index.ts',
+        newFileContents: 'export const ok = true\n',
+      }, sessionCtx)
+      expect(result.kind).toBe('approved')
+    })
+
+    test('denies writes to prompt.md', () => {
+      const result = copilotIncidentFixPermissionHandler({
+        kind: 'write',
+        toolCallId: 'tooluse_test',
+        intention: 'Edit file',
+        fileName: '.clank8y/prompt.md',
+        newFileContents: 'mutated prompt\n',
+      }, sessionCtx)
+      expect(result.kind).toBe('denied-by-rules')
+    })
+
+    test('denies writes to resources.md', () => {
+      const result = copilotIncidentFixPermissionHandler({
+        kind: 'write',
+        toolCallId: 'tooluse_test',
+        intention: 'Edit file',
+        fileName: '.clank8y/resources.md',
+        newFileContents: 'mutated resources\n',
+      }, sessionCtx)
+      expect(result.kind).toBe('denied-by-rules')
     })
 
     test('denies writes outside .clank8y', () => {

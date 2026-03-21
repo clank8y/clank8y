@@ -5,7 +5,7 @@ import type { Clank8yDisabledModes, Clank8yMode, Clank8yModeSelection } from '..
 import type { Clank8yMCPServers, LocalHTTPMCPServer } from '../mcp'
 import { getModeRuntime, getSelectModeRuntime } from '../modes'
 import { githubCopilotAgent } from './copilot'
-import { resetClank8yArtifacts } from '../utils/artifacts'
+import { initializeResourcesArtifact, resetClank8yArtifacts, writePromptArtifact } from '../utils/artifacts'
 import consola from 'consola'
 
 export type Models
@@ -144,6 +144,14 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
   }
 
   const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext)
+
+  await writePromptArtifact(prompt)
+  consola.success('Wrote .clank8y/prompt.md.')
+
+  if (selection.mode === 'IncidentFix') {
+    await initializeResourcesArtifact()
+    consola.success('Initialized .clank8y/resources.md.')
+  }
 
   logAgentMessage({
     agent: agent.name,

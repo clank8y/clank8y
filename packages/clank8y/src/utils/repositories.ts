@@ -36,6 +36,51 @@ export function toGitHubRepositoryKey(repository: GitHubRepositoryRef): string {
   return `${repository.owner.toLowerCase()}--${repository.repo.toLowerCase()}`
 }
 
+const CLANK8Y_BRANCH_PATTERN = /^(fix|feat|chore|refactor|ci|docs|style|perf|test|build|revert)\/clank8y-.+$/
+
+export function assertPushBranchAllowed(branch: string, defaultBranch: string): void {
+  const normalizedBranch = branch.trim()
+  if (!normalizedBranch) {
+    throw new Error('Branch name is required for push.')
+  }
+
+  if (normalizedBranch === 'HEAD') {
+    throw new Error('Cannot push from detached HEAD. Create or check out a branch first.')
+  }
+
+  if (normalizedBranch === defaultBranch) {
+    throw new Error(`Pushing the default branch '${defaultBranch}' is not allowed in IncidentFix mode.`)
+  }
+
+  if (!CLANK8Y_BRANCH_PATTERN.test(normalizedBranch)) {
+    throw new Error(
+      `Branch '${normalizedBranch}' does not match the required naming convention. `
+      + `Use <type>/clank8y-<name> where type is one of: fix, feat, chore, refactor, ci, docs, style, perf, test, build, revert.`,
+    )
+  }
+}
+
+export function assertArtifactOwnedByAuthenticatedUser(params: {
+  artifactType: 'issue' | 'pull request'
+  authorLogin: string | null | undefined
+  authenticatedLogin: string
+}): void {
+  const authorLogin = params.authorLogin?.trim()
+  const authenticatedLogin = params.authenticatedLogin.trim()
+
+  if (!authorLogin) {
+    throw new Error(`Cannot update ${params.artifactType}: author is unknown.`)
+  }
+
+  if (!authenticatedLogin) {
+    throw new Error(`Cannot update ${params.artifactType}: authenticated GitHub login is unknown.`)
+  }
+
+  if (authorLogin.toLowerCase() !== authenticatedLogin.toLowerCase()) {
+    throw new Error(`Cannot update ${params.artifactType}: only artifacts authored by '${authenticatedLogin}' may be updated.`)
+  }
+}
+
 function ensurePathStaysWithinRoot(rootPath: string, targetPath: string): void {
   const relativePath = path.relative(rootPath, targetPath)
   if (relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))) {
@@ -61,6 +106,14 @@ export async function doesGitRepositoryExist(repositoryPath: string): Promise<bo
   const repoStat = await stat(repositoryPath).catch(() => null)
   const gitStat = await stat(path.join(repositoryPath, '.git')).catch(() => null)
   return Boolean(repoStat?.isDirectory() && gitStat)
+}
+
+export async function getRepositoryCurrentBranch(repositoryPath: string): Promise<string> {
+  const { stdout } = await runClank8yGit(['rev-parse', '--abbrev-ref', 'HEAD'], {
+    cwd: repositoryPath,
+  })
+
+  return stdout.trim()
 }
 
 function repositoryRemoteUrl(repository: GitHubRepositoryRef): string {
@@ -126,6 +179,43 @@ export async function fetchRepositoryBranch(params: {
   return {
     path: repositoryPath,
     localRef: `origin/${params.branch}`,
+  }
+}
+
+export async function pushRepositoryBranch(params: {
+  repository: GitHubRepositoryRef
+  defaultBranch: string
+  token: string
+  branch: string
+}): Promise<{ path: string, branch: string, remoteRef: string }> {
+  const repositoryPath = resolveRepositoryPath(getClank8yReposDirPath(), params.repository)
+  if (!(await doesGitRepositoryExist(repositoryPath))) {
+    throw new Error(`Repository checkout does not exist at ${repositoryPath}. Call clone-repo first.`)
+  }
+
+  await configureClank8yGitRepository(repositoryPath)
+
+  const branch = params.branch.trim()
+  assertPushBranchAllowed(branch, params.defaultBranch)
+
+  await runClank8yGit(['check-ref-format', '--branch', branch], {
+    cwd: repositoryPath,
+  })
+
+  await runClank8yGit([
+    'push',
+    '--set-upstream',
+    'origin',
+    `HEAD:refs/heads/${branch}`,
+  ], {
+    cwd: repositoryPath,
+    token: params.token,
+  })
+
+  return {
+    path: repositoryPath,
+    branch,
+    remoteRef: `refs/heads/${branch}`,
   }
 }
 
