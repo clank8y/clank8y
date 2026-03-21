@@ -191,8 +191,6 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
 // Commands that are never allowed regardless of context.
 // Patterns are matched against each parsed command identifier from the SDK.
 const BLOCKED_SHELL_COMMANDS = new Set([
-  'rm',
-  'rmdir',
   'shred',
   'mkfs',
   'dd',
