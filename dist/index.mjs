@@ -33522,6 +33522,7 @@ async function getRepositoryBranches(params) {
 	};
 }
 const GET_REPO_BRANCHES_TOOL_NAME = "get-repo-branches";
+const SEARCH_REPO_ISSUES_TOOL_NAME = "search-repo-issues";
 const CLONE_REPO_TOOL_NAME = "clone-repo";
 const FETCH_REPO_BRANCH_TOOL_NAME = "fetch-repo-branch";
 const PUSH_REPO_BRANCH_TOOL_NAME = "push-repo-branch";
@@ -33565,6 +33566,46 @@ function incidentFixGitHubMCP() {
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				return tool.error(`Failed to load repository branches: ${message}`);
+			}
+		}),
+		defineTool({
+			name: SEARCH_REPO_ISSUES_TOOL_NAME,
+			description: "Search open issues and pull requests in a repository by keyword. Use this before creating new issues or PRs to check whether one already exists for the same problem.",
+			title: "Search Repository Issues",
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format to search.")),
+				query: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Search keywords. Keep it short and specific to the problem area."))
+			}), /* @__PURE__ */ description("Arguments for searching open issues and pull requests in a repository."))
+		}, async ({ repository, query }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const qualifiedQuery = `repo:${parsed.owner}/${parsed.repo} is:open ${query}`;
+				const { data } = await octokit.rest.search.issuesAndPullRequests({
+					q: qualifiedQuery,
+					per_page: 15,
+					sort: "updated",
+					order: "desc"
+				});
+				const items = data.items.map((item) => ({
+					number: item.number,
+					title: item.title,
+					url: item.html_url,
+					type: item.pull_request ? "pull_request" : "issue",
+					state: item.state,
+					author: item.user?.login ?? null,
+					labels: item.labels.map((label) => typeof label === "string" ? label : label.name),
+					updatedAt: item.updated_at
+				}));
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					query: qualifiedQuery,
+					totalCount: data.total_count,
+					items
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to search repository issues: ${message}`);
 			}
 		}),
 		defineTool({
@@ -33992,21 +34033,24 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"Typical IncidentFix work in this mode:",
 		"- inspect incident context and identify likely repositories or components",
 		"- compare likely base branches before choosing where to work",
+		"- search for existing open issues or PRs that already cover the same problem",
 		"- prepare one or more local repo checkouts for investigation",
 		"- validate whether the reported failure is real and reproducible",
 		"- narrow down likely root cause and identify a fix direction",
-		"- push repo branches and create or update related issues and pull requests when the investigation reaches a concrete fix path",
+		"- only when the root cause is confirmed: push a fix branch, reference or create an issue, and open a PR",
 		"- leave a deterministic markdown report at `.clank8y/report.md`",
 		"",
-		"The MCP surface includes both read-side repository preparation and authenticated remote write operations.",
-		"Use the dedicated issue, pull request, push, and update tools for remote state changes instead of trying to do those operations through normal shell commands."
+		"The MCP surface includes read-side repository preparation, issue/PR search, and authenticated remote write operations.",
+		"Use the dedicated search, issue, pull request, push, and update tools for remote state changes instead of trying to do those operations through normal shell commands.",
+		"",
+		"**If the problem cannot be debugged and identified, do not create any issues, branches, or pull requests. Report-only is the correct outcome to reduce noise.**"
 	].join("\n"),
 	"",
 	[
 		"## Required workflow",
 		"",
 		"You have three MCP servers available:",
-		"- **GitHub MCP** for branch discovery, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.",
+		"- **GitHub MCP** for branch discovery, issue/PR search, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.",
 		"- **Angular MCP** for Angular API, syntax, and best-practice verification.",
 		"- **Codex MCP** for Cumulocity Web SDK and design-system verification.",
 		"",
@@ -34021,27 +34065,37 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"   - Do not assume the default branch is always the right base for an incident investigation.",
 		"   - If multiple repos are implicated, inspect them one at a time and keep the reasoning explicit.",
 		"",
-		`3) **Prepare a checkout** with \`${CLONE_REPO_TOOL_NAME}\` once you know which repository you need locally.`,
+		`3) **Search for existing issues and PRs** with \`${SEARCH_REPO_ISSUES_TOOL_NAME}\` before creating anything.`,
+		"   - For each repository where you suspect a problem, search open issues and PRs for keywords related to the incident.",
+		"   - If an existing open issue covers the same problem, reference it instead of creating a duplicate.",
+		"   - If an existing open PR already addresses the problem, reference it and do not create a competing branch.",
+		"   - Record what you found (or did not find) in the report.",
+		"",
+		`4) **Prepare a checkout** with \`${CLONE_REPO_TOOL_NAME}\` once you know which repository you need locally.`,
 		"   - This clones only the default branch initially. That is expected.",
 		"   - Reuse the prepared checkout if it already exists for the current run.",
 		"",
-		`4) **Fetch a specific non-default branch only when needed** via \`${FETCH_REPO_BRANCH_TOOL_NAME}\`.`,
+		`5) **Fetch a specific non-default branch only when needed** via \`${FETCH_REPO_BRANCH_TOOL_NAME}\`.`,
 		"   - Use this when branch metadata suggests a better base branch than the default branch.",
 		"   - Fetch only the branch you actually need.",
 		"   - After fetching, local git branch creation and checkout can happen with normal local git commands.",
 		"",
-		"4.5) **Use the durable reference artifacts when your context gets fuzzy.**",
+		"6) **Use the durable reference artifacts when your context gets fuzzy.**",
 		"   - `.clank8y/prompt.md` contains the exact run prompt and should be treated as read-only.",
 		"   - `.clank8y/resources.md` contains MCP-maintained remote artifact history for this run and should be treated as read-only.",
 		"   - Re-read those files instead of guessing what the original inputs were or which remote artifacts were already created or updated.",
 		"",
-		"5) **Investigate locally.**",
+		"7) **Investigate locally.**",
 		"   - Read code, trace execution paths, inspect configuration, run focused tests, and verify assumptions.",
 		"   - Prefer the smallest set of files and commands needed to confirm or reject a hypothesis.",
 		"   - If the problem touches Angular, verify the relevant behavior with Angular MCP instead of relying on memory.",
 		"   - If the problem touches Cumulocity platform behavior, APIs, services, microservice contracts, or platform concepts, verify the relevant behavior with Codex MCP instead of relying on memory.",
 		"",
-		"6) **Record the real outcome in `.clank8y/report.md`.**",
+		"8) **Gate: did you identify and confirm the root cause?**",
+		"   - If **NO**: stop here. Write the report with what you found. Do not create any issues, branches, or pull requests. Report-only is the correct outcome.",
+		"   - If **YES**: proceed to the remote write steps below.",
+		"",
+		"9) **Record the real outcome in `.clank8y/report.md`.**",
 		"   - Create the file yourself if it does not exist yet. Do not wait for a special tool.",
 		"   - Normal file tools are allowed for writing this report because it is a local artifact.",
 		"   - Do not edit `.clank8y/prompt.md` or `.clank8y/resources.md`; those are read-only reference artifacts.",
@@ -34054,29 +34108,35 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"   - rejected or still-unverified hypotheses",
 		"   - repositories inspected",
 		"   - branches inspected or used",
+		"   - existing issues or PRs found during search (with links)",
 		"   - repositories changed, if any",
 		"   - issues and pull requests created, if any",
 		"   - relevant cross-references between related issues or pull requests when multiple repos are involved",
 		"   - current fix direction or why no safe action was taken",
 		"   - open questions or follow-up work",
 		"",
-		"7) **Use the remote-write MCP tools deliberately.**",
-		`   - Use \`${PUSH_REPO_BRANCH_TOOL_NAME}\` for authenticated pushes, \`${CREATE_REPO_ISSUE_TOOL_NAME}\` and \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` for issue lifecycle, and \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` and \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\` for pull request lifecycle.`,
+		"10) **Remote writes — only after confirmed root cause.**",
+		"   The expected sequence is:",
+		"   a) Search for an existing issue for the problem. If one exists, use it as the reference. If not, create one.",
+		`   b) Create or reference the issue with \`${CREATE_REPO_ISSUE_TOOL_NAME}\`.`,
+		`   c) Push the fix branch with \`${PUSH_REPO_BRANCH_TOOL_NAME}\`.`,
+		`   d) Create the pull request with \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\`, referencing the issue.`,
+		`   e) If you need to backfill cross-references afterward, use \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` or \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\`.`,
 		"   - Create issues and pull requests only once you have a concrete, evidence-backed fix path.",
-		"   - If multiple repos are involved, make related issues and pull requests cross-reference each other when it helps explain the full repair set.",
-		"   - If an earlier issue or pull request could not reference a later artifact because its ID was not known yet, update the earlier remote artifact after the later one is created.",
+		"   - If multiple repos are involved, make related issues and pull requests cross-reference each other.",
 		"   - Use remote update tools only for bot-authored artifacts that belong to the current incident workflow.",
 		"",
 		"### Completion criteria:",
 		"- Do not finish without writing `.clank8y/report.md`.",
 		"- Do not present a hypothesis as a fact unless you verified it.",
 		"- If you changed code locally, say exactly which repositories changed and what remains unvalidated.",
-		"- If no safe fix was found, say that plainly. Report-only is a valid outcome.",
+		"- If no root cause was confirmed, the outcome is report-only. No issues, no branches, no PRs.",
 		"- If the investigation involved Angular or Cumulocity-specific behavior, confirm you checked Angular MCP or Codex MCP before concluding.",
 		"- If you created or updated remote issues or pull requests, record them accurately in the report including the cross-references that matter.",
+		"- Always search for existing issues/PRs before creating new ones.",
 		"",
 		"### Tooling constraints:",
-		"- Use GitHub MCP for authenticated remote operations such as clone, fetch, push, issue creation, issue update, pull request creation, and pull request update.",
+		"- Use GitHub MCP for authenticated remote operations such as search, clone, fetch, push, issue creation, issue update, pull request creation, and pull request update.",
 		"- Use Angular MCP for Angular-specific guidance and API verification.",
 		"- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.",
 		"- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally."
@@ -34101,6 +34161,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- `## Decision log`",
 		"- `## Repositories inspected`",
 		"- `## Branches inspected`",
+		"- `## Existing artifacts found`",
 		"- `## Changes made`",
 		"- `## Remote artifacts`",
 		"- `## Remaining uncertainty`",
@@ -34109,6 +34170,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"For `## Decision log`, keep short dated or ordered notes about key investigation decisions, discarded paths, and why you moved to a different repo or branch.",
 		"For `## Repositories inspected`, list each repository with its purpose in the investigation.",
 		"For `## Branches inspected`, note the default branch and any additional fetched branches that mattered.",
+		"If existing open issues or PRs were found during search, list them under `## Existing artifacts found` with links.",
 		"If no code changes were made, say so explicitly under `## Changes made`.",
 		"For `## Remote artifacts`, list created issues and pull requests, plus any cross-references that connect related repos.",
 		"If a hypothesis was disproved, include that. Negative findings are useful here.",
