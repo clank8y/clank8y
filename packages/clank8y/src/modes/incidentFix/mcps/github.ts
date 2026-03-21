@@ -9,6 +9,7 @@ import { getOctokit } from '../../../gh'
 import type { LocalHTTPMCPServer } from '../../../mcp'
 import { getClank8yRuntimeContext } from '../../../setup'
 import { appendResourcesArtifactEntry } from '../../../utils/artifacts'
+import { buildRepoIssueSearchQueries } from '../../../utils/githubSearch'
 import {
   assertArtifactOwnedByAuthenticatedUser,
   cloneRepository,
@@ -80,12 +81,12 @@ export function incidentFixGitHubMCP(): LocalHTTPMCPServer {
 
     defineTool({
       name: SEARCH_REPO_ISSUES_TOOL_NAME,
-      description: 'Search open issues and pull requests in a repository by keyword. Use this before creating new issues or PRs to check whether one already exists for the same problem.',
+      description: 'Search open issues and pull requests in a repository before creating anything new. Prefer 2-5 stable search terms such as feature names, function names, or concrete symptoms, not long sentences.',
       title: 'Search Repository Issues',
       schema: v.pipe(
         v.object({
           repository: v.pipe(v.string(), v.description('Repository in owner/repo format to search.')),
-          query: v.pipe(v.string(), v.description('Search keywords. Keep it short and specific to the problem area.')),
+          query: v.pipe(v.string(), v.description('Search terms for the problem. Use a short phrase with stable identifiers or symptoms, for example: playback measurement lat undefined.')),
         }),
         v.description('Arguments for searching open issues and pull requests in a repository.'),
       ),
@@ -93,30 +94,59 @@ export function incidentFixGitHubMCP(): LocalHTTPMCPServer {
       try {
         const octokit = await getOctokit()
         const parsed = parseGitHubRepository(repository)
-        const qualifiedQuery = `repo:${parsed.owner}/${parsed.repo} is:open ${query}`
-        const { data } = await octokit.rest.search.issuesAndPullRequests({
-          q: qualifiedQuery,
-          per_page: 15,
-          sort: 'updated',
-          order: 'desc',
-        })
+        const repositoryKey = `${parsed.owner}/${parsed.repo}`
+        const queriesTried = buildRepoIssueSearchQueries(repositoryKey, query)
+        const seenArtifactNumbers = new Set<number>()
+        const items: Array<{
+          number: number
+          title: string
+          url: string
+          type: 'issue' | 'pull_request'
+          state: string
+          author: string | null
+          labels: Array<string | undefined>
+          updatedAt: string
+          matchedBy: string
+        }> = []
 
-        const items = data.items.map((item) => ({
-          number: item.number,
-          title: item.title,
-          url: item.html_url,
-          type: item.pull_request ? 'pull_request' : 'issue',
-          state: item.state,
-          author: item.user?.login ?? null,
-          labels: item.labels.map((label) => typeof label === 'string' ? label : label.name),
-          updatedAt: item.updated_at,
-        }))
+        for (const searchQuery of queriesTried) {
+          const { data } = await octokit.rest.search.issuesAndPullRequests({
+            q: searchQuery,
+            per_page: 10,
+            sort: 'updated',
+            order: 'desc',
+          })
+
+          for (const item of data.items) {
+            if (seenArtifactNumbers.has(item.number)) {
+              continue
+            }
+
+            seenArtifactNumbers.add(item.number)
+            items.push({
+              number: item.number,
+              title: item.title,
+              url: item.html_url,
+              type: item.pull_request ? 'pull_request' : 'issue',
+              state: item.state,
+              author: item.user?.login ?? null,
+              labels: item.labels.map((label) => typeof label === 'string' ? label : label.name),
+              updatedAt: item.updated_at,
+              matchedBy: searchQuery,
+            })
+          }
+        }
 
         return tool.structured({
-          repository: `${parsed.owner}/${parsed.repo}`,
-          query: qualifiedQuery,
-          totalCount: data.total_count,
+          repository: repositoryKey,
+          query,
+          queriesTried,
+          searchStrategy: 'github-search-api',
+          matchedCount: items.length,
           items,
+          note: items.length > 0
+            ? 'Matched via GitHub issue and pull request search queries.'
+            : 'No GitHub search matches found.',
         } as any)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
