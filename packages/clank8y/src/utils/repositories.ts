@@ -206,7 +206,7 @@ export async function pushRepositoryBranch(params: {
     'push',
     '--set-upstream',
     'origin',
-    `HEAD:refs/heads/${branch}`,
+    `refs/heads/${branch}:refs/heads/${branch}`,
   ], {
     cwd: repositoryPath,
     token: params.token,
