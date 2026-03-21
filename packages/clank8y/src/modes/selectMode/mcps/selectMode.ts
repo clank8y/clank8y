@@ -5,15 +5,19 @@ import { McpServer } from 'tmcp'
 import { defineTool } from 'tmcp/tool'
 import { tool } from 'tmcp/utils'
 import type { LocalHTTPMCPServer } from '../../../mcp'
-import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME, MODE_SELECTION_TOOL_TITLE, clank8yModeSelectionSchema } from '../../../modeSelection'
-import type { Clank8yModeSelection } from '../../../modeSelection'
+import { MODE_SELECTION_TOOL_DESCRIPTION, MODE_SELECTION_TOOL_NAME, MODE_SELECTION_TOOL_TITLE, createClank8yModeSelectionSchema } from '../../../modeSelection'
+import type { Clank8yDisabledModes, Clank8yModeSelection } from '../../../modeSelection'
 
 export interface SelectModeMCPRuntime {
   mcp: LocalHTTPMCPServer
   getSelection: () => Clank8yModeSelection | null
 }
 
-export function createSelectModeMCPRuntime(): SelectModeMCPRuntime {
+export interface CreateSelectModeMCPRuntimeOptions {
+  disabledModes: Clank8yDisabledModes
+}
+
+export function createSelectModeMCPRuntime(options: CreateSelectModeMCPRuntimeOptions): SelectModeMCPRuntime {
   let selection: Clank8yModeSelection | null = null
 
   const mcp = new McpServer({
@@ -33,7 +37,7 @@ export function createSelectModeMCPRuntime(): SelectModeMCPRuntime {
     name: MODE_SELECTION_TOOL_NAME,
     description: MODE_SELECTION_TOOL_DESCRIPTION,
     title: MODE_SELECTION_TOOL_TITLE,
-    schema: clank8yModeSelectionSchema,
+    schema: createClank8yModeSelectionSchema(options.disabledModes),
   }, async (input) => {
     selection = input
 

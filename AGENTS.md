@@ -15,10 +15,15 @@ packages/
 └── clank8y/
   ├── src/
   │   ├── index.ts            # Public package entrypoint for sandbox/custom runtimes
-  │   ├── setup.ts            # Runtime context state
+  │   ├── setup/              # Shared runtime context helpers used across modes
+  │   │   ├── context.ts      # Runtime context state
+  │   │   └── index.ts        # Public setup barrel
   │   ├── formatters/         # Reusable pure formatting helpers shared across MCPs
   │   ├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
   │   │   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
+  │   │   ├── incidentFix/    # IncidentFix mode runtime for sandboxed repo investigation
+  │   │   │   ├── prompt.ts   # IncidentFix investigation prompt builder
+  │   │   │   └── mcps/       # IncidentFix-specific GitHub/repository MCP servers
   │   │   ├── review/         # Review mode runtime
   │   │   │   ├── prompt.ts   # Review prompt builder
   │   │   │   └── mcps/       # Review-specific MCP servers
@@ -28,6 +33,10 @@ packages/
   │   ├── modeSelection/      # Shared mode-selection metadata and schemas
   │   ├── agents/             # Review agent runtime and orchestration helpers
   │   │   └── copilot/        # Shared Copilot client/bootstrap helpers plus per-mode runtime files
+  │   ├── utils/              # Shared filesystem and git helpers
+  │   │   ├── artifacts.ts    # .clank8y artifact paths and file helpers
+  │   │   └── git.ts          # Shared git execution and repo-local bot config helpers
+  │   │   └── repositories.ts # Shared repository parsing/path helpers for multi-repo workflows
   │   └── mcp/                # Shared MCP interfaces, adapters, and reusable external MCPs
   │       ├── index.ts        # Interfaces (MCPServer, LocalHTTPMCPServer, LocalStdioMCPServer), startAll/stopAll
   │       ├── angular.ts      # Stdio MCP server (Angular CLI via npx)
@@ -138,39 +147,6 @@ When working on this project:
 7. **Record learnings** — When the user corrects a mistake or provides context about how something should be done, add it to the "Project Context & Learnings" section below if it's a recurring pattern (not a one-time fix)
 8. **Notify documentation changes** — When updating `README.md` or `AGENTS.md`, explicitly call out the changes to the user at the end of your response so they can review and don't overlook them
 
-## v1 Implementation Checklist
-
-### POC Scope (required now)
-
-### Setup & Runtime
-
-- [ ] Initialize GitHub Copilot runtime in CI (install + start)
-- [ ] Configure Copilot with clank8y MCP server(s)
-- [ ] Add action triggers for PR workflows (open/sync/reopen) and optional manual trigger
-- [ ] Finalize action workflow (permissions, environment variables, execution entrypoint)
-
-### MCP Review Surface
-
-- [x] Implement PR context, file list, diff build/chunk read tools
-- [x] Implement one-shot review submission tool (`create-pull-request-review`)
-
-### Quality Gates
-
-- [ ] Add integration-style validation in a dedicated test repository
-- [ ] Keep lint + typecheck + tests green in CI
-
-### Docs & DX
-
-- [ ] Keep README action setup up-to-date with real workflow examples
-- [ ] Document each MCP tool contract (inputs, outputs, error cases)
-- [ ] Add troubleshooting notes for auth, event context, and invalid diff line mappings
-
-### Future Scope (post-POC)
-
-- [ ] Implement follow-up review tools (`list-pull-request-reviews`, `resolve-review-thread`)
-- [ ] Implement review-thread retrieval tool (`get-review-comments`) for address-feedback mode
-- [ ] Add automation flow for addressing existing feedback (thread read → fix → reply → resolve)
-
 ## Project Context & Learnings
 
 This section captures project-specific knowledge, tool quirks, and lessons learned during development. When the user provides corrections or context about how things should be done in this project, add them here if they are recurring patterns (not a one-time fix).
@@ -192,10 +168,14 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
+- Keep shared runtime context helpers under `src/setup/`; place reusable git execution/config helpers under `src/utils/` rather than inside a single mode implementation.
+- Current git auth still uses env-injected extraheaders for remote operations; stricter ASKPASS-style auth remains future hardening work, not current behavior.
+- Gate mode availability at the runtime entry boundary via the top-level `disabledModes` config; derive the selectable mode array from that before building the mode-selection tool schema, and keep the GitHub Action wrapper locked to `Review`.
 - Treat each mode as the runtime ownership boundary: `src/modes/<mode>/` owns its prompt plus MCP assembly.
 - Keep shared modes agent-agnostic. Agent-specific runtime policy such as Copilot excluded tools belongs in the agent runtime layer, not in shared `src/modes/` definitions.
 - Keep mode-selection prompt text and MCP server under `src/modes/selectMode/`, while shared mode-selection metadata/schema stays in `src/modeSelection/`.
 - Prefer dedicated MCP tools over Copilot custom tools when the capability should be reusable across agent runtimes.
+- For IncidentFix-style multi-repo work, keep branch discovery GitHub-backed: use a read-only MCP tool for branch metadata first, then clone default branch and fetch only specific additional branches on demand.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
 - Require the agent to set PR context via `set-pull-request-context` before any PR MCP tool calls.
 - Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.

@@ -27,6 +27,7 @@ export async function runClank8y(options: RunClank8yOptions): Promise<Clank8yRun
   const runtimeContext = getClank8yRuntimeContext()
   const selection = await executeClank8yAgent({
     promptContext: runtimeContext.promptContext,
+    disabledModes: options.disabledModes,
     model: options.model,
     timeOutMs: options.timeOutMs,
     tools: options.tools,
