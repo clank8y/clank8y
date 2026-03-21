@@ -41843,8 +41843,6 @@ const copilotPermissionHandler = (request) => {
 	};
 };
 const BLOCKED_SHELL_COMMANDS = new Set([
-	"rm",
-	"rmdir",
 	"shred",
 	"mkfs",
 	"dd",
