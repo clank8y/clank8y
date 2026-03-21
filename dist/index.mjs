@@ -18,8 +18,8 @@ import process$1, { cwd, stdin, stdout } from "node:process";
 import * as tty from "node:tty";
 import { WriteStream } from "node:tty";
 import nodeHTTPS from "node:https";
-import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path, { delimiter, dirname, join, normalize, resolve, sep } from "node:path";
+import { appendFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire as createRequire$1 } from "module";
 import { spawn } from "node:child_process";
 import f from "node:readline";
@@ -16400,7 +16400,7 @@ var __awaiter$7 = void 0 && (void 0).__awaiter || function(thisArg, _arguments, 
 		step((generator = generator.apply(thisArg, _arguments || [])).next());
 	});
 };
-const { access, appendFile, writeFile: writeFile$1 } = promises;
+const { access, appendFile: appendFile$1, writeFile: writeFile$1 } = promises;
 const SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
 var Summary = class {
 	constructor() {
@@ -16451,7 +16451,7 @@ var Summary = class {
 		return __awaiter$7(this, void 0, void 0, function* () {
 			const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
 			const filePath = yield this.filePath();
-			yield (overwrite ? writeFile$1 : appendFile)(filePath, this._buffer, { encoding: "utf8" });
+			yield (overwrite ? writeFile$1 : appendFile$1)(filePath, this._buffer, { encoding: "utf8" });
 			return this.emptyBuffer();
 		});
 	}
@@ -32574,6 +32574,8 @@ const CLANK8Y_ARTIFACT_DIR = ".clank8y";
 const DIFF_ARTIFACT_FILE = "diff.txt";
 const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
 const REPORT_ARTIFACT_FILE = "report.md";
+const PROMPT_ARTIFACT_FILE = "prompt.md";
+const RESOURCES_ARTIFACT_FILE = "resources.md";
 function getClank8yArtifactDirPath() {
 	return path.join(process$1.cwd(), CLANK8Y_ARTIFACT_DIR);
 }
@@ -32582,6 +32584,11 @@ function resolveClank8yArtifactPath(...segments) {
 }
 function getClank8yReposDirPath() {
 	return resolveClank8yArtifactPath("repos");
+}
+function isWithinClank8yRepos(targetPath) {
+	const reposDir = getClank8yReposDirPath();
+	const relativePath = path.relative(reposDir, targetPath);
+	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
 }
 function isWithinClank8yArtifacts(targetPath) {
 	const artifactDir = getClank8yArtifactDirPath();
@@ -32607,12 +32614,49 @@ async function resetClank8yArtifacts() {
 function getReportArtifactPath() {
 	return resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE);
 }
+function getPromptArtifactPath() {
+	return resolveClank8yArtifactPath(PROMPT_ARTIFACT_FILE);
+}
+function getResourcesArtifactPath() {
+	return resolveClank8yArtifactPath(RESOURCES_ARTIFACT_FILE);
+}
 async function doesReportArtifactExist() {
 	return (await stat(getReportArtifactPath()).catch(() => null))?.isFile() ?? false;
 }
 async function writeDiffArtifact(content) {
 	const { diffPath } = getReviewArtifactPaths();
 	await writeFile(diffPath, content, "utf-8");
+}
+async function writePromptArtifact(content) {
+	const promptPath = getPromptArtifactPath();
+	await writeFile(promptPath, content, "utf-8");
+	return promptPath;
+}
+async function initializeResourcesArtifact() {
+	const resourcesPath = getResourcesArtifactPath();
+	await writeFile(resourcesPath, [
+		"# IncidentFix Resources",
+		"",
+		"> Durable MCP-maintained record of remote artifacts created or updated during this run.",
+		"> Read this file when context gets fuzzy. Do not rely on memory for issue/PR numbers or URLs.",
+		""
+	].join("\n"), "utf-8");
+	return resourcesPath;
+}
+async function appendResourcesArtifactEntry(params) {
+	const resourcesPath = getResourcesArtifactPath();
+	const lines = [
+		`## ${(/* @__PURE__ */ new Date()).toISOString()} ${params.action}`,
+		"",
+		`- repository: ${params.repository}`
+	];
+	if (params.number !== void 0) lines.push(`- number: ${params.number}`);
+	if (params.branch) lines.push(`- branch: ${params.branch}`);
+	if (params.title) lines.push(`- title: ${params.title}`);
+	if (params.url) lines.push(`- url: ${params.url}`);
+	lines.push(`- summary: ${params.summary}`, "");
+	await appendFile(resourcesPath, `${lines.join("\n")}\n`, "utf-8");
+	return resourcesPath;
 }
 async function writeReviewCommentsArtifact(content) {
 	const { reviewCommentsPath } = getReviewArtifactPaths();
@@ -33310,6 +33354,21 @@ function parseGitHubRepository(repository) {
 function toGitHubRepositoryKey(repository) {
 	return `${repository.owner.toLowerCase()}--${repository.repo.toLowerCase()}`;
 }
+const CLANK8Y_BRANCH_PATTERN = /^(fix|feat|chore|refactor|ci|docs|style|perf|test|build|revert)\/clank8y-.+$/;
+function assertPushBranchAllowed(branch, defaultBranch) {
+	const normalizedBranch = branch.trim();
+	if (!normalizedBranch) throw new Error("Branch name is required for push.");
+	if (normalizedBranch === "HEAD") throw new Error("Cannot push from detached HEAD. Create or check out a branch first.");
+	if (normalizedBranch === defaultBranch) throw new Error(`Pushing the default branch '${defaultBranch}' is not allowed in IncidentFix mode.`);
+	if (!CLANK8Y_BRANCH_PATTERN.test(normalizedBranch)) throw new Error(`Branch '${normalizedBranch}' does not match the required naming convention. Use <type>/clank8y-<name> where type is one of: fix, feat, chore, refactor, ci, docs, style, perf, test, build, revert.`);
+}
+function assertArtifactOwnedByAuthenticatedUser(params) {
+	const authorLogin = params.authorLogin?.trim();
+	const authenticatedLogin = params.authenticatedLogin.trim();
+	if (!authorLogin) throw new Error(`Cannot update ${params.artifactType}: author is unknown.`);
+	if (!authenticatedLogin) throw new Error(`Cannot update ${params.artifactType}: authenticated GitHub login is unknown.`);
+	if (authorLogin.toLowerCase() !== authenticatedLogin.toLowerCase()) throw new Error(`Cannot update ${params.artifactType}: only artifacts authored by '${authenticatedLogin}' may be updated.`);
+}
 function ensurePathStaysWithinRoot(rootPath, targetPath) {
 	const relativePath = path.relative(rootPath, targetPath);
 	if (relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath)) return;
@@ -33376,6 +33435,32 @@ async function fetchRepositoryBranch(params) {
 		localRef: `origin/${params.branch}`
 	};
 }
+async function pushRepositoryBranch(params) {
+	const repositoryPath = resolveRepositoryPath(getClank8yReposDirPath(), params.repository);
+	if (!await doesGitRepositoryExist(repositoryPath)) throw new Error(`Repository checkout does not exist at ${repositoryPath}. Call clone-repo first.`);
+	await configureClank8yGitRepository(repositoryPath);
+	const branch = params.branch.trim();
+	assertPushBranchAllowed(branch, params.defaultBranch);
+	await runClank8yGit([
+		"check-ref-format",
+		"--branch",
+		branch
+	], { cwd: repositoryPath });
+	await runClank8yGit([
+		"push",
+		"--set-upstream",
+		"origin",
+		`HEAD:refs/heads/${branch}`
+	], {
+		cwd: repositoryPath,
+		token: params.token
+	});
+	return {
+		path: repositoryPath,
+		branch,
+		remoteRef: `refs/heads/${branch}`
+	};
+}
 async function getBranchLastCommitDate(octokit, repository, sha) {
 	const { data } = await octokit.rest.repos.getCommit({
 		owner: repository.owner,
@@ -33439,6 +33524,16 @@ async function getRepositoryBranches(params) {
 const GET_REPO_BRANCHES_TOOL_NAME = "get-repo-branches";
 const CLONE_REPO_TOOL_NAME = "clone-repo";
 const FETCH_REPO_BRANCH_TOOL_NAME = "fetch-repo-branch";
+const PUSH_REPO_BRANCH_TOOL_NAME = "push-repo-branch";
+const CREATE_REPO_ISSUE_TOOL_NAME = "create-repo-issue";
+const UPDATE_REPO_ISSUE_TOOL_NAME = "update-repo-issue";
+const CREATE_REPO_PULL_REQUEST_TOOL_NAME = "create-repo-pull-request";
+const UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME = "update-repo-pull-request-body";
+const RESOURCES_ARTIFACT_NOTE = "This action was recorded in .clank8y/resources.md — read it to recover context.";
+async function getAuthenticatedLogin() {
+	const { data } = await (await getOctokit()).rest.users.getAuthenticated();
+	return data.login;
+}
 function incidentFixGitHubMCP() {
 	const mcp = new McpServer({
 		name: "clank8y-incident-fix-github-mcp",
@@ -33457,13 +33552,13 @@ function incidentFixGitHubMCP() {
 		}, async ({ repository }) => {
 			try {
 				const octokit = await getOctokit();
-				const parsedRepository = parseGitHubRepository(repository);
+				const parsed = parseGitHubRepository(repository);
 				const result = await getRepositoryBranches({
 					octokit,
-					repository: parsedRepository
+					repository: parsed
 				});
 				return tool.structured({
-					repository: `${parsedRepository.owner}/${parsedRepository.repo}`,
+					repository: `${parsed.owner}/${parsed.repo}`,
 					defaultBranch: result.defaultBranch,
 					branches: result.branches
 				});
@@ -33480,18 +33575,18 @@ function incidentFixGitHubMCP() {
 		}, async ({ repository }) => {
 			try {
 				const octokit = await getOctokit();
-				const parsedRepository = parseGitHubRepository(repository);
+				const parsed = parseGitHubRepository(repository);
 				const { data: repoData } = await octokit.rest.repos.get({
-					owner: parsedRepository.owner,
-					repo: parsedRepository.repo
+					owner: parsed.owner,
+					repo: parsed.repo
 				});
 				const result = await cloneRepository({
-					repository: parsedRepository,
+					repository: parsed,
 					defaultBranch: repoData.default_branch,
 					token: getClank8yRuntimeContext().auth.githubToken
 				});
 				return tool.structured({
-					repository: `${parsedRepository.owner}/${parsedRepository.repo}`,
+					repository: `${parsed.owner}/${parsed.repo}`,
 					path: result.path,
 					defaultBranch: repoData.default_branch,
 					reusedExistingCheckout: result.reusedExistingCheckout
@@ -33511,14 +33606,14 @@ function incidentFixGitHubMCP() {
 			}), /* @__PURE__ */ description("Arguments for fetching a single additional branch into an IncidentFix repository checkout."))
 		}, async ({ repository, branch }) => {
 			try {
-				const parsedRepository = parseGitHubRepository(repository);
+				const parsed = parseGitHubRepository(repository);
 				const result = await fetchRepositoryBranch({
-					repository: parsedRepository,
+					repository: parsed,
 					branch,
 					token: getClank8yRuntimeContext().auth.githubToken
 				});
 				return tool.structured({
-					repository: `${parsedRepository.owner}/${parsedRepository.repo}`,
+					repository: `${parsed.owner}/${parsed.repo}`,
 					branch,
 					path: result.path,
 					localRef: result.localRef
@@ -33526,6 +33621,247 @@ function incidentFixGitHubMCP() {
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				return tool.error(`Failed to fetch repository branch: ${message}`);
+			}
+		}),
+		defineTool({
+			name: PUSH_REPO_BRANCH_TOOL_NAME,
+			description: "Push a local branch for an IncidentFix checkout. Branch must follow <type>/clank8y-<name> naming (e.g. fix/clank8y-auth-leak). Default-branch pushes are blocked.",
+			title: "Push Repository Branch",
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format. The repo must already be cloned into .clank8y/repos.")),
+				branch: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Local branch name to push. Must follow <type>/clank8y-<name> convention (fix, feat, chore, refactor, etc.)."))
+			}), /* @__PURE__ */ description("Arguments for pushing a local IncidentFix branch to origin."))
+		}, async ({ repository, branch }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const { data: repoData } = await octokit.rest.repos.get({
+					owner: parsed.owner,
+					repo: parsed.repo
+				});
+				const result = await pushRepositoryBranch({
+					repository: parsed,
+					defaultBranch: repoData.default_branch,
+					token: getClank8yRuntimeContext().auth.githubToken,
+					branch
+				});
+				await appendResourcesArtifactEntry({
+					action: "push-repo-branch",
+					repository: `${parsed.owner}/${parsed.repo}`,
+					branch: result.branch,
+					summary: `Pushed branch '${result.branch}' to origin.`
+				});
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					branch: result.branch,
+					path: result.path,
+					remoteRef: result.remoteRef,
+					defaultBranch: repoData.default_branch,
+					note: RESOURCES_ARTIFACT_NOTE
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to push repository branch: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_REPO_ISSUE_TOOL_NAME,
+			description: "Create an issue in a repository once the investigation has a concrete, evidence-backed fix path or follow-up item.",
+			title: "Create Repository Issue",
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format where the issue should be created.")),
+				title: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Issue title. Keep it crisp and repository-specific.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Issue body in markdown. Include the concrete problem, fix direction, and any relevant cross-references already known.")),
+				labels: /* @__PURE__ */ pipe(/* @__PURE__ */ array(/* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Label name to apply to the issue."))), /* @__PURE__ */ description("Label names to add to the issue. Pass an empty array if none."))
+			}), /* @__PURE__ */ description("Arguments for creating an IncidentFix issue in a target repository."))
+		}, async ({ repository, title, body, labels }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const result = await octokit.rest.issues.create({
+					owner: parsed.owner,
+					repo: parsed.repo,
+					title,
+					body,
+					labels: labels.length > 0 ? labels : void 0
+				});
+				await appendResourcesArtifactEntry({
+					action: "create-repo-issue",
+					repository: `${parsed.owner}/${parsed.repo}`,
+					number: result.data.number,
+					title: result.data.title,
+					url: result.data.html_url,
+					summary: "Created repository issue."
+				});
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					issueNumber: result.data.number,
+					title: result.data.title,
+					url: result.data.html_url,
+					state: result.data.state,
+					labels: result.data.labels.map((label) => typeof label === "string" ? label : label.name),
+					note: RESOURCES_ARTIFACT_NOTE
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create repository issue: ${message}`);
+			}
+		}),
+		defineTool({
+			name: UPDATE_REPO_ISSUE_TOOL_NAME,
+			description: "Update an existing bot-authored issue title and body. Use this to backfill cross-references after related repos get their own issues or PRs.",
+			title: "Update Repository Issue",
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format for the issue to update.")),
+				issue_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Issue number to update.")),
+				title: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Replacement issue title.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Replacement issue body. Use this to add later-created cross-references."))
+			}), /* @__PURE__ */ description("Arguments for updating a bot-authored IncidentFix issue."))
+		}, async ({ repository, issue_number, title, body }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const authenticatedLogin = await getAuthenticatedLogin();
+				const { data: issue } = await octokit.rest.issues.get({
+					owner: parsed.owner,
+					repo: parsed.repo,
+					issue_number
+				});
+				if ("pull_request" in issue && issue.pull_request) throw new Error(`Issue #${issue_number} is a pull request. Use ${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME} instead.`);
+				assertArtifactOwnedByAuthenticatedUser({
+					artifactType: "issue",
+					authorLogin: issue.user?.login ?? null,
+					authenticatedLogin
+				});
+				const result = await octokit.rest.issues.update({
+					owner: parsed.owner,
+					repo: parsed.repo,
+					issue_number,
+					title,
+					body
+				});
+				await appendResourcesArtifactEntry({
+					action: "update-repo-issue",
+					repository: `${parsed.owner}/${parsed.repo}`,
+					number: result.data.number,
+					title: result.data.title,
+					url: result.data.html_url,
+					summary: "Updated repository issue."
+				});
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					issueNumber: result.data.number,
+					title: result.data.title,
+					url: result.data.html_url,
+					state: result.data.state,
+					note: RESOURCES_ARTIFACT_NOTE
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to update repository issue: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_REPO_PULL_REQUEST_TOOL_NAME,
+			description: "Create a pull request for a pushed branch. Use this once the fix direction is concrete and the branch is ready for review.",
+			title: "Create Repository Pull Request",
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format where the pull request should be created.")),
+				title: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Pull request title. Keep it repository-specific and concise.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Pull request body in markdown. Include the concrete fix summary and any cross-references already known.")),
+				base_branch: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Base branch for the PR (e.g. main, develop).")),
+				head_branch: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Head branch for the PR. Must match the pushed branch name.")),
+				draft: /* @__PURE__ */ pipe(/* @__PURE__ */ boolean(), /* @__PURE__ */ description("Whether to create the pull request as draft."))
+			}), /* @__PURE__ */ description("Arguments for creating an IncidentFix pull request from a prepared local checkout."))
+		}, async ({ repository, title, body, base_branch, head_branch, draft }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const result = await octokit.rest.pulls.create({
+					owner: parsed.owner,
+					repo: parsed.repo,
+					title,
+					body,
+					head: head_branch,
+					base: base_branch,
+					draft
+				});
+				await appendResourcesArtifactEntry({
+					action: "create-repo-pull-request",
+					repository: `${parsed.owner}/${parsed.repo}`,
+					number: result.data.number,
+					branch: result.data.head.ref,
+					title: result.data.title,
+					url: result.data.html_url,
+					summary: `Created pull request into '${result.data.base.ref}'.`
+				});
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					pullRequestNumber: result.data.number,
+					title: result.data.title,
+					url: result.data.html_url,
+					state: result.data.state,
+					draft: result.data.draft,
+					headBranch: result.data.head.ref,
+					baseBranch: result.data.base.ref,
+					note: RESOURCES_ARTIFACT_NOTE
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create repository pull request: ${message}`);
+			}
+		}),
+		defineTool({
+			name: UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME,
+			description: "Update the body of an existing bot-authored pull request. Use this to backfill cross-references after related issues or PRs are created in other repositories.",
+			title: "Update Repository Pull Request Body",
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format for the pull request to update.")),
+				pull_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Pull request number to update.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Replacement pull request body. Use this to add later-created cross-references and final context."))
+			}), /* @__PURE__ */ description("Arguments for updating the body of a bot-authored IncidentFix pull request."))
+		}, async ({ repository, pull_number, body }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const authenticatedLogin = await getAuthenticatedLogin();
+				const { data: pullRequest } = await octokit.rest.pulls.get({
+					owner: parsed.owner,
+					repo: parsed.repo,
+					pull_number
+				});
+				assertArtifactOwnedByAuthenticatedUser({
+					artifactType: "pull request",
+					authorLogin: pullRequest.user?.login ?? null,
+					authenticatedLogin
+				});
+				const result = await octokit.rest.pulls.update({
+					owner: parsed.owner,
+					repo: parsed.repo,
+					pull_number,
+					body
+				});
+				await appendResourcesArtifactEntry({
+					action: "update-repo-pull-request-body",
+					repository: `${parsed.owner}/${parsed.repo}`,
+					number: result.data.number,
+					branch: result.data.head.ref,
+					title: result.data.title,
+					url: result.data.html_url,
+					summary: "Updated pull request body."
+				});
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					pullRequestNumber: result.data.number,
+					title: result.data.title,
+					url: result.data.html_url,
+					state: result.data.state,
+					draft: result.data.draft,
+					note: RESOURCES_ARTIFACT_NOTE
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to update repository pull request body: ${message}`);
 			}
 		})
 	];
@@ -33659,17 +33995,18 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- prepare one or more local repo checkouts for investigation",
 		"- validate whether the reported failure is real and reproducible",
 		"- narrow down likely root cause and identify a fix direction",
+		"- push repo branches and create or update related issues and pull requests when the investigation reaches a concrete fix path",
 		"- leave a deterministic markdown report at `.clank8y/report.md`",
 		"",
-		"At this stage, the MCP surface is intentionally narrow.",
-		"You can inspect branches and prepare authenticated local checkouts. Do not invent issue, PR, or push capabilities that are not exposed by tools yet."
+		"The MCP surface includes both read-side repository preparation and authenticated remote write operations.",
+		"Use the dedicated issue, pull request, push, and update tools for remote state changes instead of trying to do those operations through normal shell commands."
 	].join("\n"),
 	"",
 	[
 		"## Required workflow",
 		"",
 		"You have three MCP servers available:",
-		"- **GitHub MCP** for branch discovery and authenticated repo checkout preparation.",
+		"- **GitHub MCP** for branch discovery, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.",
 		"- **Angular MCP** for Angular API, syntax, and best-practice verification.",
 		"- **Codex MCP** for Cumulocity Web SDK and design-system verification.",
 		"",
@@ -33693,6 +34030,11 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"   - Fetch only the branch you actually need.",
 		"   - After fetching, local git branch creation and checkout can happen with normal local git commands.",
 		"",
+		"4.5) **Use the durable reference artifacts when your context gets fuzzy.**",
+		"   - `.clank8y/prompt.md` contains the exact run prompt and should be treated as read-only.",
+		"   - `.clank8y/resources.md` contains MCP-maintained remote artifact history for this run and should be treated as read-only.",
+		"   - Re-read those files instead of guessing what the original inputs were or which remote artifacts were already created or updated.",
+		"",
 		"5) **Investigate locally.**",
 		"   - Read code, trace execution paths, inspect configuration, run focused tests, and verify assumptions.",
 		"   - Prefer the smallest set of files and commands needed to confirm or reject a hypothesis.",
@@ -33702,6 +34044,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"6) **Record the real outcome in `.clank8y/report.md`.**",
 		"   - Create the file yourself if it does not exist yet. Do not wait for a special tool.",
 		"   - Normal file tools are allowed for writing this report because it is a local artifact.",
+		"   - Do not edit `.clank8y/prompt.md` or `.clank8y/resources.md`; those are read-only reference artifacts.",
 		"   - Treat this file as persistent investigation memory during the run, not just as a final write-up at the end.",
 		"   - Update it as you confirm facts, reject hypotheses, choose repositories or branches, and make changes.",
 		"   - If the run gets long or context becomes unclear, reread `.clank8y/report.md` before proceeding so your decisions stay consistent.",
@@ -33712,8 +34055,17 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"   - repositories inspected",
 		"   - branches inspected or used",
 		"   - repositories changed, if any",
+		"   - issues and pull requests created, if any",
+		"   - relevant cross-references between related issues or pull requests when multiple repos are involved",
 		"   - current fix direction or why no safe action was taken",
 		"   - open questions or follow-up work",
+		"",
+		"7) **Use the remote-write MCP tools deliberately.**",
+		`   - Use \`${PUSH_REPO_BRANCH_TOOL_NAME}\` for authenticated pushes, \`${CREATE_REPO_ISSUE_TOOL_NAME}\` and \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` for issue lifecycle, and \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` and \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\` for pull request lifecycle.`,
+		"   - Create issues and pull requests only once you have a concrete, evidence-backed fix path.",
+		"   - If multiple repos are involved, make related issues and pull requests cross-reference each other when it helps explain the full repair set.",
+		"   - If an earlier issue or pull request could not reference a later artifact because its ID was not known yet, update the earlier remote artifact after the later one is created.",
+		"   - Use remote update tools only for bot-authored artifacts that belong to the current incident workflow.",
 		"",
 		"### Completion criteria:",
 		"- Do not finish without writing `.clank8y/report.md`.",
@@ -33721,13 +34073,13 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- If you changed code locally, say exactly which repositories changed and what remains unvalidated.",
 		"- If no safe fix was found, say that plainly. Report-only is a valid outcome.",
 		"- If the investigation involved Angular or Cumulocity-specific behavior, confirm you checked Angular MCP or Codex MCP before concluding.",
+		"- If you created or updated remote issues or pull requests, record them accurately in the report including the cross-references that matter.",
 		"",
 		"### Tooling constraints:",
-		"- Use GitHub MCP for authenticated clone and fetch operations.",
+		"- Use GitHub MCP for authenticated remote operations such as clone, fetch, push, issue creation, issue update, pull request creation, and pull request update.",
 		"- Use Angular MCP for Angular-specific guidance and API verification.",
 		"- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.",
-		"- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally.",
-		"- Do not claim remote actions were performed if no MCP tool exists for them."
+		"- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally."
 	].join("\n"),
 	"",
 	[
@@ -33735,6 +34087,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"",
 		"The final report is part of the contract for this mode.",
 		"Write it to `.clank8y/report.md`.",
+		"Use `.clank8y/prompt.md` to re-check the exact run inputs and `.clank8y/resources.md` to re-check remote artifacts already created or updated during the run.",
 		"Create the file if it does not exist.",
 		"Use it as working memory throughout the investigation.",
 		"Do not wait until the very end if you have already made important decisions or confirmed facts.",
@@ -33749,6 +34102,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- `## Repositories inspected`",
 		"- `## Branches inspected`",
 		"- `## Changes made`",
+		"- `## Remote artifacts`",
 		"- `## Remaining uncertainty`",
 		"- `## Next steps`",
 		"",
@@ -33756,6 +34110,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"For `## Repositories inspected`, list each repository with its purpose in the investigation.",
 		"For `## Branches inspected`, note the default branch and any additional fetched branches that mattered.",
 		"If no code changes were made, say so explicitly under `## Changes made`.",
+		"For `## Remote artifacts`, list created issues and pull requests, plus any cross-references that connect related repos.",
 		"If a hypothesis was disproved, include that. Negative findings are useful here.",
 		"If no safe fix was found, say that explicitly and explain what evidence is still missing."
 	].join("\n")
@@ -41360,6 +41715,9 @@ function resolveCopilotAgentToken() {
 function resolveRequestPath(rawPath) {
 	return rawPath ? path.resolve(process$1.cwd(), rawPath) : void 0;
 }
+function isIncidentFixAgentWritablePath(targetPath) {
+	return targetPath === getReportArtifactPath() || isWithinClank8yRepos(targetPath);
+}
 const copilotPermissionHandler = (request) => {
 	if (request.kind === "mcp" || request.kind === "custom-tool") return { kind: "approved" };
 	if (request.kind === "read") {
@@ -41464,10 +41822,10 @@ const copilotIncidentFixPermissionHandler = (request) => {
 	}
 	if (request.kind === "write") {
 		const targetPath = resolveRequestPath("fileName" in request && typeof request.fileName === "string" ? request.fileName : void 0);
-		if (targetPath && isWithinClank8yArtifacts(targetPath)) return { kind: "approved" };
+		if (targetPath && isIncidentFixAgentWritablePath(targetPath)) return { kind: "approved" };
 		return {
 			kind: "denied-by-rules",
-			rules: ["Native file writes are only allowed inside .clank8y."]
+			rules: ["Native file writes are only allowed for .clank8y/report.md and files inside .clank8y/repos. Other .clank8y artifacts are read-only reference files."]
 		};
 	}
 	if (request.kind === "shell") {
@@ -41888,6 +42246,12 @@ async function executeClank8yAgent(options) {
 	if (!selection) throw new Error("Mode selection failed: the model did not provide a valid clank8y mode selection.");
 	if (profile.disabledModes[selection.mode] === true) throw new Error(`Mode selection failed: selected mode '${selection.mode}' is not enabled for this run.`);
 	const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext);
+	await writePromptArtifact(prompt);
+	consola.success("Wrote .clank8y/prompt.md.");
+	if (selection.mode === "IncidentFix") {
+		await initializeResourcesArtifact();
+		consola.success("Initialized .clank8y/resources.md.");
+	}
 	logAgentMessage({
 		agent: agent.name,
 		model: profile.model
