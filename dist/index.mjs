@@ -32590,6 +32590,14 @@ function isWithinClank8yRepos(targetPath) {
 	const relativePath = path.relative(reposDir, targetPath);
 	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
 }
+function isWithinNestedClank8yRepoArtifact(targetPath) {
+	const reposDir = getClank8yReposDirPath();
+	const relativePath = path.relative(reposDir, targetPath);
+	if (relativePath === "" || relativePath.startsWith("..") || path.isAbsolute(relativePath)) return false;
+	const segments = relativePath.split(path.sep).filter(Boolean);
+	if (segments.length < 2) return false;
+	return segments.slice(1).includes(".clank8y");
+}
 function isWithinClank8yArtifacts(targetPath) {
 	const artifactDir = getClank8yArtifactDirPath();
 	const relativePath = path.relative(artifactDir, targetPath);
@@ -41800,7 +41808,8 @@ function resolveRequestPath(rawPath) {
 	return rawPath ? path.resolve(process$1.cwd(), rawPath) : void 0;
 }
 function isIncidentFixAgentWritablePath(targetPath) {
-	return targetPath === getReportArtifactPath() || isWithinClank8yRepos(targetPath);
+	if (targetPath === getReportArtifactPath()) return true;
+	return isWithinClank8yRepos(targetPath) && !isWithinNestedClank8yRepoArtifact(targetPath);
 }
 const copilotPermissionHandler = (request) => {
 	if (request.kind === "mcp" || request.kind === "custom-tool") return { kind: "approved" };
@@ -41909,7 +41918,7 @@ const copilotIncidentFixPermissionHandler = (request) => {
 		if (targetPath && isIncidentFixAgentWritablePath(targetPath)) return { kind: "approved" };
 		return {
 			kind: "denied-by-rules",
-			rules: ["Native file writes are only allowed for .clank8y/report.md and files inside .clank8y/repos. Other .clank8y artifacts are read-only reference files."]
+			rules: ["Native file writes are only allowed for .clank8y/report.md and normal files inside .clank8y/repos. Nested .clank8y directories inside cloned repos are blocked, and top-level prompt/resources artifacts are read-only."]
 		};
 	}
 	if (request.kind === "shell") {
