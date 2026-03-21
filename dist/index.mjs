@@ -32663,6 +32663,31 @@ async function writeReviewCommentsArtifact(content) {
 	await writeFile(reviewCommentsPath, content, "utf-8");
 	return reviewCommentsPath;
 }
+function normalizeSearchTerm(term) {
+	return term.replace(/^"+|"+$/g, "").trim().toLowerCase();
+}
+function quoteSearchTerm(term) {
+	return `"${term.replace(/"/g, "")}"`;
+}
+function extractSearchTerms(query) {
+	const terms = query.trim().replace(/([a-z0-9])([A-Z])/g, "$1 $2").split(/\s+/).map(normalizeSearchTerm).map((term) => term.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")).filter(Boolean).filter((term) => term.length >= 3);
+	return [...new Set(terms)];
+}
+function buildRepoIssueSearchQueries(repository, query) {
+	const normalizedQuery = query.trim().replace(/\s+/g, " ");
+	const terms = extractSearchTerms(normalizedQuery);
+	const queries = [];
+	if (normalizedQuery) {
+		queries.push(`repo:${repository} is:open in:title ${quoteSearchTerm(normalizedQuery)}`);
+		queries.push(`repo:${repository} is:open in:title,body ${quoteSearchTerm(normalizedQuery)}`);
+	}
+	if (terms.length > 0) {
+		const orTerms = terms.slice(0, 6).map(quoteSearchTerm).join(" OR ");
+		queries.push(`repo:${repository} is:open in:title (${orTerms})`);
+		queries.push(`repo:${repository} is:open in:title,body (${orTerms})`);
+	}
+	return [...new Set(queries)];
+}
 var l$1 = Object.create;
 var u$2 = Object.defineProperty;
 var d$2 = Object.getOwnPropertyDescriptor;
@@ -33570,38 +33595,51 @@ function incidentFixGitHubMCP() {
 		}),
 		defineTool({
 			name: SEARCH_REPO_ISSUES_TOOL_NAME,
-			description: "Search open issues and pull requests in a repository by keyword. Use this before creating new issues or PRs to check whether one already exists for the same problem.",
+			description: "Search open issues and pull requests in a repository before creating anything new. Prefer 2-5 stable search terms such as feature names, function names, or concrete symptoms, not long sentences.",
 			title: "Search Repository Issues",
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
 				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format to search.")),
-				query: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Search keywords. Keep it short and specific to the problem area."))
+				query: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Search terms for the problem. Use a short phrase with stable identifiers or symptoms, for example: playback measurement lat undefined."))
 			}), /* @__PURE__ */ description("Arguments for searching open issues and pull requests in a repository."))
 		}, async ({ repository, query }) => {
 			try {
 				const octokit = await getOctokit();
 				const parsed = parseGitHubRepository(repository);
-				const qualifiedQuery = `repo:${parsed.owner}/${parsed.repo} is:open ${query}`;
-				const { data } = await octokit.rest.search.issuesAndPullRequests({
-					q: qualifiedQuery,
-					per_page: 15,
-					sort: "updated",
-					order: "desc"
-				});
-				const items = data.items.map((item) => ({
-					number: item.number,
-					title: item.title,
-					url: item.html_url,
-					type: item.pull_request ? "pull_request" : "issue",
-					state: item.state,
-					author: item.user?.login ?? null,
-					labels: item.labels.map((label) => typeof label === "string" ? label : label.name),
-					updatedAt: item.updated_at
-				}));
+				const repositoryKey = `${parsed.owner}/${parsed.repo}`;
+				const queriesTried = buildRepoIssueSearchQueries(repositoryKey, query);
+				const seenArtifactNumbers = /* @__PURE__ */ new Set();
+				const items = [];
+				for (const searchQuery of queriesTried) {
+					const { data } = await octokit.rest.search.issuesAndPullRequests({
+						q: searchQuery,
+						per_page: 10,
+						sort: "updated",
+						order: "desc"
+					});
+					for (const item of data.items) {
+						if (seenArtifactNumbers.has(item.number)) continue;
+						seenArtifactNumbers.add(item.number);
+						items.push({
+							number: item.number,
+							title: item.title,
+							url: item.html_url,
+							type: item.pull_request ? "pull_request" : "issue",
+							state: item.state,
+							author: item.user?.login ?? null,
+							labels: item.labels.map((label) => typeof label === "string" ? label : label.name),
+							updatedAt: item.updated_at,
+							matchedBy: searchQuery
+						});
+					}
+				}
 				return tool.structured({
-					repository: `${parsed.owner}/${parsed.repo}`,
-					query: qualifiedQuery,
-					totalCount: data.total_count,
-					items
+					repository: repositoryKey,
+					query,
+					queriesTried,
+					searchStrategy: "github-search-api",
+					matchedCount: items.length,
+					items,
+					note: items.length > 0 ? "Matched via GitHub issue and pull request search queries." : "No GitHub search matches found."
 				});
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -34041,7 +34079,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- leave a deterministic markdown report at `.clank8y/report.md`",
 		"",
 		"The MCP surface includes read-side repository preparation, issue/PR search, and authenticated remote write operations.",
-		"Use the dedicated search, issue, pull request, push, and update tools for remote state changes instead of trying to do those operations through normal shell commands.",
+		"Use the dedicated GitHub MCP tools for remote state changes instead of trying to do those operations through normal shell commands.",
 		"",
 		"**If the problem cannot be debugged and identified, do not create any issues, branches, or pull requests. Report-only is the correct outcome to reduce noise.**"
 	].join("\n"),
@@ -34061,23 +34099,18 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"   Treat every hypothesis as unverified until you confirm it.",
 		"",
 		`2) **Inspect branch metadata early** with \`${GET_REPO_BRANCHES_TOOL_NAME}\` for each candidate repository before cloning.`,
-		"   - Use this to understand the default branch and plausible fresher branches.",
-		"   - Do not assume the default branch is always the right base for an incident investigation.",
-		"   - If multiple repos are implicated, inspect them one at a time and keep the reasoning explicit.",
+		"   - Use it to understand branch candidates before choosing where to work.",
 		"",
 		`3) **Search for existing issues and PRs** with \`${SEARCH_REPO_ISSUES_TOOL_NAME}\` before creating anything.`,
-		"   - For each repository where you suspect a problem, search open issues and PRs for keywords related to the incident.",
 		"   - If an existing open issue covers the same problem, reference it instead of creating a duplicate.",
 		"   - If an existing open PR already addresses the problem, reference it and do not create a competing branch.",
+		"   - If the search tool returns no matches, refine the search and retry before concluding there is nothing relevant.",
 		"   - Record what you found (or did not find) in the report.",
 		"",
 		`4) **Prepare a checkout** with \`${CLONE_REPO_TOOL_NAME}\` once you know which repository you need locally.`,
-		"   - This clones only the default branch initially. That is expected.",
-		"   - Reuse the prepared checkout if it already exists for the current run.",
+		"   - Use it when you need a local checkout for investigation.",
 		"",
 		`5) **Fetch a specific non-default branch only when needed** via \`${FETCH_REPO_BRANCH_TOOL_NAME}\`.`,
-		"   - Use this when branch metadata suggests a better base branch than the default branch.",
-		"   - Fetch only the branch you actually need.",
 		"   - After fetching, local git branch creation and checkout can happen with normal local git commands.",
 		"",
 		"6) **Use the durable reference artifacts when your context gets fuzzy.**",
@@ -34118,10 +34151,10 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"10) **Remote writes — only after confirmed root cause.**",
 		"   The expected sequence is:",
 		"   a) Search for an existing issue for the problem. If one exists, use it as the reference. If not, create one.",
-		`   b) Create or reference the issue with \`${CREATE_REPO_ISSUE_TOOL_NAME}\`.`,
-		`   c) Push the fix branch with \`${PUSH_REPO_BRANCH_TOOL_NAME}\`.`,
-		`   d) Create the pull request with \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\`, referencing the issue.`,
-		`   e) If you need to backfill cross-references afterward, use \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` or \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\`.`,
+		`   b) Use \`${CREATE_REPO_ISSUE_TOOL_NAME}\` only when a new issue is actually needed.`,
+		`   c) Use \`${PUSH_REPO_BRANCH_TOOL_NAME}\` to publish the fix branch.`,
+		`   d) Use \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` to open the PR, referencing the issue when relevant.`,
+		`   e) Use \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` or \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\` only to backfill later cross-references or final context.`,
 		"   - Create issues and pull requests only once you have a concrete, evidence-backed fix path.",
 		"   - If multiple repos are involved, make related issues and pull requests cross-reference each other.",
 		"   - Use remote update tools only for bot-authored artifacts that belong to the current incident workflow.",
@@ -34136,7 +34169,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- Always search for existing issues/PRs before creating new ones.",
 		"",
 		"### Tooling constraints:",
-		"- Use GitHub MCP for authenticated remote operations such as search, clone, fetch, push, issue creation, issue update, pull request creation, and pull request update.",
+		"- Use GitHub MCP for authenticated remote operations.",
 		"- Use Angular MCP for Angular-specific guidance and API verification.",
 		"- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.",
 		"- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally."
