@@ -132,6 +132,28 @@ describe('copilotIncidentFixPermissionHandler', () => {
       expect(result.kind).toBe('approved')
     })
 
+    test('denies writes to nested .clank8y inside cloned repos', () => {
+      const result = copilotIncidentFixPermissionHandler({
+        kind: 'write',
+        toolCallId: 'tooluse_test',
+        intention: 'Edit file',
+        fileName: '.clank8y/repos/some-repo/.clank8y/report.md',
+        newFileContents: '# nested report\n',
+      }, sessionCtx)
+      expect(result.kind).toBe('denied-by-rules')
+    })
+
+    test('denies writes to nested .clank8y deeper inside cloned repos', () => {
+      const result = copilotIncidentFixPermissionHandler({
+        kind: 'write',
+        toolCallId: 'tooluse_test',
+        intention: 'Edit file',
+        fileName: '.clank8y/repos/some-repo/packages/app/.clank8y/cache.json',
+        newFileContents: '{}\n',
+      }, sessionCtx)
+      expect(result.kind).toBe('denied-by-rules')
+    })
+
     test('denies writes to prompt.md', () => {
       const result = copilotIncidentFixPermissionHandler({
         kind: 'write',

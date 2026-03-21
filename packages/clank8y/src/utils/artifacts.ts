@@ -33,6 +33,21 @@ export function isWithinClank8yRepos(targetPath: string): boolean {
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
 }
 
+export function isWithinNestedClank8yRepoArtifact(targetPath: string): boolean {
+  const reposDir = getClank8yReposDirPath()
+  const relativePath = path.relative(reposDir, targetPath)
+  if (relativePath === '' || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return false
+  }
+
+  const segments = relativePath.split(path.sep).filter(Boolean)
+  if (segments.length < 2) {
+    return false
+  }
+
+  return segments.slice(1).includes('.clank8y')
+}
+
 export function isWithinClank8yArtifacts(targetPath: string): boolean {
   const artifactDir = getClank8yArtifactDirPath()
   const relativePath = path.relative(artifactDir, targetPath)

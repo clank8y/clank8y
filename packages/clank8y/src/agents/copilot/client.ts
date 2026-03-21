@@ -6,7 +6,12 @@ import type { PermissionHandler, PermissionRequest } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import { x } from 'tinyexec'
 import { getClank8yRuntimeContext } from '../../setup'
-import { getReportArtifactPath, isWithinClank8yArtifacts, isWithinClank8yRepos } from '../../utils/artifacts'
+import {
+  getReportArtifactPath,
+  isWithinClank8yArtifacts,
+  isWithinClank8yRepos,
+  isWithinNestedClank8yRepoArtifact,
+} from '../../utils/artifacts'
 
 const COPILOT_CLI_PACKAGE = '@github/copilot'
 const COPILOT_CLI_VERSION = '1.0.2'
@@ -109,7 +114,11 @@ function resolveRequestPath(rawPath: string | undefined): string | undefined {
 }
 
 function isIncidentFixAgentWritablePath(targetPath: string): boolean {
-  return targetPath === getReportArtifactPath() || isWithinClank8yRepos(targetPath)
+  if (targetPath === getReportArtifactPath()) {
+    return true
+  }
+
+  return isWithinClank8yRepos(targetPath) && !isWithinNestedClank8yRepoArtifact(targetPath)
 }
 
 export const copilotPermissionHandler: PermissionHandler = (request) => {
@@ -310,7 +319,7 @@ export const copilotIncidentFixPermissionHandler: PermissionHandler = (request) 
 
     return {
       kind: 'denied-by-rules' as const,
-      rules: ['Native file writes are only allowed for .clank8y/report.md and files inside .clank8y/repos. Other .clank8y artifacts are read-only reference files.'],
+      rules: ['Native file writes are only allowed for .clank8y/report.md and normal files inside .clank8y/repos. Nested .clank8y directories inside cloned repos are blocked, and top-level prompt/resources artifacts are read-only.'],
     }
   }
 
