@@ -32663,30 +32663,13 @@ async function writeReviewCommentsArtifact(content) {
 	await writeFile(reviewCommentsPath, content, "utf-8");
 	return reviewCommentsPath;
 }
-function normalizeSearchTerm(term) {
-	return term.replace(/^"+|"+$/g, "").trim().toLowerCase();
+function normalizeGitHubIssueQuery(query) {
+	return query.trim().replace(/\s+/g, " ");
 }
-function quoteSearchTerm(term) {
-	return `"${term.replace(/"/g, "")}"`;
-}
-function extractSearchTerms(query) {
-	const terms = query.trim().replace(/([a-z0-9])([A-Z])/g, "$1 $2").split(/\s+/).map(normalizeSearchTerm).map((term) => term.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")).filter(Boolean).filter((term) => term.length >= 3);
-	return [...new Set(terms)];
-}
-function buildRepoIssueSearchQueries(repository, query) {
-	const normalizedQuery = query.trim().replace(/\s+/g, " ");
-	const terms = extractSearchTerms(normalizedQuery);
-	const queries = [];
-	if (normalizedQuery) {
-		queries.push(`repo:${repository} is:open in:title ${quoteSearchTerm(normalizedQuery)}`);
-		queries.push(`repo:${repository} is:open in:title,body ${quoteSearchTerm(normalizedQuery)}`);
-	}
-	if (terms.length > 0) {
-		const orTerms = terms.slice(0, 6).map(quoteSearchTerm).join(" OR ");
-		queries.push(`repo:${repository} is:open in:title (${orTerms})`);
-		queries.push(`repo:${repository} is:open in:title,body (${orTerms})`);
-	}
-	return [...new Set(queries)];
+function buildRepoIssueSearchQuery(repository, query) {
+	const normalizedQuery = normalizeGitHubIssueQuery(query);
+	if (!normalizedQuery) throw new Error("GitHub issue search query must not be empty.");
+	return `repo:${repository} ${normalizedQuery}`;
 }
 var l$1 = Object.create;
 var u$2 = Object.defineProperty;
@@ -33547,7 +33530,7 @@ async function getRepositoryBranches(params) {
 	};
 }
 const GET_REPO_BRANCHES_TOOL_NAME = "get-repo-branches";
-const SEARCH_REPO_ISSUES_TOOL_NAME = "search-repo-issues";
+const SEARCH_REPO_ARTIFACTS_TOOL_NAME = "search-repo-artifacts";
 const CLONE_REPO_TOOL_NAME = "clone-repo";
 const FETCH_REPO_BRANCH_TOOL_NAME = "fetch-repo-branch";
 const PUSH_REPO_BRANCH_TOOL_NAME = "push-repo-branch";
@@ -33594,48 +33577,46 @@ function incidentFixGitHubMCP() {
 			}
 		}),
 		defineTool({
-			name: SEARCH_REPO_ISSUES_TOOL_NAME,
-			description: "Search open issues and pull requests in a repository before creating anything new. Prefer 2-5 stable search terms such as feature names, function names, or concrete symptoms, not long sentences.",
-			title: "Search Repository Issues",
+			name: SEARCH_REPO_ARTIFACTS_TOOL_NAME,
+			description: "Search repository issues and pull requests using a normal GitHub search fragment. The repository scope is added automatically.",
+			title: "Search Repository Artifacts",
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
 				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format to search.")),
-				query: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Search terms for the problem. Use a short phrase with stable identifiers or symptoms, for example: playback measurement lat undefined."))
-			}), /* @__PURE__ */ description("Arguments for searching open issues and pull requests in a repository."))
+				query: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("GitHub issues search fragment. Use standard GitHub qualifiers like is:issue, is:pull-request, is:open, is:closed, label:, author:, head:, or in:title,body as needed. Do not include repo:."))
+			}), /* @__PURE__ */ description("Arguments for searching repository issues and pull requests."))
 		}, async ({ repository, query }) => {
 			try {
 				const octokit = await getOctokit();
 				const parsed = parseGitHubRepository(repository);
 				const repositoryKey = `${parsed.owner}/${parsed.repo}`;
-				const queriesTried = buildRepoIssueSearchQueries(repositoryKey, query);
 				const seenArtifactNumbers = /* @__PURE__ */ new Set();
+				const searchQuery = buildRepoIssueSearchQuery(repositoryKey, query);
 				const items = [];
-				for (const searchQuery of queriesTried) {
-					const { data } = await octokit.rest.search.issuesAndPullRequests({
-						q: searchQuery,
-						per_page: 10,
-						sort: "updated",
-						order: "desc"
+				const { data } = await octokit.rest.search.issuesAndPullRequests({
+					q: searchQuery,
+					per_page: 10,
+					sort: "updated",
+					order: "desc"
+				});
+				for (const item of data.items) {
+					if (seenArtifactNumbers.has(item.number)) continue;
+					seenArtifactNumbers.add(item.number);
+					items.push({
+						number: item.number,
+						title: item.title,
+						url: item.html_url,
+						type: item.pull_request ? "pull_request" : "issue",
+						state: item.state,
+						author: item.user?.login ?? null,
+						labels: item.labels.map((label) => typeof label === "string" ? label : label.name),
+						updatedAt: item.updated_at,
+						matchedBy: searchQuery
 					});
-					for (const item of data.items) {
-						if (seenArtifactNumbers.has(item.number)) continue;
-						seenArtifactNumbers.add(item.number);
-						items.push({
-							number: item.number,
-							title: item.title,
-							url: item.html_url,
-							type: item.pull_request ? "pull_request" : "issue",
-							state: item.state,
-							author: item.user?.login ?? null,
-							labels: item.labels.map((label) => typeof label === "string" ? label : label.name),
-							updatedAt: item.updated_at,
-							matchedBy: searchQuery
-						});
-					}
 				}
 				return tool.structured({
 					repository: repositoryKey,
 					query,
-					queriesTried,
+					searchQuery,
 					searchStrategy: "github-search-api",
 					matchedCount: items.length,
 					items,
@@ -34071,7 +34052,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"Typical IncidentFix work in this mode:",
 		"- inspect incident context and identify likely repositories or components",
 		"- compare likely base branches before choosing where to work",
-		"- search for existing open issues or PRs that already cover the same problem",
+		"- search for existing issues or PRs that already cover the same problem, whether open or closed",
 		"- prepare one or more local repo checkouts for investigation",
 		"- validate whether the reported failure is real and reproducible",
 		"- narrow down likely root cause and identify a fix direction",
@@ -34101,10 +34082,16 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		`2) **Inspect branch metadata early** with \`${GET_REPO_BRANCHES_TOOL_NAME}\` for each candidate repository before cloning.`,
 		"   - Use it to understand branch candidates before choosing where to work.",
 		"",
-		`3) **Search for existing issues and PRs** with \`${SEARCH_REPO_ISSUES_TOOL_NAME}\` before creating anything.`,
+		`3) **Search for existing issues and PRs** with \`${SEARCH_REPO_ARTIFACTS_TOOL_NAME}\` before creating anything.`,
+		"   - Pass a normal GitHub search fragment. The tool adds the repository scope automatically.",
+		"   - Search both issues and pull requests unless you explicitly narrow the query.",
+		"   - Search deliberately across states when needed. Open artifacts matter for duplication risk; closed artifacts matter when a fix already exists, was merged, or is waiting to roll out.",
 		"   - If an existing open issue covers the same problem, reference it instead of creating a duplicate.",
 		"   - If an existing open PR already addresses the problem, reference it and do not create a competing branch.",
-		"   - If the search tool returns no matches, refine the search and retry before concluding there is nothing relevant.",
+		"   - Closed artifacts can still be relevant if the change exists but is not rolled out yet, so choose state qualifiers deliberately.",
+		"   - If an existing artifact already covers the problem well enough, it is valid to stop without creating a new issue or PR. State that decision plainly and explain why.",
+		"   - If the search tool returns no matches, refine the query and retry before concluding there is nothing relevant.",
+		"   - If you found something related but decided it is not actually the same problem, record why it was not a match.",
 		"   - Record what you found (or did not find) in the report.",
 		"",
 		`4) **Prepare a checkout** with \`${CLONE_REPO_TOOL_NAME}\` once you know which repository you need locally.`,
@@ -34150,12 +34137,13 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"",
 		"10) **Remote writes — only after confirmed root cause.**",
 		"   The expected sequence is:",
-		"   a) Search for an existing issue for the problem. If one exists, use it as the reference. If not, create one.",
+		"   a) Search for existing issues and PRs for the problem. Reuse or reference them when they already cover the work. Only create new artifacts when there is a real gap.",
 		`   b) Use \`${CREATE_REPO_ISSUE_TOOL_NAME}\` only when a new issue is actually needed.`,
 		`   c) Use \`${PUSH_REPO_BRANCH_TOOL_NAME}\` to publish the fix branch.`,
 		`   d) Use \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` to open the PR, referencing the issue when relevant.`,
 		`   e) Use \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` or \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\` only to backfill later cross-references or final context.`,
 		"   - Create issues and pull requests only once you have a concrete, evidence-backed fix path.",
+		"   - If the fix already exists in an existing branch or PR, do not create a duplicate branch or PR unless you can justify why the existing artifact is insufficient.",
 		"   - If multiple repos are involved, make related issues and pull requests cross-reference each other.",
 		"   - Use remote update tools only for bot-authored artifacts that belong to the current incident workflow.",
 		"",
@@ -34164,6 +34152,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- Do not present a hypothesis as a fact unless you verified it.",
 		"- If you changed code locally, say exactly which repositories changed and what remains unvalidated.",
 		"- If no root cause was confirmed, the outcome is report-only. No issues, no branches, no PRs.",
+		"- If an existing issue or PR already covers the problem, it is valid to stop without creating a duplicate, but the report must explain that decision.",
 		"- If the investigation involved Angular or Cumulocity-specific behavior, confirm you checked Angular MCP or Codex MCP before concluding.",
 		"- If you created or updated remote issues or pull requests, record them accurately in the report including the cross-references that matter.",
 		"- Always search for existing issues/PRs before creating new ones.",
@@ -34203,7 +34192,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"For `## Decision log`, keep short dated or ordered notes about key investigation decisions, discarded paths, and why you moved to a different repo or branch.",
 		"For `## Repositories inspected`, list each repository with its purpose in the investigation.",
 		"For `## Branches inspected`, note the default branch and any additional fetched branches that mattered.",
-		"If existing open issues or PRs were found during search, list them under `## Existing artifacts found` with links.",
+		"If existing issues or PRs were found during search, list them under `## Existing artifacts found` with links and note whether they were open, closed, merged, or otherwise not a match.",
 		"If no code changes were made, say so explicitly under `## Changes made`.",
 		"For `## Remote artifacts`, list created issues and pull requests, plus any cross-references that connect related repos.",
 		"If a hypothesis was disproved, include that. Negative findings are useful here.",
