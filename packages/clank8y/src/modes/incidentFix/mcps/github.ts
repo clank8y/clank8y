@@ -19,6 +19,7 @@ import {
 } from '../../../utils/repositories'
 
 export const GET_REPO_BRANCHES_TOOL_NAME = 'get-repo-branches'
+export const SEARCH_REPO_ISSUES_TOOL_NAME = 'search-repo-issues'
 export const CLONE_REPO_TOOL_NAME = 'clone-repo'
 export const FETCH_REPO_BRANCH_TOOL_NAME = 'fetch-repo-branch'
 export const PUSH_REPO_BRANCH_TOOL_NAME = 'push-repo-branch'
@@ -74,6 +75,52 @@ export function incidentFixGitHubMCP(): LocalHTTPMCPServer {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         return tool.error(`Failed to load repository branches: ${message}`)
+      }
+    }),
+
+    defineTool({
+      name: SEARCH_REPO_ISSUES_TOOL_NAME,
+      description: 'Search open issues and pull requests in a repository by keyword. Use this before creating new issues or PRs to check whether one already exists for the same problem.',
+      title: 'Search Repository Issues',
+      schema: v.pipe(
+        v.object({
+          repository: v.pipe(v.string(), v.description('Repository in owner/repo format to search.')),
+          query: v.pipe(v.string(), v.description('Search keywords. Keep it short and specific to the problem area.')),
+        }),
+        v.description('Arguments for searching open issues and pull requests in a repository.'),
+      ),
+    }, async ({ repository, query }) => {
+      try {
+        const octokit = await getOctokit()
+        const parsed = parseGitHubRepository(repository)
+        const qualifiedQuery = `repo:${parsed.owner}/${parsed.repo} is:open ${query}`
+        const { data } = await octokit.rest.search.issuesAndPullRequests({
+          q: qualifiedQuery,
+          per_page: 15,
+          sort: 'updated',
+          order: 'desc',
+        })
+
+        const items = data.items.map((item) => ({
+          number: item.number,
+          title: item.title,
+          url: item.html_url,
+          type: item.pull_request ? 'pull_request' : 'issue',
+          state: item.state,
+          author: item.user?.login ?? null,
+          labels: item.labels.map((label) => typeof label === 'string' ? label : label.name),
+          updatedAt: item.updated_at,
+        }))
+
+        return tool.structured({
+          repository: `${parsed.owner}/${parsed.repo}`,
+          query: qualifiedQuery,
+          totalCount: data.total_count,
+          items,
+        } as any)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return tool.error(`Failed to search repository issues: ${message}`)
       }
     }),
 
