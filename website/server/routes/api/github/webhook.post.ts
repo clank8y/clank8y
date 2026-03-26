@@ -3,10 +3,11 @@ import { Webhooks } from '@octokit/webhooks'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from 'octokit'
 import process from 'node:process'
-import { buildWebhookSetupHintBody } from '../../../utils/github'
+import { buildReportBackInstruction, buildWebhookSetupHintBody, isClank8ySelfActor } from '../../../utils/github'
 import { getAppId, getAppPrivateKey, getWebhookSecret } from '../../../utils/env'
 
 const WORKFLOW_ID = 'clank8y.yml'
+const BOT_TRIGGER = '@clank8y'
 
 type DispatchFailureReason = 'missing_workflow' | 'missing_permissions' | 'unknown'
 
@@ -42,11 +43,11 @@ async function createInstallationOctokit(owner: string, repo: string): Promise<O
 }
 
 function hasBotMention(commentBody: string): boolean {
-  return commentBody.toLowerCase().includes('@clank8y')
+  return commentBody.toLowerCase().includes(BOT_TRIGGER)
 }
 
 function isOnlyBotMention(commentBody: string): boolean {
-  return commentBody.trim().toLowerCase() === '@clank8y'
+  return commentBody.trim().toLowerCase() === BOT_TRIGGER
 }
 
 function buildDispatchPromptContext(params: {
@@ -77,8 +78,12 @@ function buildDispatchPromptContext(params: {
     `pr_number: ${params.prNumber}`,
     `branch: ${params.prHeadBranch}`,
     `actor: ${params.actor}`,
-    `report_back_to: @${params.actor}`,
+    buildReportBackInstruction(params.actor),
   ]
+
+  if (isClank8ySelfActor(params.actor)) {
+    lines.push('notification_instruction: do not mention @clank8y in comments or reviews')
+  }
 
   const normalizedInstruction = params.instruction?.trim()
   if (normalizedInstruction && !isOnlyBotMention(normalizedInstruction)) {
@@ -237,6 +242,13 @@ export default defineHandler(async (event) => {
   webhooks.on('issue_comment.created', async ({ payload }) => {
     if (!payload.issue.pull_request) {
       console.log(`[webhook] ignoring issue_comment.created for non-PR issue #${payload.issue.number} in repo=${payload.repository.full_name}`)
+      return
+    }
+
+    if (isClank8ySelfActor(payload.sender.login)) {
+      console.log(
+        `[webhook] ignoring issue_comment.created from self repo=${payload.repository.full_name} pr=#${payload.issue.number}`,
+      )
       return
     }
 
