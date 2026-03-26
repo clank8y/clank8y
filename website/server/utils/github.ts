@@ -1,13 +1,24 @@
 import { buildClank8yCommentBody } from '../../../shared/comment'
 
+const SELF_ACTOR_LOGINS = new Set(['clank8y', 'clank8y[bot]'])
+
+export function isClank8ySelfActor(login: string): boolean {
+  return SELF_ACTOR_LOGINS.has(login.trim().toLowerCase())
+}
+
+export function buildReportBackInstruction(actor: string): string {
+  return isClank8ySelfActor(actor)
+    ? 'report_back_to: none'
+    : `report_back_to: @${actor}`
+}
+
 export function buildWebhookSetupHintBody(params: {
   username: string
   workflowId: string
   reasonLine: string
 }): string {
   const readmeSetupUrl = 'https://github.com/clank8y/clank8y#required-workflow-file-for-webhook-dispatch-mode'
-  const normalizedUsername = params.username.trim().toLowerCase()
-  const greeting = normalizedUsername === 'clank8y[bot]' || normalizedUsername === 'clank8y'
+  const greeting = isClank8ySelfActor(params.username)
     ? 'clank8y could not start for this PR.'
     : `@${params.username} clank8y could not start for this PR.`
 

@@ -3,12 +3,11 @@ import { Webhooks } from '@octokit/webhooks'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from 'octokit'
 import process from 'node:process'
-import { buildWebhookSetupHintBody } from '../../../utils/github'
+import { buildReportBackInstruction, buildWebhookSetupHintBody, isClank8ySelfActor } from '../../../utils/github'
 import { getAppId, getAppPrivateKey, getWebhookSecret } from '../../../utils/env'
 
 const WORKFLOW_ID = 'clank8y.yml'
 const BOT_TRIGGER = '@clank8y'
-const SELF_ACTOR_LOGINS = new Set(['clank8y', 'clank8y[bot]'])
 
 type DispatchFailureReason = 'missing_workflow' | 'missing_permissions' | 'unknown'
 
@@ -51,10 +50,6 @@ function isOnlyBotMention(commentBody: string): boolean {
   return commentBody.trim().toLowerCase() === BOT_TRIGGER
 }
 
-function isSelfActor(login: string): boolean {
-  return SELF_ACTOR_LOGINS.has(login.trim().toLowerCase())
-}
-
 function buildDispatchPromptContext(params: {
   trigger: 'pull_request_opened' | 'issue_comment'
   owner: string
@@ -83,8 +78,12 @@ function buildDispatchPromptContext(params: {
     `pr_number: ${params.prNumber}`,
     `branch: ${params.prHeadBranch}`,
     `actor: ${params.actor}`,
-    `report_back_to: @${params.actor}`,
+    buildReportBackInstruction(params.actor),
   ]
+
+  if (isClank8ySelfActor(params.actor)) {
+    lines.push('notification_instruction: do not mention @clank8y in comments or reviews')
+  }
 
   const normalizedInstruction = params.instruction?.trim()
   if (normalizedInstruction && !isOnlyBotMention(normalizedInstruction)) {
@@ -210,13 +209,6 @@ export default defineHandler(async (event) => {
   const webhooks = new Webhooks({ secret: getWebhookSecret() })
 
   webhooks.on('pull_request.opened', async ({ payload }) => {
-    if (isSelfActor(payload.sender.login)) {
-      console.log(
-        `[webhook] ignoring pull_request.opened from self repo=${payload.repository.full_name} pr=#${payload.pull_request.number}`,
-      )
-      return
-    }
-
     try {
       await dispatchWorkflow({
         owner: payload.repository.owner.login,
@@ -253,7 +245,7 @@ export default defineHandler(async (event) => {
       return
     }
 
-    if (isSelfActor(payload.sender.login)) {
+    if (isClank8ySelfActor(payload.sender.login)) {
       console.log(
         `[webhook] ignoring issue_comment.created from self repo=${payload.repository.full_name} pr=#${payload.issue.number}`,
       )
