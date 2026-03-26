@@ -56,6 +56,8 @@ main().catch(console.error)
 - You must provide GitHub API credentials and a Copilot token yourself.
 - This package does not bootstrap GitHub Actions environment variables for you.
 - The agent writes temporary artifacts to `.clank8y/` in the current working directory. This directory is created and cleaned automatically.
+- Mode availability is controlled via top-level `disabledModes`. If omitted, no built-in modes are disabled. Entry points such as the GitHub Action can still disable specific modes explicitly.
+- Do not enable future modes in the current GitHub Copilot agent until their permission handler and available tool surface have been reviewed for that mode.
 - For GitHub-hosted workflow usage, use the [`clank8y/clank8y` action](https://github.com/clank8y/clank8y) instead.
 
 ## License

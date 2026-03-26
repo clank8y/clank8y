@@ -1,5 +1,6 @@
 import type { Clank8yMode } from '../modeSelection'
 import type { Clank8yMCPServers } from '../mcp'
+import { getIncidentFixModeRuntime } from './incidentFix'
 import { getReviewModeRuntime } from './review'
 import { getSelectModeRuntime } from './selectMode'
 
@@ -14,6 +15,8 @@ export function getModeRuntime(mode: Clank8yMode, promptContext: string): Clank8
   switch (mode) {
     case 'Review':
       return getReviewModeRuntime(promptContext)
+    case 'IncidentFix':
+      return getIncidentFixModeRuntime(promptContext)
     default:
       throw new Error(`Unsupported clank8y mode: ${mode satisfies never}`)
   }

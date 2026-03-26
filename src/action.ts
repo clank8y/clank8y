@@ -165,6 +165,9 @@ async function runClank8yEntry(): Promise<void> {
       githubToken,
       copilotToken,
     },
+    disabledModes: {
+      IncidentFix: true,
+    },
     runInfo: requireRunInfo(repository),
     options: {
       suppressModelListing: true,

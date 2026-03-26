@@ -5,6 +5,7 @@ import {
   getCopilotClient,
 } from './../copilot/client'
 import { selectCopilotMode } from './../copilot/selectMode'
+import { runCopilotIncidentFix } from './incidentFix'
 import { runCopilotReview } from './review'
 
 export const COPILOT_AGENT_NAME = 'github-copilot'
@@ -25,6 +26,9 @@ export const githubCopilotAgent: Clank8yAgentFactory = async (profile) => {
       switch (mode) {
         case 'Review':
           await runCopilotReview(prompt, profile, mcps)
+          break
+        case 'IncidentFix':
+          await runCopilotIncidentFix(prompt, profile, mcps)
           break
         default:
           throw new Error(`Unsupported mode for GitHub Copilot agent: ${mode satisfies never}`)

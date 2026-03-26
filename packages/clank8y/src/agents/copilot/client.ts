@@ -2,11 +2,16 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { CopilotClient } from '@github/copilot-sdk'
-import type { PermissionHandler } from '@github/copilot-sdk'
+import type { PermissionHandler, PermissionRequest } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import { x } from 'tinyexec'
 import { getClank8yRuntimeContext } from '../../setup'
-import { isWithinClank8yArtifacts } from '../../utils/artifacts'
+import {
+  getReportArtifactPath,
+  isWithinClank8yArtifacts,
+  isWithinClank8yRepos,
+  isWithinNestedClank8yRepoArtifact,
+} from '../../utils/artifacts'
 
 const COPILOT_CLI_PACKAGE = '@github/copilot'
 const COPILOT_CLI_VERSION = '1.0.2'
@@ -108,6 +113,14 @@ function resolveRequestPath(rawPath: string | undefined): string | undefined {
     : undefined
 }
 
+function isIncidentFixAgentWritablePath(targetPath: string): boolean {
+  if (targetPath === getReportArtifactPath()) {
+    return true
+  }
+
+  return isWithinClank8yRepos(targetPath) && !isWithinNestedClank8yRepoArtifact(targetPath)
+}
+
 export const copilotPermissionHandler: PermissionHandler = (request) => {
   if (request.kind === 'mcp' || request.kind === 'custom-tool') {
     return {
@@ -168,6 +181,168 @@ export const copilotPermissionHandler: PermissionHandler = (request) => {
   return {
     kind: 'denied-by-rules' as const,
     rules: ['Only MCP, mode selection, and native file access inside .clank8y are allowed.'],
+  }
+}
+
+// ─── IncidentFix permission handler ────────────────────────────────────────────
+// Allows shell + file read/write scoped to .clank8y. Blocks destructive shell
+// commands and URL access.
+
+// Commands that are never allowed regardless of context.
+// Patterns are matched against each parsed command identifier from the SDK.
+const BLOCKED_SHELL_COMMANDS = new Set([
+  'shred',
+  'mkfs',
+  'dd',
+  'truncate',
+  'curl',
+  'wget',
+  'ssh',
+  'scp',
+  'rsync',
+  'nc',
+  'ncat',
+  'socat',
+  'telnet',
+  'nmap',
+  'docker',
+  'podman',
+  'kubectl',
+  'systemctl',
+  'service',
+  'crontab',
+  'at',
+  'shutdown',
+  'reboot',
+  'halt',
+  'poweroff',
+  'mount',
+  'umount',
+  'chown',
+  'chmod',
+  'chgrp',
+  'su',
+  'sudo',
+  'passwd',
+  'useradd',
+  'userdel',
+  'groupadd',
+  'iptables',
+  'nft',
+  'eval',
+])
+
+// Patterns matched against the full command text to catch shell-level
+// evasion attempts (pipes to network, encoded payloads, etc.)
+const BLOCKED_SHELL_PATTERNS: RegExp[] = [
+  // network exfiltration via /dev/tcp or /dev/udp
+  /\/dev\/(?:tcp|udp)\//i,
+  // base64-decode-pipe execution
+  /base64\s+(?:--decode|-d)\s*\|/i,
+  // explicit rm -rf / rm -r patterns (catch flags before path)
+  /\brm\s+(?:-\w*[rR]\w*\s+|--recursive\s+)/,
+]
+
+// Extract individual command names from a shell command string.
+// Splits on &&, ||, ;, | and takes the first token of each segment.
+export function extractCommandNames(fullCommandText: string): string[] {
+  return fullCommandText
+    .split(/&&|\|\||[;|]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => {
+      // Strip leading env assignments like VAR=value cmd
+      const withoutEnv = segment.replace(/^(?:\w+=\S*\s+)+/, '')
+      // Take the first token (the command name), strip any leading path
+      const firstToken = withoutEnv.split(/\s/)[0] ?? ''
+      // Handle paths like /usr/bin/rm → rm
+      return firstToken.split('/').pop()?.toLowerCase() ?? ''
+    })
+    .filter(Boolean)
+}
+
+function isBlockedShellCommand(request: PermissionRequest): string | null {
+  // The SDK sends the full command chain as fullCommandText — parse it ourselves.
+  // commands[].identifier mirrors fullCommandText (not individual commands), so we
+  // only rely on fullCommandText for blocklist matching.
+  if ('fullCommandText' in request && typeof request.fullCommandText === 'string') {
+    const cmdNames = extractCommandNames(request.fullCommandText)
+    for (const name of cmdNames) {
+      if (BLOCKED_SHELL_COMMANDS.has(name)) {
+        return `Blocked command: '${name}' is not allowed.`
+      }
+    }
+
+    // Check full command text against evasion patterns
+    for (const pattern of BLOCKED_SHELL_PATTERNS) {
+      if (pattern.test(request.fullCommandText)) {
+        return `Blocked: command matches a disallowed pattern.`
+      }
+    }
+  }
+
+  return null
+}
+
+export const copilotIncidentFixPermissionHandler: PermissionHandler = (request) => {
+  if (request.kind === 'mcp' || request.kind === 'custom-tool') {
+    return { kind: 'approved' as const }
+  }
+
+  if (request.kind === 'read') {
+    const rawTargetPath = 'path' in request && typeof request.path === 'string'
+      ? request.path
+      : undefined
+    const targetPath = resolveRequestPath(rawTargetPath)
+
+    if (targetPath && isWithinClank8yArtifacts(targetPath)) {
+      return { kind: 'approved' as const }
+    }
+
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['Native file reads are only allowed inside .clank8y.'],
+    }
+  }
+
+  if (request.kind === 'write') {
+    const rawTargetPath = 'fileName' in request && typeof request.fileName === 'string'
+      ? request.fileName
+      : undefined
+    const targetPath = resolveRequestPath(rawTargetPath)
+
+    if (targetPath && isIncidentFixAgentWritablePath(targetPath)) {
+      return { kind: 'approved' as const }
+    }
+
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['Native file writes are only allowed for .clank8y/report.md and normal files inside .clank8y/repos. Nested .clank8y directories inside cloned repos are blocked, and top-level prompt/resources artifacts are read-only.'],
+    }
+  }
+
+  if (request.kind === 'shell') {
+    const blockedCmd = isBlockedShellCommand(request)
+    if (blockedCmd) {
+      return {
+        kind: 'denied-by-rules' as const,
+        rules: [blockedCmd],
+      }
+    }
+
+    return { kind: 'approved' as const }
+  }
+
+  if (request.kind === 'url') {
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['URL access is disabled.'],
+    }
+  }
+
+  return {
+    kind: 'denied-by-rules' as const,
+    rules: ['Only MCP, file, and shell access are allowed in IncidentFix mode.'],
   }
 }
 
