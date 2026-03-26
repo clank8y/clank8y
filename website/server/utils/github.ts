@@ -6,9 +6,13 @@ export function buildWebhookSetupHintBody(params: {
   reasonLine: string
 }): string {
   const readmeSetupUrl = 'https://github.com/clank8y/clank8y#required-workflow-file-for-webhook-dispatch-mode'
+  const normalizedUsername = params.username.trim().toLowerCase()
+  const greeting = normalizedUsername === 'clank8y[bot]' || normalizedUsername === 'clank8y'
+    ? 'clank8y could not start for this PR.'
+    : `@${params.username} clank8y could not start for this PR.`
 
   return buildClank8yCommentBody([
-    `@${params.username} clank8y could not start for this PR.`,
+    greeting,
     '',
     params.reasonLine,
     '',

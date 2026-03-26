@@ -7,6 +7,8 @@ import { buildWebhookSetupHintBody } from '../../../utils/github'
 import { getAppId, getAppPrivateKey, getWebhookSecret } from '../../../utils/env'
 
 const WORKFLOW_ID = 'clank8y.yml'
+const BOT_TRIGGER = '@clank8y'
+const SELF_ACTOR_LOGINS = new Set(['clank8y', 'clank8y[bot]'])
 
 type DispatchFailureReason = 'missing_workflow' | 'missing_permissions' | 'unknown'
 
@@ -42,11 +44,15 @@ async function createInstallationOctokit(owner: string, repo: string): Promise<O
 }
 
 function hasBotMention(commentBody: string): boolean {
-  return commentBody.toLowerCase().includes('@clank8y')
+  return commentBody.toLowerCase().includes(BOT_TRIGGER)
 }
 
 function isOnlyBotMention(commentBody: string): boolean {
-  return commentBody.trim().toLowerCase() === '@clank8y'
+  return commentBody.trim().toLowerCase() === BOT_TRIGGER
+}
+
+function isSelfActor(login: string): boolean {
+  return SELF_ACTOR_LOGINS.has(login.trim().toLowerCase())
 }
 
 function buildDispatchPromptContext(params: {
@@ -204,6 +210,13 @@ export default defineHandler(async (event) => {
   const webhooks = new Webhooks({ secret: getWebhookSecret() })
 
   webhooks.on('pull_request.opened', async ({ payload }) => {
+    if (isSelfActor(payload.sender.login)) {
+      console.log(
+        `[webhook] ignoring pull_request.opened from self repo=${payload.repository.full_name} pr=#${payload.pull_request.number}`,
+      )
+      return
+    }
+
     try {
       await dispatchWorkflow({
         owner: payload.repository.owner.login,
@@ -237,6 +250,13 @@ export default defineHandler(async (event) => {
   webhooks.on('issue_comment.created', async ({ payload }) => {
     if (!payload.issue.pull_request) {
       console.log(`[webhook] ignoring issue_comment.created for non-PR issue #${payload.issue.number} in repo=${payload.repository.full_name}`)
+      return
+    }
+
+    if (isSelfActor(payload.sender.login)) {
+      console.log(
+        `[webhook] ignoring issue_comment.created from self repo=${payload.repository.full_name} pr=#${payload.issue.number}`,
+      )
       return
     }
 
