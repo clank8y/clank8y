@@ -10,6 +10,7 @@ const WORKFLOW_ID = 'clank8y.yml'
 const BOT_TRIGGER = '@clank8y'
 
 type DispatchFailureReason = 'missing_workflow' | 'missing_permissions' | 'unknown'
+type DispatchTrigger = 'issue_comment' | 'pull_request_review_comment' | 'pull_request_review_requested' | 'issues_assigned'
 
 function createAppOctokit(): Octokit {
   const appId = getAppId()
@@ -51,35 +52,73 @@ function isOnlyBotMention(commentBody: string): boolean {
 }
 
 function buildDispatchPromptContext(params: {
-  trigger: 'pull_request_opened' | 'issue_comment'
+  trigger: DispatchTrigger
   owner: string
   repo: string
   defaultBranch: string
-  prNumber: number
-  prBaseBranch: string
-  prHeadBranch: string
   actor: string
+  source:
+    | { kind: 'issue_comment', commentId: number, commentUrl: string }
+    | { kind: 'pull_request_review_comment', commentId: number, commentUrl: string }
+    | { kind: 'pull_request_review_requested', reviewer: string }
+    | { kind: 'issues_assigned', assignee: string }
+  target:
+    | { kind: 'issue', issueNumber: number }
+    | { kind: 'pull_request', pullNumber: number, prBaseBranch: string, prHeadBranch: string }
   instruction?: string
 }): string {
-  const reviewTarget = `pull request #${params.prNumber} in ${params.owner}/${params.repo} for branch ${params.prHeadBranch}`
-  const baseInstruction = params.trigger === 'issue_comment'
-    ? `You have been mentioned in ${reviewTarget}. Address the feedback in the comments that mention you.`
-    : `A new PR has just been opened. Review ${reviewTarget} and provide actionable, high-signal feedback.`
+  const modeGuidance = params.source.kind === 'pull_request_review_requested'
+    ? [
+        '- You were explicitly requested as the reviewer for this pull request.',
+        '- Prefer Review unless the quoted instruction clearly asks you to implement or fix something.',
+      ]
+    : params.source.kind === 'issues_assigned'
+      ? [
+          '- You were explicitly assigned this issue to take care of it.',
+          '- Prefer Task unless the quoted instruction clearly asks for read-only review or analysis only.',
+        ]
+      : [
+          '- Prefer Review for read-only review, explanation, or analysis requests.',
+          '- Prefer Task for single-repository implementation work, fixes, replies, validation, or pull-request follow-up.',
+        ]
 
   const lines = [
     'EVENT-LEVEL INSTRUCTIONS:',
-    baseInstruction,
+    'You were invoked from GitHub. Select the best clank8y mode for this run using the event metadata and any quoted user instruction below.',
+    ...modeGuidance,
     '',
     '---',
     '',
     `trigger: ${params.trigger}`,
     `owner: ${params.owner}`,
     `repo: ${params.repo}`,
-    `pr_number: ${params.prNumber}`,
-    `branch: ${params.prHeadBranch}`,
+    `default_branch: ${params.defaultBranch}`,
     `actor: ${params.actor}`,
     buildReportBackInstruction(params.actor),
   ]
+
+  if (params.source.kind === 'pull_request_review_requested') {
+    lines.push('source_kind: pull_request_review_requested')
+    lines.push(`requested_reviewer: ${params.source.reviewer}`)
+    lines.push('automatic_invocation: true')
+  } else if (params.source.kind === 'issues_assigned') {
+    lines.push('source_kind: issues_assigned')
+    lines.push(`assigned_issue_to: ${params.source.assignee}`)
+    lines.push('automatic_invocation: true')
+  } else {
+    lines.push(`source_kind: ${params.source.kind}`)
+    lines.push(`source_comment_id: ${params.source.commentId}`)
+    lines.push(`source_comment_url: ${params.source.commentUrl}`)
+  }
+
+  lines.push(`target_kind: ${params.target.kind}`)
+  if (params.target.kind === 'issue') {
+    lines.push(`issue_number: ${params.target.issueNumber}`)
+  } else {
+    lines.push(`pull_number: ${params.target.pullNumber}`)
+    lines.push(`pr_base_branch: ${params.target.prBaseBranch}`)
+    lines.push(`pr_head_branch: ${params.target.prHeadBranch}`)
+  }
 
   if (isClank8ySelfActor(params.actor)) {
     lines.push('notification_instruction: do not mention @clank8y in comments or reviews')
@@ -92,20 +131,42 @@ function buildDispatchPromptContext(params: {
       'ADDITIONAL USER INSTRUCTION (quoted from mention comment):',
       normalizedInstruction,
     )
+  } else if (params.source.kind === 'pull_request_review_requested') {
+    lines.push('', 'ADDITIONAL USER INSTRUCTION: none provided; this run was triggered because clank8y was explicitly requested as the pull request reviewer.')
+  } else if (params.source.kind === 'issues_assigned') {
+    lines.push('', 'ADDITIONAL USER INSTRUCTION: none provided; this run was triggered because clank8y was explicitly assigned to the issue.')
   }
 
   return lines.join('\n')
+}
+
+async function fetchPullRequestContext(params: { owner: string, repo: string, pullNumber: number, octokit: Octokit }) {
+  const { data: pullRequest } = await params.octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
+    owner: params.owner,
+    repo: params.repo,
+    pull_number: params.pullNumber,
+  })
+
+  return {
+    prBaseBranch: pullRequest.base.ref,
+    prHeadBranch: pullRequest.head.ref,
+  }
 }
 
 async function dispatchWorkflow(params: {
   owner: string
   repo: string
   defaultBranch: string
-  trigger: 'pull_request_opened' | 'issue_comment'
-  prNumber: number
-  prBaseBranch: string
-  prHeadBranch: string
+  trigger: DispatchTrigger
   actor: string
+  source:
+    | { kind: 'issue_comment', commentId: number, commentUrl: string }
+    | { kind: 'pull_request_review_comment', commentId: number, commentUrl: string }
+    | { kind: 'pull_request_review_requested', reviewer: string }
+    | { kind: 'issues_assigned', assignee: string }
+  target:
+    | { kind: 'issue', issueNumber: number }
+    | { kind: 'pull_request', pullNumber: number, prBaseBranch: string, prHeadBranch: string }
   instruction?: string
 }): Promise<void> {
   const octokit = await createInstallationOctokit(params.owner, params.repo)
@@ -121,10 +182,9 @@ async function dispatchWorkflow(params: {
         repo: params.repo,
         defaultBranch: params.defaultBranch,
         trigger: params.trigger,
-        prNumber: params.prNumber,
-        prBaseBranch: params.prBaseBranch,
-        prHeadBranch: params.prHeadBranch,
         actor: params.actor,
+        source: params.source,
+        target: params.target,
         instruction: params.instruction,
       }),
     },
@@ -156,7 +216,7 @@ function classifyDispatchFailure(error: unknown): DispatchFailureReason {
 async function commentSetupHint(params: {
   owner: string
   repo: string
-  prNumber: number
+  issueNumber: number
   username: string
   reason: DispatchFailureReason
 }): Promise<void> {
@@ -178,7 +238,7 @@ async function commentSetupHint(params: {
   await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
     owner: params.owner,
     repo: params.repo,
-    issue_number: params.prNumber,
+    issue_number: params.issueNumber,
     body,
   })
 }
@@ -208,46 +268,10 @@ export default defineHandler(async (event) => {
 
   const webhooks = new Webhooks({ secret: getWebhookSecret() })
 
-  webhooks.on('pull_request.opened', async ({ payload }) => {
-    try {
-      await dispatchWorkflow({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        defaultBranch: payload.repository.default_branch,
-        trigger: 'pull_request_opened',
-        prNumber: payload.pull_request.number,
-        prBaseBranch: payload.pull_request.base.ref,
-        prHeadBranch: payload.pull_request.head.ref,
-        actor: payload.sender.login,
-      })
-
-      console.log(
-        `[webhook] dispatched workflow for pull_request.opened repo=${payload.repository.full_name} pr=#${payload.pull_request.number}`,
-      )
-    } catch (error) {
-      const reason = classifyDispatchFailure(error)
-
-      await commentSetupHint({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        prNumber: payload.pull_request.number,
-        username: payload.pull_request.user.login,
-        reason,
-      })
-
-      console.error(`[webhook] failed to dispatch workflow for pull_request.opened. Status:${getErrorStatus(error)} Reason: ${reason}`, error)
-    }
-  })
-
   webhooks.on('issue_comment.created', async ({ payload }) => {
-    if (!payload.issue.pull_request) {
-      console.log(`[webhook] ignoring issue_comment.created for non-PR issue #${payload.issue.number} in repo=${payload.repository.full_name}`)
-      return
-    }
-
     if (isClank8ySelfActor(payload.sender.login)) {
       console.log(
-        `[webhook] ignoring issue_comment.created from self repo=${payload.repository.full_name} pr=#${payload.issue.number}`,
+        `[webhook] ignoring issue_comment.created from self repo=${payload.repository.full_name} issue_or_pr=#${payload.issue.number}`,
       )
       return
     }
@@ -260,22 +284,36 @@ export default defineHandler(async (event) => {
     const owner = payload.repository.owner.login
     const repo = payload.repository.name
     const installationOctokit = await createInstallationOctokit(owner, repo)
-    const { data: pullRequest } = await installationOctokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
-      owner,
-      repo,
-      pull_number: payload.issue.number,
-    })
 
     try {
+      const target = payload.issue.pull_request
+        ? {
+            kind: 'pull_request' as const,
+            pullNumber: payload.issue.number,
+            ...(await fetchPullRequestContext({
+              owner,
+              repo,
+              pullNumber: payload.issue.number,
+              octokit: installationOctokit,
+            })),
+          }
+        : {
+            kind: 'issue' as const,
+            issueNumber: payload.issue.number,
+          }
+
       await dispatchWorkflow({
         owner,
         repo,
         defaultBranch: payload.repository.default_branch,
         trigger: 'issue_comment',
-        prNumber: payload.issue.number,
-        prBaseBranch: pullRequest.base.ref,
-        prHeadBranch: pullRequest.head.ref,
         actor: payload.sender.login,
+        source: {
+          kind: 'issue_comment',
+          commentId: payload.comment.id,
+          commentUrl: payload.comment.html_url,
+        },
+        target,
         instruction: commentBody,
       })
 
@@ -287,7 +325,7 @@ export default defineHandler(async (event) => {
       })
 
       console.log(
-        `[webhook] dispatched workflow for issue_comment.created repo=${payload.repository.full_name} pr=#${payload.issue.number} actor=${payload.sender.login}`,
+        `[webhook] dispatched workflow for issue_comment.created repo=${payload.repository.full_name} issue_or_pr=#${payload.issue.number} actor=${payload.sender.login}`,
       )
     } catch (error) {
       const reason = classifyDispatchFailure(error)
@@ -295,12 +333,190 @@ export default defineHandler(async (event) => {
       await commentSetupHint({
         owner,
         repo,
-        prNumber: payload.issue.number,
+        issueNumber: payload.issue.number,
         username: payload.sender.login,
         reason,
       })
 
       console.error('[webhook] failed to dispatch workflow for issue_comment.created', error)
+    }
+  })
+
+  webhooks.on('pull_request_review_comment.created', async ({ payload }) => {
+    if (isClank8ySelfActor(payload.sender.login)) {
+      console.log(
+        `[webhook] ignoring pull_request_review_comment.created from self repo=${payload.repository.full_name} pr=#${payload.pull_request.number}`,
+      )
+      return
+    }
+
+    const commentBody = payload.comment.body || ''
+    if (!hasBotMention(commentBody)) {
+      return
+    }
+
+    const owner = payload.repository.owner.login
+    const repo = payload.repository.name
+    const installationOctokit = await createInstallationOctokit(owner, repo)
+
+    try {
+      const pullRequestContext = await fetchPullRequestContext({
+        owner,
+        repo,
+        pullNumber: payload.pull_request.number,
+        octokit: installationOctokit,
+      })
+
+      await dispatchWorkflow({
+        owner,
+        repo,
+        defaultBranch: payload.repository.default_branch,
+        trigger: 'pull_request_review_comment',
+        actor: payload.sender.login,
+        source: {
+          kind: 'pull_request_review_comment',
+          commentId: payload.comment.id,
+          commentUrl: payload.comment.html_url,
+        },
+        target: {
+          kind: 'pull_request',
+          pullNumber: payload.pull_request.number,
+          ...pullRequestContext,
+        },
+        instruction: commentBody,
+      })
+
+      await installationOctokit.request('POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions', {
+        owner,
+        repo,
+        comment_id: payload.comment.id,
+        content: 'eyes',
+      })
+
+      console.log(
+        `[webhook] dispatched workflow for pull_request_review_comment.created repo=${payload.repository.full_name} pr=#${payload.pull_request.number} actor=${payload.sender.login}`,
+      )
+    } catch (error) {
+      const reason = classifyDispatchFailure(error)
+
+      await commentSetupHint({
+        owner,
+        repo,
+        issueNumber: payload.pull_request.number,
+        username: payload.sender.login,
+        reason,
+      })
+
+      console.error('[webhook] failed to dispatch workflow for pull_request_review_comment.created', error)
+    }
+  })
+
+  webhooks.on('pull_request.review_requested', async ({ payload }) => {
+    const requestedReviewer = payload.requested_reviewer?.login
+    if (!requestedReviewer || !isClank8ySelfActor(requestedReviewer)) {
+      return
+    }
+
+    if (isClank8ySelfActor(payload.sender.login)) {
+      console.log(
+        `[webhook] ignoring pull_request.review_requested from self repo=${payload.repository.full_name} pr=#${payload.pull_request.number}`,
+      )
+      return
+    }
+
+    try {
+      await dispatchWorkflow({
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        defaultBranch: payload.repository.default_branch,
+        trigger: 'pull_request_review_requested',
+        actor: payload.sender.login,
+        source: {
+          kind: 'pull_request_review_requested',
+          reviewer: requestedReviewer,
+        },
+        target: {
+          kind: 'pull_request',
+          pullNumber: payload.pull_request.number,
+          prBaseBranch: payload.pull_request.base.ref,
+          prHeadBranch: payload.pull_request.head.ref,
+        },
+      })
+
+      console.log(
+        `[webhook] dispatched workflow for pull_request.review_requested repo=${payload.repository.full_name} pr=#${payload.pull_request.number} actor=${payload.sender.login}`,
+      )
+    } catch (error) {
+      const reason = classifyDispatchFailure(error)
+
+      await commentSetupHint({
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        issueNumber: payload.pull_request.number,
+        username: requestedReviewer,
+        reason,
+      })
+
+      console.error('[webhook] failed to dispatch workflow for pull_request.review_requested', error)
+    }
+  })
+
+  webhooks.on('issues.assigned', async ({ payload }) => {
+    const assignee = payload.assignee?.login
+    if (!assignee || !isClank8ySelfActor(assignee)) {
+      return
+    }
+
+    if (isClank8ySelfActor(payload.sender.login)) {
+      console.log(
+        `[webhook] ignoring issues.assigned from self repo=${payload.repository.full_name} issue=#${payload.issue.number}`,
+      )
+      return
+    }
+
+    try {
+      await dispatchWorkflow({
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        defaultBranch: payload.repository.default_branch,
+        trigger: 'issues_assigned',
+        actor: payload.sender.login,
+        source: {
+          kind: 'issues_assigned',
+          assignee,
+        },
+        target: payload.issue.pull_request
+          ? {
+              kind: 'pull_request',
+              pullNumber: payload.issue.number,
+              ...(await fetchPullRequestContext({
+                owner: payload.repository.owner.login,
+                repo: payload.repository.name,
+                pullNumber: payload.issue.number,
+                octokit: await createInstallationOctokit(payload.repository.owner.login, payload.repository.name),
+              })),
+            }
+          : {
+              kind: 'issue',
+              issueNumber: payload.issue.number,
+            },
+      })
+
+      console.log(
+        `[webhook] dispatched workflow for issues.assigned repo=${payload.repository.full_name} issue_or_pr=#${payload.issue.number} actor=${payload.sender.login}`,
+      )
+    } catch (error) {
+      const reason = classifyDispatchFailure(error)
+
+      await commentSetupHint({
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        issueNumber: payload.issue.number,
+        username: assignee,
+        reason,
+      })
+
+      console.error('[webhook] failed to dispatch workflow for issues.assigned', error)
     }
   })
 

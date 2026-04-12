@@ -17,6 +17,7 @@ Use this package when you want to:
 - run the clank8y review agent outside GitHub Actions in a **sandboxed runner**
 - execute reviews in your own container, worker runtime, or disposable VM
 - build cross-repo review flows orchestrated by your own system
+- run single-repository Task workflows that materialize GitHub context into `.clank8y/` and perform constrained local development work
 
 Do **not** use this package:
 
@@ -56,6 +57,8 @@ main().catch(console.error)
 - You must provide GitHub API credentials and a Copilot token yourself.
 - This package does not bootstrap GitHub Actions environment variables for you.
 - The agent writes temporary artifacts to `.clank8y/` in the current working directory. This directory is created and cleaned automatically.
+- Built-in modes currently include `Review`, `Task`, and `IncidentFix`.
+- `Task` is single-repository and artifact-first: it writes `.clank8y/pr.md`, `.clank8y/issues/<number>.md`, `.clank8y/diff.txt`, and `.clank8y/report.md` as needed for the run.
 - Mode availability is controlled via top-level `disabledModes`. If omitted, no built-in modes are disabled. Entry points such as the GitHub Action can still disable specific modes explicitly.
 - Do not enable future modes in the current GitHub Copilot agent until their permission handler and available tool surface have been reviewed for that mode.
 - For GitHub-hosted workflow usage, use the [`clank8y/clank8y` action](https://github.com/clank8y/clank8y) instead.
