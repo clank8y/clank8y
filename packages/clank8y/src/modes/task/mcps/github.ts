@@ -1,4 +1,5 @@
 import { writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import process from 'node:process'
 import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
 import { HttpTransport } from '@tmcp/transport-http'
@@ -427,7 +428,7 @@ export function taskGitHubMCP(): LocalHTTPMCPServer {
           }
 
           await writePullRequestArtifact(formatTaskPullRequestArtifact({
-            issueArtifactPaths: issueArtifactPaths.map((issuePath) => issuePath.replace(`${process.cwd()}/`, '')),
+            issueArtifactPaths: issueArtifactPaths.map((issuePath) => path.relative(process.cwd(), issuePath)),
             pullRequest,
             prComments,
             reviewThreads: reviewData.reviewThreads,
