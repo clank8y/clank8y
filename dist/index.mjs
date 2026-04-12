@@ -36405,10 +36405,7 @@ function taskGitHubMCP() {
 			name: GET_ISSUE_TOOL_NAME,
 			description: "Fetch a same-repo issue and write it to `.clank8y/issues/<number>.md` for later local reading and grep.",
 			title: "Get Issue",
-			annotations: {
-				destructiveHint: true,
-				openWorldHint: true
-			},
+			annotations: { openWorldHint: true },
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({ issue_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Same-repo issue number to write into `.clank8y/issues/<number>.md`. Pull requests are rejected.")) }), /* @__PURE__ */ description("Arguments for writing a same-repo issue artifact for the active Task repository."))
 		}, async ({ issue_number }) => {
 			try {
