@@ -179,5 +179,5 @@ async function runClank8yEntry(): Promise<void> {
 
 runClank8yEntry().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
-  core.setFailed(`clank8y failed to review the pull request: ${message}`)
+  core.setFailed(`clank8y failed to complete the requested GitHub work: ${message}`)
 })

@@ -32576,6 +32576,8 @@ const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
 const REPORT_ARTIFACT_FILE = "report.md";
 const PROMPT_ARTIFACT_FILE = "prompt.md";
 const RESOURCES_ARTIFACT_FILE = "resources.md";
+const PR_ARTIFACT_FILE = "pr.md";
+const ISSUES_ARTIFACT_DIR = "issues";
 function getClank8yArtifactDirPath() {
 	return path.join(process$1.cwd(), CLANK8Y_ARTIFACT_DIR);
 }
@@ -32610,6 +32612,15 @@ function getReviewArtifactPaths() {
 		reviewCommentsPath: resolveClank8yArtifactPath(REVIEW_COMMENTS_ARTIFACT_FILE)
 	};
 }
+function getTaskArtifactPaths() {
+	return {
+		artifactDir: getClank8yArtifactDirPath(),
+		diffPath: resolveClank8yArtifactPath(DIFF_ARTIFACT_FILE),
+		issueDirPath: resolveClank8yArtifactPath(ISSUES_ARTIFACT_DIR),
+		prPath: resolveClank8yArtifactPath(PR_ARTIFACT_FILE),
+		reportPath: resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE)
+	};
+}
 async function resetClank8yArtifacts() {
 	const artifactPaths = getReviewArtifactPaths();
 	await rm(artifactPaths.artifactDir, {
@@ -32621,6 +32632,15 @@ async function resetClank8yArtifacts() {
 }
 function getReportArtifactPath() {
 	return resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE);
+}
+function getPullRequestArtifactPath() {
+	return resolveClank8yArtifactPath(PR_ARTIFACT_FILE);
+}
+function getIssuesArtifactDirPath() {
+	return resolveClank8yArtifactPath(ISSUES_ARTIFACT_DIR);
+}
+function getIssueArtifactPath(issueNumber) {
+	return resolveClank8yArtifactPath(ISSUES_ARTIFACT_DIR, `${issueNumber}.md`);
 }
 function getPromptArtifactPath() {
 	return resolveClank8yArtifactPath(PROMPT_ARTIFACT_FILE);
@@ -32634,6 +32654,17 @@ async function doesReportArtifactExist() {
 async function writeDiffArtifact(content) {
 	const { diffPath } = getReviewArtifactPaths();
 	await writeFile(diffPath, content, "utf-8");
+}
+async function writePullRequestArtifact(content) {
+	const prPath = getPullRequestArtifactPath();
+	await writeFile(prPath, content, "utf-8");
+	return prPath;
+}
+async function writeIssueArtifact(issueNumber, content) {
+	await mkdir(getIssuesArtifactDirPath(), { recursive: true });
+	const issuePath = getIssueArtifactPath(issueNumber);
+	await writeFile(issuePath, content, "utf-8");
+	return issuePath;
 }
 async function writePromptArtifact(content) {
 	const promptPath = getPromptArtifactPath();
@@ -33544,8 +33575,8 @@ const FETCH_REPO_BRANCH_TOOL_NAME = "fetch-repo-branch";
 const PUSH_REPO_BRANCH_TOOL_NAME = "push-repo-branch";
 const CREATE_REPO_ISSUE_TOOL_NAME = "create-repo-issue";
 const UPDATE_REPO_ISSUE_TOOL_NAME = "update-repo-issue";
-const CREATE_REPO_PULL_REQUEST_TOOL_NAME = "create-repo-pull-request";
-const UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME = "update-repo-pull-request-body";
+const CREATE_REPO_PULL_REQUEST_TOOL_NAME$1 = "create-repo-pull-request";
+const UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME$1 = "update-repo-pull-request-body";
 const RESOURCES_ARTIFACT_NOTE = "This action was recorded in .clank8y/resources.md — read it to recover context.";
 async function getAuthenticatedLogin() {
 	const { data } = await (await getOctokit()).rest.users.getAuthenticated();
@@ -33795,7 +33826,7 @@ function incidentFixGitHubMCP() {
 					repo: parsed.repo,
 					issue_number
 				});
-				if ("pull_request" in issue && issue.pull_request) throw new Error(`Issue #${issue_number} is a pull request. Use ${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME} instead.`);
+				if ("pull_request" in issue && issue.pull_request) throw new Error(`Issue #${issue_number} is a pull request. Use ${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME$1} instead.`);
 				assertArtifactOwnedByAuthenticatedUser({
 					artifactType: "issue",
 					authorLogin: issue.user?.login ?? null,
@@ -33830,7 +33861,7 @@ function incidentFixGitHubMCP() {
 			}
 		}),
 		defineTool({
-			name: CREATE_REPO_PULL_REQUEST_TOOL_NAME,
+			name: CREATE_REPO_PULL_REQUEST_TOOL_NAME$1,
 			description: "Create a pull request for a pushed branch. Use this once the fix direction is concrete and the branch is ready for review.",
 			title: "Create Repository Pull Request",
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
@@ -33880,7 +33911,7 @@ function incidentFixGitHubMCP() {
 			}
 		}),
 		defineTool({
-			name: UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME,
+			name: UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME$1,
 			description: "Update the body of an existing bot-authored pull request. Use this to backfill cross-references after related issues or PRs are created in other repositories.",
 			title: "Update Repository Pull Request Body",
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
@@ -34148,8 +34179,8 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"   a) Search for existing issues and PRs for the problem. Reuse or reference them when they already cover the work. Only create new artifacts when there is a real gap.",
 		`   b) Use \`${CREATE_REPO_ISSUE_TOOL_NAME}\` only when a new issue is actually needed.`,
 		`   c) Use \`${PUSH_REPO_BRANCH_TOOL_NAME}\` to publish the fix branch.`,
-		`   d) Use \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` to open the PR, referencing the issue when relevant.`,
-		`   e) Use \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` or \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME}\` only to backfill later cross-references or final context.`,
+		`   d) Use \`${CREATE_REPO_PULL_REQUEST_TOOL_NAME$1}\` to open the PR, referencing the issue when relevant.`,
+		`   e) Use \`${UPDATE_REPO_ISSUE_TOOL_NAME}\` or \`${UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME$1}\` only to backfill later cross-references or final context.`,
 		"   - Create issues and pull requests only once you have a concrete, evidence-backed fix path.",
 		"   - If the fix already exists in an existing branch or PR, do not create a duplicate branch or PR unless you can justify why the existing artifact is insufficient.",
 		"   - If multiple repos are involved, make related issues and pull requests cross-reference each other.",
@@ -35019,11 +35050,113 @@ function stripSurroundingQuotes(text) {
 function normalizeToolString(text) {
 	return normalizeEscapedNewlines(stripSurroundingQuotes(text));
 }
+function pushCommentSection(lines, title, comments) {
+	lines.push(`## ${title}`);
+	lines.push("");
+	if (comments.length === 0) {
+		lines.push("No comments.");
+		lines.push("");
+		return;
+	}
+	for (const comment of comments) {
+		lines.push(`### Comment ${comment.id} by ${comment.user?.login ?? "unknown"} at ${comment.created_at ?? "unknown time"}`);
+		lines.push("");
+		lines.push(comment.body?.trim() || "(no comment body)");
+		lines.push("");
+	}
+}
+function formatTaskIssueArtifact(issue, comments) {
+	const lines = [
+		`# Issue #${issue.number}`,
+		"",
+		`title: ${issue.title}`,
+		`url: ${issue.html_url}`,
+		`state: ${issue.state}`,
+		`author: ${issue.user?.login ?? "unknown"}`,
+		`assignees: ${issue.assignees?.map((assignee) => assignee.login).join(", ") || "(none)"}`,
+		`labels: ${issue.labels.map((label) => typeof label === "string" ? label : label.name).join(", ") || "(none)"}`,
+		"",
+		"## Body",
+		"",
+		issue.body?.trim() || "(no issue body)",
+		""
+	];
+	pushCommentSection(lines, "Comments", comments);
+	return lines.join("\n");
+}
+function formatTaskPullRequestArtifact(params) {
+	const { issueArtifactPaths, prComments, pullRequest, reviewThreads } = params;
+	const lines = [
+		`# Pull Request #${pullRequest.number}`,
+		"",
+		`title: ${pullRequest.title}`,
+		`url: ${pullRequest.html_url}`,
+		`state: ${pullRequest.state}`,
+		`draft: ${String(pullRequest.draft)}`,
+		`merged: ${String(pullRequest.merged)}`,
+		`author: ${pullRequest.user?.login ?? "unknown"}`,
+		`assignees: ${pullRequest.assignees?.map((assignee) => assignee.login).join(", ") || "(none)"}`,
+		`labels: ${pullRequest.labels.map((label) => typeof label === "string" ? label : label.name).join(", ") || "(none)"}`,
+		`base_branch: ${pullRequest.base.ref}`,
+		`head_branch: ${pullRequest.head.ref}`,
+		`head_sha: ${pullRequest.head.sha}`,
+		"",
+		"## Body",
+		"",
+		pullRequest.body?.trim() || "(no pull request body)",
+		""
+	];
+	if (issueArtifactPaths.length > 0) {
+		lines.push("## Related Issue Artifacts");
+		lines.push("");
+		for (const issueArtifactPath of issueArtifactPaths) lines.push(`- ${issueArtifactPath}`);
+		lines.push("");
+	}
+	pushCommentSection(lines, "PR Comments", prComments);
+	lines.push("## Review Threads");
+	lines.push("");
+	if (reviewThreads.length === 0) {
+		lines.push("No review threads.");
+		lines.push("");
+		return lines.join("\n");
+	}
+	for (const thread of reviewThreads) {
+		lines.push(`### Thread ${thread.id}`);
+		lines.push("");
+		lines.push(`path: ${thread.path ?? "(unknown path)"}`);
+		lines.push(`line: ${thread.line ?? "unknown"}`);
+		lines.push(`start_line: ${thread.startLine ?? "unknown"}`);
+		lines.push(`original_line: ${thread.originalLine ?? "unknown"}`);
+		lines.push(`original_start_line: ${thread.originalStartLine ?? "unknown"}`);
+		lines.push(`resolved: ${String(thread.isResolved)}`);
+		lines.push(`outdated: ${String(thread.isOutdated)}`);
+		lines.push("");
+		for (const comment of thread.comments) {
+			lines.push(`#### Comment ${comment.commentId ?? "unknown"} by ${comment.author ?? "unknown"} at ${comment.createdAt ?? "unknown time"}`);
+			lines.push("");
+			lines.push(`reply_to: ${comment.replyToCommentId ?? "root"}`);
+			lines.push(`review_author: ${comment.reviewAuthor ?? "unknown"}`);
+			lines.push(`review_state: ${comment.reviewState ?? "unknown"}`);
+			lines.push(`review_submitted_at: ${comment.reviewSubmittedAt ?? "unknown"}`);
+			lines.push(`url: ${comment.url ?? "(none)"}`);
+			lines.push("");
+			if (comment.diffHunk) {
+				lines.push("```diff");
+				lines.push(comment.diffHunk);
+				lines.push("```");
+				lines.push("");
+			}
+			lines.push(comment.body.trim() || "(no review comment body)");
+			lines.push("");
+		}
+	}
+	return lines.join("\n");
+}
 const SET_PULL_REQUEST_CONTEXT_TOOL_NAME = "set-pull-request-context";
 const PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME = "prepare-pull-request-review";
 const CREATE_PULL_REQUEST_REVIEW_TOOL_NAME = "create-pull-request-review";
 const GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME = "get-pull-request-file-content";
-const CREATE_PULL_REQUEST_COMMENT_TOOL_NAME = "create-pull-request-comment";
+const CREATE_PULL_REQUEST_COMMENT_TOOL_NAME$1 = "create-pull-request-comment";
 const FILE_CHUNK_DEFAULT_LIMIT = 200;
 const FILE_CHUNK_MAX_LIMIT = 400;
 const FILE_CHUNK_MAX_CHARS = 3e4;
@@ -35305,7 +35438,7 @@ function reviewGitHubMCP() {
 			}
 		}),
 		defineTool({
-			name: CREATE_PULL_REQUEST_COMMENT_TOOL_NAME,
+			name: CREATE_PULL_REQUEST_COMMENT_TOOL_NAME$1,
 			description: `Post a simple comment on the pull request. Use this instead of ${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME} when you have no inline review findings to submit — for example when the diff is clean or all issues are already covered by open review comments.`,
 			title: "Create Pull Request Comment",
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({ body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("The comment body. Briefly explain why no review was submitted (e.g. no issues found, all issues already covered by open comments). Do not wrap the value in quotation marks.")) }), /* @__PURE__ */ description("Payload for posting a simple PR comment without a formal review."))
@@ -35565,11 +35698,11 @@ const BASE_REVIEW_PROMPT = [
 		"",
 		"6) **Submit results:**",
 		`   - **If you have inline findings** → call \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` with your comments and a short summary body.`,
-		`   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` instead. Briefly explain why no review was submitted (e.g. "No new issues found — all previous feedback is still open and covers the current diff.").`,
+		`   - **If you have zero findings** (the diff is clean, or every issue is already covered by an open review comment) → call \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME$1}\` instead. Briefly explain why no review was submitted (e.g. "No new issues found — all previous feedback is still open and covers the current diff.").`,
 		"   You must call exactly one of these two tools before finishing. Never finish without submitting.",
 		"",
 		"### Completion criteria (mandatory):",
-		`- Do not finish without calling either \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (when you have findings) or \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` (when you have none).`,
+		`- Do not finish without calling either \`${CREATE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (when you have findings) or \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME$1}\` (when you have none).`,
 		"- If the PR contains Angular-specific or Cumulocity-specific changes, confirm you verified the relevant patterns with Angular MCP or Codex MCP before finalizing.",
 		"- If the PR touches `@c8y/*`, Cumulocity hooks, widgets, services, or design tokens, confirm you queried Codex MCP before finalizing.",
 		"- If there are findings, submit a review with inline comments containing concrete fixes and reference the docs where possible.",
@@ -35616,9 +35749,14 @@ function getReviewModeRuntime(promptContext) {
 const MODE_SELECTION_TOOL_NAME = "select-clank8y-mode";
 const MODE_SELECTION_TOOL_TITLE = "Select clank8y mode";
 const MODE_SELECTION_TOOL_DESCRIPTION = "Select the best clank8y execution mode for the current instructions. Call this exactly once with the chosen mode and a concise reason.";
-const CLANK8Y_MODES = ["Review", "IncidentFix"];
+const CLANK8Y_MODES = [
+	"Review",
+	"Task",
+	"IncidentFix"
+];
 const MODE_DESCRIPTIONS = {
 	Review: "Review: choose this for pull request review in a repository context.",
+	Task: "Task: choose this for single-repository development work such as addressing requested changes on an issue or pull request, making local edits, validating them, and reporting back on GitHub.",
 	IncidentFix: "IncidentFix: choose this for sandboxed incident investigation or deep-fix workflows that may inspect one or more repositories and produce a .clank8y/report.md artifact."
 };
 function createClank8yModeSchema(disabledModes = {}) {
@@ -35722,9 +35860,898 @@ function getSelectModeRuntime(promptContext, disabledModes = {}) {
 		...runtime
 	};
 }
+const PREPARE_TASK_WORKSPACE_TOOL_NAME = "prepare-task-workspace";
+const LIST_REPOSITORY_BRANCHES_TOOL_NAME = "list-repository-branches";
+const CREATE_BRANCH_TOOL_NAME = "create-branch";
+const PUSH_TASK_BRANCH_TOOL_NAME = "push-task-branch";
+const GET_ISSUE_TOOL_NAME = "get-issue";
+const CREATE_ISSUE_COMMENT_TOOL_NAME = "create-issue-comment";
+const CREATE_PULL_REQUEST_COMMENT_TOOL_NAME = "create-pull-request-comment";
+const REPLY_TO_REVIEW_COMMENT_TOOL_NAME = "reply-to-review-comment";
+const RESOLVE_REVIEW_THREAD_TOOL_NAME = "resolve-review-thread";
+const CREATE_REPO_PULL_REQUEST_TOOL_NAME = "create-repo-pull-request";
+const UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME = "update-repo-pull-request-body";
+let activeTaskContext = null;
+function resetTaskContext() {
+	activeTaskContext = null;
+}
+function setTaskContext(context) {
+	activeTaskContext = context;
+	return context;
+}
+function updateTaskContext(context) {
+	if (!activeTaskContext) throw new Error(`Task context is not initialized. Call ${PREPARE_TASK_WORKSPACE_TOOL_NAME} first.`);
+	activeTaskContext = {
+		...activeTaskContext,
+		...context
+	};
+	return activeTaskContext;
+}
+function getActiveTaskContext() {
+	if (!activeTaskContext) throw new Error(`Task context is not initialized. Call ${PREPARE_TASK_WORKSPACE_TOOL_NAME} first.`);
+	return activeTaskContext;
+}
+const REVIEW_THREADS_QUERY = `
+  query TaskReviewThreads($owner: String!, $repo: String!, $number: Int!, $after: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $number) {
+        closingIssuesReferences(first: 50) {
+          nodes {
+            number
+            repository {
+              nameWithOwner
+            }
+          }
+        }
+        reviewThreads(first: 100, after: $after) {
+          nodes {
+            id
+            isResolved
+            isOutdated
+            path
+            line
+            startLine
+            originalLine
+            originalStartLine
+            comments(first: 100) {
+              nodes {
+                databaseId
+                url
+                body
+                createdAt
+                diffHunk
+                author {
+                  login
+                }
+                replyTo {
+                  databaseId
+                }
+                pullRequestReview {
+                  id
+                  state
+                  submittedAt
+                  author {
+                    login
+                  }
+                }
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;
+function buildInitialTaskReport(params) {
+	return [
+		"# Task Report",
+		"",
+		"## Request",
+		"",
+		"Pending agent analysis.",
+		"",
+		"## Target",
+		"",
+		`repository: ${params.repository}`,
+		`kind: ${params.target.kind}`,
+		`number: ${params.target.number}`,
+		"",
+		"## Plan",
+		"",
+		"Pending agent plan.",
+		"",
+		"## Findings",
+		"",
+		"Pending findings.",
+		"",
+		"## Changes Made",
+		"",
+		"Pending changes.",
+		"",
+		"## Validation",
+		"",
+		"Pending validation.",
+		"",
+		"## Remote Actions",
+		"",
+		"Pending remote actions.",
+		"",
+		"## Remaining Uncertainty",
+		"",
+		"Pending uncertainty analysis.",
+		"",
+		"## Follow-up",
+		"",
+		"Pending follow-up.",
+		""
+	].join("\n");
+}
+async function fetchIssueAndComments(repository, issueNumber) {
+	const octokit = await getOctokit();
+	const [{ data: issue }, comments] = await Promise.all([octokit.rest.issues.get({
+		owner: repository.owner,
+		repo: repository.repo,
+		issue_number: issueNumber
+	}), octokit.paginate(octokit.rest.issues.listComments, {
+		owner: repository.owner,
+		repo: repository.repo,
+		issue_number: issueNumber,
+		per_page: 100
+	})]);
+	return {
+		issue,
+		comments
+	};
+}
+async function fetchPullRequestReviewThreads(repository, pullRequestNumber) {
+	const octokit = await getOctokit();
+	const reviewThreads = [];
+	const linkedIssueNumbers = /* @__PURE__ */ new Set();
+	let after = null;
+	while (true) {
+		const pullRequest = (await octokit.graphql(REVIEW_THREADS_QUERY, {
+			owner: repository.owner,
+			repo: repository.repo,
+			number: pullRequestNumber,
+			after
+		})).repository?.pullRequest;
+		if (!pullRequest) break;
+		for (const linkedIssue of pullRequest.closingIssuesReferences.nodes) if (linkedIssue.repository?.nameWithOwner === `${repository.owner}/${repository.repo}`) linkedIssueNumbers.add(linkedIssue.number);
+		reviewThreads.push(...pullRequest.reviewThreads.nodes);
+		if (!pullRequest.reviewThreads.pageInfo.hasNextPage) break;
+		after = pullRequest.reviewThreads.pageInfo.endCursor;
+	}
+	return {
+		linkedIssueNumbers: [...linkedIssueNumbers].sort((left, right) => left - right),
+		reviewThreads: reviewThreads.map((thread) => ({
+			comments: thread.comments.nodes.map((comment) => ({
+				author: comment.author?.login ?? null,
+				body: comment.body,
+				commentId: comment.databaseId,
+				createdAt: comment.createdAt,
+				diffHunk: comment.diffHunk,
+				pullRequestReviewId: comment.pullRequestReview?.id ?? null,
+				replyToCommentId: comment.replyTo?.databaseId ?? null,
+				reviewAuthor: comment.pullRequestReview?.author?.login ?? null,
+				reviewState: comment.pullRequestReview?.state ?? null,
+				reviewSubmittedAt: comment.pullRequestReview?.submittedAt ?? null,
+				url: comment.url
+			})),
+			id: thread.id,
+			isOutdated: thread.isOutdated,
+			isResolved: thread.isResolved,
+			line: thread.line,
+			originalLine: thread.originalLine,
+			originalStartLine: thread.originalStartLine,
+			path: thread.path,
+			startLine: thread.startLine
+		}))
+	};
+}
+async function ensureCleanTaskWorktree(repositoryPath) {
+	const { stdout } = await runClank8yGit(["status", "--porcelain"], { cwd: repositoryPath });
+	if (stdout.trim()) throw new Error("Working tree is not clean. Finish or discard local changes before creating a new task branch.");
+}
+function taskGitHubMCP() {
+	const mcp = new McpServer({
+		name: "clank8y-task-github-mcp",
+		description: "A MCP server that prepares single-repository task workspaces and performs constrained GitHub write operations.",
+		version: "1.0.0"
+	}, {
+		adapter: new ValibotJsonSchemaAdapter(),
+		capabilities: { tools: { listChanged: true } }
+	});
+	const githubMcpTools = [
+		defineTool({
+			name: LIST_REPOSITORY_BRANCHES_TOOL_NAME,
+			description: "List branches for a single repository before preparing an issue-driven task workspace from a specific base branch.",
+			title: "List Repository Branches",
+			annotations: {
+				readOnlyHint: true,
+				idempotentHint: true,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({ repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format.")) }), /* @__PURE__ */ description("Arguments for listing repository branches before an issue-driven Task run."))
+		}, async ({ repository }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const result = await getRepositoryBranches({
+					octokit,
+					repository: parsed
+				});
+				return tool.structured({
+					repository: `${parsed.owner}/${parsed.repo}`,
+					defaultBranch: result.defaultBranch,
+					branches: result.branches
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to list repository branches: ${message}`);
+			}
+		}),
+		defineTool({
+			name: PREPARE_TASK_WORKSPACE_TOOL_NAME,
+			description: "Prepare the single-repository Task workspace, write local `.clank8y` context artifacts, and bind push state when applicable.",
+			title: "Prepare Task Workspace",
+			annotations: {
+				destructiveHint: true,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format for the Task run.")),
+				target: /* @__PURE__ */ variant("kind", [/* @__PURE__ */ object({
+					kind: /* @__PURE__ */ pipe(/* @__PURE__ */ literal("pull_request"), /* @__PURE__ */ description("Prepare an existing pull request task workflow.")),
+					pull_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Pull request number to prepare."))
+				}), /* @__PURE__ */ object({
+					kind: /* @__PURE__ */ pipe(/* @__PURE__ */ literal("issue"), /* @__PURE__ */ description("Prepare an issue-driven task workflow.")),
+					issue_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Issue number to prepare.")),
+					base_branch: /* @__PURE__ */ optional(/* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Optional base branch to check out for the issue workflow. Defaults to the repository default branch.")))
+				})])
+			}), /* @__PURE__ */ description("Arguments for preparing the local Task workspace before code changes or GitHub replies."))
+		}, async ({ repository, target }) => {
+			try {
+				const octokit = await getOctokit();
+				const parsed = parseGitHubRepository(repository);
+				const { data: repoData } = await octokit.rest.repos.get({
+					owner: parsed.owner,
+					repo: parsed.repo
+				});
+				const cloneResult = await cloneRepository({
+					repository: parsed,
+					defaultBranch: repoData.default_branch,
+					token: getClank8yRuntimeContext().auth.githubToken
+				});
+				const reportPath = getReportArtifactPath();
+				const repositoryKey = `${parsed.owner}/${parsed.repo}`;
+				if (target.kind === "pull_request") {
+					const pullRequestNumber = target.pull_number;
+					const [{ data: pullRequest }, files, prComments, reviewData] = await Promise.all([
+						octokit.rest.pulls.get({
+							owner: parsed.owner,
+							repo: parsed.repo,
+							pull_number: pullRequestNumber
+						}),
+						octokit.paginate(octokit.rest.pulls.listFiles, {
+							owner: parsed.owner,
+							repo: parsed.repo,
+							pull_number: pullRequestNumber,
+							per_page: 100
+						}),
+						octokit.paginate(octokit.rest.issues.listComments, {
+							owner: parsed.owner,
+							repo: parsed.repo,
+							issue_number: pullRequestNumber,
+							per_page: 100
+						}),
+						fetchPullRequestReviewThreads(parsed, pullRequestNumber)
+					]);
+					if (pullRequest.head.ref !== repoData.default_branch) {
+						await fetchRepositoryBranch({
+							repository: parsed,
+							branch: pullRequest.head.ref,
+							token: getClank8yRuntimeContext().auth.githubToken
+						});
+						await runClank8yGit(await runClank8yGit([
+							"show-ref",
+							"--verify",
+							"--quiet",
+							`refs/heads/${pullRequest.head.ref}`
+						], { cwd: cloneResult.path }).then(() => true).catch(() => false) ? ["checkout", pullRequest.head.ref] : [
+							"checkout",
+							"-b",
+							pullRequest.head.ref,
+							"--track",
+							`origin/${pullRequest.head.ref}`
+						], { cwd: cloneResult.path });
+					} else await runClank8yGit(["checkout", repoData.default_branch], { cwd: cloneResult.path });
+					const issueArtifactPaths = [];
+					for (const issueNumber of reviewData.linkedIssueNumbers) {
+						const { issue, comments } = await fetchIssueAndComments(parsed, issueNumber);
+						if ("pull_request" in issue && issue.pull_request) continue;
+						await writeIssueArtifact(issue.number, formatTaskIssueArtifact(issue, comments));
+						issueArtifactPaths.push(getIssueArtifactPath(issue.number));
+					}
+					await writePullRequestArtifact(formatTaskPullRequestArtifact({
+						issueArtifactPaths: issueArtifactPaths.map((issuePath) => issuePath.replace(`${process$1.cwd()}/`, "")),
+						pullRequest,
+						prComments,
+						reviewThreads: reviewData.reviewThreads
+					}));
+					await writeDiffArtifact(formatFilesWithLineNumbers(files).content);
+					await writeFile(reportPath, buildInitialTaskReport({
+						repository: repositoryKey,
+						target: {
+							kind: "pull_request",
+							number: pullRequest.number
+						}
+					}), "utf-8");
+					setTaskContext({
+						allowedPushBranch: pullRequest.head.ref,
+						baseBranch: pullRequest.base.ref,
+						branchCreationAllowed: false,
+						defaultBranch: repoData.default_branch,
+						repository: parsed,
+						repositoryPath: cloneResult.path,
+						target: {
+							kind: "pull_request",
+							pullRequestNumber
+						}
+					});
+					return tool.structured({
+						repository: repositoryKey,
+						target: {
+							kind: "pull_request",
+							pullRequestNumber
+						},
+						checkout: {
+							path: cloneResult.path,
+							baseBranch: pullRequest.base.ref,
+							currentBranch: pullRequest.head.ref,
+							defaultBranch: repoData.default_branch
+						},
+						branchBinding: {
+							allowedPushBranch: pullRequest.head.ref,
+							branchCreationAllowed: false
+						},
+						artifacts: {
+							diffPath: getTaskArtifactPaths().diffPath,
+							prPath: getPullRequestArtifactPath(),
+							relatedIssuePaths: issueArtifactPaths,
+							reportPath
+						}
+					});
+				}
+				const issueNumber = target.issue_number;
+				const baseBranch = target.base_branch?.trim() || repoData.default_branch;
+				if (baseBranch !== repoData.default_branch) {
+					await fetchRepositoryBranch({
+						repository: parsed,
+						branch: baseBranch,
+						token: getClank8yRuntimeContext().auth.githubToken
+					});
+					await runClank8yGit(await runClank8yGit([
+						"show-ref",
+						"--verify",
+						"--quiet",
+						`refs/heads/${baseBranch}`
+					], { cwd: cloneResult.path }).then(() => true).catch(() => false) ? ["checkout", baseBranch] : [
+						"checkout",
+						"-b",
+						baseBranch,
+						"--track",
+						`origin/${baseBranch}`
+					], { cwd: cloneResult.path });
+				} else await runClank8yGit(["checkout", repoData.default_branch], { cwd: cloneResult.path });
+				const { issue, comments } = await fetchIssueAndComments(parsed, issueNumber);
+				if ("pull_request" in issue && issue.pull_request) throw new Error(`Issue #${issueNumber} is a pull request. Use a pull_request target instead.`);
+				const issuePath = await writeIssueArtifact(issue.number, formatTaskIssueArtifact(issue, comments));
+				await writeFile(reportPath, buildInitialTaskReport({
+					repository: repositoryKey,
+					target: {
+						kind: "issue",
+						number: issue.number
+					}
+				}), "utf-8");
+				setTaskContext({
+					allowedPushBranch: null,
+					baseBranch,
+					branchCreationAllowed: true,
+					defaultBranch: repoData.default_branch,
+					repository: parsed,
+					repositoryPath: cloneResult.path,
+					target: {
+						kind: "issue",
+						issueNumber
+					}
+				});
+				return tool.structured({
+					repository: repositoryKey,
+					target: {
+						kind: "issue",
+						issueNumber
+					},
+					checkout: {
+						path: cloneResult.path,
+						baseBranch,
+						currentBranch: baseBranch,
+						defaultBranch: repoData.default_branch
+					},
+					branchBinding: {
+						allowedPushBranch: null,
+						branchCreationAllowed: true
+					},
+					artifacts: {
+						issuePath,
+						reportPath
+					}
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to prepare Task workspace: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_BRANCH_TOOL_NAME,
+			description: "Create and check out the single clank8y task branch for an issue-driven Task workflow.",
+			title: "Create Branch",
+			annotations: {
+				destructiveHint: false,
+				openWorldHint: false
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				type: /* @__PURE__ */ pipe(/* @__PURE__ */ picklist([
+					"fix",
+					"feat",
+					"chore",
+					"refactor",
+					"ci",
+					"docs",
+					"style",
+					"perf",
+					"test",
+					"build",
+					"revert"
+				]), /* @__PURE__ */ description("Branch type prefix.")),
+				name: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Short branch name suffix. The final branch name becomes <type>/clank8y-<name>.")),
+				base_branch: /* @__PURE__ */ optional(/* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Optional base branch override. If omitted, the prepared issue base branch is used.")))
+			}), /* @__PURE__ */ description("Arguments for creating the single allowed clank8y task branch in an issue workflow."))
+		}, async ({ type, name, base_branch }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				if (taskContext.target.kind !== "issue") throw new Error(`${CREATE_BRANCH_TOOL_NAME} is only available in issue-driven Task workflows.`);
+				if (!taskContext.branchCreationAllowed) throw new Error("A task branch has already been created for this run.");
+				const repositoryPath = taskContext.repositoryPath;
+				await ensureCleanTaskWorktree(repositoryPath);
+				const baseBranch = base_branch?.trim() || taskContext.baseBranch;
+				if (baseBranch !== taskContext.baseBranch) if (baseBranch !== taskContext.defaultBranch) {
+					await fetchRepositoryBranch({
+						repository: taskContext.repository,
+						branch: baseBranch,
+						token: getClank8yRuntimeContext().auth.githubToken
+					});
+					await runClank8yGit([
+						"checkout",
+						"--detach",
+						`origin/${baseBranch}`
+					], { cwd: repositoryPath });
+				} else await runClank8yGit(["checkout", taskContext.defaultBranch], { cwd: repositoryPath });
+				const branchName = `${type}/clank8y-${name.trim()}`;
+				assertPushBranchAllowed(branchName, taskContext.defaultBranch);
+				await runClank8yGit([
+					"checkout",
+					"-b",
+					branchName
+				], { cwd: repositoryPath });
+				updateTaskContext({
+					allowedPushBranch: branchName,
+					branchCreationAllowed: false
+				});
+				return tool.structured({
+					repository: `${taskContext.repository.owner}/${taskContext.repository.repo}`,
+					branch: branchName,
+					baseBranch,
+					path: repositoryPath
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create task branch: ${message}`);
+			}
+		}),
+		defineTool({
+			name: PUSH_TASK_BRANCH_TOOL_NAME,
+			description: "Push the branch currently bound by the active Task workflow. This tool never accepts arbitrary branch destinations.",
+			title: "Push Task Branch",
+			annotations: {
+				destructiveHint: true,
+				openWorldHint: true
+			}
+		}, async () => {
+			try {
+				const taskContext = getActiveTaskContext();
+				if (!taskContext.allowedPushBranch) throw new Error("No push branch is currently bound for this Task run.");
+				const branchName = (await runClank8yGit([
+					"rev-parse",
+					"--abbrev-ref",
+					"HEAD"
+				], { cwd: taskContext.repositoryPath })).stdout.trim();
+				if (branchName !== taskContext.allowedPushBranch) throw new Error(`Current branch '${branchName}' does not match the allowed push branch '${taskContext.allowedPushBranch}'.`);
+				if (taskContext.target.kind === "issue") assertPushBranchAllowed(branchName, taskContext.defaultBranch);
+				else if (branchName === taskContext.defaultBranch) throw new Error(`Pushing the default branch '${taskContext.defaultBranch}' is not allowed.`);
+				await runClank8yGit([
+					"push",
+					"--set-upstream",
+					"origin",
+					`refs/heads/${branchName}:refs/heads/${branchName}`
+				], {
+					cwd: taskContext.repositoryPath,
+					token: getClank8yRuntimeContext().auth.githubToken
+				});
+				return tool.structured({
+					repository: `${taskContext.repository.owner}/${taskContext.repository.repo}`,
+					branch: branchName,
+					path: taskContext.repositoryPath
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to push task branch: ${message}`);
+			}
+		}),
+		defineTool({
+			name: GET_ISSUE_TOOL_NAME,
+			description: "Fetch a same-repo issue and write it to `.clank8y/issues/<number>.md` for later local reading and grep.",
+			title: "Get Issue",
+			annotations: {
+				destructiveHint: true,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({ issue_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Same-repo issue number to write into `.clank8y/issues/<number>.md`. Pull requests are rejected.")) }), /* @__PURE__ */ description("Arguments for writing a same-repo issue artifact for the active Task repository."))
+		}, async ({ issue_number }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				const { issue, comments } = await fetchIssueAndComments(taskContext.repository, issue_number);
+				if ("pull_request" in issue && issue.pull_request) throw new Error(`Issue #${issue_number} is a pull request and cannot be fetched with ${GET_ISSUE_TOOL_NAME}.`);
+				const issuePath = await writeIssueArtifact(issue.number, formatTaskIssueArtifact(issue, comments));
+				return tool.structured({
+					repository: `${taskContext.repository.owner}/${taskContext.repository.repo}`,
+					issueNumber: issue.number,
+					issuePath
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to fetch issue: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_ISSUE_COMMENT_TOOL_NAME,
+			description: "Create a same-repo issue comment as clank8y.",
+			title: "Create Issue Comment",
+			annotations: {
+				destructiveHint: false,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				issue_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Issue number in the active Task repository.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Issue comment body in markdown."))
+			}), /* @__PURE__ */ description("Arguments for creating a same-repo issue comment as clank8y."))
+		}, async ({ issue_number, body }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				const result = await (await getOctokit()).rest.issues.createComment({
+					owner: taskContext.repository.owner,
+					repo: taskContext.repository.repo,
+					issue_number,
+					body: buildClank8yCommentBody(normalizeToolString(body), { workflowRunUrl: getClank8yRuntimeContext().runInfo?.url ?? null })
+				});
+				return tool.structured({
+					issueNumber: issue_number,
+					commentId: result.data.id,
+					url: result.data.html_url
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create issue comment: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_PULL_REQUEST_COMMENT_TOOL_NAME,
+			description: "Create a same-repo pull request comment as clank8y.",
+			title: "Create Pull Request Comment",
+			annotations: {
+				destructiveHint: false,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				pull_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Pull request number in the active Task repository.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Pull request comment body in markdown."))
+			}), /* @__PURE__ */ description("Arguments for creating a same-repo pull request comment as clank8y."))
+		}, async ({ pull_number, body }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				const result = await (await getOctokit()).rest.issues.createComment({
+					owner: taskContext.repository.owner,
+					repo: taskContext.repository.repo,
+					issue_number: pull_number,
+					body: buildClank8yCommentBody(normalizeToolString(body), { workflowRunUrl: getClank8yRuntimeContext().runInfo?.url ?? null })
+				});
+				return tool.structured({
+					pullRequestNumber: pull_number,
+					commentId: result.data.id,
+					url: result.data.html_url
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create pull request comment: ${message}`);
+			}
+		}),
+		defineTool({
+			name: REPLY_TO_REVIEW_COMMENT_TOOL_NAME,
+			description: "Reply to an existing inline pull request review comment as clank8y.",
+			title: "Reply To Review Comment",
+			annotations: {
+				destructiveHint: false,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				comment_id: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Database comment ID from `.clank8y/pr.md`.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Reply body in markdown."))
+			}), /* @__PURE__ */ description("Arguments for replying to an inline review comment on the active pull request task."))
+		}, async ({ comment_id, body }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				if (taskContext.target.kind !== "pull_request") throw new Error("reply-to-review-comment is only available in pull request Task workflows.");
+				const response = await (await getOctokit()).request("POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies", {
+					owner: taskContext.repository.owner,
+					repo: taskContext.repository.repo,
+					pull_number: taskContext.target.pullRequestNumber,
+					comment_id,
+					body: buildClank8yCommentBody(normalizeToolString(body), { workflowRunUrl: getClank8yRuntimeContext().runInfo?.url ?? null })
+				});
+				return tool.structured({
+					commentId: comment_id,
+					replyId: response.data.id,
+					url: response.data.html_url
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to reply to review comment: ${message}`);
+			}
+		}),
+		defineTool({
+			name: RESOLVE_REVIEW_THREAD_TOOL_NAME,
+			description: "Resolve a pull request review thread by its thread ID from `.clank8y/pr.md`.",
+			title: "Resolve Review Thread",
+			annotations: {
+				destructiveHint: true,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({ thread_id: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("GraphQL review thread ID from `.clank8y/pr.md`.")) }), /* @__PURE__ */ description("Arguments for resolving a pull request review thread after the implementation actually addressed it."))
+		}, async ({ thread_id }) => {
+			try {
+				if (getActiveTaskContext().target.kind !== "pull_request") throw new Error("resolve-review-thread is only available in pull request Task workflows.");
+				const result = await (await getOctokit()).graphql(`
+          mutation ResolveTaskReviewThread($threadId: ID!) {
+            resolveReviewThread(input: { threadId: $threadId }) {
+              thread {
+                id
+                isResolved
+              }
+            }
+          }
+        `, { threadId: thread_id });
+				return tool.structured({
+					threadId: result.resolveReviewThread.thread.id,
+					isResolved: result.resolveReviewThread.thread.isResolved
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to resolve review thread: ${message}`);
+			}
+		}),
+		defineTool({
+			name: CREATE_REPO_PULL_REQUEST_TOOL_NAME,
+			description: "Create a same-repo pull request from the currently bound task branch.",
+			title: "Create Repository Pull Request",
+			annotations: {
+				destructiveHint: false,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				title: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Pull request title.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Pull request body in markdown.")),
+				draft: /* @__PURE__ */ pipe(/* @__PURE__ */ boolean(), /* @__PURE__ */ description("Whether to create the pull request as draft."))
+			}), /* @__PURE__ */ description("Arguments for creating a pull request from an issue-driven Task workflow."))
+		}, async ({ title, body, draft }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				if (taskContext.target.kind !== "issue") throw new Error("create-repo-pull-request is only available in issue-driven Task workflows.");
+				if (!taskContext.allowedPushBranch) throw new Error("No task branch is currently bound. Create and push the task branch first.");
+				const result = await (await getOctokit()).rest.pulls.create({
+					owner: taskContext.repository.owner,
+					repo: taskContext.repository.repo,
+					title,
+					body,
+					head: taskContext.allowedPushBranch,
+					base: taskContext.baseBranch,
+					draft
+				});
+				return tool.structured({
+					pullRequestNumber: result.data.number,
+					url: result.data.html_url,
+					headBranch: result.data.head.ref,
+					baseBranch: result.data.base.ref
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to create repository pull request: ${message}`);
+			}
+		}),
+		defineTool({
+			name: UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME,
+			description: "Update the body of an existing same-repo pull request as clank8y.",
+			title: "Update Repository Pull Request Body",
+			annotations: {
+				destructiveHint: true,
+				openWorldHint: true
+			},
+			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
+				pull_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("Pull request number in the active Task repository.")),
+				body: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Replacement pull request body in markdown."))
+			}), /* @__PURE__ */ description("Arguments for updating a pull request body during a Task workflow."))
+		}, async ({ pull_number, body }) => {
+			try {
+				const taskContext = getActiveTaskContext();
+				const result = await (await getOctokit()).rest.pulls.update({
+					owner: taskContext.repository.owner,
+					repo: taskContext.repository.repo,
+					pull_number,
+					body
+				});
+				return tool.structured({
+					pullRequestNumber: result.data.number,
+					url: result.data.html_url
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return tool.error(`Failed to update pull request body: ${message}`);
+			}
+		})
+	];
+	mcp.tools(githubMcpTools);
+	const transport = new HttpTransport(mcp, { path: "/mcp" });
+	const server = serve({
+		manual: true,
+		port: 0,
+		fetch: async (req) => {
+			const response = await transport.respond(req);
+			if (!response) return new NodeResponse("Not found", { status: 404 });
+			return response;
+		}
+	});
+	let status = { state: "stopped" };
+	return {
+		serverType: "http",
+		allowedTools: githubMcpTools.map((definedTool) => definedTool.name),
+		get status() {
+			return status;
+		},
+		start: async () => {
+			await server.serve();
+			const { url } = await server.ready();
+			if (!url) {
+				await server.close(true);
+				throw new Error("Failed to start Task GitHub MCP server");
+			}
+			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
+			status = {
+				state: "running",
+				url: actualUrl
+			};
+			return {
+				url: actualUrl,
+				toolNames: githubMcpTools.map((definedTool) => definedTool.name)
+			};
+		},
+		stop: async () => {
+			await server.close(true);
+			status = { state: "stopped" };
+		}
+	};
+}
+function taskMCPs() {
+	return {
+		github: taskGitHubMCP(),
+		codex: codexMCP(),
+		angular: angularMCP()
+	};
+}
+const BASE_TASK_PROMPT = [
+	PERSONA,
+	"",
+	KNOWLEDGE_VERIFICATION,
+	"",
+	[
+		"## Mission",
+		"",
+		"You are operating in **Task** mode.",
+		"This mode is for single-repository development work driven by a GitHub issue or pull request context.",
+		"Your job is to inspect the request, make the smallest correct implementation changes, validate them, and report back on GitHub.",
+		"",
+		"Core rules:",
+		"- Work in exactly one repository for the entire run.",
+		"- Use local `.clank8y` artifacts as your primary working context after setup.",
+		"- Remote GitHub writes must go through the dedicated GitHub MCP tools.",
+		"- Never use raw `git push`; publish only through the dedicated push tool.",
+		"- Keep `.clank8y/report.md` updated with the real state of the work."
+	].join("\n"),
+	"",
+	[
+		"## Required workflow",
+		"",
+		`1) Start with \
+\`${PREPARE_TASK_WORKSPACE_TOOL_NAME}\` once you know the repository and target from the event-level instructions.`,
+		"   - For pull request targets, setup writes `.clank8y/pr.md` and `.clank8y/diff.txt` and binds the allowed push branch to the PR head branch.",
+		"   - For issue targets, setup writes `.clank8y/issues/<number>.md` for the target issue and prepares the repository without creating a task branch yet.",
+		"",
+		"2) Read the generated `.clank8y` files before doing substantive work.",
+		"   - Start with `.clank8y/report.md` plus any generated PR or issue artifacts.",
+		"   - For PR tasks, use `.clank8y/diff.txt` as the primary change map.",
+		"",
+		`3) If issue-driven work needs a new branch, inspect branches with \
+\`${LIST_REPOSITORY_BRANCHES_TOOL_NAME}\` if needed and then call \
+\`${CREATE_BRANCH_TOOL_NAME}\`.`,
+		"   - Branches created by clank8y must follow `<type>/clank8y-<name>`.",
+		"   - Branch creation is blocked in pull-request workflows.",
+		"",
+		"4) Make the smallest correct code changes and run focused validation locally.",
+		"",
+		`5) If code changed, publish only through \
+\`${PUSH_TASK_BRANCH_TOOL_NAME}\`.`,
+		"   - That tool only pushes the branch currently bound by the Task context.",
+		"",
+		"6) Report back on GitHub using the correct tool for the target:",
+		`   - use \`${CREATE_ISSUE_COMMENT_TOOL_NAME}\` for issue comments`,
+		`   - use \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` for pull request comments`,
+		`   - use \`${REPLY_TO_REVIEW_COMMENT_TOOL_NAME}\` for inline review replies`,
+		`   - use \`${RESOLVE_REVIEW_THREAD_TOOL_NAME}\` only when the implementation actually addressed that review thread`,
+		"",
+		`7) If you need another same-repo issue written to \
+\.clank8y/issues/<number>.md, call \`${GET_ISSUE_TOOL_NAME}\` with its number.`,
+		"",
+		`8) If the work becomes a new pull request, use \
+\`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` after the branch is pushed.`,
+		"",
+		"### Completion criteria",
+		"- Do not finish without `.clank8y/report.md`.",
+		"- Do not finish without reporting back on GitHub to the user that requested the task when the task requires it.",
+		"- If code changed, do not finish before validation and, when appropriate, pushing through the dedicated push tool.",
+		"- Do not resolve review threads speculatively; only resolve them when the implementation actually addressed the thread."
+	].join("\n")
+].join("\n");
+function buildTaskPrompt(promptContext) {
+	const normalized = promptContext.trim();
+	if (!normalized) return BASE_TASK_PROMPT;
+	return [
+		BASE_TASK_PROMPT,
+		"",
+		normalized
+	].join("\n");
+}
+function getTaskModeRuntime(promptContext) {
+	resetTaskContext();
+	return {
+		prompt: buildTaskPrompt(promptContext),
+		mcps: taskMCPs()
+	};
+}
 function getModeRuntime(mode, promptContext) {
 	switch (mode) {
 		case "Review": return getReviewModeRuntime(promptContext);
+		case "Task": return getTaskModeRuntime(promptContext);
 		case "IncidentFix": return getIncidentFixModeRuntime(promptContext);
 		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
 	}
@@ -41812,6 +42839,27 @@ function isIncidentFixAgentWritablePath(targetPath) {
 	if (targetPath === getReportArtifactPath()) return true;
 	return isWithinClank8yRepos(targetPath) && !isWithinNestedClank8yRepoArtifact(targetPath);
 }
+function isWithinPath(targetPath, allowedRootPath) {
+	const relativePath = path.relative(allowedRootPath, targetPath);
+	return relativePath === "" || !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+}
+function getTaskRepositoryPath() {
+	try {
+		return getActiveTaskContext().repositoryPath;
+	} catch {
+		return null;
+	}
+}
+function isTaskAgentReadablePath(targetPath) {
+	if (isWithinClank8yArtifacts(targetPath)) return true;
+	const repositoryPath = getTaskRepositoryPath();
+	return repositoryPath ? isWithinPath(targetPath, repositoryPath) : false;
+}
+function isTaskAgentWritablePath(targetPath) {
+	if (targetPath === getReportArtifactPath()) return true;
+	const repositoryPath = getTaskRepositoryPath();
+	return repositoryPath ? isWithinPath(targetPath, repositoryPath) : false;
+}
 const copilotPermissionHandler = (request) => {
 	if (request.kind === "mcp" || request.kind === "custom-tool") return { kind: "approved" };
 	if (request.kind === "read") {
@@ -41935,6 +42983,44 @@ const copilotIncidentFixPermissionHandler = (request) => {
 	return {
 		kind: "denied-by-rules",
 		rules: ["Only MCP, file, and shell access are allowed in IncidentFix mode."]
+	};
+};
+const copilotTaskPermissionHandler = (request) => {
+	if (request.kind === "mcp" || request.kind === "custom-tool") return { kind: "approved" };
+	if (request.kind === "read") {
+		const targetPath = resolveRequestPath("path" in request && typeof request.path === "string" ? request.path : void 0);
+		if (targetPath && isTaskAgentReadablePath(targetPath)) return { kind: "approved" };
+		return {
+			kind: "denied-by-rules",
+			rules: ["Native file reads are only allowed inside .clank8y and the prepared Task repository."]
+		};
+	}
+	if (request.kind === "write") {
+		const targetPath = resolveRequestPath("fileName" in request && typeof request.fileName === "string" ? request.fileName : void 0);
+		if (targetPath && isTaskAgentWritablePath(targetPath)) return { kind: "approved" };
+		return {
+			kind: "denied-by-rules",
+			rules: ["Native file writes are only allowed for .clank8y/report.md and files inside the prepared Task repository."]
+		};
+	}
+	if (request.kind === "shell") {
+		const blockedCmd = isBlockedShellCommand(request);
+		if (blockedCmd) return {
+			kind: "denied-by-rules",
+			rules: [blockedCmd]
+		};
+		if ("fullCommandText" in request && typeof request.fullCommandText === "string") {
+			if (extractCommandNames(request.fullCommandText).includes("git") && /\bgit\s+push\b/i.test(request.fullCommandText)) return {
+				kind: "denied-by-rules",
+				rules: ["Raw git push is not allowed in Task mode. Use the dedicated push-task-branch MCP tool."]
+			};
+		}
+		return { kind: "approved" };
+	}
+	if (request.kind === "url") return { kind: "approved" };
+	return {
+		kind: "denied-by-rules",
+		rules: ["Only MCP, file, shell, and URL access allowed by Task mode are available."]
 	};
 };
 let _client = null;
@@ -42260,6 +43346,84 @@ function buildFallbackReport(messages) {
 	if (reasoning.length === 0 && content.length === 0) sections.push("No agent messages were captured during this run.", "");
 	return sections.join("\n");
 }
+const COPILOT_TASK_EXCLUDED_TOOLS = ["github-say-hello"];
+async function runCopilotTask(prompt, profile, mcps) {
+	const client = await getCopilotClient();
+	const thoughtStarts = /* @__PURE__ */ new Map();
+	const totals = {
+		inputTokens: 0,
+		outputTokens: 0,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		cost: 0
+	};
+	const servers = mcps;
+	const startResults = await startAll(servers);
+	try {
+		const session = await client.createSession({
+			excludedTools: COPILOT_TASK_EXCLUDED_TOOLS,
+			model: profile.model,
+			onPermissionRequest: copilotTaskPermissionHandler,
+			mcpServers: toCopilotMCPServersConfig(servers, startResults, { timeout: profile.timeOutMs })
+		});
+		const collectedMessages = [];
+		session.on("assistant.turn_start", (event) => {
+			thoughtStarts.set(event.data.turnId, Date.now());
+		});
+		session.on("assistant.turn_end", (event) => {
+			const thoughtStart = thoughtStarts.get(event.data.turnId);
+			thoughtStarts.delete(event.data.turnId);
+			if (thoughtStart) consola.info(`thought for ${((Date.now() - thoughtStart) / 1e3).toFixed(1)}s`);
+		});
+		session.on("tool.execution_start", (event) => {
+			const { toolName, mcpServerName, mcpToolName, arguments: args } = event.data;
+			const label = mcpServerName ? `${mcpServerName}/${mcpToolName ?? toolName}` : toolName;
+			if (label === "report_intent") {
+				const intent = args?.intent;
+				if (!intent) return;
+				consola.info(`🤖 clanking next... ${intent}`);
+				return;
+			}
+			consola.info(`→ tool: ${label}${args !== void 0 ? ` ${JSON.stringify(args)}` : ""}`);
+		});
+		session.on("assistant.message", (event) => {
+			if (event.data.reasoningText) logAgentMessage({
+				agent: COPILOT_AGENT_NAME,
+				model: profile.model
+			}, event.data.reasoningText);
+			if (event.data.content) collectedMessages.push(event.data.content);
+		});
+		session.on("assistant.usage", (usage) => {
+			totals.inputTokens += usage.data.inputTokens ?? 0;
+			totals.outputTokens += usage.data.outputTokens ?? 0;
+			totals.cacheReadTokens += usage.data.cacheReadTokens ?? 0;
+			totals.cacheWriteTokens += usage.data.cacheWriteTokens ?? 0;
+			totals.cost += usage.data.cost ?? 0;
+		});
+		try {
+			consola.info("clank8y getting to work...");
+			const response = await session.sendAndWait({ prompt }, profile.timeOutMs);
+			if (response?.data.content) logAgentMessage({
+				agent: COPILOT_AGENT_NAME,
+				model: profile.model
+			}, response.data.content);
+			else consola.warn("No response received");
+			if (!await doesReportArtifactExist()) await writeFile(getReportArtifactPath(), [
+				"# Task Report (auto-generated fallback)",
+				"",
+				"> This report was generated automatically because the agent did not produce `.clank8y/report.md`.",
+				"",
+				...collectedMessages,
+				""
+			].join("\n"), "utf-8");
+		} finally {
+			await client.deleteSession(session.sessionId);
+		}
+	} finally {
+		logUsageSummary(totals);
+		await stopAll(servers);
+	}
+}
 const COPILOT_AGENT_NAME = "github-copilot";
 const githubCopilotAgent = async (profile) => {
 	const agentName = COPILOT_AGENT_NAME;
@@ -42276,6 +43440,9 @@ const githubCopilotAgent = async (profile) => {
 			switch (mode) {
 				case "Review":
 					await runCopilotReview(prompt, profile, mcps);
+					break;
+				case "Task":
+					await runCopilotTask(prompt, profile, mcps);
 					break;
 				case "IncidentFix":
 					await runCopilotIncidentFix(prompt, profile, mcps);
@@ -42498,7 +43665,7 @@ async function runClank8yEntry() {
 }
 runClank8yEntry().catch((error) => {
 	const message = error instanceof Error ? error.message : String(error);
-	setFailed(`clank8y failed to review the pull request: ${message}`);
+	setFailed(`clank8y failed to complete the requested GitHub work: ${message}`);
 });
 
 //#endregion

@@ -184,7 +184,7 @@ export default defineHandler(async (event) => {
   }
 
   // All subsequent requests use the installation-scoped Octokit, which activates
-  // the app's installed permissions (Contents: read, Pull requests: write, etc.).
+  // the app's installed permissions (Contents: write, Pull requests: write, Issues: write, etc.).
   const installationOctokit = createInstallationOctokit(installationId)
 
   let defaultBranch: string | undefined
@@ -221,7 +221,7 @@ export default defineHandler(async (event) => {
         installation_id: installationId,
         repositories: [repo],
         permissions: {
-          contents: 'read',
+          contents: 'write',
           pull_requests: 'write',
           issues: 'write',
         },

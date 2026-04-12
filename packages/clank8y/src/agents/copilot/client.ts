@@ -6,6 +6,7 @@ import type { PermissionHandler, PermissionRequest } from '@github/copilot-sdk'
 import { consola } from 'consola'
 import { x } from 'tinyexec'
 import { getClank8yRuntimeContext } from '../../setup'
+import { getActiveTaskContext } from '../../modes/task/context'
 import {
   getReportArtifactPath,
   isWithinClank8yArtifacts,
@@ -119,6 +120,37 @@ function isIncidentFixAgentWritablePath(targetPath: string): boolean {
   }
 
   return isWithinClank8yRepos(targetPath) && !isWithinNestedClank8yRepoArtifact(targetPath)
+}
+
+function isWithinPath(targetPath: string, allowedRootPath: string): boolean {
+  const relativePath = path.relative(allowedRootPath, targetPath)
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+}
+
+function getTaskRepositoryPath(): string | null {
+  try {
+    return getActiveTaskContext().repositoryPath
+  } catch {
+    return null
+  }
+}
+
+function isTaskAgentReadablePath(targetPath: string): boolean {
+  if (isWithinClank8yArtifacts(targetPath)) {
+    return true
+  }
+
+  const repositoryPath = getTaskRepositoryPath()
+  return repositoryPath ? isWithinPath(targetPath, repositoryPath) : false
+}
+
+function isTaskAgentWritablePath(targetPath: string): boolean {
+  if (targetPath === getReportArtifactPath()) {
+    return true
+  }
+
+  const repositoryPath = getTaskRepositoryPath()
+  return repositoryPath ? isWithinPath(targetPath, repositoryPath) : false
 }
 
 export const copilotPermissionHandler: PermissionHandler = (request) => {
@@ -343,6 +375,75 @@ export const copilotIncidentFixPermissionHandler: PermissionHandler = (request) 
   return {
     kind: 'denied-by-rules' as const,
     rules: ['Only MCP, file, and shell access are allowed in IncidentFix mode.'],
+  }
+}
+
+export const copilotTaskPermissionHandler: PermissionHandler = (request) => {
+  if (request.kind === 'mcp' || request.kind === 'custom-tool') {
+    return { kind: 'approved' as const }
+  }
+
+  if (request.kind === 'read') {
+    const rawTargetPath = 'path' in request && typeof request.path === 'string'
+      ? request.path
+      : undefined
+    const targetPath = resolveRequestPath(rawTargetPath)
+
+    if (targetPath && isTaskAgentReadablePath(targetPath)) {
+      return { kind: 'approved' as const }
+    }
+
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['Native file reads are only allowed inside .clank8y and the prepared Task repository.'],
+    }
+  }
+
+  if (request.kind === 'write') {
+    const rawTargetPath = 'fileName' in request && typeof request.fileName === 'string'
+      ? request.fileName
+      : undefined
+    const targetPath = resolveRequestPath(rawTargetPath)
+
+    if (targetPath && isTaskAgentWritablePath(targetPath)) {
+      return { kind: 'approved' as const }
+    }
+
+    return {
+      kind: 'denied-by-rules' as const,
+      rules: ['Native file writes are only allowed for .clank8y/report.md and files inside the prepared Task repository.'],
+    }
+  }
+
+  if (request.kind === 'shell') {
+    const blockedCmd = isBlockedShellCommand(request)
+    if (blockedCmd) {
+      return {
+        kind: 'denied-by-rules' as const,
+        rules: [blockedCmd],
+      }
+    }
+
+    if ('fullCommandText' in request && typeof request.fullCommandText === 'string') {
+      const commandNames = extractCommandNames(request.fullCommandText)
+      if (commandNames.includes('git') && /\bgit\s+push\b/i.test(request.fullCommandText)) {
+        return {
+          kind: 'denied-by-rules' as const,
+          rules: ['Raw git push is not allowed in Task mode. Use the dedicated push-task-branch MCP tool.'],
+        }
+      }
+    }
+
+    return { kind: 'approved' as const }
+  }
+
+  if (request.kind === 'url') {
+    return { kind: 'approved' as const }
+  }
+
+  return {
+    kind: 'denied-by-rules' as const,
+    rules: ['Only MCP, file, shell, and URL access allowed by Task mode are available.'],
   }
 }
 

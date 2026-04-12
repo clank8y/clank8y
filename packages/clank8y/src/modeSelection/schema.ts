@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 
-export const CLANK8Y_MODES = ['Review', 'IncidentFix'] as const
+export const CLANK8Y_MODES = ['Review', 'Task', 'IncidentFix'] as const
 
 export type Clank8yMode = (typeof CLANK8Y_MODES)[number]
 
@@ -10,6 +10,7 @@ export type Clank8yDisabledModes = {
 
 const MODE_DESCRIPTIONS: Record<Clank8yMode, string> = {
   Review: 'Review: choose this for pull request review in a repository context.',
+  Task: 'Task: choose this for single-repository development work such as addressing requested changes on an issue or pull request, making local edits, validating them, and reporting back on GitHub.',
   IncidentFix: 'IncidentFix: choose this for sandboxed incident investigation or deep-fix workflows that may inspect one or more repositories and produce a .clank8y/report.md artifact.',
 }
 

@@ -8,12 +8,22 @@ export interface ReviewArtifactPaths {
   reviewCommentsPath: string
 }
 
+export interface TaskArtifactPaths {
+  artifactDir: string
+  diffPath: string
+  issueDirPath: string
+  prPath: string
+  reportPath: string
+}
+
 const CLANK8Y_ARTIFACT_DIR = '.clank8y'
 const DIFF_ARTIFACT_FILE = 'diff.txt'
 const REVIEW_COMMENTS_ARTIFACT_FILE = 'review-comments.md'
 const REPORT_ARTIFACT_FILE = 'report.md'
 const PROMPT_ARTIFACT_FILE = 'prompt.md'
 const RESOURCES_ARTIFACT_FILE = 'resources.md'
+const PR_ARTIFACT_FILE = 'pr.md'
+const ISSUES_ARTIFACT_DIR = 'issues'
 
 export function getClank8yArtifactDirPath(): string {
   return path.join(process.cwd(), CLANK8Y_ARTIFACT_DIR)
@@ -64,6 +74,18 @@ export function getReviewArtifactPaths(): ReviewArtifactPaths {
   }
 }
 
+export function getTaskArtifactPaths(): TaskArtifactPaths {
+  const artifactDir = getClank8yArtifactDirPath()
+
+  return {
+    artifactDir,
+    diffPath: resolveClank8yArtifactPath(DIFF_ARTIFACT_FILE),
+    issueDirPath: resolveClank8yArtifactPath(ISSUES_ARTIFACT_DIR),
+    prPath: resolveClank8yArtifactPath(PR_ARTIFACT_FILE),
+    reportPath: resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE),
+  }
+}
+
 export async function clearClank8yArtifacts(): Promise<void> {
   const { artifactDir } = getReviewArtifactPaths()
   await rm(artifactDir, { force: true, recursive: true })
@@ -78,6 +100,18 @@ export async function resetClank8yArtifacts(): Promise<ReviewArtifactPaths> {
 
 export function getReportArtifactPath(): string {
   return resolveClank8yArtifactPath(REPORT_ARTIFACT_FILE)
+}
+
+export function getPullRequestArtifactPath(): string {
+  return resolveClank8yArtifactPath(PR_ARTIFACT_FILE)
+}
+
+export function getIssuesArtifactDirPath(): string {
+  return resolveClank8yArtifactPath(ISSUES_ARTIFACT_DIR)
+}
+
+export function getIssueArtifactPath(issueNumber: number): string {
+  return resolveClank8yArtifactPath(ISSUES_ARTIFACT_DIR, `${issueNumber}.md`)
 }
 
 export function getPromptArtifactPath(): string {
@@ -109,6 +143,20 @@ export async function doesReviewCommentsArtifactExist(): Promise<boolean> {
 export async function writeDiffArtifact(content: string): Promise<void> {
   const { diffPath } = getReviewArtifactPaths()
   await writeFile(diffPath, content, 'utf-8')
+}
+
+export async function writePullRequestArtifact(content: string): Promise<string> {
+  const prPath = getPullRequestArtifactPath()
+  await writeFile(prPath, content, 'utf-8')
+  return prPath
+}
+
+export async function writeIssueArtifact(issueNumber: number, content: string): Promise<string> {
+  const issuesDirPath = getIssuesArtifactDirPath()
+  await mkdir(issuesDirPath, { recursive: true })
+  const issuePath = getIssueArtifactPath(issueNumber)
+  await writeFile(issuePath, content, 'utf-8')
+  return issuePath
 }
 
 export async function writePromptArtifact(content: string): Promise<string> {

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 
-import { copilotIncidentFixPermissionHandler, extractCommandNames } from '../../../src/agents/copilot/client'
+import { copilotIncidentFixPermissionHandler, copilotTaskPermissionHandler, extractCommandNames } from '../../../src/agents/copilot/client'
 
 // Mock the SDK to avoid its broken ESM import chain (vscode-jsonrpc/node)
 vi.mock('@github/copilot-sdk', () => ({
@@ -10,6 +10,18 @@ vi.mock('@github/copilot-sdk', () => ({
 // Mock runtime context (not needed for permission logic but client.ts imports setup)
 vi.mock('../../../src/setup', () => ({
   getClank8yRuntimeContext: () => ({ auth: { copilotToken: 'test' } }),
+}))
+
+vi.mock('../../../src/modes/task/context', () => ({
+  getActiveTaskContext: () => ({
+    allowedPushBranch: 'fix/clank8y-some-task',
+    baseBranch: 'main',
+    branchCreationAllowed: false,
+    defaultBranch: 'main',
+    repository: { owner: 'owner', repo: 'repo' },
+    repositoryPath: '/workspace/.clank8y/repos/owner--repo',
+    target: { kind: 'issue', issueNumber: 123 },
+  }),
 }))
 
 const sessionCtx = { sessionId: 'test-session' }
@@ -331,5 +343,90 @@ describe('copilotIncidentFixPermissionHandler', () => {
       const result = copilotIncidentFixPermissionHandler({ kind: 'unknown-future-kind' as any }, sessionCtx)
       expect(result.kind).toBe('denied-by-rules')
     })
+  })
+})
+
+describe('copilotTaskPermissionHandler', () => {
+  test('approves reads inside .clank8y', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'read',
+      toolCallId: 'tooluse_test',
+      intention: 'Read file',
+      path: '.clank8y/pr.md',
+    }, sessionCtx)
+    expect(result.kind).toBe('approved')
+  })
+
+  test('approves reads inside prepared repository', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'read',
+      toolCallId: 'tooluse_test',
+      intention: 'Read file',
+      path: '/workspace/.clank8y/repos/owner--repo/src/index.ts',
+    }, sessionCtx)
+    expect(result.kind).toBe('approved')
+  })
+
+  test('denies reads outside prepared repository', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'read',
+      toolCallId: 'tooluse_test',
+      intention: 'Read file',
+      path: '/workspace/other-repo/src/index.ts',
+    }, sessionCtx)
+    expect(result.kind).toBe('denied-by-rules')
+  })
+
+  test('approves writes to report.md', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'write',
+      toolCallId: 'tooluse_test',
+      intention: 'Edit file',
+      fileName: '.clank8y/report.md',
+      newFileContents: '# Task Report\n',
+    }, sessionCtx)
+    expect(result.kind).toBe('approved')
+  })
+
+  test('approves writes inside prepared repository', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'write',
+      toolCallId: 'tooluse_test',
+      intention: 'Edit file',
+      fileName: '/workspace/.clank8y/repos/owner--repo/src/index.ts',
+      newFileContents: 'export const changed = true\n',
+    }, sessionCtx)
+    expect(result.kind).toBe('approved')
+  })
+
+  test('denies writes outside prepared repository', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'write',
+      toolCallId: 'tooluse_test',
+      intention: 'Edit file',
+      fileName: '/workspace/other-repo/src/index.ts',
+      newFileContents: 'export const changed = true\n',
+    }, sessionCtx)
+    expect(result.kind).toBe('denied-by-rules')
+  })
+
+  test('denies raw git push', () => {
+    const result = copilotTaskPermissionHandler(shellRequest('git push origin HEAD'), sessionCtx)
+    expect(result.kind).toBe('denied-by-rules')
+  })
+
+  test('approves local git commit workflow', () => {
+    const result = copilotTaskPermissionHandler(shellRequest('git add -A && git commit -m "task"'), sessionCtx)
+    expect(result.kind).toBe('approved')
+  })
+
+  test('approves URL access', () => {
+    const result = copilotTaskPermissionHandler({
+      kind: 'url',
+      toolCallId: 'tooluse_test',
+      intention: 'Fetch web content',
+      url: 'https://example.com/',
+    }, sessionCtx)
+    expect(result.kind).toBe('approved')
   })
 })
