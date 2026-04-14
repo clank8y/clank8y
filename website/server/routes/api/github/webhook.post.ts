@@ -474,10 +474,14 @@ export default defineHandler(async (event) => {
       return
     }
 
+    const owner = payload.repository.owner.login
+    const repo = payload.repository.name
+    const installationOctokit = await createInstallationOctokit(owner, repo)
+
     try {
       await dispatchWorkflow({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
+        owner,
+        repo,
         defaultBranch: payload.repository.default_branch,
         trigger: 'issues_assigned',
         actor: payload.sender.login,
@@ -490,10 +494,10 @@ export default defineHandler(async (event) => {
               kind: 'pull_request',
               pullNumber: payload.issue.number,
               ...(await fetchPullRequestContext({
-                owner: payload.repository.owner.login,
-                repo: payload.repository.name,
+                owner,
+                repo,
                 pullNumber: payload.issue.number,
-                octokit: await createInstallationOctokit(payload.repository.owner.login, payload.repository.name),
+                octokit: installationOctokit,
               })),
             }
           : {
@@ -509,8 +513,8 @@ export default defineHandler(async (event) => {
       const reason = classifyDispatchFailure(error)
 
       await commentSetupHint({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
+        owner,
+        repo,
         issueNumber: payload.issue.number,
         username: assignee,
         reason,
