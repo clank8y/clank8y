@@ -36177,7 +36177,7 @@ function taskGitHubMCP() {
 						issueArtifactPaths.push(getIssueArtifactPath(issue.number));
 					}
 					await writePullRequestArtifact(formatTaskPullRequestArtifact({
-						issueArtifactPaths: issueArtifactPaths.map((issuePath) => issuePath.replace(`${process$1.cwd()}/`, "")),
+						issueArtifactPaths: issueArtifactPaths.map((issuePath) => path.relative(process$1.cwd(), issuePath)),
 						pullRequest,
 						prComments,
 						reviewThreads: reviewData.reviewThreads
