@@ -3,6 +3,7 @@ import type { Clank8yMCPServers } from '../mcp'
 import { getIncidentFixModeRuntime } from './incidentFix'
 import { getReviewModeRuntime } from './review'
 import { getSelectModeRuntime } from './selectMode'
+import { getTaskModeRuntime } from './task'
 
 export interface Clank8yModeRuntime {
   prompt: string
@@ -15,6 +16,8 @@ export function getModeRuntime(mode: Clank8yMode, promptContext: string): Clank8
   switch (mode) {
     case 'Review':
       return getReviewModeRuntime(promptContext)
+    case 'Task':
+      return getTaskModeRuntime(promptContext)
     case 'IncidentFix':
       return getIncidentFixModeRuntime(promptContext)
     default:

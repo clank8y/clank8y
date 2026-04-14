@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**clank8y** (klanki) is a PR review bot for Cumulocity IoT (c8y). It automates code review and analysis of pull requests using TypeScript, ESM modules, Vitest for testing, ESLint for code quality, and tsdown for automated builds.
+**clank8y** (klanki) is a GitHub review and single-repository task bot for Cumulocity IoT (c8y). It automates PR review plus Task-mode development flows using TypeScript, ESM modules, Vitest for testing, ESLint for code quality, and tsdown for automated builds.
 
 ## Architecture
 
@@ -27,6 +27,10 @@ packages/
   │   │   ├── review/         # Review mode runtime
   │   │   │   ├── prompt.ts   # Review prompt builder
   │   │   │   └── mcps/       # Review-specific MCP servers
+  │   │   ├── task/           # Task mode runtime for single-repository development work
+  │   │   │   ├── context.ts  # Single-repo task context and push-branch binding state
+  │   │   │   ├── prompt.ts   # Task workflow prompt builder
+  │   │   │   └── mcps/       # Task-specific GitHub MCP servers and tool-name constants
   │   │   └── selectMode/     # Mode-selection runtime
   │   │       ├── prompt.ts   # Mode-selection prompt builder
   │   │       └── mcps/       # Dedicated select-mode MCP server
@@ -164,19 +168,21 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Add field-level guidance via `v.pipe(..., v.description(...))` so agents get better tool-usage hints.
 - Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
 - `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
+- Website webhook dispatch should inject structured GitHub event metadata plus any quoted user instruction and let clank8y select `Review` vs `Task`; do not hard-force the mode for mention-driven or assignment-driven invocations. Source-specific prompt guidance is fine when it stays advisory, such as nudging reviewer assignment toward `Review` and issue assignment toward `Task`.
 - For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
 - Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
 - Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
 - Keep shared runtime context helpers under `src/setup/`; place reusable git execution/config helpers under `src/utils/` rather than inside a single mode implementation.
 - Current git auth still uses env-injected extraheaders for remote operations; stricter ASKPASS-style auth remains future hardening work, not current behavior.
-- Gate mode availability at the runtime entry boundary via the top-level `disabledModes` config; derive the selectable mode array from that before building the mode-selection tool schema, and keep the GitHub Action wrapper locked to `Review`.
+- Gate mode availability at the runtime entry boundary via the top-level `disabledModes` config; derive the selectable mode array from that before building the mode-selection tool schema. The GitHub Actions runtime disables `IncidentFix` but allows `Review` and `Task` to be selected from webhook-provided context.
 - Treat each mode as the runtime ownership boundary: `src/modes/<mode>/` owns its prompt plus MCP assembly.
 - Keep shared modes agent-agnostic. Agent-specific runtime policy such as Copilot excluded tools belongs in the agent runtime layer, not in shared `src/modes/` definitions.
 - Keep mode-selection prompt text and MCP server under `src/modes/selectMode/`, while shared mode-selection metadata/schema stays in `src/modeSelection/`.
 - Prefer dedicated MCP tools over Copilot custom tools when the capability should be reusable across agent runtimes.
 - For IncidentFix-style multi-repo work, keep branch discovery GitHub-backed: use a read-only MCP tool for branch metadata first, then clone default branch and fetch only specific additional branches on demand.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
+- For GitHub-hosted Review/Task runs, the website token exchange should mint repository-scoped installation tokens with at least `contents: write`, `pull_requests: write`, and `issues: write`.
 - Require the agent to set PR context via `set-pull-request-context` before any PR MCP tool calls.
 - Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.
 - If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
@@ -189,6 +195,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Add new agent adapters in `src/mcp/adapters/<agent>.ts`, not in `src/agents/`. MCP-to-SDK translation belongs to the MCP layer.
 - In review mode, previous PR feedback should be materialized into one stable artifact at `.clank8y/review-comments.md` during `prepare-pull-request-review`; do not shard it per review ID unless a later non-review workflow requires that.
 - Keep GitHub MCP implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
+- When prompts, errors, or context messages mention a mode-local MCP tool name, import the tool-name constant and interpolate it instead of hardcoding the string.
+- Task mode should be artifact-first: setup materializes PR and issue context into `.clank8y/` files, and the agent should work primarily from those files instead of custom chunking reads.
 
 ### Common Mistakes to Avoid
 

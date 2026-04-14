@@ -19,8 +19,8 @@ export function buildWebhookSetupHintBody(params: {
 }): string {
   const readmeSetupUrl = 'https://github.com/clank8y/clank8y#required-workflow-file-for-webhook-dispatch-mode'
   const greeting = isClank8ySelfActor(params.username)
-    ? 'clank8y could not start for this PR.'
-    : `@${params.username} clank8y could not start for this PR.`
+    ? 'clank8y could not start for this GitHub request.'
+    : `@${params.username} clank8y could not start for this GitHub request.`
 
   return buildClank8yCommentBody([
     greeting,
