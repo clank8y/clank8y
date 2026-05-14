@@ -4,7 +4,7 @@ import type { DeepOptional } from '../types'
 import type { Clank8yDisabledModes, Clank8yMode, Clank8yModeSelection } from '../modeSelection'
 import type { Clank8yMCPServers, LocalHTTPMCPServer } from '../mcp'
 import { getModeRuntime, getSelectModeRuntime } from '../modes'
-import { githubCopilotAgent } from './copilot'
+import { piAgent } from './pi'
 import { initializeResourcesArtifact, resetClank8yArtifacts, writePromptArtifact } from '../utils/artifacts'
 import consola from 'consola'
 
@@ -45,9 +45,9 @@ interface Clank8yAgentConfiguration {
   }
   /**
    * Agent to use for pull request review.
-   * @default 'github-copilot'
+   * @default 'pi'
    */
-  agent: 'github-copilot'
+  agent: 'pi'
   /**
    * Modes disabled for this run.
    * @default {}
@@ -62,7 +62,7 @@ const DEFAULT_CONFIGURATION = {
     maxCalls: 60,
     maxRuntimeMs: 60_000,
   },
-  agent: 'github-copilot',
+  agent: 'pi',
   disabledModes: {},
 } as const satisfies Clank8yAgentConfiguration
 
@@ -97,8 +97,8 @@ async function getClank8y(options: Clank8yAgentOptions): Promise<{ agent: Clank8
 
   let agent: Clank8yAgent | Promise<Clank8yAgent>
   switch (agentName) {
-    case 'github-copilot':
-      agent = githubCopilotAgent(profile)
+    case 'pi':
+      agent = piAgent(profile)
       break
     default:
       throw new Error(`Unsupported agent: ${agentName}`)

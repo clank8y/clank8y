@@ -13,7 +13,7 @@ export interface Clank8yRuntimeContext {
   promptContext: string
   auth: {
     githubToken: string
-    copilotToken: string
+    agentToken: string
   }
   // Added by the GitHub Actions wrapper when the current execution has a workflow run URL.
   runInfo?: RunInfo
@@ -41,8 +41,8 @@ function normalizeRuntimeContext(context: Clank8yRuntimeContext): Clank8yRuntime
     throw new Error('Clank8y runtime context requires a non-empty auth.githubToken.')
   }
 
-  if (!context.auth.copilotToken.trim()) {
-    throw new Error('Clank8y runtime context requires a non-empty auth.copilotToken.')
+  if (!context.auth.agentToken.trim()) {
+    throw new Error('Clank8y runtime context requires a non-empty auth.agentToken.')
   }
 
   return {
@@ -50,7 +50,7 @@ function normalizeRuntimeContext(context: Clank8yRuntimeContext): Clank8yRuntime
     promptContext: context.promptContext.trim(),
     auth: {
       githubToken: context.auth.githubToken.trim(),
-      copilotToken: context.auth.copilotToken.trim(),
+      agentToken: context.auth.agentToken.trim(),
     },
   }
 }

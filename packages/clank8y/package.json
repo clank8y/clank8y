@@ -44,7 +44,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@github/copilot-sdk": "catalog:",
+    "@earendil-works/pi-agent-core": "catalog:",
+    "@earendil-works/pi-ai": "catalog:",
     "@tmcp/adapter-valibot": "catalog:",
     "@tmcp/transport-http": "catalog:",
     "@toon-format/toon": "catalog:",
@@ -55,6 +56,7 @@
     "srvx": "catalog:",
     "tinyexec": "catalog:",
     "tmcp": "catalog:",
+    "typebox": "catalog:",
     "valibot": "catalog:"
   },
   "devDependencies": {

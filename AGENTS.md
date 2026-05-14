@@ -16,10 +16,13 @@ packages/
   ├── src/
   │   ├── index.ts            # Public package entrypoint for sandbox/custom runtimes
   │   ├── setup/              # Shared runtime context helpers used across modes
-  │   │   ├── context.ts      # Runtime context state
+  │   │   ├── context.ts      # Runtime context state (auth.agentToken + auth.githubToken)
   │   │   └── index.ts        # Public setup barrel
   │   ├── formatters/         # Reusable pure formatting helpers shared across MCPs
+  │   ├── tools/              # ToolDef interface and toolDefToAgentTool adapter
+  │   │   └── index.ts        # ToolDef<TInput,TOutput>, toolDefToAgentTool()
   │   ├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
+  │   │   ├── index.ts        # getModeRuntime, getSharedTools, listModeTools, ModeDefinition, ClankModesConfig
   │   │   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
   │   │   ├── incidentFix/    # IncidentFix mode runtime for sandboxed repo investigation
   │   │   │   ├── prompt.ts   # IncidentFix investigation prompt builder
@@ -35,22 +38,24 @@ packages/
   │   │       ├── prompt.ts   # Mode-selection prompt builder
   │   │       └── mcps/       # Dedicated select-mode MCP server
   │   ├── modeSelection/      # Shared mode-selection metadata and schemas
-  │   ├── agents/             # Review agent runtime and orchestration helpers
-  │   │   └── copilot/        # Shared Copilot client/bootstrap helpers plus per-mode runtime files
-  │   ├── utils/              # Shared filesystem and git helpers
+  │   ├── agents/             # Agent runtime and orchestration helpers
+  │   │   ├── index.ts        # executeClank8yAgent, Clank8yAgent, Clank8yAgentFactory
+  │   │   └── pi/             # Pi coding agent runtime
+  │   │       └── index.ts    # piAgent factory, resolveModel, PI_AGENT_NAME
+  │   ├── utils/              # Shared filesystem, git, and shell helpers
   │   │   ├── artifacts.ts    # .clank8y artifact paths and file helpers
-  │   │   └── git.ts          # Shared git execution and repo-local bot config helpers
-  │   │   └── repositories.ts # Shared repository parsing/path helpers for multi-repo workflows
+  │   │   ├── git.ts          # Shared git execution and repo-local bot config helpers
+  │   │   ├── repositories.ts # Shared repository parsing/path helpers for multi-repo workflows
+  │   │   └── shell.ts        # extractCommandNames (shell command blocklist helper)
   │   └── mcp/                # Shared MCP interfaces, adapters, and reusable external MCPs
   │       ├── index.ts        # Interfaces (MCPServer, LocalHTTPMCPServer, LocalStdioMCPServer), startAll/stopAll
+  │       ├── remote.ts       # connectMcpServer: Flue-inspired HTTP MCP connector (connect → listTools → wrap as AgentTool[])
   │       ├── angular.ts      # Stdio MCP server (Angular CLI via npx)
-  │       ├── codex.ts        # Remote HTTP MCP for Cumulocity docs
-  │       └── adapters/
-  │           └── copilot.ts  # Translates MCPServerMap → Copilot SDK mcpServers session config
+  │       └── codex.ts        # Remote HTTP MCP for Cumulocity docs
   ├── shared/
   │   └── comment.ts          # Package-local review comment footer helper
   └── tests/
-    └── ...                 # Vitest tests, including formatter tests
+    └── ...                 # Vitest tests, including formatter and Pi agent tests
 ```
 
 ### Action Source (src/action.ts)
@@ -103,6 +108,7 @@ pnpm typecheck  # TypeScript type checking for action + package
 - Use `*.test.ts` file naming convention
 - Run `pnpm test:run` for running tests
 - Import modules from `../../src` when the test file is in a nested package test directory
+- When tests are in a folder 3 levels deep (e.g. `tests/agents/pi/`), use `../../../src` to reach source files
 
 Example test structure:
 
@@ -160,7 +166,9 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 ### Tools & Dependencies
 
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
-- The `@github/copilot-sdk` type declarations reference generated files (`./generated/rpc.js` etc.) that don't exist as `.d.ts`, causing spurious TS language server errors (e.g. "onPermissionRequest is required"). These are pre-existing and do not appear in `pnpm typecheck`. Do not add workarounds for them.
+- The Pi SDK packages (`@earendil-works/pi-agent-core`, `@earendil-works/pi-ai`) must be declared as `external` in both tsdown configs. `@earendil-works/pi-ai` pulls in `@google/genai` whose DTS files reference `@types/node-fetch` with relative paths that don't resolve in pnpm's virtual store. Marking them external avoids DTS bundling issues and keeps the bundle lighter.
+- The Pi SDK's `getModel(provider, id)` uses strict union types for provider names and model IDs. Use `as any` casts when passing arbitrary strings (e.g., runtime-resolved model names or heuristic fallbacks) rather than maintaining exhaustive lists.
+- `@types/node-fetch` must be installed at workspace root (declared in catalog) as a dev dep for `@google/genai`'s type declarations to resolve during TS language-server and `tsc` runs.
 
 ### Patterns & Conventions
 
@@ -169,17 +177,16 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
 - `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
 - Website webhook dispatch should inject structured GitHub event metadata plus any quoted user instruction and let clank8y select `Review` vs `Task`; do not hard-force the mode for mention-driven or assignment-driven invocations. Source-specific prompt guidance is fine when it stays advisory, such as nudging reviewer assignment toward `Review` and issue assignment toward `Task`.
-- For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
-- Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
-- Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
+- Pi agent authentication uses `agentToken` (formerly `copilotToken`) from `Clank8yRuntimeContext`. The `getApiKey` callback returns this token for every provider. Set `PI_AGENT_TOKEN` env var in the GitHub Actions runtime.
+- Pi agent models are resolved via `resolveModel(string)` in `src/agents/pi/index.ts`. Prefer `provider:model-id` format (e.g. `anthropic:claude-sonnet-4-20250514`) for explicit control; legacy clank8y model names are mapped via `LEGACY_MODEL_MAP`.
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
 - Keep shared runtime context helpers under `src/setup/`; place reusable git execution/config helpers under `src/utils/` rather than inside a single mode implementation.
 - Current git auth still uses env-injected extraheaders for remote operations; stricter ASKPASS-style auth remains future hardening work, not current behavior.
 - Gate mode availability at the runtime entry boundary via the top-level `disabledModes` config; derive the selectable mode array from that before building the mode-selection tool schema. The GitHub Actions runtime disables `IncidentFix` but allows `Review` and `Task` to be selected from webhook-provided context.
 - Treat each mode as the runtime ownership boundary: `src/modes/<mode>/` owns its prompt plus MCP assembly.
-- Keep shared modes agent-agnostic. Agent-specific runtime policy such as Copilot excluded tools belongs in the agent runtime layer, not in shared `src/modes/` definitions.
+- Keep shared modes agent-agnostic. Agent-specific runtime policy belongs in the agent runtime layer, not in shared `src/modes/` definitions.
 - Keep mode-selection prompt text and MCP server under `src/modes/selectMode/`, while shared mode-selection metadata/schema stays in `src/modeSelection/`.
-- Prefer dedicated MCP tools over Copilot custom tools when the capability should be reusable across agent runtimes.
+- Prefer dedicated MCP tools over agent-specific custom tools when the capability should be reusable across agent runtimes.
 - For IncidentFix-style multi-repo work, keep branch discovery GitHub-backed: use a read-only MCP tool for branch metadata first, then clone default branch and fetch only specific additional branches on demand.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
 - For GitHub-hosted Review/Task runs, the website token exchange should mint repository-scoped installation tokens with at least `contents: write`, `pull_requests: write`, and `issues: write`.
@@ -190,9 +197,10 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep release publishing tag-driven (`on.push.tags: v*`) instead of manual version bumping inside CI.
 - Keep website deploy automation Wrangler-only (preview branch/manual), not main-branch auto-deploy.
 - MCP server interfaces: `LocalHTTPMCPServer` = HTTP (in-process, srvx), `LocalStdioMCPServer` = stdio (SDK spawns external process). Both extend `MCPServer` base with `serverType`, `allowedTools`, `status`, and `stop`. Agents should receive the mode-assembled MCP map and use `startAll(servers)` / `stopAll(servers)` as the lifecycle entry points.
-- Each MCP server declares its own `allowedTools` (exact tool name allowlist, or `['*']` for all). The per-agent adapter (`src/mcp/adapters/copilot.ts`) reads `allowedTools` and maps it to the SDK's per-server `tools` field.
-- Stdio MCP servers (e.g. Angular) are spawned by the Copilot SDK CLI process; `start()` is a state change + returns `{ command, args }` only — no spawning in clank8y code.
-- Add new agent adapters in `src/mcp/adapters/<agent>.ts`, not in `src/agents/`. MCP-to-SDK translation belongs to the MCP layer.
+- Each MCP server declares its own `allowedTools` (exact tool name allowlist, or `['*']` for all). The `connectMcpServer` helper in `src/mcp/remote.ts` reads `allowedTools` and filters tools accordingly.
+- Remote MCP connections via `connectMcpServer` follow the MCP Streamable HTTP Transport spec (2025-03-26): initialize → initialized notification → tools/list → tools/call. Tool names are namespaced as `mcp__<serverName>__<toolName>`.
+- Stdio MCP servers are listed in mode configs but skipped by the Pi agent (only HTTP MCPs are connected via `connectMcpServer`). Stdio support remains future work.
+- Add shared tools (always active regardless of mode) to `getSharedTools()` in `src/modes/index.ts`. Use `listModeTools(mode)` to discover what tools a given mode will have available.
 - In review mode, previous PR feedback should be materialized into one stable artifact at `.clank8y/review-comments.md` during `prepare-pull-request-review`; do not shard it per review ID unless a later non-review workflow requires that.
 - Keep GitHub MCP implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
 - When prompts, errors, or context messages mention a mode-local MCP tool name, import the tool-name constant and interpolate it instead of hardcoding the string.

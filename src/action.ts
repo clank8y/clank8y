@@ -64,10 +64,10 @@ function requireRunInfo(repository: RepositoryContext): RunInfo {
   }
 }
 
-function resolveCopilotToken(): string {
-  const token = process.env.COPILOT_GITHUB_TOKEN?.trim()
+function resolveAgentToken(): string {
+  const token = process.env.PI_AGENT_TOKEN?.trim()
   if (!token) {
-    throw new Error('Copilot authentication token is missing. Set COPILOT_GITHUB_TOKEN.')
+    throw new Error('Pi agent API key is missing. Set PI_AGENT_TOKEN.')
   }
 
   return token
@@ -155,15 +155,15 @@ async function runClank8yEntry(): Promise<void> {
   const timeOutMs = resolveTimeoutInput()
   const repository = requireRepositoryContext()
   const githubToken = await resolveGitHubToken(repository)
-  const copilotToken = resolveCopilotToken()
+  const agentToken = resolveAgentToken()
   core.setSecret(githubToken)
-  core.setSecret(copilotToken)
+  core.setSecret(agentToken)
 
   await runClank8y({
     promptContext: resolveRequiredInput('prompt'),
     auth: {
       githubToken,
-      copilotToken,
+      agentToken,
     },
     disabledModes: {
       IncidentFix: true,
