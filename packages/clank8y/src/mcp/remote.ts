@@ -253,7 +253,7 @@ export async function connectMcpServer(
     : rawTools
 
   // ── 5. Wrap each tool as an AgentTool ──────────────────────────────────────
-  const capturedSessionId = sessionId
+  const mcpSessionId = sessionId
   const agentTools: AgentTool[] = filteredTools.map((tool) => {
     const inputSchema = (tool.inputSchema ?? { type: 'object', properties: {} }) as unknown as TSchema
 
@@ -267,7 +267,7 @@ export async function connectMcpServer(
           url,
           tool.name,
           params as Record<string, unknown>,
-          capturedSessionId,
+          mcpSessionId,
           signal,
         )
 

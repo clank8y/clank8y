@@ -44,6 +44,17 @@ const LEGACY_MODEL_MAP: Record<string, readonly [string, string]> = {
   'gemini-3-pro-preview': ['google', 'gemini-2.5-pro-preview'],
 }
 
+/**
+ * Resolves a clank8y model string to a Pi SDK {@link Model} object.
+ *
+ * Accepts two input formats:
+ * - **`provider:model-id`** — explicit format, e.g. `anthropic:claude-sonnet-4-20250514`
+ * - **Legacy names** — clank8y-internal names like `claude-sonnet-4.6` mapped via `LEGACY_MODEL_MAP`
+ *
+ * When neither format matches, a heuristic based on model name prefix is used.
+ * `as any` casts are required because the Pi SDK exposes strict provider/model-ID
+ * union types generated from a static registry, which cannot accept arbitrary strings.
+ */
 export function resolveModel(modelString: string): Model<any> {
   // Support explicit `provider:model-id` format
   const colonIndex = modelString.indexOf(':')
