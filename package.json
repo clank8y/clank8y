@@ -32,7 +32,6 @@
   "devDependencies": {
     "@schplitt/eslint-config": "catalog:",
     "@types/node": "catalog:",
-    "@types/node-fetch": "catalog:",
     "bumpp": "catalog:",
     "changelogithub": "catalog:",
     "eslint": "catalog:",
