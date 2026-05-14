@@ -1,5 +1,5 @@
 import { Agent } from '@earendil-works/pi-agent-core'
-import type { AgentEvent } from '@earendil-works/pi-agent-core'
+import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core'
 import { getModel } from '@earendil-works/pi-ai'
 import type { Model } from '@earendil-works/pi-ai'
 import { consola } from 'consola'
@@ -11,7 +11,6 @@ import { connectMcpServer } from '../../mcp/remote'
 import type { ManagedMcpConnection } from '../../mcp/remote'
 import { getSharedTools } from '../../modes'
 import { getClank8yRuntimeContext } from '../../setup'
-import { toolDefToAgentTool } from '../../tools'
 import { doesReportArtifactExist, getReportArtifactPath } from '../../utils/artifacts'
 import type { Clank8yAgent, Clank8yAgentFactory, Clank8yProfile } from '..'
 import { writeFile } from 'node:fs/promises'
@@ -212,7 +211,7 @@ async function closeMcpConnections(connections: ManagedMcpConnection[]): Promise
 async function runPiAgent(
   systemPrompt: string,
   profile: Clank8yProfile,
-  agentTools: ReturnType<typeof toolDefToAgentTool>[],
+  agentTools: AgentTool[],
 ): Promise<{ agent: Agent, totals: UsageTotals }> {
   const totals: UsageTotals = {
     inputTokens: 0,
@@ -363,7 +362,7 @@ export const piAgent: Clank8yAgentFactory = (profile: Clank8yProfile): Clank8yAg
 
       const connections = await openMcpConnections(mcps, startResults as Record<string, unknown>)
 
-      const sharedTools = getSharedTools().map(toolDefToAgentTool)
+      const sharedTools = getSharedTools()
       const mcpTools = connections.flatMap((c) => c.tools)
       const allTools = [...sharedTools, ...mcpTools]
 
