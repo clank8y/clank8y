@@ -31,21 +31,21 @@ export async function createPiToolBundle(
       const result = startResults[name]
 
       if (server.serverType === 'http') {
-        const httpResult = result as { type: 'http', url: string } | undefined
+        const httpResult = result as { type: 'http', url: string, toolNames: string[] } | undefined
         if (!httpResult?.url) {
           continue
         }
 
-        connections.push(await connectMcpServer(name, httpResult.url, server.toolNames))
+        connections.push(await connectMcpServer(name, httpResult.url, server.toolNames ?? httpResult.toolNames))
         continue
       }
 
-      const stdioResult = result as { type: 'stdio', command: string, args: string[] } | undefined
+      const stdioResult = result as { type: 'stdio', command: string, args: string[], toolNames: string[] } | undefined
       if (!stdioResult?.command) {
         continue
       }
 
-      connections.push(await connectStdioMcpServer(name, stdioResult.command, stdioResult.args, server.toolNames))
+      connections.push(await connectStdioMcpServer(name, stdioResult.command, stdioResult.args, server.toolNames ?? stdioResult.toolNames))
     }
   } catch (error) {
     await Promise.all(connections.map((connection) => connection.close()))

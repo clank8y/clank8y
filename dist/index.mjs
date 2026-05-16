@@ -33124,12 +33124,12 @@ async function createPiToolBundle(externalMcpServers, startResults, modeTools = 
 			if (server.serverType === "http") {
 				const httpResult = result;
 				if (!httpResult?.url) continue;
-				connections.push(await connectMcpServer(name, httpResult.url, server.toolNames));
+				connections.push(await connectMcpServer(name, httpResult.url, server.toolNames ?? httpResult.toolNames));
 				continue;
 			}
 			const stdioResult = result;
 			if (!stdioResult?.command) continue;
-			connections.push(await connectStdioMcpServer(name, stdioResult.command, stdioResult.args, server.toolNames));
+			connections.push(await connectStdioMcpServer(name, stdioResult.command, stdioResult.args, server.toolNames ?? stdioResult.toolNames));
 		}
 	} catch (error) {
 		await Promise.all(connections.map((connection) => connection.close()));
