@@ -7,17 +7,17 @@ import { logAgentMessage } from '../logging'
 import type { Clank8yDisabledModes, Clank8yMode, Clank8yModeSelection } from '../modeSelection'
 import type { ExternalMcpServers } from '../tools/external'
 import { getModeRuntime, getSelectModeRuntime } from '../modes'
+import { getPiModelFromString } from '../model'
+import type { Clank8yModelInput } from '../model'
 import { initializeResourcesArtifact, resetClank8yArtifacts, writePromptArtifact } from '../utils/artifacts'
 import { piAgent } from './pi'
 
-export type Models = Model<any> | string
-
-interface Clank8yAgentConfiguration {
+interface Clank8yAgentInputConfiguration {
   /**
    * Model to use for the run.
    * @default Pi model object for claude-sonnet-4-20250514
    */
-  model: Model<any>
+  model: Clank8yModelInput
   /**
    * Time limit for the entire clank8y run.
    * @default 1_200_000 (20 minutes)
@@ -30,11 +30,15 @@ interface Clank8yAgentConfiguration {
   disabledModes: Clank8yDisabledModes
 }
 
+interface Clank8yAgentConfiguration extends Omit<Clank8yAgentInputConfiguration, 'model'> {
+  model: Model<any>
+}
+
 const DEFAULT_CONFIGURATION = {
   model: getModel('anthropic', 'claude-sonnet-4-20250514'),
   timeOutMs: 1_200_000,
   disabledModes: {},
-} as const satisfies Clank8yAgentConfiguration
+} as const satisfies Clank8yAgentInputConfiguration
 
 export type ExternalMcpServersInput = ExternalMcpServers | ((mode: Clank8yMode) => ExternalMcpServers)
 
@@ -42,7 +46,7 @@ export interface Clank8yAgentOptions {
   /**
    * Pi model object or a `provider:model-id` string resolved through Pi's model registry.
    */
-  model?: Models
+  model?: Clank8yModelInput
   timeOutMs?: number
   disabledModes?: Clank8yDisabledModes
   /**
@@ -75,37 +79,22 @@ export type Clank8yProfile = Clank8yAgentConfiguration
 
 export type Clank8yAgentFactory = (options: Clank8yProfile) => Clank8yAgent
 
-function modelFromInput(model: Models | undefined): Model<any> {
-  if (!model) {
-    return DEFAULT_CONFIGURATION.model
-  }
-
-  if (typeof model !== 'string') {
-    return model
-  }
-
-  const colonIndex = model.indexOf(':')
-  if (colonIndex <= 0 || colonIndex === model.length - 1) {
-    throw new Error(`Invalid model '${model}'. Use provider:model-id format.`)
-  }
-
-  return getModel(model.slice(0, colonIndex) as any, model.slice(colonIndex + 1) as any)
+function modelFromInput(model: Clank8yModelInput): Model<any> {
+  return typeof model === 'string' ? getPiModelFromString(model) : model
 }
 
 function getClank8y(options: Clank8yAgentOptions): { agent: Clank8yAgent, profile: Clank8yProfile } {
   const config = defu(
     {
+      model: options.model,
       timeOutMs: options.timeOutMs,
       disabledModes: options.disabledModes,
     },
-    {
-      timeOutMs: DEFAULT_CONFIGURATION.timeOutMs,
-      disabledModes: DEFAULT_CONFIGURATION.disabledModes,
-    },
-  )
+    DEFAULT_CONFIGURATION,
+  ) as Clank8yAgentInputConfiguration
 
   const profile: Clank8yProfile = {
-    model: modelFromInput(options.model),
+    model: modelFromInput(config.model),
     timeOutMs: config.timeOutMs,
     disabledModes: config.disabledModes,
   }

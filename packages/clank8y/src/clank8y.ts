@@ -1,5 +1,6 @@
 import { executeClank8yAgent } from './agents'
-import type { Clank8yAgentOptions, Models } from './agents'
+import type { Clank8yAgentOptions } from './agents'
+import type { Clank8yModelInput } from './model'
 import {
   getClank8yRuntimeContext,
   setClank8yRuntimeContext,
@@ -41,4 +42,4 @@ export async function runClank8y(options: RunClank8yOptions): Promise<Clank8yRun
   }
 }
 
-export type { Clank8yAgentOptions, Clank8yRuntimeContext, Models }
+export type { Clank8yAgentOptions, Clank8yModelInput, Clank8yRuntimeContext }
