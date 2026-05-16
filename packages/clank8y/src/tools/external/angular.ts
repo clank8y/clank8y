@@ -1,7 +1,4 @@
-import type { StdioMcpServer } from '.'
-
-const ANGULAR_MCP_COMMAND = 'npx'
-const ANGULAR_MCP_ARGS = ['-y', '@angular/cli', 'mcp']
+import { createStdioMcpServer } from '.'
 
 /**
  * Tools exposed from the Angular CLI MCP server.
@@ -15,35 +12,10 @@ const ANGULAR_TOOL_NAMES = [
   'search_documentation',
 ]
 
-let _angularMCP: StdioMcpServer | null = null
-
-export function angularMCP(): StdioMcpServer {
-  if (!_angularMCP) {
-    _angularMCP = createAngularMCP()
-  }
-  return _angularMCP
-}
-
-function createAngularMCP(): StdioMcpServer {
-  let status: StdioMcpServer['status'] = { state: 'stopped' }
-
-  return {
-    serverType: 'stdio',
+export function angularMCP() {
+  return createStdioMcpServer({
+    command: 'npx',
+    args: ['-y', '@angular/cli', 'mcp'],
     toolNames: ANGULAR_TOOL_NAMES,
-    get status() {
-      return status
-    },
-    start: async () => {
-      status = { state: 'running' }
-      return {
-        command: ANGULAR_MCP_COMMAND,
-        args: ANGULAR_MCP_ARGS,
-        toolNames: ANGULAR_TOOL_NAMES,
-      }
-    },
-    stop: async () => {
-      // The active Pi MCP adapter connection owns the child process — resetting local declaration state only.
-      status = { state: 'stopped' }
-    },
-  }
+  })
 }

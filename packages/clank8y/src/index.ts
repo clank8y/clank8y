@@ -1,4 +1,6 @@
 export type { Model } from '@earendil-works/pi-ai'
+export { createRemoteHttpMcpServer, createStdioMcpServer } from './tools/external'
+export type { ExternalMcpServerDefinition, ExternalMcpServers, RemoteHttpMcpServer, StdioMcpServer } from './tools/external'
 export { runClank8y } from './clank8y'
 export type { Clank8yRunResult, RunClank8yOptions } from './clank8y'
 export type { Clank8yRuntimeContext, RepositoryContext, RunInfo } from './setup'

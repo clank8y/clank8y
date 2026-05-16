@@ -20033,6 +20033,64 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 	value: mod,
 	enumerable: true
 }) : target, mod));
+function createRemoteHttpMcpServer(options) {
+	return {
+		serverType: "http",
+		toolNames: options.toolNames,
+		get status() {
+			return { state: "running" };
+		},
+		start: async () => ({
+			url: options.url,
+			toolNames: [...options.toolNames ?? []]
+		}),
+		stop: async () => {}
+	};
+}
+function createStdioMcpServer(options) {
+	let status = { state: "stopped" };
+	return {
+		serverType: "stdio",
+		toolNames: options.toolNames,
+		get status() {
+			return status;
+		},
+		start: async () => {
+			status = { state: "running" };
+			return {
+				command: options.command,
+				args: [...options.args ?? []],
+				toolNames: [...options.toolNames ?? []]
+			};
+		},
+		stop: async () => {
+			status = { state: "stopped" };
+		}
+	};
+}
+async function startAll(servers) {
+	const results = {};
+	for (const [name, server] of Object.entries(servers)) if (server.serverType === "http") {
+		const { url, toolNames } = await server.start();
+		results[name] = {
+			type: "http",
+			url,
+			toolNames
+		};
+	} else {
+		const { command, args, toolNames } = await server.start();
+		results[name] = {
+			type: "stdio",
+			command,
+			args,
+			toolNames
+		};
+	}
+	return results;
+}
+async function stopAll(servers) {
+	await Promise.all(Object.values(servers).map((s) => s.stop()));
+}
 const LogLevels = {
 	silent: Number.NEGATIVE_INFINITY,
 	fatal: 0,
@@ -21850,12 +21908,6 @@ function logAgentMessage(info, lines) {
 		style: { borderStyle: "double" }
 	}));
 }
-const ANGULAR_MCP_COMMAND = "npx";
-const ANGULAR_MCP_ARGS = [
-	"-y",
-	"@angular/cli",
-	"mcp"
-];
 /**
 * Tools exposed from the Angular CLI MCP server.
 * - `find_examples`       — authoritative Angular code examples (local)
@@ -21867,31 +21919,16 @@ const ANGULAR_TOOL_NAMES = [
 	"get_best_practices",
 	"search_documentation"
 ];
-let _angularMCP = null;
 function angularMCP() {
-	if (!_angularMCP) _angularMCP = createAngularMCP();
-	return _angularMCP;
-}
-function createAngularMCP() {
-	let status = { state: "stopped" };
-	return {
-		serverType: "stdio",
-		toolNames: ANGULAR_TOOL_NAMES,
-		get status() {
-			return status;
-		},
-		start: async () => {
-			status = { state: "running" };
-			return {
-				command: ANGULAR_MCP_COMMAND,
-				args: ANGULAR_MCP_ARGS,
-				toolNames: ANGULAR_TOOL_NAMES
-			};
-		},
-		stop: async () => {
-			status = { state: "stopped" };
-		}
-	};
+	return createStdioMcpServer({
+		command: "npx",
+		args: [
+			"-y",
+			"@angular/cli",
+			"mcp"
+		],
+		toolNames: ANGULAR_TOOL_NAMES
+	});
 }
 const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
 const CODEX_TOOL_NAMES = [
@@ -21899,24 +21936,11 @@ const CODEX_TOOL_NAMES = [
 	"query-codex",
 	"get-codex-documents"
 ];
-let _codexMCP = null;
 function codexMCP() {
-	if (!_codexMCP) _codexMCP = createCodexMCP();
-	return _codexMCP;
-}
-function createCodexMCP() {
-	return {
-		serverType: "http",
-		toolNames: CODEX_TOOL_NAMES,
-		get status() {
-			return { state: "running" };
-		},
-		start: async () => ({
-			url: CODEX_MCP_URL,
-			toolNames: []
-		}),
-		stop: async () => {}
-	};
+	return createRemoteHttpMcpServer({
+		url: CODEX_MCP_URL,
+		toolNames: CODEX_TOOL_NAMES
+	});
 }
 function incidentFixExternalMcpServers() {
 	return {
@@ -32784,29 +32808,6 @@ function getModeRuntime(mode, promptContext) {
 		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
 	}
 }
-async function startAll(servers) {
-	const results = {};
-	for (const [name, server] of Object.entries(servers)) if (server.serverType === "http") {
-		const { url, toolNames } = await server.start();
-		results[name] = {
-			type: "http",
-			url,
-			toolNames
-		};
-	} else {
-		const { command, args, toolNames } = await server.start();
-		results[name] = {
-			type: "stdio",
-			command,
-			args,
-			toolNames
-		};
-	}
-	return results;
-}
-async function stopAll(servers) {
-	await Promise.all(Object.values(servers).map((s) => s.stop()));
-}
 let _nextRequestId = 1;
 /**
 * Parses `data:` lines from an SSE response body.
@@ -33369,10 +33370,14 @@ async function executeClank8yAgent(options) {
 		"",
 		options.promptContext
 	]);
+	const extraExternalMcpServers = typeof options.externalMcpServers === "function" ? options.externalMcpServers(selection.mode) : options.externalMcpServers ?? {};
 	await agent.run({
 		mode: selection.mode,
 		prompt,
-		externalMcpServers,
+		externalMcpServers: {
+			...externalMcpServers,
+			...extraExternalMcpServers
+		},
 		tools
 	});
 	await agent.cleanup?.();

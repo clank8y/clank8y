@@ -35,6 +35,8 @@ const DEFAULT_CONFIGURATION = {
   disabledModes: {},
 } as const satisfies Clank8yAgentConfiguration
 
+export type ExternalMcpServersInput = ExternalMcpServers | ((mode: Clank8yMode) => ExternalMcpServers)
+
 export interface Clank8yAgentOptions {
   /**
    * Pi model object or a `provider:model-id` string resolved through Pi's model registry.
@@ -42,6 +44,11 @@ export interface Clank8yAgentOptions {
   model?: Models
   timeOutMs?: number
   disabledModes?: Clank8yDisabledModes
+  /**
+   * Additional external MCP servers to enable for the selected mode.
+   * Supports any number of remote HTTP and stdio/CLI MCP servers.
+   */
+  externalMcpServers?: ExternalMcpServersInput
 }
 
 export interface Clank8yRunInput {
@@ -148,10 +155,17 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     options.promptContext,
   ])
 
+  const extraExternalMcpServers = typeof options.externalMcpServers === 'function'
+    ? options.externalMcpServers(selection.mode)
+    : options.externalMcpServers ?? {}
+
   await agent.run({
     mode: selection.mode,
     prompt,
-    externalMcpServers,
+    externalMcpServers: {
+      ...externalMcpServers,
+      ...extraExternalMcpServers,
+    },
     tools,
   })
 

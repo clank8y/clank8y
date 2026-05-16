@@ -37,6 +37,56 @@ export type ExternalMcpServerDefinition = RemoteHttpMcpServer | StdioMcpServer
 
 export type ExternalMcpServers = Record<string, ExternalMcpServerDefinition>
 
+export interface CreateRemoteHttpMcpServerOptions {
+  url: string
+  toolNames?: readonly string[]
+}
+
+export interface CreateStdioMcpServerOptions {
+  command: string
+  args?: readonly string[]
+  toolNames?: readonly string[]
+}
+
+export function createRemoteHttpMcpServer(options: CreateRemoteHttpMcpServerOptions): RemoteHttpMcpServer {
+  return {
+    serverType: 'http',
+    toolNames: options.toolNames,
+    get status() {
+      return { state: 'running' as const }
+    },
+    start: async () => ({
+      url: options.url,
+      toolNames: [...(options.toolNames ?? [])],
+    }),
+    stop: async () => {},
+  }
+}
+
+export function createStdioMcpServer(options: CreateStdioMcpServerOptions): StdioMcpServer {
+  let status: StdioMcpServer['status'] = { state: 'stopped' }
+
+  return {
+    serverType: 'stdio',
+    toolNames: options.toolNames,
+    get status() {
+      return status
+    },
+    start: async () => {
+      status = { state: 'running' }
+      return {
+        command: options.command,
+        args: [...(options.args ?? [])],
+        toolNames: [...(options.toolNames ?? [])],
+      }
+    },
+    stop: async () => {
+      // The active Pi MCP adapter connection owns the child process — resetting declaration state only.
+      status = { state: 'stopped' }
+    },
+  }
+}
+
 // ─── Discriminated start results ──────────────────────────────────────────────
 
 export interface HttpMcpStartResult {
