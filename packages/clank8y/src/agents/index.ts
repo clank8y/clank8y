@@ -84,14 +84,7 @@ function modelFromInput(model: Clank8yModelInput): Model<any> {
 }
 
 function getClank8y(options: Clank8yAgentOptions): { agent: Clank8yAgent, profile: Clank8yProfile } {
-  const config = defu(
-    {
-      model: options.model,
-      timeOutMs: options.timeOutMs,
-      disabledModes: options.disabledModes,
-    },
-    DEFAULT_CONFIGURATION,
-  ) as Clank8yAgentInputConfiguration
+  const config = defu<Clank8yAgentOptions, [typeof DEFAULT_CONFIGURATION]>(options, DEFAULT_CONFIGURATION)
 
   const profile: Clank8yProfile = {
     model: modelFromInput(config.model),
