@@ -43,7 +43,7 @@ async function main() {
     auth: {
       githubToken: process.env.GITHUB_TOKEN ?? '',
     },
-    model: (process.env.CLANK8Y_MODEL ?? 'anthropic:claude-sonnet-4-20250514') as PiModelString,
+    model: process.env.CLANK8Y_MODEL as PiModelString,
     externalMcpServers: {
       // Optional: add any number of extra external MCP servers.
       docs: createRemoteHttpMcpServer({
@@ -67,7 +67,7 @@ main().catch(console.error)
 ## Runtime Notes
 
 - You must provide GitHub API credentials and provider credentials for Pi model access yourself.
-- The optional `model` option accepts either Pi's native `Model<any>` object or a typed `provider:model-id` string from the exported `PiModelString` union. If omitted, it defaults to `anthropic:claude-sonnet-4-20250514`.
+- The required `model` option accepts either Pi's native `Model<any>` object or a typed `provider:model-id` string from the exported `PiModelString` union. clank8y does not choose a default model for you.
 - clank8y does not pass model-provider tokens through its runtime context. Pi / `@earendil-works/pi-ai` reads provider credentials from standard environment variables such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, or `OPENROUTER_API_KEY`. See Pi's provider API key docs for setup details: <https://pi.dev/docs/latest/providers#api-keys>
 - This package does not bootstrap GitHub Actions environment variables for you.
 - The agent writes temporary artifacts to `.clank8y/` in the current working directory. This directory is created and cleaned automatically.

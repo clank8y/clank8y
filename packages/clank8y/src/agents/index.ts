@@ -1,5 +1,4 @@
 import { defu } from 'defu'
-import { getModel } from '@earendil-works/pi-ai'
 import type { Model } from '@earendil-works/pi-ai'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import consola from 'consola'
@@ -12,12 +11,7 @@ import type { Clank8yModelInput } from '../model'
 import { initializeResourcesArtifact, resetClank8yArtifacts, writePromptArtifact } from '../utils/artifacts'
 import { piAgent } from './pi'
 
-interface Clank8yAgentInputConfiguration {
-  /**
-   * Model to use for the run.
-   * @default Pi model object for claude-sonnet-4-20250514
-   */
-  model: Clank8yModelInput
+interface Clank8yAgentDefaults {
   /**
    * Time limit for the entire clank8y run.
    * @default 1_200_000 (20 minutes)
@@ -30,15 +24,14 @@ interface Clank8yAgentInputConfiguration {
   disabledModes: Clank8yDisabledModes
 }
 
-interface Clank8yAgentConfiguration extends Omit<Clank8yAgentInputConfiguration, 'model'> {
+interface Clank8yAgentConfiguration extends Clank8yAgentDefaults {
   model: Model<any>
 }
 
 const DEFAULT_CONFIGURATION = {
-  model: getModel('anthropic', 'claude-sonnet-4-20250514'),
   timeOutMs: 1_200_000,
   disabledModes: {},
-} as const satisfies Clank8yAgentInputConfiguration
+} as const satisfies Clank8yAgentDefaults
 
 export type ExternalMcpServersInput = ExternalMcpServers | ((mode: Clank8yMode) => ExternalMcpServers)
 
@@ -46,7 +39,7 @@ export interface Clank8yAgentOptions {
   /**
    * Pi model object or a `provider:model-id` string resolved through Pi's model registry.
    */
-  model?: Clank8yModelInput
+  model: Clank8yModelInput
   timeOutMs?: number
   disabledModes?: Clank8yDisabledModes
   /**
