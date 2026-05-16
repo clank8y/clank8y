@@ -1,16 +1,12 @@
 import { Buffer } from 'node:buffer'
-import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
-import { HttpTransport } from '@tmcp/transport-http'
 import { encode } from '@toon-format/toon'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { Octokit } from 'octokit'
-import { FastResponse, serve } from 'srvx'
-import { McpServer } from 'tmcp'
-import { defineTool } from 'tmcp/tool'
-import { tool } from 'tmcp/utils'
+import { defineTool, tool } from '../../../tools/define'
 import * as v from 'valibot'
 import { buildClank8yCommentBody } from '../../../../shared/comment'
 import { getOctokit } from '../../../gh'
-import type { LocalHTTPMCPServer } from '../../../mcp'
+import { definedToolsToPiTools } from '../../../tools/defined'
 import { getClank8yRuntimeContext } from '../../../setup'
 import type { PRFiles } from '../../../types'
 import { getReviewArtifactPaths, writeDiffArtifact, writeReviewCommentsArtifact } from '../../../utils/artifacts'
@@ -68,21 +64,8 @@ async function fetchAllPullRequestReviewComments(): Promise<PullRequestReviewCom
   })
 }
 
-export function reviewGitHubMCP(): LocalHTTPMCPServer {
-  const mcp = new McpServer({
-    name: 'clank8y-review-github-mcp',
-    description: 'A MCP server that helps you complete pull request reviews',
-    version: '1.0.0',
-  }, {
-    adapter: new ValibotJsonSchemaAdapter(),
-    capabilities: {
-      tools: {
-        listChanged: true,
-      },
-    },
-  })
-
-  const githubMcpTools = [
+export function reviewGitHubTools(): AgentTool[] {
+  const githubTools = [
     defineTool({
       name: SET_PULL_REQUEST_CONTEXT_TOOL_NAME,
       description: 'Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.',
@@ -98,7 +81,7 @@ export function reviewGitHubMCP(): LocalHTTPMCPServer {
             v.description('The pull request number to set as the active review context.'),
           ),
         }),
-        v.description('Arguments for selecting the active pull request before any review-specific GitHub MCP tools are used.'),
+        v.description('Arguments for selecting the active pull request before any review-specific GitHub tools are used.'),
       ),
     }, async ({ repository, pr_number }) => {
       try {
@@ -280,7 +263,7 @@ export function reviewGitHubMCP(): LocalHTTPMCPServer {
           commitSha = pr.head.sha
         }
 
-        const apiComments = reviewCommentsInput.map((comment) => {
+        const apiComments = reviewCommentsInput.map((comment: any) => {
           const side = comment.side ?? 'RIGHT'
           const startLine = comment.start_line ?? comment.line
 
@@ -479,48 +462,5 @@ export function reviewGitHubMCP(): LocalHTTPMCPServer {
     }),
   ]
 
-  mcp.tools(githubMcpTools)
-
-  const transport = new HttpTransport(mcp, {
-    path: '/mcp',
-  })
-
-  const server = serve({
-    manual: true,
-    port: 0,
-    fetch: async (req) => {
-      const response = await transport.respond(req)
-      if (!response) {
-        return new FastResponse('Not found', { status: 404 })
-      }
-
-      return response
-    },
-  })
-
-  let status: LocalHTTPMCPServer['status'] = { state: 'stopped' }
-
-  return {
-    serverType: 'http',
-    allowedTools: githubMcpTools.map((tool) => tool.name),
-    get status() {
-      return status
-    },
-    start: async () => {
-      await server.serve()
-      const { url } = await server.ready()
-      if (!url) {
-        await server.close(true)
-        throw new Error('Failed to start GitHub MCP server')
-      }
-
-      const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
-      status = { state: 'running', url: actualUrl }
-      return { url: actualUrl, toolNames: githubMcpTools.map((tool) => tool.name) }
-    },
-    stop: async () => {
-      await server.close(true)
-      status = { state: 'stopped' }
-    },
-  }
+  return definedToolsToPiTools(githubTools)
 }

@@ -30,7 +30,6 @@ export async function runClank8y(options: RunClank8yOptions): Promise<Clank8yRun
     disabledModes: options.disabledModes,
     model: options.model,
     timeOutMs: options.timeOutMs,
-    tools: options.tools,
   })
 
   // TODO: decide waht to give back from model

@@ -1,4 +1,4 @@
-import type { LocalStdioMCPServer } from '.'
+import type { StdioMcpServer } from '.'
 
 const ANGULAR_MCP_COMMAND = 'npx'
 const ANGULAR_MCP_ARGS = ['-y', '@angular/cli', 'mcp']
@@ -9,27 +9,27 @@ const ANGULAR_MCP_ARGS = ['-y', '@angular/cli', 'mcp']
  * - `get_best_practices`  — Angular best practices guide (local)
  * - `search_documentation`— searches angular.dev (remote)
  */
-const ANGULAR_ALLOWED_TOOLS = [
+const ANGULAR_TOOL_NAMES = [
   'find_examples',
   'get_best_practices',
   'search_documentation',
 ]
 
-let _angularMCP: LocalStdioMCPServer | null = null
+let _angularMCP: StdioMcpServer | null = null
 
-export function angularMCP(): LocalStdioMCPServer {
+export function angularMCP(): StdioMcpServer {
   if (!_angularMCP) {
     _angularMCP = createAngularMCP()
   }
   return _angularMCP
 }
 
-function createAngularMCP(): LocalStdioMCPServer {
-  let status: LocalStdioMCPServer['status'] = { state: 'stopped' }
+function createAngularMCP(): StdioMcpServer {
+  let status: StdioMcpServer['status'] = { state: 'stopped' }
 
   return {
     serverType: 'stdio',
-    allowedTools: ANGULAR_ALLOWED_TOOLS,
+    toolNames: ANGULAR_TOOL_NAMES,
     get status() {
       return status
     },
@@ -38,11 +38,11 @@ function createAngularMCP(): LocalStdioMCPServer {
       return {
         command: ANGULAR_MCP_COMMAND,
         args: ANGULAR_MCP_ARGS,
-        toolNames: ANGULAR_ALLOWED_TOOLS,
+        toolNames: ANGULAR_TOOL_NAMES,
       }
     },
     stop: async () => {
-      // The SDK owns this process lifecycle — resetting local state only.
+      // The active Pi MCP adapter connection owns the child process — resetting local declaration state only.
       status = { state: 'stopped' }
     },
   }

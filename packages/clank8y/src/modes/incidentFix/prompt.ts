@@ -12,7 +12,7 @@ import {
   SEARCH_REPO_ARTIFACTS_TOOL_NAME,
   UPDATE_REPO_ISSUE_TOOL_NAME,
   UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME,
-} from './mcps/github'
+} from './tools/github'
 
 const INCIDENT_FIX_MISSION = [
   '## Mission',
@@ -25,9 +25,9 @@ const INCIDENT_FIX_MISSION = [
   'Core rules:',
   '- Prefer confirmed facts over plausible stories.',
   '- Keep uncertainty explicit. If you do not know, say so.',
-  '- Do not mutate remote state unless a dedicated MCP tool exists for that action.',
+  '- Do not mutate remote state unless a dedicated tool exists for that action.',
   '- Local repo edits, builds, tests, and local git operations are allowed once a repo has been prepared.',
-  '- Remote authenticated operations must stay behind MCP tools.',
+  '- Remote authenticated operations must stay behind tools.',
 ].join('\n')
 
 const INCIDENT_FIX_SCOPE = [
@@ -50,7 +50,7 @@ const INCIDENT_FIX_SCOPE = [
   '- leave a deterministic markdown report at `.clank8y/report.md`',
   '',
   'The MCP surface includes read-side repository preparation, issue/PR search, and authenticated remote write operations.',
-  'Use the dedicated GitHub MCP tools for remote state changes instead of trying to do those operations through normal shell commands.',
+  'Use the dedicated GitHub tools for remote state changes instead of trying to do those operations through normal shell commands.',
   '',
   '**If the problem cannot be debugged and identified, do not create any issues, branches, or pull requests. Report-only is the correct outcome to reduce noise.**',
 ].join('\n')
@@ -58,8 +58,8 @@ const INCIDENT_FIX_SCOPE = [
 const INCIDENT_FIX_WORKFLOW = [
   '## Required workflow',
   '',
-  'You have three MCP servers available:',
-  '- **GitHub MCP** for branch discovery, issue/PR search, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.',
+  'You have three tool groups available:',
+  '- **GitHub tools** for branch discovery, issue/PR search, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.',
   '- **Angular MCP** for Angular API, syntax, and best-practice verification.',
   '- **Codex MCP** for Cumulocity Web SDK and design-system verification.',
   '',
@@ -148,7 +148,7 @@ const INCIDENT_FIX_WORKFLOW = [
   '- Always search for existing issues/PRs before creating new ones.',
   '',
   '### Tooling constraints:',
-  '- Use GitHub MCP for authenticated remote operations.',
+  '- Use GitHub tools for authenticated remote operations.',
   '- Use Angular MCP for Angular-specific guidance and API verification.',
   '- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.',
   '- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally.',

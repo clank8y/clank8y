@@ -1,17 +1,13 @@
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
-import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
-import { HttpTransport } from '@tmcp/transport-http'
-import { FastResponse, serve } from 'srvx'
-import { McpServer } from 'tmcp'
-import { defineTool } from 'tmcp/tool'
-import { tool } from 'tmcp/utils'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
+import { defineTool, tool } from '../../../tools/define'
 import * as v from 'valibot'
 import { buildClank8yCommentBody } from '../../../../shared/comment'
 import { formatFilesWithLineNumbers, formatTaskIssueArtifact, formatTaskPullRequestArtifact, normalizeToolString } from '../../../formatters'
 import { getOctokit } from '../../../gh'
-import type { LocalHTTPMCPServer } from '../../../mcp'
+import { definedToolsToPiTools } from '../../../tools/defined'
 import { getClank8yRuntimeContext } from '../../../setup'
 import type { PRFiles } from '../../../types'
 import {
@@ -44,7 +40,7 @@ import {
   REPLY_TO_REVIEW_COMMENT_TOOL_NAME,
   RESOLVE_REVIEW_THREAD_TOOL_NAME,
   UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME,
-} from './constants'
+} from '../constants'
 
 type Issue = Awaited<ReturnType<Awaited<ReturnType<typeof getOctokit>>['rest']['issues']['get']>>['data']
 type IssueComments = Awaited<ReturnType<Awaited<ReturnType<typeof getOctokit>>['rest']['issues']['listComments']>>['data']
@@ -290,21 +286,8 @@ async function ensureCleanTaskWorktree(repositoryPath: string) {
   }
 }
 
-export function taskGitHubMCP(): LocalHTTPMCPServer {
-  const mcp = new McpServer({
-    name: 'clank8y-task-github-mcp',
-    description: 'A MCP server that prepares single-repository task workspaces and performs constrained GitHub write operations.',
-    version: '1.0.0',
-  }, {
-    adapter: new ValibotJsonSchemaAdapter(),
-    capabilities: {
-      tools: {
-        listChanged: true,
-      },
-    },
-  })
-
-  const githubMcpTools = [
+export function taskGitHubTools(): AgentTool[] {
+  const githubTools = [
     defineTool({
       name: LIST_REPOSITORY_BRANCHES_TOOL_NAME,
       description: 'List branches for a single repository before preparing an issue-driven task workspace from a specific base branch.',
@@ -934,48 +917,5 @@ export function taskGitHubMCP(): LocalHTTPMCPServer {
     }),
   ]
 
-  mcp.tools(githubMcpTools)
-
-  const transport = new HttpTransport(mcp, {
-    path: '/mcp',
-  })
-
-  const server = serve({
-    manual: true,
-    port: 0,
-    fetch: async (req) => {
-      const response = await transport.respond(req)
-      if (!response) {
-        return new FastResponse('Not found', { status: 404 })
-      }
-
-      return response
-    },
-  })
-
-  let status: LocalHTTPMCPServer['status'] = { state: 'stopped' }
-
-  return {
-    serverType: 'http',
-    allowedTools: githubMcpTools.map((definedTool) => definedTool.name),
-    get status() {
-      return status
-    },
-    start: async () => {
-      await server.serve()
-      const { url } = await server.ready()
-      if (!url) {
-        await server.close(true)
-        throw new Error('Failed to start Task GitHub MCP server')
-      }
-
-      const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
-      status = { state: 'running', url: actualUrl }
-      return { url: actualUrl, toolNames: githubMcpTools.map((definedTool) => definedTool.name) }
-    },
-    stop: async () => {
-      await server.close(true)
-      status = { state: 'stopped' }
-    },
-  }
+  return definedToolsToPiTools(githubTools)
 }

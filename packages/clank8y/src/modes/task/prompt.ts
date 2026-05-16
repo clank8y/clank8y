@@ -13,7 +13,7 @@ import {
   PUSH_TASK_BRANCH_TOOL_NAME,
   REPLY_TO_REVIEW_COMMENT_TOOL_NAME,
   RESOLVE_REVIEW_THREAD_TOOL_NAME,
-} from './mcps/constants'
+} from './constants'
 
 const TASK_MISSION = [
   '## Mission',
@@ -25,7 +25,7 @@ const TASK_MISSION = [
   'Core rules:',
   '- Work in exactly one repository for the entire run.',
   '- Use local `.clank8y` artifacts as your primary working context after setup.',
-  '- Remote GitHub writes must go through the dedicated GitHub MCP tools.',
+  '- Remote GitHub writes must go through the dedicated GitHub tools.',
   '- Never use raw `git push`; publish only through the dedicated push tool.',
   '- Keep `.clank8y/report.md` updated with the real state of the work.',
 ].join('\n')

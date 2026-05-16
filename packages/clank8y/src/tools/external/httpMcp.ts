@@ -1,4 +1,5 @@
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core'
+import { consola } from 'consola'
 import type { TSchema } from 'typebox'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -179,58 +180,35 @@ async function callMcpTool(
     signal,
   )
 
-  // MCP tools/call result shape: { content: [{type, text}], isError? }
-  const typedResult = result as { content?: unknown[], isError?: boolean } | null | undefined
-
-  if (typedResult?.isError === true) {
-    const errorText = (typedResult.content ?? [])
-      .filter((item: unknown): item is { type: string, text: string } =>
-        typeof item === 'object' && item !== null && (item as any).type === 'text',
-      )
-      .map((item) => item.text)
-      .join('\n')
-    throw new Error(errorText || 'MCP tool returned an error')
-  }
-
-  const content = typedResult?.content
-  if (Array.isArray(content)) {
-    const textItems = content
-      .filter((item: unknown): item is { type: string, text: string } =>
-        typeof item === 'object' && item !== null && (item as any).type === 'text',
-      )
-      .map((item) => item.text)
-
-    return textItems.length === 1 ? textItems[0] : textItems.join('\n')
-  }
-
   return result
+}
+
+function mcpResultToPiToolContent(result: unknown): AgentToolResult<unknown>['content'] {
+  const content = (result as { content?: AgentToolResult<unknown>['content'] } | null | undefined)?.content
+  if (Array.isArray(content)) {
+    return content
+  }
+
+  return [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
 }
 
 // ─── connectMcpServer ─────────────────────────────────────────────────────────
 
-export interface ConnectMcpServerOptions {
-  /**
-   * Subset of tool names to expose. Omit or pass `['*']` to expose all tools.
-   * Tool names should match the original MCP tool names (before namespacing).
-   */
-  allowedTools?: string[]
-}
-
 /**
  * Connects to a remote MCP server via Streamable HTTP, lists its tools, wraps
- * each as a Pi SDK `AgentTool` with a namespaced name `mcp__<name>__<toolName>`,
- * and returns the connection handle.
+ * selected tools as Pi SDK `AgentTool` objects with namespaced names
+ * `mcp__<name>__<toolName>`, and returns the connection handle.
  *
  * Inspired by Astro's Flue pattern: connect → listTools → wrap → execute → close.
  *
  * @param name - Logical server name used for tool namespacing.
  * @param url  - Full URL of the MCP HTTP endpoint.
- * @param options
+ * @param toolNames - Optional tool names to convert. Omit to convert all listed tools.
  */
 export async function connectMcpServer(
   name: string,
   url: string,
-  options: ConnectMcpServerOptions = {},
+  toolNames?: readonly string[],
 ): Promise<ManagedMcpConnection> {
   // ── 1. Initialize ──────────────────────────────────────────────────────────
   const { result: _initResult, sessionId } = await sendRequest(url, 'initialize', {
@@ -245,16 +223,24 @@ export async function connectMcpServer(
   // ── 3. List tools ──────────────────────────────────────────────────────────
   const { result: toolsResult } = await sendRequest(url, 'tools/list', undefined, sessionId)
   const rawTools: McpToolInfo[] = (toolsResult as { tools?: McpToolInfo[] })?.tools ?? []
+  const rawToolNames = new Set(rawTools.map((tool) => tool.name))
+  const selectedToolNames = toolNames && toolNames.length > 0 ? new Set(toolNames) : null
 
-  // ── 4. Filter by allowedTools ──────────────────────────────────────────────
-  const { allowedTools } = options
-  const filteredTools = allowedTools && allowedTools.length > 0 && allowedTools[0] !== '*'
-    ? rawTools.filter((t) => allowedTools.includes(t.name))
+  if (selectedToolNames) {
+    for (const requestedToolName of selectedToolNames) {
+      if (!rawToolNames.has(requestedToolName)) {
+        consola.warn(`MCP '${name}' requested tool '${requestedToolName}', but the server did not list it.`)
+      }
+    }
+  }
+
+  const selectedTools = selectedToolNames
+    ? rawTools.filter((tool) => selectedToolNames.has(tool.name))
     : rawTools
 
-  // ── 5. Wrap each tool as an AgentTool ──────────────────────────────────────
+  // ── 4. Wrap each selected tool as an AgentTool ─────────────────────────────
   const mcpSessionId = sessionId
-  const agentTools: AgentTool[] = filteredTools.map((tool) => {
+  const agentTools: AgentTool[] = selectedTools.map((tool) => {
     const inputSchema = (tool.inputSchema ?? { type: 'object', properties: {} }) as unknown as TSchema
 
     const agentTool: AgentTool = {
@@ -271,10 +257,8 @@ export async function connectMcpServer(
           signal,
         )
 
-        const text = typeof result === 'string' ? result : JSON.stringify(result)
-
         return {
-          content: [{ type: 'text', text }],
+          content: mcpResultToPiToolContent(result),
           details: result,
         }
       },
@@ -283,7 +267,7 @@ export async function connectMcpServer(
     return agentTool
   })
 
-  // ── 6. Return connection handle ────────────────────────────────────────────
+  // ── 5. Return connection handle ────────────────────────────────────────────
   return {
     name,
     tools: agentTools,

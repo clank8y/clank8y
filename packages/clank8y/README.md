@@ -41,9 +41,8 @@ async function main() {
     promptContext: process.env.PROMPT ?? '',
     auth: {
       githubToken: process.env.GITHUB_TOKEN ?? '',
-      copilotToken: process.env.COPILOT_GITHUB_TOKEN ?? '',
+      agentToken: process.env.PI_AGENT_TOKEN ?? '',
     },
-    model: 'claude-sonnet-4.6',
   })
 
   console.log(result)
@@ -54,13 +53,14 @@ main().catch(console.error)
 
 ## Runtime Notes
 
-- You must provide GitHub API credentials and a Copilot token yourself.
+- You must provide GitHub API credentials and a Pi/model provider token yourself.
+- The optional `model` option accepts either Pi's native `Model<any>` object or a `provider:model-id` string resolved through Pi's model registry.
 - This package does not bootstrap GitHub Actions environment variables for you.
 - The agent writes temporary artifacts to `.clank8y/` in the current working directory. This directory is created and cleaned automatically.
 - Built-in modes currently include `Review`, `Task`, and `IncidentFix`.
 - `Task` is single-repository and artifact-first: it writes `.clank8y/pr.md`, `.clank8y/issues/<number>.md`, `.clank8y/diff.txt`, and `.clank8y/report.md` as needed for the run.
 - Mode availability is controlled via top-level `disabledModes`. If omitted, no built-in modes are disabled. Entry points such as the GitHub Action can still disable specific modes explicitly.
-- Do not enable future modes in the current GitHub Copilot agent until their permission handler and available tool surface have been reviewed for that mode.
+- Pi receives one native tool list composed from shared Pi tools, mode-local Pi tools, and selected HTTP/stdio CLI MCP tools discovered at connection time.
 - For GitHub-hosted workflow usage, use the [`clank8y/clank8y` action](https://github.com/clank8y/clank8y) instead.
 
 ## License

@@ -1,12 +1,8 @@
-import { ValibotJsonSchemaAdapter } from '@tmcp/adapter-valibot'
-import { HttpTransport } from '@tmcp/transport-http'
-import { FastResponse, serve } from 'srvx'
-import { McpServer } from 'tmcp'
-import { defineTool } from 'tmcp/tool'
-import { tool } from 'tmcp/utils'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
+import { defineTool, tool } from '../../../tools/define'
 import * as v from 'valibot'
 import { getOctokit } from '../../../gh'
-import type { LocalHTTPMCPServer } from '../../../mcp'
+import { definedToolsToPiTools } from '../../../tools/defined'
 import { getClank8yRuntimeContext } from '../../../setup'
 import { appendResourcesArtifactEntry } from '../../../utils/artifacts'
 import { buildRepoIssueSearchQuery } from '../../../utils/githubSearch'
@@ -37,21 +33,8 @@ async function getAuthenticatedLogin() {
   return data.login
 }
 
-export function incidentFixGitHubMCP(): LocalHTTPMCPServer {
-  const mcp = new McpServer({
-    name: 'clank8y-incident-fix-github-mcp',
-    description: 'A MCP server that helps incident-fix workflows inspect branches and manage repo checkouts safely.',
-    version: '1.0.0',
-  }, {
-    adapter: new ValibotJsonSchemaAdapter(),
-    capabilities: {
-      tools: {
-        listChanged: true,
-      },
-    },
-  })
-
-  const githubMcpTools = [
+export function incidentFixGitHubTools(): AgentTool[] {
+  const githubTools = [
     defineTool({
       name: GET_REPO_BRANCHES_TOOL_NAME,
       description: 'Read-only GitHub-backed branch metadata for a repository. Call this near the start before deciding whether the default branch is the right base.',
@@ -499,48 +482,5 @@ export function incidentFixGitHubMCP(): LocalHTTPMCPServer {
     }),
   ]
 
-  mcp.tools(githubMcpTools)
-
-  const transport = new HttpTransport(mcp, {
-    path: '/mcp',
-  })
-
-  const server = serve({
-    manual: true,
-    port: 0,
-    fetch: async (req) => {
-      const response = await transport.respond(req)
-      if (!response) {
-        return new FastResponse('Not found', { status: 404 })
-      }
-
-      return response
-    },
-  })
-
-  let status: LocalHTTPMCPServer['status'] = { state: 'stopped' }
-
-  return {
-    serverType: 'http',
-    allowedTools: githubMcpTools.map((definedTool) => definedTool.name),
-    get status() {
-      return status
-    },
-    start: async () => {
-      await server.serve()
-      const { url } = await server.ready()
-      if (!url) {
-        await server.close(true)
-        throw new Error('Failed to start IncidentFix GitHub MCP server')
-      }
-
-      const actualUrl = url.endsWith('/') ? `${url}mcp` : `${url}/mcp`
-      status = { state: 'running', url: actualUrl }
-      return { url: actualUrl, toolNames: githubMcpTools.map((definedTool) => definedTool.name) }
-    },
-    stop: async () => {
-      await server.close(true)
-      status = { state: 'stopped' }
-    },
-  }
+  return definedToolsToPiTools(githubTools)
 }

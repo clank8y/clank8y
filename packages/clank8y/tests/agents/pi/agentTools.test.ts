@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core'
 import { Type } from '@earendil-works/pi-ai'
-import { getSharedTools } from '../../../src/modes'
+import { getSharedTools } from '../../../src/tools'
 
 // Helper: build a minimal native Pi SDK AgentTool without a custom abstraction layer.
 function makeAgentTool(name: string, execute?: AgentTool['execute']): AgentTool {

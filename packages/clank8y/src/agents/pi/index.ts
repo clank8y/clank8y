@@ -1,92 +1,16 @@
 import { Agent } from '@earendil-works/pi-agent-core'
 import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core'
-import { getModel } from '@earendil-works/pi-ai'
-import type { Model } from '@earendil-works/pi-ai'
 import { consola } from 'consola'
 import { logAgentMessage, logUsageSummary } from '../../logging'
 import type { UsageTotals } from '../../logging'
-import type { Clank8yMCPServers, HTTPStartResult } from '../../mcp'
-import { startAll, stopAll } from '../../mcp'
-import { connectMcpServer } from '../../mcp/remote'
-import type { ManagedMcpConnection } from '../../mcp/remote'
-import { getSharedTools } from '../../modes'
+import { startAll, stopAll } from '../../tools/external'
+import { createPiToolBundle } from '../../tools'
 import { getClank8yRuntimeContext } from '../../setup'
 import { doesReportArtifactExist, getReportArtifactPath } from '../../utils/artifacts'
 import type { Clank8yAgent, Clank8yAgentFactory, Clank8yProfile } from '..'
 import { writeFile } from 'node:fs/promises'
 
 export const PI_AGENT_NAME = 'pi'
-
-// ─── Model resolution ─────────────────────────────────────────────────────────
-
-/**
- * Maps legacy clank8y model names to their canonical Pi SDK `[provider, id]` pairs.
- * Users can also pass `provider:model-id` strings directly (e.g. `anthropic:claude-opus-4-5`).
- */
-const LEGACY_MODEL_MAP: Record<string, readonly [string, string]> = {
-  'claude-sonnet-4.6': ['anthropic', 'claude-sonnet-4-20250514'],
-  'claude-sonnet-4.5': ['anthropic', 'claude-sonnet-4-5-20251022'],
-  'claude-haiku-4.5': ['anthropic', 'claude-haiku-4-5-20251022'],
-  'claude-opus-4.6': ['anthropic', 'claude-opus-4-5-20251001'],
-  'claude-opus-4.6-fast': ['anthropic', 'claude-opus-4-5-20251001'],
-  'claude-opus-4.5': ['anthropic', 'claude-opus-4-5-20251001'],
-  'claude-sonnet-4': ['anthropic', 'claude-sonnet-4-20250514'],
-  'gpt-5.3-codex': ['openai', 'gpt-4o'],
-  'gpt-5.2-codex': ['openai', 'gpt-4o'],
-  'gpt-5.2': ['openai', 'gpt-4o'],
-  'gpt-5.1-codex-max': ['openai', 'gpt-4o'],
-  'gpt-5.1-codex': ['openai', 'gpt-4o'],
-  'gpt-5.1': ['openai', 'gpt-4o'],
-  'gpt-5.1-codex-mini': ['openai', 'gpt-4o-mini'],
-  'gpt-5-mini': ['openai', 'gpt-4o-mini'],
-  'gpt-4.1': ['openai', 'gpt-4.1'],
-  'gemini-3-pro-preview': ['google', 'gemini-2.5-pro-preview'],
-}
-
-/**
- * Resolves a clank8y model string to a Pi SDK {@link Model} object.
- *
- * Accepts two input formats:
- * - **`provider:model-id`** — explicit format, e.g. `anthropic:claude-sonnet-4-20250514`
- * - **Legacy names** — clank8y-internal names like `claude-sonnet-4.6` mapped via `LEGACY_MODEL_MAP`
- *
- * When neither format matches, a heuristic based on model name prefix is used.
- * `as any` casts are required because the Pi SDK exposes strict provider/model-ID
- * union types generated from a static registry, which cannot accept arbitrary strings.
- */
-export function resolveModel(modelString: string): Model<any> {
-  // Support explicit `provider:model-id` format
-  const colonIndex = modelString.indexOf(':')
-  if (colonIndex > 0) {
-    const provider = modelString.slice(0, colonIndex)
-    const id = modelString.slice(colonIndex + 1)
-
-    return getModel(provider as any, id as any)
-  }
-
-  // Legacy mapping
-  const mapped = LEGACY_MODEL_MAP[modelString]
-  if (mapped) {
-    return getModel(mapped[0] as any, mapped[1] as any)
-  }
-
-  // Heuristic fallback by model name prefix
-  if (modelString.startsWith('claude-')) {
-    return getModel('anthropic', modelString as any)
-  }
-
-  if (modelString.startsWith('gpt-') || modelString.startsWith('o1') || modelString.startsWith('o3')) {
-    return getModel('openai', modelString as any)
-  }
-
-  if (modelString.startsWith('gemini-')) {
-    return getModel('google', modelString as any)
-  }
-
-  // Final fallback: treat as openai-compatible
-
-  return getModel('openai', modelString as any)
-}
 
 // ─── Agent token ──────────────────────────────────────────────────────────────
 
@@ -176,36 +100,6 @@ function accumulateUsage(event: AgentEvent, totals: UsageTotals): void {
   }
 }
 
-// ─── MCP connection helpers ──────────────────────────────────────────────────
-
-async function openMcpConnections(
-  mcps: Clank8yMCPServers,
-  startResults: Record<string, unknown>,
-): Promise<ManagedMcpConnection[]> {
-  const connections: ManagedMcpConnection[] = []
-
-  for (const [name, server] of Object.entries(mcps)) {
-    if (server.serverType !== 'http') {
-      continue
-    }
-
-    const result = (startResults as Record<string, HTTPStartResult>)[name]
-    if (!result?.url) {
-      continue
-    }
-
-    const allowedTools = server.allowedTools[0] !== '*' ? server.allowedTools : undefined
-    const conn = await connectMcpServer(name, result.url, { allowedTools })
-    connections.push(conn)
-  }
-
-  return connections
-}
-
-async function closeMcpConnections(connections: ManagedMcpConnection[]): Promise<void> {
-  await Promise.all(connections.map((c) => c.close()))
-}
-
 // ─── Run helpers ──────────────────────────────────────────────────────────────
 
 async function runPiAgent(
@@ -222,18 +116,17 @@ async function runPiAgent(
   }
 
   const agentToken = resolveAgentToken()
-  const model = resolveModel(profile.model)
 
   const agent = new Agent({
     initialState: {
       systemPrompt,
-      model,
+      model: profile.model,
       tools: agentTools,
     },
     getApiKey: async () => agentToken,
   })
 
-  subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model)
+  subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model.id)
 
   agent.subscribe((event: AgentEvent) => {
     accumulateUsage(event, totals)
@@ -325,57 +218,37 @@ export const piAgent: Clank8yAgentFactory = (profile: Clank8yProfile): Clank8yAg
     name: PI_AGENT_NAME,
 
     selectMode: async (selectModeOptions) => {
-      const mcpStatus = selectModeOptions.mcp.status
-      if (mcpStatus.state !== 'running' || !('url' in mcpStatus)) {
-        throw new Error('Select mode MCP server must be running before calling selectMode.')
-      }
-
-      const { url } = mcpStatus as { state: 'running', url: string }
-
-      const connection = await connectMcpServer('selectMode', url, {
-        allowedTools: selectModeOptions.mcp.allowedTools,
-      })
-
       const agentToken = resolveAgentToken()
-      const model = resolveModel(profile.model)
 
       const agent = new Agent({
         initialState: {
           systemPrompt: selectModeOptions.prompt,
-          model,
-          tools: connection.tools,
+          model: profile.model,
+          tools: selectModeOptions.tools,
         },
         getApiKey: async () => agentToken,
       })
 
-      subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model)
+      subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model.id)
 
-      try {
-        await agent.prompt('Select the appropriate clank8y mode for this request.')
-      } finally {
-        await connection.close()
-      }
+      await agent.prompt('Select the appropriate clank8y mode for this request.')
     },
 
-    run: async ({ mode, prompt, mcps }) => {
-      const startResults = await startAll(mcps)
-
-      const connections = await openMcpConnections(mcps, startResults as Record<string, unknown>)
-
-      const sharedTools = getSharedTools()
-      const mcpTools = connections.flatMap((c) => c.tools)
-      const allTools = [...sharedTools, ...mcpTools]
+    run: async ({ mode, prompt, externalMcpServers, tools }) => {
+      const startResults = await startAll(externalMcpServers)
+      let toolBundle: Awaited<ReturnType<typeof createPiToolBundle>> | undefined
 
       try {
-        const { agent, totals } = await runPiAgent(prompt, profile, allTools)
+        toolBundle = await createPiToolBundle(externalMcpServers, startResults, tools)
+        const { agent, totals } = await runPiAgent(prompt, profile, toolBundle.tools)
         logUsageSummary(totals)
 
         if (mode === 'IncidentFix') {
           await ensureIncidentFixReport(agent)
         }
       } finally {
-        await closeMcpConnections(connections)
-        await stopAll(mcps)
+        await toolBundle?.close()
+        await stopAll(externalMcpServers)
       }
     },
   }

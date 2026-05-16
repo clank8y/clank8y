@@ -1,53 +1,27 @@
-import { defu } from 'defu'
-import { logAgentMessage } from '../logging'
-import type { DeepOptional } from '../types'
-import type { Clank8yDisabledModes, Clank8yMode, Clank8yModeSelection } from '../modeSelection'
-import type { Clank8yMCPServers, LocalHTTPMCPServer } from '../mcp'
-import { getModeRuntime, getSelectModeRuntime } from '../modes'
-import { piAgent } from './pi'
-import { initializeResourcesArtifact, resetClank8yArtifacts, writePromptArtifact } from '../utils/artifacts'
+import { getModel } from '@earendil-works/pi-ai'
+import type { Model } from '@earendil-works/pi-ai'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import consola from 'consola'
+import { logAgentMessage } from '../logging'
+import type { Clank8yDisabledModes, Clank8yMode, Clank8yModeSelection } from '../modeSelection'
+import type { ExternalMcpServers } from '../tools/external'
+import { getModeRuntime, getSelectModeRuntime } from '../modes'
+import { initializeResourcesArtifact, resetClank8yArtifacts, writePromptArtifact } from '../utils/artifacts'
+import { piAgent } from './pi'
 
-export type Models
-  = 'claude-sonnet-4.6' | 'claude-sonnet-4.5'
-    | 'claude-haiku-4.5' | 'claude-opus-4.6'
-    | 'claude-opus-4.6-fast' | 'claude-opus-4.5'
-    | 'claude-sonnet-4' | 'gemini-3-pro-preview'
-    | 'gpt-5.3-codex' | 'gpt-5.2-codex'
-    | 'gpt-5.2' | 'gpt-5.1-codex-max'
-    | 'gpt-5.1-codex' | 'gpt-5.1'
-    | 'gpt-5.1-codex-mini' | 'gpt-5-mini'
-    | 'gpt-4.1'
+export type Models = Model<any> | string
 
 interface Clank8yAgentConfiguration {
   /**
    * Model to use for the run.
-   * @default 'claude-sonnet-4.6'
+   * @default Pi model object for claude-sonnet-4-20250514
    */
-  model: Models | (string & {})
+  model: Model<any>
   /**
    * Time limit for the entire clank8y run.
    * @default 1_200_000 (20 minutes)
    */
   timeOutMs: number
-  tools: {
-    /**
-     * Maximum number of tool calls allowed during the review process.
-     * When the limit is reached, the agent will stop making tool calls and proceed with the review based on the information it has.
-     * @default 60
-     */
-    maxCalls: number
-    /**
-     * Maximum runtime for each tool call.
-     * @default 60_000 (60 seconds)
-     */
-    maxRuntimeMs: number
-  }
-  /**
-   * Agent to use for pull request review.
-   * @default 'pi'
-   */
-  agent: 'pi'
   /**
    * Modes disabled for this run.
    * @default {}
@@ -56,27 +30,30 @@ interface Clank8yAgentConfiguration {
 }
 
 const DEFAULT_CONFIGURATION = {
-  model: 'claude-sonnet-4.6',
+  model: getModel('anthropic', 'claude-sonnet-4-20250514'),
   timeOutMs: 1_200_000,
-  tools: {
-    maxCalls: 60,
-    maxRuntimeMs: 60_000,
-  },
-  agent: 'pi',
   disabledModes: {},
 } as const satisfies Clank8yAgentConfiguration
 
-export type Clank8yAgentOptions = DeepOptional<Omit<Clank8yAgentConfiguration, 'agent'>>
+export interface Clank8yAgentOptions {
+  /**
+   * Pi model object or a `provider:model-id` string resolved through Pi's model registry.
+   */
+  model?: Models
+  timeOutMs?: number
+  disabledModes?: Clank8yDisabledModes
+}
 
 export interface Clank8yRunInput {
   mode: Clank8yMode
   prompt: string
-  mcps: Clank8yMCPServers
+  externalMcpServers: ExternalMcpServers
+  tools?: AgentTool[]
 }
 
 export interface SelectModeOptions {
   prompt: string
-  mcp: LocalHTTPMCPServer
+  tools: AgentTool[]
 }
 
 export interface Clank8yAgent {
@@ -86,52 +63,56 @@ export interface Clank8yAgent {
   cleanup?: () => Promise<void>
 }
 
-export type Clank8yProfile = Omit<Clank8yAgentConfiguration, 'agent'>
+export type Clank8yProfile = Clank8yAgentConfiguration
 
-export type Clank8yAgentFactory = (options: Clank8yProfile) => Clank8yAgent | Promise<Clank8yAgent>
+export type Clank8yAgentFactory = (options: Clank8yProfile) => Clank8yAgent
 
-async function getClank8y(options: Clank8yAgentOptions): Promise<{ agent: Clank8yAgent, profile: Clank8yProfile }> {
-  const config = defu<Clank8yAgentConfiguration, [Clank8yAgentOptions]>(options, DEFAULT_CONFIGURATION) as Clank8yAgentConfiguration
-
-  const { agent: agentName, ...profile } = config
-
-  let agent: Clank8yAgent | Promise<Clank8yAgent>
-  switch (agentName) {
-    case 'pi':
-      agent = piAgent(profile)
-      break
-    default:
-      throw new Error(`Unsupported agent: ${agentName}`)
+function modelFromInput(model: Models | undefined): Model<any> {
+  if (!model) {
+    return DEFAULT_CONFIGURATION.model
   }
 
-  agent = await agent
+  if (typeof model !== 'string') {
+    return model
+  }
+
+  const colonIndex = model.indexOf(':')
+  if (colonIndex <= 0 || colonIndex === model.length - 1) {
+    throw new Error(`Invalid model '${model}'. Use provider:model-id format.`)
+  }
+
+  return getModel(model.slice(0, colonIndex) as any, model.slice(colonIndex + 1) as any)
+}
+
+function getClank8y(options: Clank8yAgentOptions): { agent: Clank8yAgent, profile: Clank8yProfile } {
+  const profile: Clank8yProfile = {
+    model: modelFromInput(options.model),
+    timeOutMs: options.timeOutMs ?? DEFAULT_CONFIGURATION.timeOutMs,
+    disabledModes: options.disabledModes ?? DEFAULT_CONFIGURATION.disabledModes,
+  }
 
   return {
-    agent,
+    agent: piAgent(profile),
     profile,
   }
 }
 
 export async function executeClank8yAgent(options: Clank8yAgentOptions & { promptContext: string }): Promise<Clank8yModeSelection> {
-  const { agent, profile } = await getClank8y(options)
+  const { agent, profile } = getClank8y(options)
 
   await resetClank8yArtifacts()
   consola.success('Reset .clank8y artifacts directory.')
 
   const {
-    mcp,
+    tools: selectionTools,
     getSelection,
     prompt: selectModePrompt,
   } = getSelectModeRuntime(options.promptContext, profile.disabledModes)
 
-  await mcp.start()
-
   await agent.selectMode({
     prompt: selectModePrompt,
-    mcp,
+    tools: selectionTools,
   })
-
-  await mcp.stop()
 
   const selection = getSelection()
 
@@ -143,7 +124,7 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
     throw new Error(`Mode selection failed: selected mode '${selection.mode}' is not enabled for this run.`)
   }
 
-  const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext)
+  const { prompt, externalMcpServers, tools } = getModeRuntime(selection.mode, options.promptContext)
 
   await writePromptArtifact(prompt)
   consola.success('Wrote .clank8y/prompt.md.')
@@ -155,12 +136,12 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
 
   logAgentMessage({
     agent: agent.name,
-    model: profile.model,
+    model: profile.model.id,
   }, `Selected mode: ${selection.mode}\nMode selection reason: ${selection.reason}`)
 
   logAgentMessage({
     agent: agent.name,
-    model: profile.model,
+    model: profile.model.id,
   }, [
     `mode: ${selection.mode}`,
     '',
@@ -170,7 +151,8 @@ export async function executeClank8yAgent(options: Clank8yAgentOptions & { promp
   await agent.run({
     mode: selection.mode,
     prompt,
-    mcps,
+    externalMcpServers,
+    tools,
   })
 
   await agent.cleanup?.()

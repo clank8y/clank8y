@@ -8,7 +8,7 @@ import {
   GET_PULL_REQUEST_FILE_CONTENT_TOOL_NAME,
   PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME,
   SET_PULL_REQUEST_CONTEXT_TOOL_NAME,
-} from './mcps/github'
+} from './tools/github'
 
 const REVIEW_SCOPE = [
   '## Review scope',
@@ -98,15 +98,15 @@ const LODASH_AND_UTILITIES = [
 const REVIEW_WORKFLOW = [
   '## Required workflow',
   '',
-  'You have three MCP servers available:',
-  '- **GitHub MCP** — PR metadata, diffs, file content, and review submission.',
+  'You have three tool groups available:',
+  '- **GitHub tools** — PR metadata, diffs, file content, and review submission.',
   '- **Angular MCP** — Angular documentation, best practices, and code examples.',
   '- **Codex MCP** — Cumulocity Web SDK documentation: components, services, design system, hooks, pipes, CSS utilities.',
   '',
   '### Step-by-step:',
   '',
-  `1) **Set PR context** via the GitHub MCP tool \`${SET_PULL_REQUEST_CONTEXT_TOOL_NAME}\` using the \`repository\` (in \`owner/repo\` form) and \`pr_number\` from EVENT-LEVEL INSTRUCTIONS.`,
-  '   - Do not call any other GitHub MCP tool before this.',
+  `1) **Set PR context** via the GitHub tool \`${SET_PULL_REQUEST_CONTEXT_TOOL_NAME}\` using the \`repository\` (in \`owner/repo\` form) and \`pr_number\` from EVENT-LEVEL INSTRUCTIONS.`,
+  '   - Do not call any other GitHub tool before this.',
   '',
   `2) **Prepare review** via \`${PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (single entrypoint).`,
   '   - This returns PR metadata, file summary, a `diff.path`, and a separate `previousReviews.path` artifact with previous review bodies and inline comment history.',
@@ -174,7 +174,7 @@ const REVIEW_WORKFLOW = [
   '- If EVENT-LEVEL INSTRUCTIONS includes `report_back_to: none` or says not to mention `@clank8y`, do not mention `@clank8y` in the review body or comment.',
   '',
   '### Tooling constraints:',
-  '- Use GitHub MCP tools for PR operations.',
+  '- Use GitHub tools for PR operations.',
   '- Use Angular MCP to verify Angular patterns — do not rely solely on your training data.',
   '- Use Codex MCP to verify Cumulocity patterns — the platform has a rich component/service library.',
   '- Native file tools are allowed only so you can read `.clank8y/diff.txt` and `.clank8y/review-comments.md`.',

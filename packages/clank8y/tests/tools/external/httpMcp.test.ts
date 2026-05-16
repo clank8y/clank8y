@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { parseSseData } from '../../src/mcp/remote'
+import { parseSseData } from '../../../src/tools/external/httpMcp'
 
 describe('parseSseData', () => {
   test('returns null for empty string', () => {

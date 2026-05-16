@@ -1,4 +1,4 @@
-import { PREPARE_TASK_WORKSPACE_TOOL_NAME } from './mcps/constants'
+import { PREPARE_TASK_WORKSPACE_TOOL_NAME } from './constants'
 
 export interface TaskContext {
   allowedPushBranch: string | null

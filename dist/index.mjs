@@ -5,24 +5,20 @@ import * as fs from "fs";
 import { constants, existsSync, promises, readFileSync } from "fs";
 import * as http$1 from "http";
 import * as https$1 from "https";
-import nodeHTTP from "node:http";
-import { PassThrough, Readable } from "node:stream";
+import { PassThrough } from "node:stream";
 import { Buffer as Buffer$1 } from "node:buffer";
 import { formatWithOptions } from "node:util";
 import { createHmac, createPrivateKey, subtle, timingSafeEqual } from "node:crypto";
-import nodeHTTP2 from "node:http2";
-import { AsyncLocalStorage } from "node:async_hooks";
 import process$1, { cwd, stdin, stdout } from "node:process";
+import { Type, getModel } from "@earendil-works/pi-ai";
+import path, { delimiter, dirname, normalize, resolve, sep } from "node:path";
 import * as tty from "node:tty";
 import { WriteStream } from "node:tty";
-import nodeHTTPS from "node:https";
-import path, { delimiter, dirname, normalize, resolve, sep } from "node:path";
+import f from "node:readline";
 import { appendFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire as createRequire$1 } from "module";
 import { spawn } from "node:child_process";
-import f from "node:readline";
 import { Agent } from "@earendil-works/pi-agent-core";
-import { getModel } from "@earendil-works/pi-ai";
 
 //#region \0rolldown/runtime.js
 var __create$1 = Object.create;
@@ -6492,7 +6488,7 @@ var require_redirect_interceptor = /* @__PURE__ */ __commonJSMin$1(((exports, mo
 
 //#endregion
 //#region node_modules/.pnpm/undici@6.23.0/node_modules/undici/lib/dispatcher/client.js
-var require_client$1 = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
+var require_client = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const assert$16 = __require("node:assert");
 	const net = __require("node:net");
 	const http$2 = __require("node:http");
@@ -7046,7 +7042,7 @@ var require_pool_base = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 //#region node_modules/.pnpm/undici@6.23.0/node_modules/undici/lib/dispatcher/pool.js
 var require_pool = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const { PoolBase, kClients, kNeedDrain, kAddClient, kGetDispatcher } = require_pool_base();
-	const Client = require_client$1();
+	const Client = require_client();
 	const { InvalidArgumentError } = require_errors();
 	const util = require_util$7();
 	const { kUrl, kInterceptors } = require_symbols$4();
@@ -7223,7 +7219,7 @@ var require_agent = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const { kClients, kRunning, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols$4();
 	const DispatcherBase = require_dispatcher_base();
 	const Pool = require_pool();
-	const Client = require_client$1();
+	const Client = require_client();
 	const util = require_util$7();
 	const createRedirectInterceptor = require_redirect_interceptor();
 	const kOnConnect = Symbol("onConnect");
@@ -7307,7 +7303,7 @@ var require_proxy_agent = /* @__PURE__ */ __commonJSMin$1(((exports, module) => 
 	const DispatcherBase = require_dispatcher_base();
 	const { InvalidArgumentError, RequestAbortedError, SecureProxyConnectionError } = require_errors();
 	const buildConnector = require_connect();
-	const Client = require_client$1();
+	const Client = require_client();
 	const kAgent = Symbol("proxy agent");
 	const kClient = Symbol("proxy client");
 	const kProxyHeaders = Symbol("proxy headers");
@@ -7858,7 +7854,7 @@ var require_retry_agent = /* @__PURE__ */ __commonJSMin$1(((exports, module) => 
 //#region node_modules/.pnpm/undici@6.23.0/node_modules/undici/lib/api/readable.js
 var require_readable = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const assert$14 = __require("node:assert");
-	const { Readable: Readable$3 } = __require("node:stream");
+	const { Readable: Readable$2 } = __require("node:stream");
 	const { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError } = require_errors();
 	const util = require_util$7();
 	const { ReadableStreamFrom } = require_util$7();
@@ -7869,7 +7865,7 @@ var require_readable = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const kContentType = Symbol("kContentType");
 	const kContentLength = Symbol("kContentLength");
 	const noop = () => {};
-	var BodyReadable = class extends Readable$3 {
+	var BodyReadable = class extends Readable$2 {
 		constructor({ resume, abort, contentType = "", contentLength, highWaterMark = 64 * 1024 }) {
 			super({
 				autoDestroy: true,
@@ -8479,14 +8475,14 @@ var require_api_stream = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 //#endregion
 //#region node_modules/.pnpm/undici@6.23.0/node_modules/undici/lib/api/api-pipeline.js
 var require_api_pipeline = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
-	const { Readable: Readable$2, Duplex, PassThrough: PassThrough$1 } = __require("node:stream");
+	const { Readable: Readable$1, Duplex, PassThrough: PassThrough$1 } = __require("node:stream");
 	const { InvalidArgumentError, InvalidReturnValueError, RequestAbortedError } = require_errors();
 	const util = require_util$7();
 	const { AsyncResource: AsyncResource$2 } = __require("node:async_hooks");
 	const { addSignal, removeSignal } = require_abort_signal();
 	const assert$10 = __require("node:assert");
 	const kResume = Symbol("resume");
-	var PipelineRequest = class extends Readable$2 {
+	var PipelineRequest = class extends Readable$1 {
 		constructor() {
 			super({ autoDestroy: true });
 			this[kResume] = null;
@@ -8503,7 +8499,7 @@ var require_api_pipeline = /* @__PURE__ */ __commonJSMin$1(((exports, module) =>
 			callback(err);
 		}
 	};
-	var PipelineResponse = class extends Readable$2 {
+	var PipelineResponse = class extends Readable$1 {
 		constructor(resume) {
 			super({ autoDestroy: true });
 			this[kResume] = resume;
@@ -9247,7 +9243,7 @@ var require_mock_interceptor = /* @__PURE__ */ __commonJSMin$1(((exports, module
 //#region node_modules/.pnpm/undici@6.23.0/node_modules/undici/lib/mock/mock-client.js
 var require_mock_client = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const { promisify: promisify$1 } = __require("node:util");
-	const Client = require_client$1();
+	const Client = require_client();
 	const { buildMockDispatch } = require_mock_utils();
 	const { kDispatches, kMockAgent, kClose, kOriginalClose, kOrigin, kOriginalDispatch, kConnected } = require_mock_symbols();
 	const { MockInterceptor } = require_mock_interceptor();
@@ -11126,7 +11122,7 @@ var require_fetch = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 	const { safelyExtractBody, extractBody } = require_body();
 	const { redirectStatusSet, nullBodyStatus, safeMethodsSet, requestBodyHeader, subresourceSet } = require_constants$2();
 	const EE = __require("node:events");
-	const { Readable: Readable$1, pipeline: pipeline$1, finished } = __require("node:stream");
+	const { Readable, pipeline: pipeline$1, finished } = __require("node:stream");
 	const { addAbortListener, isErrored, isReadable, bufferToLowerCasedHeaderName } = require_util$7();
 	const { dataURLProcessor, serializeAMimeType, minimizeSupportedMimeType } = require_data_url();
 	const { getGlobalDispatcher } = require_global();
@@ -11729,7 +11725,7 @@ var require_fetch = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
 					const headersList = new HeadersList();
 					for (let i = 0; i < rawHeaders.length; i += 2) headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i]), rawHeaders[i + 1].toString("latin1"), true);
 					location = headersList.get("location", true);
-					this.body = new Readable$1({ read: resume });
+					this.body = new Readable({ read: resume });
 					const decoders = [];
 					const willFollow = location && request.redirect === "follow" && redirectStatusSet.has(status);
 					if (request.method !== "HEAD" && request.method !== "CONNECT" && !nullBodyStatus.includes(status) && !willFollow) {
@@ -15600,7 +15596,7 @@ var require_eventsource = /* @__PURE__ */ __commonJSMin$1(((exports, module) => 
 //#endregion
 //#region node_modules/.pnpm/undici@6.23.0/node_modules/undici/index.js
 var require_undici = /* @__PURE__ */ __commonJSMin$1(((exports, module) => {
-	const Client = require_client$1();
+	const Client = require_client();
 	const Dispatcher = require_dispatcher();
 	const Pool = require_pool();
 	const BalancedPool = require_balanced_pool();
@@ -15784,11 +15780,11 @@ var HttpCodes;
 	HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
 	HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
 })(HttpCodes || (HttpCodes = {}));
-var Headers$1;
+var Headers;
 (function(Headers) {
 	Headers["Accept"] = "accept";
 	Headers["ContentType"] = "content-type";
-})(Headers$1 || (Headers$1 = {}));
+})(Headers || (Headers = {}));
 var MediaTypes;
 (function(MediaTypes) {
 	MediaTypes["ApplicationJson"] = "application/json";
@@ -15922,7 +15918,7 @@ var HttpClient = class {
 	*/
 	getJson(requestUrl_1) {
 		return __awaiter$10(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
-			additionalHeaders[Headers$1.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers$1.Accept, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
 			const res = yield this.get(requestUrl, additionalHeaders);
 			return this._processResponse(res, this.requestOptions);
 		});
@@ -15930,8 +15926,8 @@ var HttpClient = class {
 	postJson(requestUrl_1, obj_1) {
 		return __awaiter$10(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
 			const data = JSON.stringify(obj, null, 2);
-			additionalHeaders[Headers$1.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers$1.Accept, MediaTypes.ApplicationJson);
-			additionalHeaders[Headers$1.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
 			const res = yield this.post(requestUrl, data, additionalHeaders);
 			return this._processResponse(res, this.requestOptions);
 		});
@@ -15939,8 +15935,8 @@ var HttpClient = class {
 	putJson(requestUrl_1, obj_1) {
 		return __awaiter$10(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
 			const data = JSON.stringify(obj, null, 2);
-			additionalHeaders[Headers$1.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers$1.Accept, MediaTypes.ApplicationJson);
-			additionalHeaders[Headers$1.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
 			const res = yield this.put(requestUrl, data, additionalHeaders);
 			return this._processResponse(res, this.requestOptions);
 		});
@@ -15948,8 +15944,8 @@ var HttpClient = class {
 	patchJson(requestUrl_1, obj_1) {
 		return __awaiter$10(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
 			const data = JSON.stringify(obj, null, 2);
-			additionalHeaders[Headers$1.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers$1.Accept, MediaTypes.ApplicationJson);
-			additionalHeaders[Headers$1.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+			additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
 			const res = yield this.patch(requestUrl, data, additionalHeaders);
 			return this._processResponse(res, this.requestOptions);
 		});
@@ -16130,12 +16126,12 @@ var HttpClient = class {
 	_getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
 		let clientHeader;
 		if (this.requestOptions && this.requestOptions.headers) {
-			const headerValue = lowercaseKeys$2(this.requestOptions.headers)[Headers$1.ContentType];
+			const headerValue = lowercaseKeys$2(this.requestOptions.headers)[Headers.ContentType];
 			if (headerValue) if (typeof headerValue === "number") clientHeader = String(headerValue);
 			else if (Array.isArray(headerValue)) clientHeader = headerValue.join(", ");
 			else clientHeader = headerValue;
 		}
-		const additionalValue = additionalHeaders[Headers$1.ContentType];
+		const additionalValue = additionalHeaders[Headers.ContentType];
 		if (additionalValue !== void 0) if (typeof additionalValue === "number") return String(additionalValue);
 		else if (Array.isArray(additionalValue)) return additionalValue.join(", ");
 		else return additionalValue;
@@ -17790,7 +17786,7 @@ function lowercaseKeys$1(object) {
 		return newObj;
 	}, {});
 }
-function isPlainObject$7(value) {
+function isPlainObject$5(value) {
 	if (typeof value !== "object" || value === null) return false;
 	if (Object.prototype.toString.call(value) !== "[object Object]") return false;
 	const proto = Object.getPrototypeOf(value);
@@ -17801,7 +17797,7 @@ function isPlainObject$7(value) {
 function mergeDeep$1(defaults, options) {
 	const result = Object.assign({}, defaults);
 	Object.keys(options).forEach((key) => {
-		if (isPlainObject$7(options[key])) if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
+		if (isPlainObject$5(options[key])) if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
 		else result[key] = mergeDeep$1(defaults[key], options[key]);
 		else Object.assign(result, { [key]: options[key] });
 	});
@@ -17942,7 +17938,7 @@ function expand$1(template, context) {
 	if (template === "/") return template;
 	else return template.replace(/\/$/, "");
 }
-function parse$2(options) {
+function parse$1(options) {
 	let method = options.method.toUpperCase();
 	let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
 	let headers = Object.assign({}, options.headers);
@@ -17979,7 +17975,7 @@ function parse$2(options) {
 	}, typeof body !== "undefined" ? { body } : null, options.request ? { request: options.request } : null);
 }
 function endpointWithDefaults$1(defaults, route, options) {
-	return parse$2(merge$1(defaults, route, options));
+	return parse$1(merge$1(defaults, route, options));
 }
 function withDefaults$5(oldDefaults, newDefaults) {
 	const DEFAULTS2 = merge$1(oldDefaults, newDefaults);
@@ -17988,7 +17984,7 @@ function withDefaults$5(oldDefaults, newDefaults) {
 		DEFAULTS: DEFAULTS2,
 		defaults: withDefaults$5.bind(null, DEFAULTS2),
 		merge: merge$1.bind(null, DEFAULTS2),
-		parse: parse$2
+		parse: parse$1
 	});
 }
 var endpoint$1 = withDefaults$5(null, DEFAULTS$1);
@@ -18141,7 +18137,7 @@ var RequestError$1 = class extends Error {
 //#region node_modules/.pnpm/@octokit+request@10.0.7/node_modules/@octokit/request/dist-bundle/index.js
 var VERSION$18 = "10.0.7";
 var defaults_default$1 = { headers: { "user-agent": `octokit-request.js/${VERSION$18} ${getUserAgent$1()}` } };
-function isPlainObject$6(value) {
+function isPlainObject$4(value) {
 	if (typeof value !== "object" || value === null) return false;
 	if (Object.prototype.toString.call(value) !== "[object Object]") return false;
 	const proto = Object.getPrototypeOf(value);
@@ -18155,7 +18151,7 @@ async function fetchWrapper$1(requestOptions) {
 	if (!fetch) throw new Error("fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing");
 	const log = requestOptions.request?.log || console;
 	const parseSuccessResponseBody = requestOptions.request?.parseSuccessResponseBody !== false;
-	const body = isPlainObject$6(requestOptions.body) || Array.isArray(requestOptions.body) ? JSON.stringify(requestOptions.body) : requestOptions.body;
+	const body = isPlainObject$4(requestOptions.body) || Array.isArray(requestOptions.body) ? JSON.stringify(requestOptions.body) : requestOptions.body;
 	const requestHeaders = Object.fromEntries(Object.entries(requestOptions.headers).map(([name, value]) => [name, String(value)]));
 	let fetchResponse;
 	try {
@@ -20037,7 +20033,39 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 	value: mod,
 	enumerable: true
 }) : target, mod));
-function isPlainObject$5(value) {
+const LogLevels = {
+	silent: Number.NEGATIVE_INFINITY,
+	fatal: 0,
+	error: 0,
+	warn: 1,
+	log: 2,
+	info: 3,
+	success: 3,
+	fail: 3,
+	ready: 3,
+	start: 3,
+	box: 3,
+	debug: 4,
+	trace: 5,
+	verbose: Number.POSITIVE_INFINITY
+};
+const LogTypes = {
+	silent: { level: -1 },
+	fatal: { level: LogLevels.fatal },
+	error: { level: LogLevels.error },
+	warn: { level: LogLevels.warn },
+	log: { level: LogLevels.log },
+	info: { level: LogLevels.info },
+	success: { level: LogLevels.success },
+	fail: { level: LogLevels.fail },
+	ready: { level: LogLevels.info },
+	start: { level: LogLevels.info },
+	box: { level: LogLevels.info },
+	debug: { level: LogLevels.debug },
+	trace: { level: LogLevels.trace },
+	verbose: { level: LogLevels.verbose }
+};
+function isPlainObject$1$1(value) {
 	if (value === null || typeof value !== "object") return false;
 	const prototype = Object.getPrototypeOf(value);
 	if (prototype !== null && prototype !== Object.prototype && Object.getPrototypeOf(prototype) !== null) return false;
@@ -20045,8 +20073,8 @@ function isPlainObject$5(value) {
 	if (Symbol.toStringTag in value) return Object.prototype.toString.call(value) === "[object Module]";
 	return true;
 }
-function _defu$1(baseObject, defaults, namespace = ".", merger) {
-	if (!isPlainObject$5(defaults)) return _defu$1(baseObject, {}, namespace, merger);
+function _defu(baseObject, defaults, namespace = ".", merger) {
+	if (!isPlainObject$1$1(defaults)) return _defu(baseObject, {}, namespace, merger);
 	const object = Object.assign({}, defaults);
 	for (const key in baseObject) {
 		if (key === "__proto__" || key === "constructor") continue;
@@ -20054,27 +20082,397 @@ function _defu$1(baseObject, defaults, namespace = ".", merger) {
 		if (value === null || value === void 0) continue;
 		if (merger && merger(object, key, value, namespace)) continue;
 		if (Array.isArray(value) && Array.isArray(object[key])) object[key] = [...value, ...object[key]];
-		else if (isPlainObject$5(value) && isPlainObject$5(object[key])) object[key] = _defu$1(value, object[key], (namespace ? `${namespace}.` : "") + key.toString(), merger);
+		else if (isPlainObject$1$1(value) && isPlainObject$1$1(object[key])) object[key] = _defu(value, object[key], (namespace ? `${namespace}.` : "") + key.toString(), merger);
 		else object[key] = value;
 	}
 	return object;
 }
-function createDefu$1(merger) {
-	return (...arguments_) => arguments_.reduce((p, c) => _defu$1(p, c, "", merger), {});
+function createDefu(merger) {
+	return (...arguments_) => arguments_.reduce((p, c) => _defu(p, c, "", merger), {});
 }
-const defu$1 = createDefu$1();
-createDefu$1((object, key, currentValue) => {
-	if (object[key] !== void 0 && typeof currentValue === "function") {
-		object[key] = currentValue(object[key]);
-		return true;
+const defu = createDefu();
+function isPlainObject$3(obj) {
+	return Object.prototype.toString.call(obj) === "[object Object]";
+}
+function isLogObj(arg) {
+	if (!isPlainObject$3(arg)) return false;
+	if (!arg.message && !arg.args) return false;
+	if (arg.stack) return false;
+	return true;
+}
+let paused = false;
+const queue = [];
+var Consola = class Consola {
+	options;
+	_lastLog;
+	_mockFn;
+	/**
+	* Creates an instance of Consola with specified options or defaults.
+	*
+	* @param {Partial<ConsolaOptions>} [options={}] - Configuration options for the Consola instance.
+	*/
+	constructor(options = {}) {
+		const types = options.types || LogTypes;
+		this.options = defu({
+			...options,
+			defaults: { ...options.defaults },
+			level: _normalizeLogLevel(options.level, types),
+			reporters: [...options.reporters || []]
+		}, {
+			types: LogTypes,
+			throttle: 1e3,
+			throttleMin: 5,
+			formatOptions: {
+				date: true,
+				colors: false,
+				compact: true
+			}
+		});
+		for (const type in types) {
+			const defaults = {
+				type,
+				...this.options.defaults,
+				...types[type]
+			};
+			this[type] = this._wrapLogFn(defaults);
+			this[type].raw = this._wrapLogFn(defaults, true);
+		}
+		if (this.options.mockFn) this.mockTypes();
+		this._lastLog = {};
 	}
-});
-createDefu$1((object, key, currentValue) => {
-	if (Array.isArray(object[key]) && typeof currentValue === "function") {
-		object[key] = currentValue(object[key]);
-		return true;
+	/**
+	* Gets the current log level of the Consola instance.
+	*
+	* @returns {number} The current log level.
+	*/
+	get level() {
+		return this.options.level;
 	}
-});
+	/**
+	* Sets the minimum log level that will be output by the instance.
+	*
+	* @param {number} level - The new log level to set.
+	*/
+	set level(level) {
+		this.options.level = _normalizeLogLevel(level, this.options.types, this.options.level);
+	}
+	/**
+	* Displays a prompt to the user and returns the response.
+	* Throw an error if `prompt` is not supported by the current configuration.
+	*
+	* @template T
+	* @param {string} message - The message to display in the prompt.
+	* @param {T} [opts] - Optional options for the prompt. See {@link PromptOptions}.
+	* @returns {promise<T>} A promise that infer with the prompt options. See {@link PromptOptions}.
+	*/
+	prompt(message, opts) {
+		if (!this.options.prompt) throw new Error("prompt is not supported!");
+		return this.options.prompt(message, opts);
+	}
+	/**
+	* Creates a new instance of Consola, inheriting options from the current instance, with possible overrides.
+	*
+	* @param {Partial<ConsolaOptions>} options - Optional overrides for the new instance. See {@link ConsolaOptions}.
+	* @returns {ConsolaInstance} A new Consola instance. See {@link ConsolaInstance}.
+	*/
+	create(options) {
+		const instance = new Consola({
+			...this.options,
+			...options
+		});
+		if (this._mockFn) instance.mockTypes(this._mockFn);
+		return instance;
+	}
+	/**
+	* Creates a new Consola instance with the specified default log object properties.
+	*
+	* @param {InputLogObject} defaults - Default properties to include in any log from the new instance. See {@link InputLogObject}.
+	* @returns {ConsolaInstance} A new Consola instance. See {@link ConsolaInstance}.
+	*/
+	withDefaults(defaults) {
+		return this.create({
+			...this.options,
+			defaults: {
+				...this.options.defaults,
+				...defaults
+			}
+		});
+	}
+	/**
+	* Creates a new Consola instance with a specified tag, which will be included in every log.
+	*
+	* @param {string} tag - The tag to include in each log of the new instance.
+	* @returns {ConsolaInstance} A new Consola instance. See {@link ConsolaInstance}.
+	*/
+	withTag(tag) {
+		return this.withDefaults({ tag: this.options.defaults.tag ? this.options.defaults.tag + ":" + tag : tag });
+	}
+	/**
+	* Adds a custom reporter to the Consola instance.
+	* Reporters will be called for each log message, depending on their implementation and log level.
+	*
+	* @param {ConsolaReporter} reporter - The reporter to add. See {@link ConsolaReporter}.
+	* @returns {Consola} The current Consola instance.
+	*/
+	addReporter(reporter) {
+		this.options.reporters.push(reporter);
+		return this;
+	}
+	/**
+	* Removes a custom reporter from the Consola instance.
+	* If no reporter is specified, all reporters will be removed.
+	*
+	* @param {ConsolaReporter} reporter - The reporter to remove. See {@link ConsolaReporter}.
+	* @returns {Consola} The current Consola instance.
+	*/
+	removeReporter(reporter) {
+		if (reporter) {
+			const i = this.options.reporters.indexOf(reporter);
+			if (i !== -1) return this.options.reporters.splice(i, 1);
+		} else this.options.reporters.splice(0);
+		return this;
+	}
+	/**
+	* Replaces all reporters of the Consola instance with the specified array of reporters.
+	*
+	* @param {ConsolaReporter[]} reporters - The new reporters to set. See {@link ConsolaReporter}.
+	* @returns {Consola} The current Consola instance.
+	*/
+	setReporters(reporters) {
+		this.options.reporters = Array.isArray(reporters) ? reporters : [reporters];
+		return this;
+	}
+	wrapAll() {
+		this.wrapConsole();
+		this.wrapStd();
+	}
+	restoreAll() {
+		this.restoreConsole();
+		this.restoreStd();
+	}
+	/**
+	* Overrides console methods with Consola logging methods for consistent logging.
+	*/
+	wrapConsole() {
+		for (const type in this.options.types) {
+			if (!console["__" + type]) console["__" + type] = console[type];
+			console[type] = this[type].raw;
+		}
+	}
+	/**
+	* Restores the original console methods, removing Consola overrides.
+	*/
+	restoreConsole() {
+		for (const type in this.options.types) if (console["__" + type]) {
+			console[type] = console["__" + type];
+			delete console["__" + type];
+		}
+	}
+	/**
+	* Overrides standard output and error streams to redirect them through Consola.
+	*/
+	wrapStd() {
+		this._wrapStream(this.options.stdout, "log");
+		this._wrapStream(this.options.stderr, "log");
+	}
+	_wrapStream(stream, type) {
+		if (!stream) return;
+		if (!stream.__write) stream.__write = stream.write;
+		stream.write = (data) => {
+			this[type].raw(String(data).trim());
+		};
+	}
+	/**
+	* Restores the original standard output and error streams, removing the Consola redirection.
+	*/
+	restoreStd() {
+		this._restoreStream(this.options.stdout);
+		this._restoreStream(this.options.stderr);
+	}
+	_restoreStream(stream) {
+		if (!stream) return;
+		if (stream.__write) {
+			stream.write = stream.__write;
+			delete stream.__write;
+		}
+	}
+	/**
+	* Pauses logging, queues incoming logs until resumed.
+	*/
+	pauseLogs() {
+		paused = true;
+	}
+	/**
+	* Resumes logging, processing any queued logs.
+	*/
+	resumeLogs() {
+		paused = false;
+		const _queue = queue.splice(0);
+		for (const item of _queue) item[0]._logFn(item[1], item[2]);
+	}
+	/**
+	* Replaces logging methods with mocks if a mock function is provided.
+	*
+	* @param {ConsolaOptions["mockFn"]} mockFn - The function to use for mocking logging methods. See {@link ConsolaOptions["mockFn"]}.
+	*/
+	mockTypes(mockFn) {
+		const _mockFn = mockFn || this.options.mockFn;
+		this._mockFn = _mockFn;
+		if (typeof _mockFn !== "function") return;
+		for (const type in this.options.types) {
+			this[type] = _mockFn(type, this.options.types[type]) || this[type];
+			this[type].raw = this[type];
+		}
+	}
+	_wrapLogFn(defaults, isRaw) {
+		return (...args) => {
+			if (paused) {
+				queue.push([
+					this,
+					defaults,
+					args,
+					isRaw
+				]);
+				return;
+			}
+			return this._logFn(defaults, args, isRaw);
+		};
+	}
+	_logFn(defaults, args, isRaw) {
+		if ((defaults.level || 0) > this.level) return false;
+		const logObj = {
+			date: /* @__PURE__ */ new Date(),
+			args: [],
+			...defaults,
+			level: _normalizeLogLevel(defaults.level, this.options.types)
+		};
+		if (!isRaw && args.length === 1 && isLogObj(args[0])) Object.assign(logObj, args[0]);
+		else logObj.args = [...args];
+		if (logObj.message) {
+			logObj.args.unshift(logObj.message);
+			delete logObj.message;
+		}
+		if (logObj.additional) {
+			if (!Array.isArray(logObj.additional)) logObj.additional = logObj.additional.split("\n");
+			logObj.args.push("\n" + logObj.additional.join("\n"));
+			delete logObj.additional;
+		}
+		logObj.type = typeof logObj.type === "string" ? logObj.type.toLowerCase() : "log";
+		logObj.tag = typeof logObj.tag === "string" ? logObj.tag : "";
+		const resolveLog = (newLog = false) => {
+			const repeated = (this._lastLog.count || 0) - this.options.throttleMin;
+			if (this._lastLog.object && repeated > 0) {
+				const args2 = [...this._lastLog.object.args];
+				if (repeated > 1) args2.push(`(repeated ${repeated} times)`);
+				this._log({
+					...this._lastLog.object,
+					args: args2
+				});
+				this._lastLog.count = 1;
+			}
+			if (newLog) {
+				this._lastLog.object = logObj;
+				this._log(logObj);
+			}
+		};
+		clearTimeout(this._lastLog.timeout);
+		const diffTime = this._lastLog.time && logObj.date ? logObj.date.getTime() - this._lastLog.time.getTime() : 0;
+		this._lastLog.time = logObj.date;
+		if (diffTime < this.options.throttle) try {
+			const serializedLog = JSON.stringify([
+				logObj.type,
+				logObj.tag,
+				logObj.args
+			]);
+			const isSameLog = this._lastLog.serialized === serializedLog;
+			this._lastLog.serialized = serializedLog;
+			if (isSameLog) {
+				this._lastLog.count = (this._lastLog.count || 0) + 1;
+				if (this._lastLog.count > this.options.throttleMin) {
+					this._lastLog.timeout = setTimeout(resolveLog, this.options.throttle);
+					return;
+				}
+			}
+		} catch {}
+		resolveLog(true);
+	}
+	_log(logObj) {
+		for (const reporter of this.options.reporters) reporter.log(logObj, { options: this.options });
+	}
+};
+function _normalizeLogLevel(input, types = {}, defaultLevel = 3) {
+	if (input === void 0) return defaultLevel;
+	if (typeof input === "number") return input;
+	if (types[input] && types[input].level !== void 0) return types[input].level;
+	return defaultLevel;
+}
+Consola.prototype.add = Consola.prototype.addReporter;
+Consola.prototype.remove = Consola.prototype.removeReporter;
+Consola.prototype.clear = Consola.prototype.removeReporter;
+Consola.prototype.withScope = Consola.prototype.withTag;
+Consola.prototype.mock = Consola.prototype.mockTypes;
+Consola.prototype.pause = Consola.prototype.pauseLogs;
+Consola.prototype.resume = Consola.prototype.resumeLogs;
+function createConsola$1(options = {}) {
+	return new Consola(options);
+}
+function parseStack(stack, message) {
+	const cwd = process.cwd() + sep;
+	return stack.split("\n").splice(message.split("\n").length).map((l) => l.trim().replace("file://", "").replace(cwd, ""));
+}
+function writeStream(data, stream) {
+	return (stream.__write || stream.write).call(stream, data);
+}
+const bracket = (x) => x ? `[${x}]` : "";
+var BasicReporter = class {
+	formatStack(stack, message, opts) {
+		const indent = "  ".repeat((opts?.errorLevel || 0) + 1);
+		return indent + parseStack(stack, message).join(`
+${indent}`);
+	}
+	formatError(err, opts) {
+		const message = err.message ?? formatWithOptions(opts, err);
+		const stack = err.stack ? this.formatStack(err.stack, message, opts) : "";
+		const level = opts?.errorLevel || 0;
+		const causedPrefix = level > 0 ? `${"  ".repeat(level)}[cause]: ` : "";
+		const causedError = err.cause ? "\n\n" + this.formatError(err.cause, {
+			...opts,
+			errorLevel: level + 1
+		}) : "";
+		return causedPrefix + message + "\n" + stack + causedError;
+	}
+	formatArgs(args, opts) {
+		return formatWithOptions(opts, ...args.map((arg) => {
+			if (arg && typeof arg.stack === "string") return this.formatError(arg, opts);
+			return arg;
+		}));
+	}
+	formatDate(date, opts) {
+		return opts.date ? date.toLocaleTimeString() : "";
+	}
+	filterAndJoin(arr) {
+		return arr.filter(Boolean).join(" ");
+	}
+	formatLogObj(logObj, opts) {
+		const message = this.formatArgs(logObj.args, opts);
+		if (logObj.type === "box") return "\n" + [
+			bracket(logObj.tag),
+			logObj.title && logObj.title,
+			...message.split("\n")
+		].filter(Boolean).map((l) => " > " + l).join("\n") + "\n";
+		return this.filterAndJoin([
+			bracket(logObj.type),
+			bracket(logObj.tag),
+			message
+		]);
+	}
+	log(logObj, ctx) {
+		return writeStream(this.formatLogObj(logObj, {
+			columns: ctx.options.stdout.columns || 0,
+			...ctx.options.formatOptions
+		}) + "\n", logObj.level < 2 ? ctx.options.stderr || process.stderr : ctx.options.stdout || process.stdout);
+	}
+};
 const { env = {}, argv = [], platform = "" } = typeof process === "undefined" ? {} : process;
 const isDisabled = "NO_COLOR" in env || argv.includes("--no-color");
 const isForced = "FORCE_COLOR" in env || argv.includes("--color");
@@ -20261,6 +20659,1162 @@ function box(text, _opts = {}) {
 	if (opts.style.marginBottom > 0) boxLines.push("".repeat(opts.style.marginBottom));
 	return boxLines.join("\n");
 }
+var prompt_exports = /* @__PURE__ */ __exportAll({
+	kCancel: () => kCancel,
+	prompt: () => prompt
+});
+function getDefaultExportFromCjs(x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
+}
+function requireSrc() {
+	if (hasRequiredSrc) return src;
+	hasRequiredSrc = 1;
+	const ESC = "\x1B";
+	const CSI = `${ESC}[`;
+	const beep = "\x07";
+	const cursor = {
+		to(x, y) {
+			if (!y) return `${CSI}${x + 1}G`;
+			return `${CSI}${y + 1};${x + 1}H`;
+		},
+		move(x, y) {
+			let ret = "";
+			if (x < 0) ret += `${CSI}${-x}D`;
+			else if (x > 0) ret += `${CSI}${x}C`;
+			if (y < 0) ret += `${CSI}${-y}A`;
+			else if (y > 0) ret += `${CSI}${y}B`;
+			return ret;
+		},
+		up: (count = 1) => `${CSI}${count}A`,
+		down: (count = 1) => `${CSI}${count}B`,
+		forward: (count = 1) => `${CSI}${count}C`,
+		backward: (count = 1) => `${CSI}${count}D`,
+		nextLine: (count = 1) => `${CSI}E`.repeat(count),
+		prevLine: (count = 1) => `${CSI}F`.repeat(count),
+		left: `${CSI}G`,
+		hide: `${CSI}?25l`,
+		show: `${CSI}?25h`,
+		save: `${ESC}7`,
+		restore: `${ESC}8`
+	};
+	src = {
+		cursor,
+		scroll: {
+			up: (count = 1) => `${CSI}S`.repeat(count),
+			down: (count = 1) => `${CSI}T`.repeat(count)
+		},
+		erase: {
+			screen: `${CSI}2J`,
+			up: (count = 1) => `${CSI}1J`.repeat(count),
+			down: (count = 1) => `${CSI}J`.repeat(count),
+			line: `${CSI}2K`,
+			lineEnd: `${CSI}K`,
+			lineStart: `${CSI}1K`,
+			lines(count) {
+				let clear = "";
+				for (let i = 0; i < count; i++) clear += this.line + (i < count - 1 ? cursor.up() : "");
+				if (count) clear += cursor.left;
+				return clear;
+			}
+		},
+		beep
+	};
+	return src;
+}
+function requirePicocolors() {
+	if (hasRequiredPicocolors) return picocolors.exports;
+	hasRequiredPicocolors = 1;
+	let p = process || {}, argv = p.argv || [], env = p.env || {};
+	let isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || (p.stdout || {}).isTTY && env.TERM !== "dumb" || !!env.CI);
+	let formatter = (open, close, replace = open) => (input) => {
+		let string = "" + input, index = string.indexOf(close, open.length);
+		return ~index ? open + replaceClose(string, close, replace, index) + close : open + string + close;
+	};
+	let replaceClose = (string, close, replace, index) => {
+		let result = "", cursor = 0;
+		do {
+			result += string.substring(cursor, index) + replace;
+			cursor = index + close.length;
+			index = string.indexOf(close, cursor);
+		} while (~index);
+		return result + string.substring(cursor);
+	};
+	let createColors = (enabled = isColorSupported) => {
+		let f = enabled ? formatter : () => String;
+		return {
+			isColorSupported: enabled,
+			reset: f("\x1B[0m", "\x1B[0m"),
+			bold: f("\x1B[1m", "\x1B[22m", "\x1B[22m\x1B[1m"),
+			dim: f("\x1B[2m", "\x1B[22m", "\x1B[22m\x1B[2m"),
+			italic: f("\x1B[3m", "\x1B[23m"),
+			underline: f("\x1B[4m", "\x1B[24m"),
+			inverse: f("\x1B[7m", "\x1B[27m"),
+			hidden: f("\x1B[8m", "\x1B[28m"),
+			strikethrough: f("\x1B[9m", "\x1B[29m"),
+			black: f("\x1B[30m", "\x1B[39m"),
+			red: f("\x1B[31m", "\x1B[39m"),
+			green: f("\x1B[32m", "\x1B[39m"),
+			yellow: f("\x1B[33m", "\x1B[39m"),
+			blue: f("\x1B[34m", "\x1B[39m"),
+			magenta: f("\x1B[35m", "\x1B[39m"),
+			cyan: f("\x1B[36m", "\x1B[39m"),
+			white: f("\x1B[37m", "\x1B[39m"),
+			gray: f("\x1B[90m", "\x1B[39m"),
+			bgBlack: f("\x1B[40m", "\x1B[49m"),
+			bgRed: f("\x1B[41m", "\x1B[49m"),
+			bgGreen: f("\x1B[42m", "\x1B[49m"),
+			bgYellow: f("\x1B[43m", "\x1B[49m"),
+			bgBlue: f("\x1B[44m", "\x1B[49m"),
+			bgMagenta: f("\x1B[45m", "\x1B[49m"),
+			bgCyan: f("\x1B[46m", "\x1B[49m"),
+			bgWhite: f("\x1B[47m", "\x1B[49m"),
+			blackBright: f("\x1B[90m", "\x1B[39m"),
+			redBright: f("\x1B[91m", "\x1B[39m"),
+			greenBright: f("\x1B[92m", "\x1B[39m"),
+			yellowBright: f("\x1B[93m", "\x1B[39m"),
+			blueBright: f("\x1B[94m", "\x1B[39m"),
+			magentaBright: f("\x1B[95m", "\x1B[39m"),
+			cyanBright: f("\x1B[96m", "\x1B[39m"),
+			whiteBright: f("\x1B[97m", "\x1B[39m"),
+			bgBlackBright: f("\x1B[100m", "\x1B[49m"),
+			bgRedBright: f("\x1B[101m", "\x1B[49m"),
+			bgGreenBright: f("\x1B[102m", "\x1B[49m"),
+			bgYellowBright: f("\x1B[103m", "\x1B[49m"),
+			bgBlueBright: f("\x1B[104m", "\x1B[49m"),
+			bgMagentaBright: f("\x1B[105m", "\x1B[49m"),
+			bgCyanBright: f("\x1B[106m", "\x1B[49m"),
+			bgWhiteBright: f("\x1B[107m", "\x1B[49m")
+		};
+	};
+	picocolors.exports = createColors();
+	picocolors.exports.createColors = createColors;
+	return picocolors.exports;
+}
+function J({ onlyFirst: t = false } = {}) {
+	const F = ["[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))", "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
+	return new RegExp(F, t ? void 0 : "g");
+}
+function T$1$1(t) {
+	if (typeof t != "string") throw new TypeError(`Expected a \`string\`, got \`${typeof t}\``);
+	return t.replace(Q, "");
+}
+function O$2(t) {
+	return t && t.__esModule && Object.prototype.hasOwnProperty.call(t, "default") ? t.default : t;
+}
+function A$1$1(t, u = {}) {
+	if (typeof t != "string" || t.length === 0 || (u = {
+		ambiguousIsNarrow: true,
+		...u
+	}, t = T$1$1(t), t.length === 0)) return 0;
+	t = t.replace(FD(), "  ");
+	const F = u.ambiguousIsNarrow ? 1 : 2;
+	let e = 0;
+	for (const s of t) {
+		const i = s.codePointAt(0);
+		if (i <= 31 || i >= 127 && i <= 159 || i >= 768 && i <= 879) continue;
+		switch (DD.eastAsianWidth(s)) {
+			case "F":
+			case "W":
+				e += 2;
+				break;
+			case "A":
+				e += F;
+				break;
+			default: e += 1;
+		}
+	}
+	return e;
+}
+function sD() {
+	const t = /* @__PURE__ */ new Map();
+	for (const [u, F] of Object.entries(r$1)) {
+		for (const [e, s] of Object.entries(F)) r$1[e] = {
+			open: `\x1B[${s[0]}m`,
+			close: `\x1B[${s[1]}m`
+		}, F[e] = r$1[e], t.set(s[0], s[1]);
+		Object.defineProperty(r$1, u, {
+			value: F,
+			enumerable: false
+		});
+	}
+	return Object.defineProperty(r$1, "codes", {
+		value: t,
+		enumerable: false
+	}), r$1.color.close = "\x1B[39m", r$1.bgColor.close = "\x1B[49m", r$1.color.ansi = L$1(), r$1.color.ansi256 = N$2(), r$1.color.ansi16m = I$2(), r$1.bgColor.ansi = L$1(m$1), r$1.bgColor.ansi256 = N$2(m$1), r$1.bgColor.ansi16m = I$2(m$1), Object.defineProperties(r$1, {
+		rgbToAnsi256: {
+			value: (u, F, e) => u === F && F === e ? u < 8 ? 16 : u > 248 ? 231 : Math.round((u - 8) / 247 * 24) + 232 : 16 + 36 * Math.round(u / 255 * 5) + 6 * Math.round(F / 255 * 5) + Math.round(e / 255 * 5),
+			enumerable: false
+		},
+		hexToRgb: {
+			value: (u) => {
+				const F = /[a-f\d]{6}|[a-f\d]{3}/i.exec(u.toString(16));
+				if (!F) return [
+					0,
+					0,
+					0
+				];
+				let [e] = F;
+				e.length === 3 && (e = [...e].map((i) => i + i).join(""));
+				const s = Number.parseInt(e, 16);
+				return [
+					s >> 16 & 255,
+					s >> 8 & 255,
+					s & 255
+				];
+			},
+			enumerable: false
+		},
+		hexToAnsi256: {
+			value: (u) => r$1.rgbToAnsi256(...r$1.hexToRgb(u)),
+			enumerable: false
+		},
+		ansi256ToAnsi: {
+			value: (u) => {
+				if (u < 8) return 30 + u;
+				if (u < 16) return 90 + (u - 8);
+				let F, e, s;
+				if (u >= 232) F = ((u - 232) * 10 + 8) / 255, e = F, s = F;
+				else {
+					u -= 16;
+					const C = u % 36;
+					F = Math.floor(u / 36) / 5, e = Math.floor(C / 6) / 5, s = C % 6 / 5;
+				}
+				const i = Math.max(F, e, s) * 2;
+				if (i === 0) return 30;
+				let D = 30 + (Math.round(s) << 2 | Math.round(e) << 1 | Math.round(F));
+				return i === 2 && (D += 60), D;
+			},
+			enumerable: false
+		},
+		rgbToAnsi: {
+			value: (u, F, e) => r$1.ansi256ToAnsi(r$1.rgbToAnsi256(u, F, e)),
+			enumerable: false
+		},
+		hexToAnsi: {
+			value: (u) => r$1.ansi256ToAnsi(r$1.hexToAnsi256(u)),
+			enumerable: false
+		}
+	}), r$1;
+}
+function G$2(t, u, F) {
+	return String(t).normalize().replace(/\r\n/g, `
+`).split(`
+`).map((e) => oD(e, u, F)).join(`
+`);
+}
+function k$1(t, u) {
+	if (typeof t == "string") return c$1.aliases.get(t) === u;
+	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
+	return false;
+}
+function lD(t, u) {
+	if (t === u) return;
+	const F = t.split(`
+`), e = u.split(`
+`), s = [];
+	for (let i = 0; i < Math.max(F.length, e.length); i++) F[i] !== e[i] && s.push(i);
+	return s;
+}
+function d$1(t, u) {
+	const F = t;
+	F.isTTY && F.setRawMode(u);
+}
+function ce() {
+	return process$1.platform !== "win32" ? process$1.env.TERM !== "linux" : !!process$1.env.CI || !!process$1.env.WT_SESSION || !!process$1.env.TERMINUS_SUBLIME || process$1.env.ConEmuTask === "{cmd::Cmder}" || process$1.env.TERM_PROGRAM === "Terminus-Sublime" || process$1.env.TERM_PROGRAM === "vscode" || process$1.env.TERM === "xterm-256color" || process$1.env.TERM === "alacritty" || process$1.env.TERMINAL_EMULATOR === "JetBrains-JediTerm";
+}
+async function prompt(message, opts = {}) {
+	const handleCancel = (value) => {
+		if (typeof value !== "symbol" || value.toString() !== "Symbol(clack:cancel)") return value;
+		switch (opts.cancel) {
+			case "reject": {
+				const error = /* @__PURE__ */ new Error("Prompt cancelled.");
+				error.name = "ConsolaPromptCancelledError";
+				if (Error.captureStackTrace) Error.captureStackTrace(error, prompt);
+				throw error;
+			}
+			case "undefined": return;
+			case "null": return null;
+			case "symbol": return kCancel;
+			default:
+			case "default": return opts.default ?? opts.initial;
+		}
+	};
+	if (!opts.type || opts.type === "text") return await he({
+		message,
+		defaultValue: opts.default,
+		placeholder: opts.placeholder,
+		initialValue: opts.initial
+	}).then(handleCancel);
+	if (opts.type === "confirm") return await ye({
+		message,
+		initialValue: opts.initial
+	}).then(handleCancel);
+	if (opts.type === "select") return await ve({
+		message,
+		options: opts.options.map((o) => typeof o === "string" ? {
+			value: o,
+			label: o
+		} : o),
+		initialValue: opts.initial
+	}).then(handleCancel);
+	if (opts.type === "multiselect") return await fe({
+		message,
+		options: opts.options.map((o) => typeof o === "string" ? {
+			value: o,
+			label: o
+		} : o),
+		required: opts.required,
+		initialValues: opts.initial
+	}).then(handleCancel);
+	throw new Error(`Unknown prompt type: ${opts.type}`);
+}
+var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m$1, L$1, N$2, I$2, r$1, tD, eD, iD, v$1, CD, w$1, W$1, rD, R$2, y$2, V$1, z$1, ED, _$2, nD, oD, c$1, S$2, AD, pD, h$1, x$1, fD, bD, mD, Y, wD, SD, $D, q$1, jD, PD, V$2, u$2, le, L$2, W$2, C$2, o$1, d$2, k$2, P$2, A$2, T$2, F$2, w$2, B$1, he, ye, ve, fe, kCancel;
+var init_prompt = __esmMin((() => {
+	srcExports = requireSrc();
+	picocolors = { exports: {} };
+	e = /* @__PURE__ */ getDefaultExportFromCjs(/* @__PURE__ */ requirePicocolors());
+	Q = J();
+	P$1 = { exports: {} };
+	(function(t) {
+		var u = {};
+		t.exports = u, u.eastAsianWidth = function(e) {
+			var s = e.charCodeAt(0), i = e.length == 2 ? e.charCodeAt(1) : 0, D = s;
+			return 55296 <= s && s <= 56319 && 56320 <= i && i <= 57343 && (s &= 1023, i &= 1023, D = s << 10 | i, D += 65536), D == 12288 || 65281 <= D && D <= 65376 || 65504 <= D && D <= 65510 ? "F" : D == 8361 || 65377 <= D && D <= 65470 || 65474 <= D && D <= 65479 || 65482 <= D && D <= 65487 || 65490 <= D && D <= 65495 || 65498 <= D && D <= 65500 || 65512 <= D && D <= 65518 ? "H" : 4352 <= D && D <= 4447 || 4515 <= D && D <= 4519 || 4602 <= D && D <= 4607 || 9001 <= D && D <= 9002 || 11904 <= D && D <= 11929 || 11931 <= D && D <= 12019 || 12032 <= D && D <= 12245 || 12272 <= D && D <= 12283 || 12289 <= D && D <= 12350 || 12353 <= D && D <= 12438 || 12441 <= D && D <= 12543 || 12549 <= D && D <= 12589 || 12593 <= D && D <= 12686 || 12688 <= D && D <= 12730 || 12736 <= D && D <= 12771 || 12784 <= D && D <= 12830 || 12832 <= D && D <= 12871 || 12880 <= D && D <= 13054 || 13056 <= D && D <= 19903 || 19968 <= D && D <= 42124 || 42128 <= D && D <= 42182 || 43360 <= D && D <= 43388 || 44032 <= D && D <= 55203 || 55216 <= D && D <= 55238 || 55243 <= D && D <= 55291 || 63744 <= D && D <= 64255 || 65040 <= D && D <= 65049 || 65072 <= D && D <= 65106 || 65108 <= D && D <= 65126 || 65128 <= D && D <= 65131 || 110592 <= D && D <= 110593 || 127488 <= D && D <= 127490 || 127504 <= D && D <= 127546 || 127552 <= D && D <= 127560 || 127568 <= D && D <= 127569 || 131072 <= D && D <= 194367 || 177984 <= D && D <= 196605 || 196608 <= D && D <= 262141 ? "W" : 32 <= D && D <= 126 || 162 <= D && D <= 163 || 165 <= D && D <= 166 || D == 172 || D == 175 || 10214 <= D && D <= 10221 || 10629 <= D && D <= 10630 ? "Na" : D == 161 || D == 164 || 167 <= D && D <= 168 || D == 170 || 173 <= D && D <= 174 || 176 <= D && D <= 180 || 182 <= D && D <= 186 || 188 <= D && D <= 191 || D == 198 || D == 208 || 215 <= D && D <= 216 || 222 <= D && D <= 225 || D == 230 || 232 <= D && D <= 234 || 236 <= D && D <= 237 || D == 240 || 242 <= D && D <= 243 || 247 <= D && D <= 250 || D == 252 || D == 254 || D == 257 || D == 273 || D == 275 || D == 283 || 294 <= D && D <= 295 || D == 299 || 305 <= D && D <= 307 || D == 312 || 319 <= D && D <= 322 || D == 324 || 328 <= D && D <= 331 || D == 333 || 338 <= D && D <= 339 || 358 <= D && D <= 359 || D == 363 || D == 462 || D == 464 || D == 466 || D == 468 || D == 470 || D == 472 || D == 474 || D == 476 || D == 593 || D == 609 || D == 708 || D == 711 || 713 <= D && D <= 715 || D == 717 || D == 720 || 728 <= D && D <= 731 || D == 733 || D == 735 || 768 <= D && D <= 879 || 913 <= D && D <= 929 || 931 <= D && D <= 937 || 945 <= D && D <= 961 || 963 <= D && D <= 969 || D == 1025 || 1040 <= D && D <= 1103 || D == 1105 || D == 8208 || 8211 <= D && D <= 8214 || 8216 <= D && D <= 8217 || 8220 <= D && D <= 8221 || 8224 <= D && D <= 8226 || 8228 <= D && D <= 8231 || D == 8240 || 8242 <= D && D <= 8243 || D == 8245 || D == 8251 || D == 8254 || D == 8308 || D == 8319 || 8321 <= D && D <= 8324 || D == 8364 || D == 8451 || D == 8453 || D == 8457 || D == 8467 || D == 8470 || 8481 <= D && D <= 8482 || D == 8486 || D == 8491 || 8531 <= D && D <= 8532 || 8539 <= D && D <= 8542 || 8544 <= D && D <= 8555 || 8560 <= D && D <= 8569 || D == 8585 || 8592 <= D && D <= 8601 || 8632 <= D && D <= 8633 || D == 8658 || D == 8660 || D == 8679 || D == 8704 || 8706 <= D && D <= 8707 || 8711 <= D && D <= 8712 || D == 8715 || D == 8719 || D == 8721 || D == 8725 || D == 8730 || 8733 <= D && D <= 8736 || D == 8739 || D == 8741 || 8743 <= D && D <= 8748 || D == 8750 || 8756 <= D && D <= 8759 || 8764 <= D && D <= 8765 || D == 8776 || D == 8780 || D == 8786 || 8800 <= D && D <= 8801 || 8804 <= D && D <= 8807 || 8810 <= D && D <= 8811 || 8814 <= D && D <= 8815 || 8834 <= D && D <= 8835 || 8838 <= D && D <= 8839 || D == 8853 || D == 8857 || D == 8869 || D == 8895 || D == 8978 || 9312 <= D && D <= 9449 || 9451 <= D && D <= 9547 || 9552 <= D && D <= 9587 || 9600 <= D && D <= 9615 || 9618 <= D && D <= 9621 || 9632 <= D && D <= 9633 || 9635 <= D && D <= 9641 || 9650 <= D && D <= 9651 || 9654 <= D && D <= 9655 || 9660 <= D && D <= 9661 || 9664 <= D && D <= 9665 || 9670 <= D && D <= 9672 || D == 9675 || 9678 <= D && D <= 9681 || 9698 <= D && D <= 9701 || D == 9711 || 9733 <= D && D <= 9734 || D == 9737 || 9742 <= D && D <= 9743 || 9748 <= D && D <= 9749 || D == 9756 || D == 9758 || D == 9792 || D == 9794 || 9824 <= D && D <= 9825 || 9827 <= D && D <= 9829 || 9831 <= D && D <= 9834 || 9836 <= D && D <= 9837 || D == 9839 || 9886 <= D && D <= 9887 || 9918 <= D && D <= 9919 || 9924 <= D && D <= 9933 || 9935 <= D && D <= 9953 || D == 9955 || 9960 <= D && D <= 9983 || D == 10045 || D == 10071 || 10102 <= D && D <= 10111 || 11093 <= D && D <= 11097 || 12872 <= D && D <= 12879 || 57344 <= D && D <= 63743 || 65024 <= D && D <= 65039 || D == 65533 || 127232 <= D && D <= 127242 || 127248 <= D && D <= 127277 || 127280 <= D && D <= 127337 || 127344 <= D && D <= 127386 || 917760 <= D && D <= 917999 || 983040 <= D && D <= 1048573 || 1048576 <= D && D <= 1114109 ? "A" : "N";
+		}, u.characterLength = function(e) {
+			var s = this.eastAsianWidth(e);
+			return s == "F" || s == "W" || s == "A" ? 2 : 1;
+		};
+		function F(e) {
+			return e.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[^\uD800-\uDFFF]/g) || [];
+		}
+		u.length = function(e) {
+			for (var s = F(e), i = 0, D = 0; D < s.length; D++) i = i + this.characterLength(s[D]);
+			return i;
+		}, u.slice = function(e, s, i) {
+			textLen = u.length(e), s = s || 0, i = i || 1, s < 0 && (s = textLen + s), i < 0 && (i = textLen + i);
+			for (var D = "", C = 0, o = F(e), E = 0; E < o.length; E++) {
+				var a = o[E], n = u.length(a);
+				if (C >= s - (n == 2 ? 1 : 0)) if (C + n <= i) D += a;
+				else break;
+				C += n;
+			}
+			return D;
+		};
+	})(P$1);
+	X = P$1.exports;
+	DD = O$2(X);
+	uD = function() {
+		return /\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62(?:\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73|\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74|\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67)\uDB40\uDC7F|(?:\uD83E\uDDD1\uD83C\uDFFF\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFF\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFE])|(?:\uD83E\uDDD1\uD83C\uDFFE\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFE\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFD\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFD\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFC\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFC\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFB\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFC-\uDFFF])|\uD83D\uDC68(?:\uD83C\uDFFB(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFC-\uDFFF])|[\u2695\u2696\u2708]\uFE0F|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))?|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83D\uDC68|(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFE])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])\uFE0F|\u200D(?:(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D[\uDC66\uDC67])|\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC)?|(?:\uD83D\uDC69(?:\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69]))|\uD83E\uDDD1(?:\uD83C[\uDFFB-\uDFFF])\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1)(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC69(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83E\uDDD1(?:\u200D(?:\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83D\uDC69\u200D\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D\uDC69\u200D\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|(?:\uD83D\uDC41\uFE0F\u200D\uD83D\uDDE8|\uD83E\uDDD1(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDC69(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDE36\u200D\uD83C\uDF2B|\uD83C\uDFF3\uFE0F\u200D\u26A7|\uD83D\uDC3B\u200D\u2744|(?:(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF])\u200D[\u2640\u2642]|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])\u200D[\u2640\u2642]|\uD83C\uDFF4\u200D\u2620|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])\u200D[\u2640\u2642]|[\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u2328\u23CF\u23ED-\u23EF\u23F1\u23F2\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB\u25FC\u2600-\u2604\u260E\u2611\u2618\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u2692\u2694-\u2697\u2699\u269B\u269C\u26A0\u26A7\u26B0\u26B1\u26C8\u26CF\u26D1\u26D3\u26E9\u26F0\u26F1\u26F4\u26F7\u26F8\u2702\u2708\u2709\u270F\u2712\u2714\u2716\u271D\u2721\u2733\u2734\u2744\u2747\u2763\u27A1\u2934\u2935\u2B05-\u2B07\u3030\u303D\u3297\u3299]|\uD83C[\uDD70\uDD71\uDD7E\uDD7F\uDE02\uDE37\uDF21\uDF24-\uDF2C\uDF36\uDF7D\uDF96\uDF97\uDF99-\uDF9B\uDF9E\uDF9F\uDFCD\uDFCE\uDFD4-\uDFDF\uDFF5\uDFF7]|\uD83D[\uDC3F\uDCFD\uDD49\uDD4A\uDD6F\uDD70\uDD73\uDD76-\uDD79\uDD87\uDD8A-\uDD8D\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA\uDECB\uDECD-\uDECF\uDEE0-\uDEE5\uDEE9\uDEF0\uDEF3])\uFE0F|\uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08|\uD83D\uDC69\u200D\uD83D\uDC67|\uD83D\uDC69\u200D\uD83D\uDC66|\uD83D\uDE35\u200D\uD83D\uDCAB|\uD83D\uDE2E\u200D\uD83D\uDCA8|\uD83D\uDC15\u200D\uD83E\uDDBA|\uD83E\uDDD1(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83D\uDC69(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83C\uDDFD\uD83C\uDDF0|\uD83C\uDDF6\uD83C\uDDE6|\uD83C\uDDF4\uD83C\uDDF2|\uD83D\uDC08\u200D\u2B1B|\u2764\uFE0F\u200D(?:\uD83D\uDD25|\uD83E\uDE79)|\uD83D\uDC41\uFE0F|\uD83C\uDFF3\uFE0F|\uD83C\uDDFF(?:\uD83C[\uDDE6\uDDF2\uDDFC])|\uD83C\uDDFE(?:\uD83C[\uDDEA\uDDF9])|\uD83C\uDDFC(?:\uD83C[\uDDEB\uDDF8])|\uD83C\uDDFB(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA])|\uD83C\uDDFA(?:\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF])|\uD83C\uDDF9(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF])|\uD83C\uDDF8(?:\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF])|\uD83C\uDDF7(?:\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC])|\uD83C\uDDF5(?:\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE])|\uD83C\uDDF3(?:\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF])|\uD83C\uDDF2(?:\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF])|\uD83C\uDDF1(?:\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE])|\uD83C\uDDF0(?:\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF])|\uD83C\uDDEF(?:\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5])|\uD83C\uDDEE(?:\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9])|\uD83C\uDDED(?:\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA])|\uD83C\uDDEC(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE])|\uD83C\uDDEB(?:\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7])|\uD83C\uDDEA(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA])|\uD83C\uDDE9(?:\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF])|\uD83C\uDDE8(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF5\uDDF7\uDDFA-\uDDFF])|\uD83C\uDDE7(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF])|\uD83C\uDDE6(?:\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF])|[#\*0-9]\uFE0F\u20E3|\u2764\uFE0F|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|\uD83C\uDFF4|(?:[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5])(?:\uD83C[\uDFFB-\uDFFF])|(?:[\u261D\u270C\u270D]|\uD83D[\uDD74\uDD90])(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC08\uDC15\uDC3B\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE2E\uDE35\uDE36\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5]|\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD]|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF]|[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF84\uDF86-\uDF93\uDFA0-\uDFC1\uDFC5\uDFC6\uDFC8\uDFC9\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC07\uDC09-\uDC14\uDC16-\uDC3A\uDC3C-\uDC3E\uDC40\uDC44\uDC45\uDC51-\uDC65\uDC6A\uDC79-\uDC7B\uDC7D-\uDC80\uDC84\uDC88-\uDC8E\uDC90\uDC92-\uDCA9\uDCAB-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDDA4\uDDFB-\uDE2D\uDE2F-\uDE34\uDE37-\uDE44\uDE48-\uDE4A\uDE80-\uDEA2\uDEA4-\uDEB3\uDEB7-\uDEBF\uDEC1-\uDEC5\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0D\uDD0E\uDD10-\uDD17\uDD1D\uDD20-\uDD25\uDD27-\uDD2F\uDD3A\uDD3F-\uDD45\uDD47-\uDD76\uDD78\uDD7A-\uDDB4\uDDB7\uDDBA\uDDBC-\uDDCB\uDDD0\uDDE0-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6]|(?:[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF93\uDFA0-\uDFCA\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF4\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC3E\uDC40\uDC42-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDD7A\uDD95\uDD96\uDDA4\uDDFB-\uDE4F\uDE80-\uDEC5\uDECC\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])|(?:[#\*0-9\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB-\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u261D\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692-\u2697\u2699\u269B\u269C\u26A0\u26A1\u26A7\u26AA\u26AB\u26B0\u26B1\u26BD\u26BE\u26C4\u26C5\u26C8\u26CE\u26CF\u26D1\u26D3\u26D4\u26E9\u26EA\u26F0-\u26F5\u26F7-\u26FA\u26FD\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716\u271D\u2721\u2728\u2733\u2734\u2744\u2747\u274C\u274E\u2753-\u2755\u2757\u2763\u2764\u2795-\u2797\u27A1\u27B0\u27BF\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B50\u2B55\u3030\u303D\u3297\u3299]|\uD83C[\uDC04\uDCCF\uDD70\uDD71\uDD7E\uDD7F\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE1A\uDE2F\uDE32-\uDE3A\uDE50\uDE51\uDF00-\uDF21\uDF24-\uDF93\uDF96\uDF97\uDF99-\uDF9B\uDF9E-\uDFF0\uDFF3-\uDFF5\uDFF7-\uDFFF]|\uD83D[\uDC00-\uDCFD\uDCFF-\uDD3D\uDD49-\uDD4E\uDD50-\uDD67\uDD6F\uDD70\uDD73-\uDD7A\uDD87\uDD8A-\uDD8D\uDD90\uDD95\uDD96\uDDA4\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA-\uDE4F\uDE80-\uDEC5\uDECB-\uDED2\uDED5-\uDED7\uDEE0-\uDEE5\uDEE9\uDEEB\uDEEC\uDEF0\uDEF3-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])\uFE0F|(?:[\u261D\u26F9\u270A-\u270D]|\uD83C[\uDF85\uDFC2-\uDFC4\uDFC7\uDFCA-\uDFCC]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66-\uDC78\uDC7C\uDC81-\uDC83\uDC85-\uDC87\uDC8F\uDC91\uDCAA\uDD74\uDD75\uDD7A\uDD90\uDD95\uDD96\uDE45-\uDE47\uDE4B-\uDE4F\uDEA3\uDEB4-\uDEB6\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1F\uDD26\uDD30-\uDD39\uDD3C-\uDD3E\uDD77\uDDB5\uDDB6\uDDB8\uDDB9\uDDBB\uDDCD-\uDDCF\uDDD1-\uDDDD])/g;
+	};
+	FD = O$2(uD);
+	m$1 = 10, L$1 = (t = 0) => (u) => `\x1B[${u + t}m`, N$2 = (t = 0) => (u) => `\x1B[${38 + t};5;${u}m`, I$2 = (t = 0) => (u, F, e) => `\x1B[${38 + t};2;${u};${F};${e}m`, r$1 = {
+		modifier: {
+			reset: [0, 0],
+			bold: [1, 22],
+			dim: [2, 22],
+			italic: [3, 23],
+			underline: [4, 24],
+			overline: [53, 55],
+			inverse: [7, 27],
+			hidden: [8, 28],
+			strikethrough: [9, 29]
+		},
+		color: {
+			black: [30, 39],
+			red: [31, 39],
+			green: [32, 39],
+			yellow: [33, 39],
+			blue: [34, 39],
+			magenta: [35, 39],
+			cyan: [36, 39],
+			white: [37, 39],
+			blackBright: [90, 39],
+			gray: [90, 39],
+			grey: [90, 39],
+			redBright: [91, 39],
+			greenBright: [92, 39],
+			yellowBright: [93, 39],
+			blueBright: [94, 39],
+			magentaBright: [95, 39],
+			cyanBright: [96, 39],
+			whiteBright: [97, 39]
+		},
+		bgColor: {
+			bgBlack: [40, 49],
+			bgRed: [41, 49],
+			bgGreen: [42, 49],
+			bgYellow: [43, 49],
+			bgBlue: [44, 49],
+			bgMagenta: [45, 49],
+			bgCyan: [46, 49],
+			bgWhite: [47, 49],
+			bgBlackBright: [100, 49],
+			bgGray: [100, 49],
+			bgGrey: [100, 49],
+			bgRedBright: [101, 49],
+			bgGreenBright: [102, 49],
+			bgYellowBright: [103, 49],
+			bgBlueBright: [104, 49],
+			bgMagentaBright: [105, 49],
+			bgCyanBright: [106, 49],
+			bgWhiteBright: [107, 49]
+		}
+	};
+	Object.keys(r$1.modifier);
+	tD = Object.keys(r$1.color), eD = Object.keys(r$1.bgColor);
+	[...tD, ...eD];
+	iD = sD(), v$1 = new Set(["\x1B", ""]), CD = 39, w$1 = "\x07", W$1 = "[", rD = "]", R$2 = "m", y$2 = `${rD}8;;`, V$1 = (t) => `${v$1.values().next().value}${W$1}${t}${R$2}`, z$1 = (t) => `${v$1.values().next().value}${y$2}${t}${w$1}`, ED = (t) => t.split(" ").map((u) => A$1$1(u)), _$2 = (t, u, F) => {
+		const e = [...u];
+		let s = false, i = false, D = A$1$1(T$1$1(t[t.length - 1]));
+		for (const [C, o] of e.entries()) {
+			const E = A$1$1(o);
+			if (D + E <= F ? t[t.length - 1] += o : (t.push(o), D = 0), v$1.has(o) && (s = true, i = e.slice(C + 1).join("").startsWith(y$2)), s) {
+				i ? o === w$1 && (s = false, i = false) : o === R$2 && (s = false);
+				continue;
+			}
+			D += E, D === F && C < e.length - 1 && (t.push(""), D = 0);
+		}
+		!D && t[t.length - 1].length > 0 && t.length > 1 && (t[t.length - 2] += t.pop());
+	}, nD = (t) => {
+		const u = t.split(" ");
+		let F = u.length;
+		for (; F > 0 && !(A$1$1(u[F - 1]) > 0);) F--;
+		return F === u.length ? t : u.slice(0, F).join(" ") + u.slice(F).join("");
+	}, oD = (t, u, F = {}) => {
+		if (F.trim !== false && t.trim() === "") return "";
+		let e = "", s, i;
+		const D = ED(t);
+		let C = [""];
+		for (const [E, a] of t.split(" ").entries()) {
+			F.trim !== false && (C[C.length - 1] = C[C.length - 1].trimStart());
+			let n = A$1$1(C[C.length - 1]);
+			if (E !== 0 && (n >= u && (F.wordWrap === false || F.trim === false) && (C.push(""), n = 0), (n > 0 || F.trim === false) && (C[C.length - 1] += " ", n++)), F.hard && D[E] > u) {
+				const B = u - n, p = 1 + Math.floor((D[E] - B - 1) / u);
+				Math.floor((D[E] - 1) / u) < p && C.push(""), _$2(C, a, u);
+				continue;
+			}
+			if (n + D[E] > u && n > 0 && D[E] > 0) {
+				if (F.wordWrap === false && n < u) {
+					_$2(C, a, u);
+					continue;
+				}
+				C.push("");
+			}
+			if (n + D[E] > u && F.wordWrap === false) {
+				_$2(C, a, u);
+				continue;
+			}
+			C[C.length - 1] += a;
+		}
+		F.trim !== false && (C = C.map((E) => nD(E)));
+		const o = [...C.join(`
+`)];
+		for (const [E, a] of o.entries()) {
+			if (e += a, v$1.has(a)) {
+				const { groups: B } = new RegExp(`(?:\\${W$1}(?<code>\\d+)m|\\${y$2}(?<uri>.*)${w$1})`).exec(o.slice(E).join("")) || { groups: {} };
+				if (B.code !== void 0) {
+					const p = Number.parseFloat(B.code);
+					s = p === CD ? void 0 : p;
+				} else B.uri !== void 0 && (i = B.uri.length === 0 ? void 0 : B.uri);
+			}
+			const n = iD.codes.get(Number(s));
+			o[E + 1] === `
+` ? (i && (e += z$1("")), s && n && (e += V$1(n))) : a === `
+` && (s && n && (e += V$1(s)), i && (e += z$1(i)));
+		}
+		return e;
+	};
+	c$1 = {
+		actions: new Set([
+			"up",
+			"down",
+			"left",
+			"right",
+			"space",
+			"enter",
+			"cancel"
+		]),
+		aliases: new Map([
+			["k", "up"],
+			["j", "down"],
+			["h", "left"],
+			["l", "right"],
+			["", "cancel"],
+			["escape", "cancel"]
+		])
+	};
+	globalThis.process.platform.startsWith("win");
+	S$2 = Symbol("clack:cancel");
+	AD = Object.defineProperty, pD = (t, u, F) => u in t ? AD(t, u, {
+		enumerable: true,
+		configurable: true,
+		writable: true,
+		value: F
+	}) : t[u] = F, h$1 = (t, u, F) => (pD(t, typeof u != "symbol" ? u + "" : u, F), F);
+	x$1 = class {
+		constructor(u, F = true) {
+			h$1(this, "input"), h$1(this, "output"), h$1(this, "_abortSignal"), h$1(this, "rl"), h$1(this, "opts"), h$1(this, "_render"), h$1(this, "_track", false), h$1(this, "_prevFrame", ""), h$1(this, "_subscribers", /* @__PURE__ */ new Map()), h$1(this, "_cursor", 0), h$1(this, "state", "initial"), h$1(this, "error", ""), h$1(this, "value");
+			const { input: e = stdin, output: s = stdout, render: i, signal: D, ...C } = u;
+			this.opts = C, this.onKeypress = this.onKeypress.bind(this), this.close = this.close.bind(this), this.render = this.render.bind(this), this._render = i.bind(this), this._track = F, this._abortSignal = D, this.input = e, this.output = s;
+		}
+		unsubscribe() {
+			this._subscribers.clear();
+		}
+		setSubscriber(u, F) {
+			const e = this._subscribers.get(u) ?? [];
+			e.push(F), this._subscribers.set(u, e);
+		}
+		on(u, F) {
+			this.setSubscriber(u, { cb: F });
+		}
+		once(u, F) {
+			this.setSubscriber(u, {
+				cb: F,
+				once: true
+			});
+		}
+		emit(u, ...F) {
+			const e = this._subscribers.get(u) ?? [], s = [];
+			for (const i of e) i.cb(...F), i.once && s.push(() => e.splice(e.indexOf(i), 1));
+			for (const i of s) i();
+		}
+		prompt() {
+			return new Promise((u, F) => {
+				if (this._abortSignal) {
+					if (this._abortSignal.aborted) return this.state = "cancel", this.close(), u(S$2);
+					this._abortSignal.addEventListener("abort", () => {
+						this.state = "cancel", this.close();
+					}, { once: true });
+				}
+				const e = new WriteStream(0);
+				e._write = (s, i, D) => {
+					this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
+				}, this.input.pipe(e), this.rl = f.createInterface({
+					input: this.input,
+					output: e,
+					tabSize: 2,
+					prompt: "",
+					escapeCodeTimeout: 50
+				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
+					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
+				}), this.once("cancel", () => {
+					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$2);
+				});
+			});
+		}
+		onKeypress(u, F) {
+			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
+				if (this.opts.validate) {
+					const e = this.opts.validate(this.value);
+					e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
+				}
+				this.state !== "error" && (this.state = "submit");
+			}
+			k$1([
+				u,
+				F?.name,
+				F?.sequence
+			], "cancel") && (this.state = "cancel"), (this.state === "submit" || this.state === "cancel") && this.emit("finalize"), this.render(), (this.state === "submit" || this.state === "cancel") && this.close();
+		}
+		close() {
+			this.input.unpipe(), this.input.removeListener("keypress", this.onKeypress), this.output.write(`
+`), d$1(this.input, false), this.rl?.close(), this.rl = void 0, this.emit(`${this.state}`, this.value), this.unsubscribe();
+		}
+		restoreCursor() {
+			const u = G$2(this._prevFrame, process.stdout.columns, { hard: true }).split(`
+`).length - 1;
+			this.output.write(srcExports.cursor.move(-999, u * -1));
+		}
+		render() {
+			const u = G$2(this._render(this) ?? "", process.stdout.columns, { hard: true });
+			if (u !== this._prevFrame) {
+				if (this.state === "initial") this.output.write(srcExports.cursor.hide);
+				else {
+					const F = lD(this._prevFrame, u);
+					if (this.restoreCursor(), F && F?.length === 1) {
+						const e = F[0];
+						this.output.write(srcExports.cursor.move(0, e)), this.output.write(srcExports.erase.lines(1));
+						const s = u.split(`
+`);
+						this.output.write(s[e]), this._prevFrame = u, this.output.write(srcExports.cursor.move(0, s.length - e - 1));
+						return;
+					}
+					if (F && F?.length > 1) {
+						const e = F[0];
+						this.output.write(srcExports.cursor.move(0, e)), this.output.write(srcExports.erase.down());
+						const s = u.split(`
+`).slice(e);
+						this.output.write(s.join(`
+`)), this._prevFrame = u;
+						return;
+					}
+					this.output.write(srcExports.erase.down());
+				}
+				this.output.write(u), this.state === "initial" && (this.state = "active"), this._prevFrame = u;
+			}
+		}
+	};
+	fD = class extends x$1 {
+		get cursor() {
+			return this.value ? 0 : 1;
+		}
+		get _value() {
+			return this.cursor === 0;
+		}
+		constructor(u) {
+			super(u, false), this.value = !!u.initialValue, this.on("value", () => {
+				this.value = this._value;
+			}), this.on("confirm", (F) => {
+				this.output.write(srcExports.cursor.move(0, -1)), this.value = F, this.state = "submit", this.close();
+			}), this.on("cursor", () => {
+				this.value = !this.value;
+			});
+		}
+	};
+	bD = Object.defineProperty, mD = (t, u, F) => u in t ? bD(t, u, {
+		enumerable: true,
+		configurable: true,
+		writable: true,
+		value: F
+	}) : t[u] = F, Y = (t, u, F) => (mD(t, typeof u != "symbol" ? u + "" : u, F), F);
+	wD = class extends x$1 {
+		constructor(u) {
+			super(u, false), Y(this, "options"), Y(this, "cursor", 0), this.options = u.options, this.value = [...u.initialValues ?? []], this.cursor = Math.max(this.options.findIndex(({ value: F }) => F === u.cursorAt), 0), this.on("key", (F) => {
+				F === "a" && this.toggleAll();
+			}), this.on("cursor", (F) => {
+				switch (F) {
+					case "left":
+					case "up":
+						this.cursor = this.cursor === 0 ? this.options.length - 1 : this.cursor - 1;
+						break;
+					case "down":
+					case "right":
+						this.cursor = this.cursor === this.options.length - 1 ? 0 : this.cursor + 1;
+						break;
+					case "space":
+						this.toggleValue();
+						break;
+				}
+			});
+		}
+		get _value() {
+			return this.options[this.cursor].value;
+		}
+		toggleAll() {
+			this.value = this.value.length === this.options.length ? [] : this.options.map((F) => F.value);
+		}
+		toggleValue() {
+			this.value = this.value.includes(this._value) ? this.value.filter((F) => F !== this._value) : [...this.value, this._value];
+		}
+	};
+	SD = Object.defineProperty, $D = (t, u, F) => u in t ? SD(t, u, {
+		enumerable: true,
+		configurable: true,
+		writable: true,
+		value: F
+	}) : t[u] = F, q$1 = (t, u, F) => ($D(t, typeof u != "symbol" ? u + "" : u, F), F);
+	jD = class extends x$1 {
+		constructor(u) {
+			super(u, false), q$1(this, "options"), q$1(this, "cursor", 0), this.options = u.options, this.cursor = this.options.findIndex(({ value: F }) => F === u.initialValue), this.cursor === -1 && (this.cursor = 0), this.changeValue(), this.on("cursor", (F) => {
+				switch (F) {
+					case "left":
+					case "up":
+						this.cursor = this.cursor === 0 ? this.options.length - 1 : this.cursor - 1;
+						break;
+					case "down":
+					case "right":
+						this.cursor = this.cursor === this.options.length - 1 ? 0 : this.cursor + 1;
+						break;
+				}
+				this.changeValue();
+			});
+		}
+		get _value() {
+			return this.options[this.cursor];
+		}
+		changeValue() {
+			this.value = this._value.value;
+		}
+	};
+	PD = class extends x$1 {
+		get valueWithCursor() {
+			if (this.state === "submit") return this.value;
+			if (this.cursor >= this.value.length) return `${this.value}\u2588`;
+			const u = this.value.slice(0, this.cursor), [F, ...e$1] = this.value.slice(this.cursor);
+			return `${u}${e.inverse(F)}${e$1.join("")}`;
+		}
+		get cursor() {
+			return this._cursor;
+		}
+		constructor(u) {
+			super(u), this.on("finalize", () => {
+				this.value || (this.value = u.defaultValue);
+			});
+		}
+	};
+	V$2 = ce(), u$2 = (t, n) => V$2 ? t : n, le = u$2("❯", ">"), L$2 = u$2("■", "x"), W$2 = u$2("▲", "x"), C$2 = u$2("✔", "√"), o$1 = u$2(""), d$2 = u$2(""), k$2 = u$2("●", ">"), P$2 = u$2("○", " "), A$2 = u$2("◻", "[•]"), T$2 = u$2("◼", "[+]"), F$2 = u$2("◻", "[ ]"), w$2 = (t) => {
+		switch (t) {
+			case "initial":
+			case "active": return e.cyan(le);
+			case "cancel": return e.red(L$2);
+			case "error": return e.yellow(W$2);
+			case "submit": return e.green(C$2);
+		}
+	}, B$1 = (t) => {
+		const { cursor: n, options: s, style: r } = t, i = t.maxItems ?? Number.POSITIVE_INFINITY, a = Math.max(process.stdout.rows - 4, 0), c = Math.min(a, Math.max(i, 5));
+		let l = 0;
+		n >= l + c - 3 ? l = Math.max(Math.min(n - c + 3, s.length - c), 0) : n < l + 2 && (l = Math.max(n - 2, 0));
+		const $ = c < s.length && l > 0, p = c < s.length && l + c < s.length;
+		return s.slice(l, l + c).map((M, v, x) => {
+			const j = v === 0 && $, E = v === x.length - 1 && p;
+			return j || E ? e.dim("...") : r(M, v + l === n);
+		});
+	}, he = (t) => new PD({
+		validate: t.validate,
+		placeholder: t.placeholder,
+		defaultValue: t.defaultValue,
+		initialValue: t.initialValue,
+		render() {
+			const n = `${e.gray(o$1)}
+${w$2(this.state)} ${t.message}
+`, s = t.placeholder ? e.inverse(t.placeholder[0]) + e.dim(t.placeholder.slice(1)) : e.inverse(e.hidden("_")), r = this.value ? this.valueWithCursor : s;
+			switch (this.state) {
+				case "error": return `${n.trim()}
+${e.yellow(o$1)} ${r}
+${e.yellow(d$2)} ${e.yellow(this.error)}
+`;
+				case "submit": return `${n}${e.gray(o$1)} ${e.dim(this.value || t.placeholder)}`;
+				case "cancel": return `${n}${e.gray(o$1)} ${e.strikethrough(e.dim(this.value ?? ""))}${this.value?.trim() ? `
+${e.gray(o$1)}` : ""}`;
+				default: return `${n}${e.cyan(o$1)} ${r}
+${e.cyan(d$2)}
+`;
+			}
+		}
+	}).prompt(), ye = (t) => {
+		const n = t.active ?? "Yes", s = t.inactive ?? "No";
+		return new fD({
+			active: n,
+			inactive: s,
+			initialValue: t.initialValue ?? true,
+			render() {
+				const r = `${e.gray(o$1)}
+${w$2(this.state)} ${t.message}
+`, i = this.value ? n : s;
+				switch (this.state) {
+					case "submit": return `${r}${e.gray(o$1)} ${e.dim(i)}`;
+					case "cancel": return `${r}${e.gray(o$1)} ${e.strikethrough(e.dim(i))}
+${e.gray(o$1)}`;
+					default: return `${r}${e.cyan(o$1)} ${this.value ? `${e.green(k$2)} ${n}` : `${e.dim(P$2)} ${e.dim(n)}`} ${e.dim("/")} ${this.value ? `${e.dim(P$2)} ${e.dim(s)}` : `${e.green(k$2)} ${s}`}
+${e.cyan(d$2)}
+`;
+				}
+			}
+		}).prompt();
+	}, ve = (t) => {
+		const n = (s, r) => {
+			const i = s.label ?? String(s.value);
+			switch (r) {
+				case "selected": return `${e.dim(i)}`;
+				case "active": return `${e.green(k$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}`;
+				case "cancelled": return `${e.strikethrough(e.dim(i))}`;
+				default: return `${e.dim(P$2)} ${e.dim(i)}`;
+			}
+		};
+		return new jD({
+			options: t.options,
+			initialValue: t.initialValue,
+			render() {
+				const s = `${e.gray(o$1)}
+${w$2(this.state)} ${t.message}
+`;
+				switch (this.state) {
+					case "submit": return `${s}${e.gray(o$1)} ${n(this.options[this.cursor], "selected")}`;
+					case "cancel": return `${s}${e.gray(o$1)} ${n(this.options[this.cursor], "cancelled")}
+${e.gray(o$1)}`;
+					default: return `${s}${e.cyan(o$1)} ${B$1({
+						cursor: this.cursor,
+						options: this.options,
+						maxItems: t.maxItems,
+						style: (r, i) => n(r, i ? "active" : "inactive")
+					}).join(`
+${e.cyan(o$1)}  `)}
+${e.cyan(d$2)}
+`;
+				}
+			}
+		}).prompt();
+	}, fe = (t) => {
+		const n = (s, r) => {
+			const i = s.label ?? String(s.value);
+			return r === "active" ? `${e.cyan(A$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "selected" ? `${e.green(T$2)} ${e.dim(i)}` : r === "cancelled" ? `${e.strikethrough(e.dim(i))}` : r === "active-selected" ? `${e.green(T$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "submitted" ? `${e.dim(i)}` : `${e.dim(F$2)} ${e.dim(i)}`;
+		};
+		return new wD({
+			options: t.options,
+			initialValues: t.initialValues,
+			required: t.required ?? true,
+			cursorAt: t.cursorAt,
+			validate(s) {
+				if (this.required && s.length === 0) return `Please select at least one option.
+${e.reset(e.dim(`Press ${e.gray(e.bgWhite(e.inverse(" space ")))} to select, ${e.gray(e.bgWhite(e.inverse(" enter ")))} to submit`))}`;
+			},
+			render() {
+				const s = `${e.gray(o$1)}
+${w$2(this.state)} ${t.message}
+`, r = (i, a) => {
+					const c = this.value.includes(i.value);
+					return a && c ? n(i, "active-selected") : c ? n(i, "selected") : n(i, a ? "active" : "inactive");
+				};
+				switch (this.state) {
+					case "submit": return `${s}${e.gray(o$1)} ${this.options.filter(({ value: i }) => this.value.includes(i)).map((i) => n(i, "submitted")).join(e.dim(", ")) || e.dim("none")}`;
+					case "cancel": {
+						const i = this.options.filter(({ value: a }) => this.value.includes(a)).map((a) => n(a, "cancelled")).join(e.dim(", "));
+						return `${s}${e.gray(o$1)} ${i.trim() ? `${i}
+${e.gray(o$1)}` : ""}`;
+					}
+					case "error": {
+						const i = this.error.split(`
+`).map((a, c) => c === 0 ? `${e.yellow(d$2)} ${e.yellow(a)}` : `   ${a}`).join(`
+`);
+						return `${s + e.yellow(o$1)} ${B$1({
+							options: this.options,
+							cursor: this.cursor,
+							maxItems: t.maxItems,
+							style: r
+						}).join(`
+${e.yellow(o$1)}  `)}
+${i}
+`;
+					}
+					default: return `${s}${e.cyan(o$1)} ${B$1({
+						options: this.options,
+						cursor: this.cursor,
+						maxItems: t.maxItems,
+						style: r
+					}).join(`
+${e.cyan(o$1)}  `)}
+${e.cyan(d$2)}
+`;
+				}
+			}
+		}).prompt();
+	};
+	`${e.gray(o$1)}`;
+	kCancel = Symbol.for("cancel");
+}));
+const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta.env || globalThis.Deno?.env.toObject() || globalThis.__env__ || (e ? r : globalThis), o = new Proxy(r, {
+	get(e, s) {
+		return i()[s] ?? r[s];
+	},
+	has(e, s) {
+		return s in i() || s in r;
+	},
+	set(e, s, E) {
+		const B = i(true);
+		return B[s] = E, true;
+	},
+	deleteProperty(e, s) {
+		if (!s) return false;
+		const E = i(true);
+		return delete E[s], true;
+	},
+	ownKeys() {
+		const e = i(true);
+		return Object.keys(e);
+	}
+}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$2 = [
+	["APPVEYOR"],
+	[
+		"AWS_AMPLIFY",
+		"AWS_APP_ID",
+		{ ci: true }
+	],
+	["AZURE_PIPELINES", "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"],
+	["AZURE_STATIC", "INPUT_AZURE_STATIC_WEB_APPS_API_TOKEN"],
+	["APPCIRCLE", "AC_APPCIRCLE"],
+	["BAMBOO", "bamboo_planKey"],
+	["BITBUCKET", "BITBUCKET_COMMIT"],
+	["BITRISE", "BITRISE_IO"],
+	["BUDDY", "BUDDY_WORKSPACE_ID"],
+	["BUILDKITE"],
+	["CIRCLE", "CIRCLECI"],
+	["CIRRUS", "CIRRUS_CI"],
+	[
+		"CLOUDFLARE_PAGES",
+		"CF_PAGES",
+		{ ci: true }
+	],
+	["CODEBUILD", "CODEBUILD_BUILD_ARN"],
+	["CODEFRESH", "CF_BUILD_ID"],
+	["DRONE"],
+	["DRONE", "DRONE_BUILD_EVENT"],
+	["DSARI"],
+	["GITHUB_ACTIONS"],
+	["GITLAB", "GITLAB_CI"],
+	["GITLAB", "CI_MERGE_REQUEST_ID"],
+	["GOCD", "GO_PIPELINE_LABEL"],
+	["LAYERCI"],
+	["HUDSON", "HUDSON_URL"],
+	["JENKINS", "JENKINS_URL"],
+	["MAGNUM"],
+	["NETLIFY"],
+	[
+		"NETLIFY",
+		"NETLIFY_LOCAL",
+		{ ci: false }
+	],
+	["NEVERCODE"],
+	["RENDER"],
+	["SAIL", "SAILCI"],
+	["SEMAPHORE"],
+	["SCREWDRIVER"],
+	["SHIPPABLE"],
+	["SOLANO", "TDDIUM"],
+	["STRIDER"],
+	["TEAMCITY", "TEAMCITY_VERSION"],
+	["TRAVIS"],
+	["VERCEL", "NOW_BUILDER"],
+	[
+		"VERCEL",
+		"VERCEL",
+		{ ci: false }
+	],
+	[
+		"VERCEL",
+		"VERCEL_ENV",
+		{ ci: false }
+	],
+	["APPCENTER", "APPCENTER_BUILD_ID"],
+	[
+		"CODESANDBOX",
+		"CODESANDBOX_SSE",
+		{ ci: false }
+	],
+	[
+		"CODESANDBOX",
+		"CODESANDBOX_HOST",
+		{ ci: false }
+	],
+	["STACKBLITZ"],
+	["STORMKIT"],
+	["CLEAVR"],
+	["ZEABUR"],
+	[
+		"CODESPHERE",
+		"CODESPHERE_APP_ID",
+		{ ci: true }
+	],
+	["RAILWAY", "RAILWAY_PROJECT_ID"],
+	["RAILWAY", "RAILWAY_SERVICE_ID"],
+	["DENO-DEPLOY", "DENO_DEPLOYMENT_ID"],
+	[
+		"FIREBASE_APP_HOSTING",
+		"FIREBASE_APP_HOSTING",
+		{ ci: true }
+	]
+];
+function b$1() {
+	if (globalThis.process?.env) for (const e of f$2) {
+		const s = e[1] || e[0];
+		if (globalThis.process?.env[s]) return {
+			name: e[0].toLowerCase(),
+			...e[2]
+		};
+	}
+	return globalThis.process?.env?.SHELL === "/bin/jsh" && globalThis.process?.versions?.webcontainer ? {
+		name: "stackblitz",
+		ci: false
+	} : {
+		name: "",
+		ci: false
+	};
+}
+const l$1 = b$1();
+l$1.name;
+function n(e) {
+	return e ? e !== "false" : false;
+}
+const I$1 = globalThis.process?.platform || "", T$1 = n(o.CI) || l$1.ci !== false, a = n(globalThis.process?.stdout && globalThis.process?.stdout.isTTY), g$2 = n(o.DEBUG), R$1 = t === "test" || n(o.TEST);
+n(o.MINIMAL);
+const A$1 = /^win/i.test(I$1);
+!n(o.NO_COLOR) && (n(o.FORCE_COLOR) || (a || A$1) && o.TERM);
+const C$1 = (globalThis.process?.versions?.node || "").replace(/^v/, "") || null;
+Number(C$1?.split(".")[0]);
+const y$1 = globalThis.process || Object.create(null), _$1 = { versions: {} };
+new Proxy(y$1, { get(e, s) {
+	if (s === "env") return o;
+	if (s in e) return e[s];
+	if (s in _$1) return _$1[s];
+} });
+const c = globalThis.process?.release?.name === "node", O$1 = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D$1 = !!globalThis.Deno, L = !!globalThis.fastly, S$1 = !!globalThis.Netlify, u$1 = !!globalThis.EdgeRuntime, N$1 = globalThis.navigator?.userAgent === "Cloudflare-Workers", F$1 = [
+	[S$1, "netlify"],
+	[u$1, "edge-light"],
+	[N$1, "workerd"],
+	[L, "fastly"],
+	[D$1, "deno"],
+	[O$1, "bun"],
+	[c, "node"]
+];
+function G$1() {
+	const e = F$1.find((s) => s[0]);
+	if (e) return { name: e[1] };
+}
+G$1()?.name;
+function ansiRegex({ onlyFirst = false } = {}) {
+	const pattern = [`[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))`, "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
+	return new RegExp(pattern, onlyFirst ? void 0 : "g");
+}
+const regex$1 = ansiRegex();
+function stripAnsi(string) {
+	if (typeof string !== "string") throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
+	return string.replace(regex$1, "");
+}
+function isAmbiguous(x) {
+	return x === 161 || x === 164 || x === 167 || x === 168 || x === 170 || x === 173 || x === 174 || x >= 176 && x <= 180 || x >= 182 && x <= 186 || x >= 188 && x <= 191 || x === 198 || x === 208 || x === 215 || x === 216 || x >= 222 && x <= 225 || x === 230 || x >= 232 && x <= 234 || x === 236 || x === 237 || x === 240 || x === 242 || x === 243 || x >= 247 && x <= 250 || x === 252 || x === 254 || x === 257 || x === 273 || x === 275 || x === 283 || x === 294 || x === 295 || x === 299 || x >= 305 && x <= 307 || x === 312 || x >= 319 && x <= 322 || x === 324 || x >= 328 && x <= 331 || x === 333 || x === 338 || x === 339 || x === 358 || x === 359 || x === 363 || x === 462 || x === 464 || x === 466 || x === 468 || x === 470 || x === 472 || x === 474 || x === 476 || x === 593 || x === 609 || x === 708 || x === 711 || x >= 713 && x <= 715 || x === 717 || x === 720 || x >= 728 && x <= 731 || x === 733 || x === 735 || x >= 768 && x <= 879 || x >= 913 && x <= 929 || x >= 931 && x <= 937 || x >= 945 && x <= 961 || x >= 963 && x <= 969 || x === 1025 || x >= 1040 && x <= 1103 || x === 1105 || x === 8208 || x >= 8211 && x <= 8214 || x === 8216 || x === 8217 || x === 8220 || x === 8221 || x >= 8224 && x <= 8226 || x >= 8228 && x <= 8231 || x === 8240 || x === 8242 || x === 8243 || x === 8245 || x === 8251 || x === 8254 || x === 8308 || x === 8319 || x >= 8321 && x <= 8324 || x === 8364 || x === 8451 || x === 8453 || x === 8457 || x === 8467 || x === 8470 || x === 8481 || x === 8482 || x === 8486 || x === 8491 || x === 8531 || x === 8532 || x >= 8539 && x <= 8542 || x >= 8544 && x <= 8555 || x >= 8560 && x <= 8569 || x === 8585 || x >= 8592 && x <= 8601 || x === 8632 || x === 8633 || x === 8658 || x === 8660 || x === 8679 || x === 8704 || x === 8706 || x === 8707 || x === 8711 || x === 8712 || x === 8715 || x === 8719 || x === 8721 || x === 8725 || x === 8730 || x >= 8733 && x <= 8736 || x === 8739 || x === 8741 || x >= 8743 && x <= 8748 || x === 8750 || x >= 8756 && x <= 8759 || x === 8764 || x === 8765 || x === 8776 || x === 8780 || x === 8786 || x === 8800 || x === 8801 || x >= 8804 && x <= 8807 || x === 8810 || x === 8811 || x === 8814 || x === 8815 || x === 8834 || x === 8835 || x === 8838 || x === 8839 || x === 8853 || x === 8857 || x === 8869 || x === 8895 || x === 8978 || x >= 9312 && x <= 9449 || x >= 9451 && x <= 9547 || x >= 9552 && x <= 9587 || x >= 9600 && x <= 9615 || x >= 9618 && x <= 9621 || x === 9632 || x === 9633 || x >= 9635 && x <= 9641 || x === 9650 || x === 9651 || x === 9654 || x === 9655 || x === 9660 || x === 9661 || x === 9664 || x === 9665 || x >= 9670 && x <= 9672 || x === 9675 || x >= 9678 && x <= 9681 || x >= 9698 && x <= 9701 || x === 9711 || x === 9733 || x === 9734 || x === 9737 || x === 9742 || x === 9743 || x === 9756 || x === 9758 || x === 9792 || x === 9794 || x === 9824 || x === 9825 || x >= 9827 && x <= 9829 || x >= 9831 && x <= 9834 || x === 9836 || x === 9837 || x === 9839 || x === 9886 || x === 9887 || x === 9919 || x >= 9926 && x <= 9933 || x >= 9935 && x <= 9939 || x >= 9941 && x <= 9953 || x === 9955 || x === 9960 || x === 9961 || x >= 9963 && x <= 9969 || x === 9972 || x >= 9974 && x <= 9977 || x === 9979 || x === 9980 || x === 9982 || x === 9983 || x === 10045 || x >= 10102 && x <= 10111 || x >= 11094 && x <= 11097 || x >= 12872 && x <= 12879 || x >= 57344 && x <= 63743 || x >= 65024 && x <= 65039 || x === 65533 || x >= 127232 && x <= 127242 || x >= 127248 && x <= 127277 || x >= 127280 && x <= 127337 || x >= 127344 && x <= 127373 || x === 127375 || x === 127376 || x >= 127387 && x <= 127404 || x >= 917760 && x <= 917999 || x >= 983040 && x <= 1048573 || x >= 1048576 && x <= 1114109;
+}
+function isFullWidth(x) {
+	return x === 12288 || x >= 65281 && x <= 65376 || x >= 65504 && x <= 65510;
+}
+function isWide(x) {
+	return x >= 4352 && x <= 4447 || x === 8986 || x === 8987 || x === 9001 || x === 9002 || x >= 9193 && x <= 9196 || x === 9200 || x === 9203 || x === 9725 || x === 9726 || x === 9748 || x === 9749 || x >= 9776 && x <= 9783 || x >= 9800 && x <= 9811 || x === 9855 || x >= 9866 && x <= 9871 || x === 9875 || x === 9889 || x === 9898 || x === 9899 || x === 9917 || x === 9918 || x === 9924 || x === 9925 || x === 9934 || x === 9940 || x === 9962 || x === 9970 || x === 9971 || x === 9973 || x === 9978 || x === 9981 || x === 9989 || x === 9994 || x === 9995 || x === 10024 || x === 10060 || x === 10062 || x >= 10067 && x <= 10069 || x === 10071 || x >= 10133 && x <= 10135 || x === 10160 || x === 10175 || x === 11035 || x === 11036 || x === 11088 || x === 11093 || x >= 11904 && x <= 11929 || x >= 11931 && x <= 12019 || x >= 12032 && x <= 12245 || x >= 12272 && x <= 12287 || x >= 12289 && x <= 12350 || x >= 12353 && x <= 12438 || x >= 12441 && x <= 12543 || x >= 12549 && x <= 12591 || x >= 12593 && x <= 12686 || x >= 12688 && x <= 12773 || x >= 12783 && x <= 12830 || x >= 12832 && x <= 12871 || x >= 12880 && x <= 42124 || x >= 42128 && x <= 42182 || x >= 43360 && x <= 43388 || x >= 44032 && x <= 55203 || x >= 63744 && x <= 64255 || x >= 65040 && x <= 65049 || x >= 65072 && x <= 65106 || x >= 65108 && x <= 65126 || x >= 65128 && x <= 65131 || x >= 94176 && x <= 94180 || x === 94192 || x === 94193 || x >= 94208 && x <= 100343 || x >= 100352 && x <= 101589 || x >= 101631 && x <= 101640 || x >= 110576 && x <= 110579 || x >= 110581 && x <= 110587 || x === 110589 || x === 110590 || x >= 110592 && x <= 110882 || x === 110898 || x >= 110928 && x <= 110930 || x === 110933 || x >= 110948 && x <= 110951 || x >= 110960 && x <= 111355 || x >= 119552 && x <= 119638 || x >= 119648 && x <= 119670 || x === 126980 || x === 127183 || x === 127374 || x >= 127377 && x <= 127386 || x >= 127488 && x <= 127490 || x >= 127504 && x <= 127547 || x >= 127552 && x <= 127560 || x === 127568 || x === 127569 || x >= 127584 && x <= 127589 || x >= 127744 && x <= 127776 || x >= 127789 && x <= 127797 || x >= 127799 && x <= 127868 || x >= 127870 && x <= 127891 || x >= 127904 && x <= 127946 || x >= 127951 && x <= 127955 || x >= 127968 && x <= 127984 || x === 127988 || x >= 127992 && x <= 128062 || x === 128064 || x >= 128066 && x <= 128252 || x >= 128255 && x <= 128317 || x >= 128331 && x <= 128334 || x >= 128336 && x <= 128359 || x === 128378 || x === 128405 || x === 128406 || x === 128420 || x >= 128507 && x <= 128591 || x >= 128640 && x <= 128709 || x === 128716 || x >= 128720 && x <= 128722 || x >= 128725 && x <= 128727 || x >= 128732 && x <= 128735 || x === 128747 || x === 128748 || x >= 128756 && x <= 128764 || x >= 128992 && x <= 129003 || x === 129008 || x >= 129292 && x <= 129338 || x >= 129340 && x <= 129349 || x >= 129351 && x <= 129535 || x >= 129648 && x <= 129660 || x >= 129664 && x <= 129673 || x >= 129679 && x <= 129734 || x >= 129742 && x <= 129756 || x >= 129759 && x <= 129769 || x >= 129776 && x <= 129784 || x >= 131072 && x <= 196605 || x >= 196608 && x <= 262141;
+}
+function validate(codePoint) {
+	if (!Number.isSafeInteger(codePoint)) throw new TypeError(`Expected a code point, got \`${typeof codePoint}\`.`);
+}
+function eastAsianWidth(codePoint, { ambiguousAsWide = false } = {}) {
+	validate(codePoint);
+	if (isFullWidth(codePoint) || isWide(codePoint) || ambiguousAsWide && isAmbiguous(codePoint)) return 2;
+	return 1;
+}
+const emojiRegex = () => {
+	return /[#*0-9]\uFE0F?\u20E3|[\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23ED-\u23EF\u23F1\u23F2\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB\u25FC\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692\u2694-\u2697\u2699\u269B\u269C\u26A0\u26A7\u26AA\u26B0\u26B1\u26BD\u26BE\u26C4\u26C8\u26CF\u26D1\u26E9\u26F0-\u26F5\u26F7\u26F8\u26FA\u2702\u2708\u2709\u270F\u2712\u2714\u2716\u271D\u2721\u2733\u2734\u2744\u2747\u2757\u2763\u27A1\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B55\u3030\u303D\u3297\u3299]\uFE0F?|[\u261D\u270C\u270D](?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?|[\u270A\u270B](?:\uD83C[\uDFFB-\uDFFF])?|[\u23E9-\u23EC\u23F0\u23F3\u25FD\u2693\u26A1\u26AB\u26C5\u26CE\u26D4\u26EA\u26FD\u2705\u2728\u274C\u274E\u2753-\u2755\u2795-\u2797\u27B0\u27BF\u2B50]|\u26D3\uFE0F?(?:\u200D\uD83D\uDCA5)?|\u26F9(?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?(?:\u200D[\u2640\u2642]\uFE0F?)?|\u2764\uFE0F?(?:\u200D(?:\uD83D\uDD25|\uD83E\uDE79))?|\uD83C(?:[\uDC04\uDD70\uDD71\uDD7E\uDD7F\uDE02\uDE37\uDF21\uDF24-\uDF2C\uDF36\uDF7D\uDF96\uDF97\uDF99-\uDF9B\uDF9E\uDF9F\uDFCD\uDFCE\uDFD4-\uDFDF\uDFF5\uDFF7]\uFE0F?|[\uDF85\uDFC2\uDFC7](?:\uD83C[\uDFFB-\uDFFF])?|[\uDFC4\uDFCA](?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDFCB\uDFCC](?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDCCF\uDD8E\uDD91-\uDD9A\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF43\uDF45-\uDF4A\uDF4C-\uDF7C\uDF7E-\uDF84\uDF86-\uDF93\uDFA0-\uDFC1\uDFC5\uDFC6\uDFC8\uDFC9\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF8-\uDFFF]|\uDDE6\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF]|\uDDE7\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF]|\uDDE8\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF7\uDDFA-\uDDFF]|\uDDE9\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF]|\uDDEA\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA]|\uDDEB\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7]|\uDDEC\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE]|\uDDED\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA]|\uDDEE\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9]|\uDDEF\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5]|\uDDF0\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF]|\uDDF1\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE]|\uDDF2\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF]|\uDDF3\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF]|\uDDF4\uD83C\uDDF2|\uDDF5\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE]|\uDDF6\uD83C\uDDE6|\uDDF7\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC]|\uDDF8\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF]|\uDDF9\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF]|\uDDFA\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF]|\uDDFB\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA]|\uDDFC\uD83C[\uDDEB\uDDF8]|\uDDFD\uD83C\uDDF0|\uDDFE\uD83C[\uDDEA\uDDF9]|\uDDFF\uD83C[\uDDE6\uDDF2\uDDFC]|\uDF44(?:\u200D\uD83D\uDFEB)?|\uDF4B(?:\u200D\uD83D\uDFE9)?|\uDFC3(?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:[\u2640\u2642]\uFE0F?(?:\u200D\u27A1\uFE0F?)?|\u27A1\uFE0F?))?|\uDFF3\uFE0F?(?:\u200D(?:\u26A7\uFE0F?|\uD83C\uDF08))?|\uDFF4(?:\u200D\u2620\uFE0F?|\uDB40\uDC67\uDB40\uDC62\uDB40(?:\uDC65\uDB40\uDC6E\uDB40\uDC67|\uDC73\uDB40\uDC63\uDB40\uDC74|\uDC77\uDB40\uDC6C\uDB40\uDC73)\uDB40\uDC7F)?)|\uD83D(?:[\uDC3F\uDCFD\uDD49\uDD4A\uDD6F\uDD70\uDD73\uDD76-\uDD79\uDD87\uDD8A-\uDD8D\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA\uDECB\uDECD-\uDECF\uDEE0-\uDEE5\uDEE9\uDEF0\uDEF3]\uFE0F?|[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC](?:\uD83C[\uDFFB-\uDFFF])?|[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4\uDEB5](?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDD74\uDD90](?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?|[\uDC00-\uDC07\uDC09-\uDC14\uDC16-\uDC25\uDC27-\uDC3A\uDC3C-\uDC3E\uDC40\uDC44\uDC45\uDC51-\uDC65\uDC6A\uDC79-\uDC7B\uDC7D-\uDC80\uDC84\uDC88-\uDC8E\uDC90\uDC92-\uDCA9\uDCAB-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDDA4\uDDFB-\uDE2D\uDE2F-\uDE34\uDE37-\uDE41\uDE43\uDE44\uDE48-\uDE4A\uDE80-\uDEA2\uDEA4-\uDEB3\uDEB7-\uDEBF\uDEC1-\uDEC5\uDED0-\uDED2\uDED5-\uDED7\uDEDC-\uDEDF\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB\uDFF0]|\uDC08(?:\u200D\u2B1B)?|\uDC15(?:\u200D\uD83E\uDDBA)?|\uDC26(?:\u200D(?:\u2B1B|\uD83D\uDD25))?|\uDC3B(?:\u200D\u2744\uFE0F?)?|\uDC41\uFE0F?(?:\u200D\uD83D\uDDE8\uFE0F?)?|\uDC68(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D(?:[\uDC68\uDC69]\u200D\uD83D(?:\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?)|[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?)|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]))|\uD83C(?:\uDFFB(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFC-\uDFFF])))?|\uDFFC(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB\uDFFD-\uDFFF])))?|\uDFFD(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])))?|\uDFFE(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB-\uDFFD\uDFFF])))?|\uDFFF(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB-\uDFFE])))?))?|\uDC69(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?[\uDC68\uDC69]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D(?:[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?|\uDC69\u200D\uD83D(?:\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?))|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]))|\uD83C(?:\uDFFB(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFC-\uDFFF])))?|\uDFFC(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB\uDFFD-\uDFFF])))?|\uDFFD(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])))?|\uDFFE(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB-\uDFFD\uDFFF])))?|\uDFFF(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB-\uDFFE])))?))?|\uDC6F(?:\u200D[\u2640\u2642]\uFE0F?)?|\uDD75(?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?(?:\u200D[\u2640\u2642]\uFE0F?)?|\uDE2E(?:\u200D\uD83D\uDCA8)?|\uDE35(?:\u200D\uD83D\uDCAB)?|\uDE36(?:\u200D\uD83C\uDF2B\uFE0F?)?|\uDE42(?:\u200D[\u2194\u2195]\uFE0F?)?|\uDEB6(?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:[\u2640\u2642]\uFE0F?(?:\u200D\u27A1\uFE0F?)?|\u27A1\uFE0F?))?)|\uD83E(?:[\uDD0C\uDD0F\uDD18-\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5\uDEC3-\uDEC5\uDEF0\uDEF2-\uDEF8](?:\uD83C[\uDFFB-\uDFFF])?|[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD\uDDCF\uDDD4\uDDD6-\uDDDD](?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDDDE\uDDDF](?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDD0D\uDD0E\uDD10-\uDD17\uDD20-\uDD25\uDD27-\uDD2F\uDD3A\uDD3F-\uDD45\uDD47-\uDD76\uDD78-\uDDB4\uDDB7\uDDBA\uDDBC-\uDDCC\uDDD0\uDDE0-\uDDFF\uDE70-\uDE7C\uDE80-\uDE89\uDE8F-\uDEC2\uDEC6\uDECE-\uDEDC\uDEDF-\uDEE9]|\uDD3C(?:\u200D[\u2640\u2642]\uFE0F?|\uD83C[\uDFFB-\uDFFF])?|\uDDCE(?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:[\u2640\u2642]\uFE0F?(?:\u200D\u27A1\uFE0F?)?|\u27A1\uFE0F?))?|\uDDD1(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1|\uDDD1\u200D\uD83E\uDDD2(?:\u200D\uD83E\uDDD2)?|\uDDD2(?:\u200D\uD83E\uDDD2)?))|\uD83C(?:\uDFFB(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFC-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFC(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB\uDFFD-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFD(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFE(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB-\uDFFD\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFF(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB-\uDFFE]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?))?|\uDEF1(?:\uD83C(?:\uDFFB(?:\u200D\uD83E\uDEF2\uD83C[\uDFFC-\uDFFF])?|\uDFFC(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB\uDFFD-\uDFFF])?|\uDFFD(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])?|\uDFFE(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB-\uDFFD\uDFFF])?|\uDFFF(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB-\uDFFE])?))?)/g;
+};
+const segmenter = globalThis.Intl?.Segmenter ? new Intl.Segmenter() : { segment: (str) => str.split("") };
+const defaultIgnorableCodePointRegex = /^\p{Default_Ignorable_Code_Point}$/u;
+function stringWidth$1(string, options = {}) {
+	if (typeof string !== "string" || string.length === 0) return 0;
+	const { ambiguousIsNarrow = true, countAnsiEscapeCodes = false } = options;
+	if (!countAnsiEscapeCodes) string = stripAnsi(string);
+	if (string.length === 0) return 0;
+	let width = 0;
+	const eastAsianWidthOptions = { ambiguousAsWide: !ambiguousIsNarrow };
+	for (const { segment: character } of segmenter.segment(string)) {
+		const codePoint = character.codePointAt(0);
+		if (codePoint <= 31 || codePoint >= 127 && codePoint <= 159) continue;
+		if (codePoint >= 8203 && codePoint <= 8207 || codePoint === 65279) continue;
+		if (codePoint >= 768 && codePoint <= 879 || codePoint >= 6832 && codePoint <= 6911 || codePoint >= 7616 && codePoint <= 7679 || codePoint >= 8400 && codePoint <= 8447 || codePoint >= 65056 && codePoint <= 65071) continue;
+		if (codePoint >= 55296 && codePoint <= 57343) continue;
+		if (codePoint >= 65024 && codePoint <= 65039) continue;
+		if (defaultIgnorableCodePointRegex.test(character)) continue;
+		if (emojiRegex().test(character)) {
+			width += 2;
+			continue;
+		}
+		width += eastAsianWidth(codePoint, eastAsianWidthOptions);
+	}
+	return width;
+}
+function isUnicodeSupported() {
+	const { env } = process$1;
+	const { TERM, TERM_PROGRAM } = env;
+	if (process$1.platform !== "win32") return TERM !== "linux";
+	return Boolean(env.WT_SESSION) || Boolean(env.TERMINUS_SUBLIME) || env.ConEmuTask === "{cmd::Cmder}" || TERM_PROGRAM === "Terminus-Sublime" || TERM_PROGRAM === "vscode" || TERM === "xterm-256color" || TERM === "alacritty" || TERM === "rxvt-unicode" || TERM === "rxvt-unicode-256color" || env.TERMINAL_EMULATOR === "JetBrains-JediTerm";
+}
+const TYPE_COLOR_MAP = {
+	info: "cyan",
+	fail: "red",
+	success: "green",
+	ready: "green",
+	start: "magenta"
+};
+const LEVEL_COLOR_MAP = {
+	0: "red",
+	1: "yellow"
+};
+const unicode = isUnicodeSupported();
+const s = (c, fallback) => unicode ? c : fallback;
+const TYPE_ICONS = {
+	error: s("✖", "×"),
+	fatal: s("✖", "×"),
+	ready: s("✔", "√"),
+	warn: s("⚠", "‼"),
+	info: s("ℹ", "i"),
+	success: s("✔", "√"),
+	debug: s("⚙", "D"),
+	trace: s("→", "→"),
+	fail: s("✖", "×"),
+	start: s("◐", "o"),
+	log: ""
+};
+function stringWidth(str) {
+	if (!(typeof Intl === "object") || !Intl.Segmenter) return stripAnsi$1(str).length;
+	return stringWidth$1(str);
+}
+var FancyReporter = class extends BasicReporter {
+	formatStack(stack, message, opts) {
+		const indent = "  ".repeat((opts?.errorLevel || 0) + 1);
+		return `
+${indent}` + parseStack(stack, message).map((line) => "  " + line.replace(/^at +/, (m) => colors.gray(m)).replace(/\((.+)\)/, (_, m) => `(${colors.cyan(m)})`)).join(`
+${indent}`);
+	}
+	formatType(logObj, isBadge, opts) {
+		const typeColor = TYPE_COLOR_MAP[logObj.type] || LEVEL_COLOR_MAP[logObj.level] || "gray";
+		if (isBadge) return getBgColor(typeColor)(colors.black(` ${logObj.type.toUpperCase()} `));
+		const _type = typeof TYPE_ICONS[logObj.type] === "string" ? TYPE_ICONS[logObj.type] : logObj.icon || logObj.type;
+		return _type ? getColor(typeColor)(_type) : "";
+	}
+	formatLogObj(logObj, opts) {
+		const [message, ...additional] = this.formatArgs(logObj.args, opts).split("\n");
+		if (logObj.type === "box") return box(characterFormat(message + (additional.length > 0 ? "\n" + additional.join("\n") : "")), {
+			title: logObj.title ? characterFormat(logObj.title) : void 0,
+			style: logObj.style
+		});
+		const date = this.formatDate(logObj.date, opts);
+		const coloredDate = date && colors.gray(date);
+		const isBadge = logObj.badge ?? logObj.level < 2;
+		const type = this.formatType(logObj, isBadge, opts);
+		const tag = logObj.tag ? colors.gray(logObj.tag) : "";
+		let line;
+		const left = this.filterAndJoin([type, characterFormat(message)]);
+		const right = this.filterAndJoin(opts.columns ? [tag, coloredDate] : [tag]);
+		const space = (opts.columns || 0) - stringWidth(left) - stringWidth(right) - 2;
+		line = space > 0 && (opts.columns || 0) >= 80 ? left + " ".repeat(space) + right : (right ? `${colors.gray(`[${right}]`)} ` : "") + left;
+		line += characterFormat(additional.length > 0 ? "\n" + additional.join("\n") : "");
+		if (logObj.type === "trace") {
+			const _err = /* @__PURE__ */ new Error("Trace: " + logObj.message);
+			line += this.formatStack(_err.stack || "", _err.message);
+		}
+		return isBadge ? "\n" + line + "\n" : line;
+	}
+};
+function characterFormat(str) {
+	return str.replace(/`([^`]+)`/gm, (_, m) => colors.cyan(m)).replace(/\s+_([^_]+)_\s+/gm, (_, m) => ` ${colors.underline(m)} `);
+}
+function getColor(color = "white") {
+	return colors[color] || colors.white;
+}
+function getBgColor(color = "bgWhite") {
+	return colors[`bg${color[0].toUpperCase()}${color.slice(1)}`] || colors.bgWhite;
+}
+function createConsola(options = {}) {
+	let level = _getDefaultLogLevel();
+	if (process.env.CONSOLA_LEVEL) level = Number.parseInt(process.env.CONSOLA_LEVEL) ?? level;
+	return createConsola$1({
+		level,
+		defaults: { level },
+		stdout: process.stdout,
+		stderr: process.stderr,
+		prompt: (...args) => Promise.resolve().then(() => (init_prompt(), prompt_exports)).then((m) => m.prompt(...args)),
+		reporters: options.reporters || [options.fancy ?? !(T$1 || R$1) ? new FancyReporter() : new BasicReporter()],
+		...options
+	});
+}
+function _getDefaultLogLevel() {
+	if (g$2) return LogLevels.debug;
+	if (R$1) return LogLevels.warn;
+	return LogLevels.info;
+}
+const consola = createConsola();
 function formatTable(headers, values) {
 	const widths = headers.map((header, index) => Math.max(header.length, values[index]?.length ?? 0));
 	const top = `╔${widths.map((width) => "═".repeat(width + 2)).join("╤")}╗`;
@@ -20308,7 +21862,7 @@ const ANGULAR_MCP_ARGS = [
 * - `get_best_practices`  — Angular best practices guide (local)
 * - `search_documentation`— searches angular.dev (remote)
 */
-const ANGULAR_ALLOWED_TOOLS = [
+const ANGULAR_TOOL_NAMES = [
 	"find_examples",
 	"get_best_practices",
 	"search_documentation"
@@ -20322,7 +21876,7 @@ function createAngularMCP() {
 	let status = { state: "stopped" };
 	return {
 		serverType: "stdio",
-		allowedTools: ANGULAR_ALLOWED_TOOLS,
+		toolNames: ANGULAR_TOOL_NAMES,
 		get status() {
 			return status;
 		},
@@ -20331,7 +21885,7 @@ function createAngularMCP() {
 			return {
 				command: ANGULAR_MCP_COMMAND,
 				args: ANGULAR_MCP_ARGS,
-				toolNames: ANGULAR_ALLOWED_TOOLS
+				toolNames: ANGULAR_TOOL_NAMES
 			};
 		},
 		stop: async () => {
@@ -20340,6 +21894,11 @@ function createAngularMCP() {
 	};
 }
 const CODEX_MCP_URL = "https://c8y-codex-mcp.schplitt.workers.dev/mcp";
+const CODEX_TOOL_NAMES = [
+	"get-codex-structure",
+	"query-codex",
+	"get-codex-documents"
+];
 let _codexMCP = null;
 function codexMCP() {
 	if (!_codexMCP) _codexMCP = createCodexMCP();
@@ -20348,7 +21907,7 @@ function codexMCP() {
 function createCodexMCP() {
 	return {
 		serverType: "http",
-		allowedTools: ["*"],
+		toolNames: CODEX_TOOL_NAMES,
 		get status() {
 			return { state: "running" };
 		},
@@ -20359,21 +21918,37 @@ function createCodexMCP() {
 		stop: async () => {}
 	};
 }
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import { JSONSchema7 } from "json-schema";
-*/
-/**
-* @template {StandardSchemaV1} TSchema
-*/
-var JsonSchemaAdapter = class {
-	/**
-	* @param {TSchema} schema
-	* @returns {Promise<JSONSchema7>}
-	*/
-	toJsonSchema(schema) {
-		throw new Error("toJsonSchema method not implemented");
-	}
+function incidentFixExternalMcpServers() {
+	return {
+		codex: codexMCP(),
+		angular: angularMCP()
+	};
+}
+function defineTool(config, execute) {
+	return {
+		...config,
+		execute
+	};
+}
+const tool = {
+	text: (text) => ({ content: [{
+		type: "text",
+		text
+	}] }),
+	error: (text) => ({
+		isError: true,
+		content: [{
+			type: "text",
+			text
+		}]
+	}),
+	structured: (structuredContent) => ({
+		content: [{
+			type: "text",
+			text: JSON.stringify(structuredContent)
+		}],
+		structuredContent
+	})
 };
 let store$4;
 /**
@@ -20500,21 +22075,6 @@ function _getStandardProps(context) {
 	};
 }
 /**
-* Disallows inherited object properties and prevents object prototype
-* pollution by disallowing certain keys.
-*
-* @param object The object to check.
-* @param key The key to check.
-*
-* @returns Whether the key is allowed.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _isValidObjectKey(object$1, key) {
-	return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
-}
-/**
 * Joins multiple `expects` values with the given separator.
 *
 * @param values The `expects` values.
@@ -20531,41 +22091,6 @@ function _joinExpects(values$1, separator) {
 	return list[0] ?? "never";
 }
 /**
-* A Valibot error with useful information.
-*/
-var ValiError = class extends Error {
-	/**
-	* Creates a Valibot error with useful information.
-	*
-	* @param issues The error issues.
-	*/
-	constructor(issues) {
-		super(issues[0].message);
-		this.name = "ValiError";
-		this.issues = issues;
-	}
-};
-/**
-* [Base64](https://en.wikipedia.org/wiki/Base64) regex.
-*/
-const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
-/* @__NO_SIDE_EFFECTS__ */
-function base64(message$1) {
-	return {
-		kind: "validation",
-		type: "base64",
-		reference: base64,
-		async: false,
-		expects: null,
-		requirement: BASE64_REGEX,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
 * Creates a description metadata action.
 *
 * @param description_ The description text.
@@ -20579,86 +22104,6 @@ function description(description_) {
 		type: "description",
 		reference: description,
 		description: description_
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function integer(message$1) {
-	return {
-		kind: "validation",
-		type: "integer",
-		reference: integer,
-		async: false,
-		expects: null,
-		requirement: Number.isInteger,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function maxLength(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "max_length",
-		reference: maxLength,
-		async: false,
-		expects: `<=${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function maxValue(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "max_value",
-		reference: maxValue,
-		async: false,
-		expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function minLength(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "min_length",
-		reference: minLength,
-		async: false,
-		expects: `>=${requirement}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function minValue(requirement, message$1) {
-	return {
-		kind: "validation",
-		type: "min_value",
-		reference: minValue,
-		async: false,
-		expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
-		requirement,
-		message: message$1,
-		"~run"(dataset, config$1) {
-			if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
-			return dataset;
-		}
 	};
 }
 /**
@@ -20770,74 +22215,6 @@ function literal(literal_, message$1) {
 		"~run"(dataset, config$1) {
 			if (dataset.value === this.literal) dataset.typed = true;
 			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function looseObject(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "loose_object",
-		reference: looseObject,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-				if (!dataset.issues || !config$1.abortEarly) {
-					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
-				}
-			} else _addIssue(this, "type", dataset, config$1);
 			return dataset;
 		}
 	};
@@ -20972,155 +22349,6 @@ function picklist(options, message$1) {
 	};
 }
 /* @__NO_SIDE_EFFECTS__ */
-function record(key, value$1, message$1) {
-	return {
-		kind: "schema",
-		type: "record",
-		reference: record,
-		expects: "Object",
-		async: false,
-		key,
-		value: value$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
-					const entryValue = input[entryKey];
-					const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
-					if (keyDataset.issues) {
-						const pathItem = {
-							type: "object",
-							origin: "key",
-							input,
-							key: entryKey,
-							value: entryValue
-						};
-						for (const issue of keyDataset.issues) {
-							issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = keyDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
-					if (valueDataset.issues) {
-						const pathItem = {
-							type: "object",
-							origin: "value",
-							input,
-							key: entryKey,
-							value: entryValue
-						};
-						for (const issue of valueDataset.issues) {
-							if (issue.path) issue.path.unshift(pathItem);
-							else issue.path = [pathItem];
-							dataset.issues?.push(issue);
-						}
-						if (!dataset.issues) dataset.issues = valueDataset.issues;
-						if (config$1.abortEarly) {
-							dataset.typed = false;
-							break;
-						}
-					}
-					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
-					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
-function strictObject(entries$1, message$1) {
-	return {
-		kind: "schema",
-		type: "strict_object",
-		reference: strictObject,
-		expects: "Object",
-		async: false,
-		entries: entries$1,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			const input = dataset.value;
-			if (input && typeof input === "object") {
-				dataset.typed = true;
-				dataset.value = {};
-				for (const key in this.entries) {
-					const valueSchema = this.entries[key];
-					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
-						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
-						if (valueDataset.issues) {
-							const pathItem = {
-								type: "object",
-								origin: "value",
-								input,
-								key,
-								value: value$1
-							};
-							for (const issue of valueDataset.issues) {
-								if (issue.path) issue.path.unshift(pathItem);
-								else issue.path = [pathItem];
-								dataset.issues?.push(issue);
-							}
-							if (!dataset.issues) dataset.issues = valueDataset.issues;
-							if (config$1.abortEarly) {
-								dataset.typed = false;
-								break;
-							}
-						}
-						if (!valueDataset.typed) dataset.typed = false;
-						dataset.value[key] = valueDataset.value;
-					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-						_addIssue(this, "key", dataset, config$1, {
-							input: void 0,
-							expected: `"${key}"`,
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						if (config$1.abortEarly) break;
-					}
-				}
-				if (!dataset.issues || !config$1.abortEarly) {
-					for (const key in input) if (!(key in this.entries)) {
-						_addIssue(this, "key", dataset, config$1, {
-							input: key,
-							expected: "never",
-							path: [{
-								type: "object",
-								origin: "key",
-								input,
-								key,
-								value: input[key]
-							}]
-						});
-						break;
-					}
-				}
-			} else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/* @__NO_SIDE_EFFECTS__ */
 function string(message$1) {
 	return {
 		kind: "schema",
@@ -21135,83 +22363,6 @@ function string(message$1) {
 		"~run"(dataset, config$1) {
 			if (typeof dataset.value === "string") dataset.typed = true;
 			else _addIssue(this, "type", dataset, config$1);
-			return dataset;
-		}
-	};
-}
-/**
-* Returns the sub issues of the provided datasets for the union issue.
-*
-* @param datasets The datasets.
-*
-* @returns The sub issues.
-*
-* @internal
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function _subIssues(datasets) {
-	let issues;
-	if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
-	else issues = dataset.issues;
-	return issues;
-}
-/* @__NO_SIDE_EFFECTS__ */
-function union(options, message$1) {
-	return {
-		kind: "schema",
-		type: "union",
-		reference: union,
-		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
-		async: false,
-		options,
-		message: message$1,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset, config$1) {
-			let validDataset;
-			let typedDatasets;
-			let untypedDatasets;
-			for (const schema of this.options) {
-				const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
-				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
-				else typedDatasets = [optionDataset];
-				else {
-					validDataset = optionDataset;
-					break;
-				}
-				else if (untypedDatasets) untypedDatasets.push(optionDataset);
-				else untypedDatasets = [optionDataset];
-			}
-			if (validDataset) return validDataset;
-			if (typedDatasets) {
-				if (typedDatasets.length === 1) return typedDatasets[0];
-				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
-				dataset.typed = true;
-			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
-			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
-			return dataset;
-		}
-	};
-}
-/**
-* Creates a unknown schema.
-*
-* @returns A unknown schema.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function unknown() {
-	return {
-		kind: "schema",
-		type: "unknown",
-		reference: unknown,
-		expects: "unknown",
-		async: false,
-		get "~standard"() {
-			return /* @__PURE__ */ _getStandardProps(this);
-		},
-		"~run"(dataset) {
-			dataset.typed = true;
 			return dataset;
 		}
 	};
@@ -21286,20 +22437,6 @@ function variant(key, options, message$1) {
 		}
 	};
 }
-/**
-* Parses an unknown input based on a schema.
-*
-* @param schema The schema to be used.
-* @param input The input to be parsed.
-* @param config The parse configuration.
-*
-* @returns The parsed input.
-*/
-function parse$1(schema, input, config$1) {
-	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
-	if (dataset.issues) throw new ValiError(dataset.issues);
-	return dataset.value;
-}
 /* @__NO_SIDE_EFFECTS__ */
 function pipe(...pipe$1) {
 	return {
@@ -21320,5346 +22457,6 @@ function pipe(...pipe$1) {
 		}
 	};
 }
-/**
-* Parses an unknown input based on a schema.
-*
-* @param schema The schema to be used.
-* @param input The input to be parsed.
-* @param config The parse configuration.
-*
-* @returns The parse result.
-*/
-/* @__NO_SIDE_EFFECTS__ */
-function safeParse$1(schema, input, config$1) {
-	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
-	return {
-		typed: dataset.typed,
-		success: !dataset.issues,
-		output: dataset.value,
-		issues: dataset.issues
-	};
-}
-/**
-* Adds an error message to the errors array.
-*
-* @param errors The array of error messages.
-* @param message The error message to add.
-*
-* @returns The new errors.
-*/
-function addError(errors, message) {
-	if (errors) {
-		errors.push(message);
-		return errors;
-	}
-	return [message];
-}
-/**
-* Throws an error or logs a warning based on the configuration.
-*
-* @param message The message to throw or log.
-* @param config The conversion configuration.
-*/
-function handleError(message, config) {
-	switch (config?.errorMode) {
-		case "ignore": break;
-		case "warn":
-			console.warn(message);
-			break;
-		default: throw new Error(message);
-	}
-}
-/**
-* Converts any supported Valibot action to the JSON Schema format.
-*
-* @param jsonSchema The JSON Schema object.
-* @param valibotAction The Valibot action object.
-* @param config The conversion configuration.
-*
-* @returns The converted JSON Schema.
-*/
-function convertAction(jsonSchema, valibotAction, config) {
-	if (config?.ignoreActions?.includes(valibotAction.type)) return jsonSchema;
-	let errors;
-	switch (valibotAction.type) {
-		case "base64":
-			jsonSchema.contentEncoding = "base64";
-			break;
-		case "bic":
-		case "cuid2":
-		case "decimal":
-		case "digits":
-		case "emoji":
-		case "hexadecimal":
-		case "hex_color":
-		case "nanoid":
-		case "octal":
-		case "ulid":
-			jsonSchema.pattern = valibotAction.requirement.source;
-			break;
-		case "description":
-			jsonSchema.description = valibotAction.description;
-			break;
-		case "email":
-			jsonSchema.format = "email";
-			break;
-		case "empty":
-			if (jsonSchema.type === "array") jsonSchema.maxItems = 0;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.maxLength = 0;
-			}
-			break;
-		case "entries":
-			jsonSchema.minProperties = valibotAction.requirement;
-			jsonSchema.maxProperties = valibotAction.requirement;
-			break;
-		case "examples":
-			if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.examples];
-			else jsonSchema.examples = valibotAction.examples;
-			break;
-		case "integer":
-			jsonSchema.type = "integer";
-			break;
-		case "ipv4":
-			jsonSchema.format = "ipv4";
-			break;
-		case "ipv6":
-			jsonSchema.format = "ipv6";
-			break;
-		case "iso_date":
-			jsonSchema.format = "date";
-			break;
-		case "iso_date_time":
-		case "iso_timestamp":
-			jsonSchema.format = "date-time";
-			break;
-		case "iso_time":
-			jsonSchema.format = "time";
-			break;
-		case "length":
-			if (jsonSchema.type === "array") {
-				jsonSchema.minItems = valibotAction.requirement;
-				jsonSchema.maxItems = valibotAction.requirement;
-			} else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = valibotAction.requirement;
-				jsonSchema.maxLength = valibotAction.requirement;
-			}
-			break;
-		case "max_entries":
-			jsonSchema.maxProperties = valibotAction.requirement;
-			break;
-		case "max_length":
-			if (jsonSchema.type === "array") jsonSchema.maxItems = valibotAction.requirement;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.maxLength = valibotAction.requirement;
-			}
-			break;
-		case "max_value":
-			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "max_value" action is not supported on type "${jsonSchema.type}".`);
-			jsonSchema.maximum = valibotAction.requirement;
-			break;
-		case "metadata":
-			if (typeof valibotAction.metadata.title === "string") jsonSchema.title = valibotAction.metadata.title;
-			if (typeof valibotAction.metadata.description === "string") jsonSchema.description = valibotAction.metadata.description;
-			if (Array.isArray(valibotAction.metadata.examples)) if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.metadata.examples];
-			else jsonSchema.examples = valibotAction.metadata.examples;
-			break;
-		case "min_entries":
-			jsonSchema.minProperties = valibotAction.requirement;
-			break;
-		case "min_length":
-			if (jsonSchema.type === "array") jsonSchema.minItems = valibotAction.requirement;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = valibotAction.requirement;
-			}
-			break;
-		case "min_value":
-			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "min_value" action is not supported on type "${jsonSchema.type}".`);
-			jsonSchema.minimum = valibotAction.requirement;
-			break;
-		case "multiple_of":
-			jsonSchema.multipleOf = valibotAction.requirement;
-			break;
-		case "non_empty":
-			if (jsonSchema.type === "array") jsonSchema.minItems = 1;
-			else {
-				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
-				jsonSchema.minLength = 1;
-			}
-			break;
-		case "regex":
-			if (valibotAction.requirement.flags) errors = addError(errors, "RegExp flags are not supported by JSON Schema.");
-			jsonSchema.pattern = valibotAction.requirement.source;
-			break;
-		case "title":
-			jsonSchema.title = valibotAction.title;
-			break;
-		case "url":
-			jsonSchema.format = "uri";
-			break;
-		case "uuid":
-			jsonSchema.format = "uuid";
-			break;
-		case "value":
-			jsonSchema.const = valibotAction.requirement;
-			break;
-		default: errors = addError(errors, `The "${valibotAction.type}" action cannot be converted to JSON Schema.`);
-	}
-	if (config?.overrideAction) {
-		const actionOverride = config.overrideAction({
-			valibotAction,
-			jsonSchema,
-			errors
-		});
-		if (actionOverride) return { ...actionOverride };
-	}
-	if (errors) for (const message of errors) handleError(message, config);
-	return jsonSchema;
-}
-/**
-* Flattens a Valibot pipe by recursively expanding nested pipes.
-*
-* @param pipe The pipeline to flatten.
-*
-* @returns A flat pipeline.
-*/
-function flattenPipe(pipe) {
-	return pipe.flatMap((item) => "pipe" in item ? flattenPipe(item.pipe) : item);
-}
-let refCount = 0;
-/**
-* Converts any supported Valibot schema to the JSON Schema format.
-*
-* @param jsonSchema The JSON Schema object.
-* @param valibotSchema The Valibot schema object.
-* @param config The conversion configuration.
-* @param context The conversion context.
-* @param skipRef Whether to skip using a reference.
-*
-* @returns The converted JSON Schema.
-*/
-function convertSchema(jsonSchema, valibotSchema, config, context, skipRef = false) {
-	if (!skipRef) {
-		const referenceId = context.referenceMap.get(valibotSchema);
-		if (referenceId) {
-			jsonSchema.$ref = `#/$defs/${referenceId}`;
-			if (config?.overrideRef) {
-				const refOverride = config.overrideRef({
-					...context,
-					referenceId,
-					valibotSchema,
-					jsonSchema
-				});
-				if (refOverride) jsonSchema.$ref = refOverride;
-			}
-			return jsonSchema;
-		}
-	}
-	if ("pipe" in valibotSchema) {
-		const flatPipe = flattenPipe(valibotSchema.pipe);
-		let startIndex = 0;
-		let stopIndex = flatPipe.length - 1;
-		if (config?.typeMode === "input") {
-			const inputStopIndex = flatPipe.slice(1).findIndex((item) => item.kind === "schema" || item.kind === "transformation" && (item.type === "find_item" || item.type === "parse_json" || item.type === "raw_transform" || item.type === "reduce_items" || item.type === "stringify_json" || item.type === "to_bigint" || item.type === "to_boolean" || item.type === "to_date" || item.type === "to_number" || item.type === "to_string" || item.type === "transform"));
-			if (inputStopIndex !== -1) stopIndex = inputStopIndex;
-		} else if (config?.typeMode === "output") {
-			const outputStartIndex = flatPipe.findLastIndex((item) => item.kind === "schema");
-			if (outputStartIndex !== -1) startIndex = outputStartIndex;
-		}
-		for (let index = startIndex; index <= stopIndex; index++) {
-			const valibotPipeItem = flatPipe[index];
-			if (valibotPipeItem.kind === "schema") {
-				if (index > startIndex) handleError("Set the \"typeMode\" config to \"input\" or \"output\" to convert pipelines with multiple schemas.", config);
-				jsonSchema = convertSchema(jsonSchema, valibotPipeItem, config, context, true);
-			} else jsonSchema = convertAction(jsonSchema, valibotPipeItem, config);
-		}
-		return jsonSchema;
-	}
-	let errors;
-	switch (valibotSchema.type) {
-		case "boolean":
-			jsonSchema.type = "boolean";
-			break;
-		case "null":
-			if (config?.target === "openapi-3.0") jsonSchema.enum = [null];
-			else jsonSchema.type = "null";
-			break;
-		case "number":
-			jsonSchema.type = "number";
-			break;
-		case "string":
-			jsonSchema.type = "string";
-			break;
-		case "array":
-			jsonSchema.type = "array";
-			jsonSchema.items = convertSchema({}, valibotSchema.item, config, context);
-			break;
-		case "tuple":
-		case "tuple_with_rest":
-		case "loose_tuple":
-		case "strict_tuple":
-			jsonSchema.type = "array";
-			if (config?.target === "openapi-3.0") {
-				jsonSchema.items = { anyOf: [] };
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.items.anyOf.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items.anyOf.push(convertSchema({}, valibotSchema.rest, config, context));
-				else if (valibotSchema.type === "strict_tuple" || valibotSchema.type === "tuple") jsonSchema.maxItems = valibotSchema.items.length;
-			} else if (config?.target === "draft-2020-12") {
-				jsonSchema.prefixItems = [];
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.prefixItems.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items = convertSchema({}, valibotSchema.rest, config, context);
-				else if (valibotSchema.type === "strict_tuple") jsonSchema.items = false;
-			} else {
-				jsonSchema.items = [];
-				jsonSchema.minItems = valibotSchema.items.length;
-				for (const item of valibotSchema.items) jsonSchema.items.push(convertSchema({}, item, config, context));
-				if (valibotSchema.type === "tuple_with_rest") jsonSchema.additionalItems = convertSchema({}, valibotSchema.rest, config, context);
-				else if (valibotSchema.type === "strict_tuple") jsonSchema.additionalItems = false;
-			}
-			break;
-		case "object":
-		case "object_with_rest":
-		case "loose_object":
-		case "strict_object":
-			jsonSchema.type = "object";
-			jsonSchema.properties = {};
-			jsonSchema.required = [];
-			for (const key in valibotSchema.entries) {
-				const entry = valibotSchema.entries[key];
-				jsonSchema.properties[key] = convertSchema({}, entry, config, context);
-				if (entry.type !== "exact_optional" && entry.type !== "nullish" && entry.type !== "optional") jsonSchema.required.push(key);
-			}
-			if (valibotSchema.type === "object_with_rest") jsonSchema.additionalProperties = convertSchema({}, valibotSchema.rest, config, context);
-			else if (valibotSchema.type === "strict_object") jsonSchema.additionalProperties = false;
-			break;
-		case "record":
-			if (config?.target === "openapi-3.0" && "pipe" in valibotSchema.key) errors = addError(errors, "The \"record\" schema with a schema for the key that contains a \"pipe\" cannot be converted to JSON Schema.");
-			if (valibotSchema.key.type !== "string") errors = addError(errors, `The "record" schema with the "${valibotSchema.key.type}" schema for the key cannot be converted to JSON Schema.`);
-			jsonSchema.type = "object";
-			if (config?.target !== "openapi-3.0") jsonSchema.propertyNames = convertSchema({}, valibotSchema.key, config, context);
-			jsonSchema.additionalProperties = convertSchema({}, valibotSchema.value, config, context);
-			break;
-		case "any":
-		case "unknown": break;
-		case "nullable":
-		case "nullish":
-			if (config?.target === "openapi-3.0") {
-				const innerSchema = convertSchema({}, valibotSchema.wrapped, config, context);
-				Object.assign(jsonSchema, innerSchema);
-				jsonSchema.nullable = true;
-			} else jsonSchema.anyOf = [convertSchema({}, valibotSchema.wrapped, config, context), { type: "null" }];
-			if (valibotSchema.default !== void 0) jsonSchema.default = /* @__PURE__ */ getDefault(valibotSchema);
-			break;
-		case "exact_optional":
-		case "optional":
-		case "undefinedable":
-			jsonSchema = convertSchema(jsonSchema, valibotSchema.wrapped, config, context);
-			if (valibotSchema.default !== void 0) jsonSchema.default = /* @__PURE__ */ getDefault(valibotSchema);
-			break;
-		case "literal":
-			if (typeof valibotSchema.literal !== "boolean" && typeof valibotSchema.literal !== "number" && typeof valibotSchema.literal !== "string") errors = addError(errors, "The value of the \"literal\" schema is not JSON compatible.");
-			if (config?.target === "openapi-3.0") jsonSchema.enum = [valibotSchema.literal];
-			else jsonSchema.const = valibotSchema.literal;
-			break;
-		case "enum":
-			jsonSchema.enum = valibotSchema.options;
-			break;
-		case "picklist":
-			if (valibotSchema.options.some((option) => typeof option !== "number" && typeof option !== "string")) errors = addError(errors, "An option of the \"picklist\" schema is not JSON compatible.");
-			jsonSchema.enum = valibotSchema.options;
-			break;
-		case "union":
-			jsonSchema.anyOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "variant":
-			jsonSchema.oneOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "intersect":
-			jsonSchema.allOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
-			break;
-		case "lazy": {
-			let wrappedValibotSchema = context.getterMap.get(valibotSchema.getter);
-			if (!wrappedValibotSchema) {
-				wrappedValibotSchema = valibotSchema.getter(void 0);
-				context.getterMap.set(valibotSchema.getter, wrappedValibotSchema);
-			}
-			let referenceId = context.referenceMap.get(wrappedValibotSchema);
-			if (!referenceId) {
-				referenceId = `${refCount++}`;
-				context.referenceMap.set(wrappedValibotSchema, referenceId);
-				context.definitions[referenceId] = convertSchema({}, wrappedValibotSchema, config, context, true);
-			}
-			jsonSchema.$ref = `#/$defs/${referenceId}`;
-			if (config?.overrideRef) {
-				const refOverride = config.overrideRef({
-					...context,
-					referenceId,
-					valibotSchema: wrappedValibotSchema,
-					jsonSchema
-				});
-				if (refOverride) jsonSchema.$ref = refOverride;
-			}
-			break;
-		}
-		default: errors = addError(errors, `The "${valibotSchema.type}" schema cannot be converted to JSON Schema.`);
-	}
-	if (config?.overrideSchema) {
-		const schemaOverride = config.overrideSchema({
-			...context,
-			referenceId: context.referenceMap.get(valibotSchema),
-			valibotSchema,
-			jsonSchema,
-			errors
-		});
-		if (schemaOverride) return { ...schemaOverride };
-	}
-	if (errors) for (const message of errors) handleError(message, config);
-	return jsonSchema;
-}
-let store;
-/**
-* Returns the current global schema definitions.
-*
-* @returns The schema definitions.
-*
-* @beta
-*/
-function getGlobalDefs() {
-	return store;
-}
-/**
-* Converts a Valibot schema to the JSON Schema format.
-*
-* @param schema The Valibot schema object.
-* @param config The JSON Schema configuration.
-*
-* @returns The converted JSON Schema.
-*/
-function toJsonSchema(schema, config) {
-	const context = {
-		definitions: {},
-		referenceMap: /* @__PURE__ */ new Map(),
-		getterMap: /* @__PURE__ */ new Map()
-	};
-	const definitions = config?.definitions ?? getGlobalDefs();
-	if (definitions) {
-		for (const key in definitions) context.referenceMap.set(definitions[key], key);
-		for (const key in definitions) context.definitions[key] = convertSchema({}, definitions[key], config, context, true);
-	}
-	const jsonSchema = convertSchema({}, schema, config, context);
-	const target = config?.target ?? "draft-07";
-	if (target === "draft-2020-12") jsonSchema.$schema = "https://json-schema.org/draft/2020-12/schema";
-	else if (target === "draft-07") jsonSchema.$schema = "http://json-schema.org/draft-07/schema#";
-	if (context.referenceMap.size) jsonSchema.$defs = context.definitions;
-	return jsonSchema;
-}
-/**
-* @import { GenericSchema } from "valibot";
-*/
-/**
-* Atrocious hack to satisfy the current version of the protocol that for some reason
-* requires `type: string` on enum fields despite JSON Schema spec not requiring it.
-*
-* TODO: Remove this once the protocol is fixed to align with JSON Schema spec.
-* @param {ReturnType<typeof toJsonSchema>} json_schema
-*/
-function add_type_to_enums(json_schema) {
-	for (let key in json_schema) {
-		const property = json_schema[key];
-		if (property != null && typeof property === "object" && !Array.isArray(property)) {
-			if ("enum" in property && !("type" in property)) property.type = "string";
-			add_type_to_enums(property);
-		}
-	}
-	return json_schema;
-}
-/**
-* Valibot adapter for converting Valibot schemas to JSON Schema format
-* @augments {JsonSchemaAdapter<GenericSchema>}
-*/
-var ValibotJsonSchemaAdapter = class extends JsonSchemaAdapter {
-	/**
-	* Converts a Valibot schema to JSON Schema format
-	* @param {GenericSchema} schema - The Valibot schema to convert
-	* @returns {Promise<ReturnType<typeof toJsonSchema>>} - The converted JSON Schema
-	*/
-	async toJsonSchema(schema) {
-		return add_type_to_enums(toJsonSchema(schema));
-	}
-};
-/**
-* @import { Context } from "tmcp";
-*/
-/**
-* @abstract
-*/
-var StreamSessionManager = class {
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {ReadableStreamDefaultController} controller
-	* @returns {void | Promise<void>}
-	*/
-	create(id, controller) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {void | Promise<void>}
-	*/
-	delete(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {boolean | Promise<boolean>}
-	*/
-	has(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string[] | undefined} sessions
-	* @param {string} data
-	* @returns {void | Promise<void>}
-	*/
-	send(sessions, data) {
-		throw new Error("Method not implemented.");
-	}
-};
-var InMemoryStreamSessionManager = class extends StreamSessionManager {
-	/**
-	* @type {Map<string, ReadableStreamDefaultController>}
-	*/
-	#sessions = /* @__PURE__ */ new Map();
-	#text_encoder = new TextEncoder();
-	/**
-	* @param {string} id
-	* @param {ReadableStreamDefaultController} controller
-	*/
-	create(id, controller) {
-		this.#sessions.set(id, controller);
-	}
-	/**
-	* @param {string} id
-	*/
-	delete(id) {
-		const controller = this.#sessions.get(id);
-		if (controller) {
-			this.#sessions.delete(id);
-			try {
-				controller.close();
-			} catch {}
-		}
-	}
-	/**
-	* @param {string} id
-	* @returns {Promise<boolean>}
-	*/
-	async has(id) {
-		return this.#sessions.has(id);
-	}
-	/**
-	* @param {string[] | undefined} sessions
-	* @param {string} data
-	*/
-	send(sessions, data) {
-		for (const [id, controller] of this.#sessions.entries()) if (sessions == null || sessions.includes(id)) controller.enqueue(this.#text_encoder.encode(data));
-	}
-};
-/**
-* @abstract
-*/
-var InfoSessionManager = class {
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientInfo"]>}
-	*/
-	getClientInfo(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["clientInfo"]} client_info
-	*/
-	setClientInfo(id, client_info) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
-	*/
-	getClientCapabilities(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["clientCapabilities"]} client_capabilities
-	*/
-	setClientCapabilities(id, client_capabilities) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @returns {Promise<NonNullable<Context["sessionInfo"]>["logLevel"]>}
-	*/
-	getLogLevel(id) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {NonNullable<Context["sessionInfo"]>["logLevel"]} log_level
-	*/
-	setLogLevel(id, log_level) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} uri
-	* @returns {Promise<string[]>}
-	*/
-	getSubscriptions(uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {string} uri
-	*/
-	addSubscription(id, uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	* @param {string} uri
-	*/
-	removeSubscription(id, uri) {
-		throw new Error("Method not implemented.");
-	}
-	/**
-	* @abstract
-	* @param {string} id
-	*/
-	delete(id) {
-		throw new Error("Method not implemented.");
-	}
-};
-var InMemoryInfoSessionManager = class extends InfoSessionManager {
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientInfo"]>}
-	*/
-	#client_info = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["clientCapabilities"]>}
-	*/
-	#client_capabilities = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, NonNullable<Context["sessionInfo"]>["logLevel"]>}
-	*/
-	#log_level = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, Set<string>>}
-	*/
-	#subscriptions = /* @__PURE__ */ new Map();
-	/**
-	* @param {string} session
-	* @param {string} name
-	* @returns {Promise<never>}
-	*/
-	async #invariant(session, name) {
-		throw new Error(`${name} not found for session ${session}`);
-	}
-	/**
-	* @type {InfoSessionManager["getClientInfo"]}
-	*/
-	getClientInfo(id) {
-		return Promise.resolve(this.#client_info.get(id) ?? this.#invariant(id, "Client info"));
-	}
-	/**
-	* @type {InfoSessionManager["setClientInfo"]}
-	*/
-	setClientInfo(id, client_info) {
-		this.#client_info.set(id, client_info);
-	}
-	/**
-	* @type {InfoSessionManager["getClientCapabilities"]}
-	*/
-	getClientCapabilities(id) {
-		return Promise.resolve(this.#client_capabilities.get(id) ?? this.#invariant(id, "Client capabilities"));
-	}
-	/**
-	* @type {InfoSessionManager["setClientCapabilities"]}
-	*/
-	setClientCapabilities(id, client_capabilities) {
-		this.#client_capabilities.set(id, client_capabilities);
-	}
-	/**
-	* @type {InfoSessionManager["getLogLevel"]}
-	*/
-	getLogLevel(id) {
-		return Promise.resolve(this.#log_level.get(id) ?? this.#invariant(id, "Log Level"));
-	}
-	/**
-	* @type {InfoSessionManager["setLogLevel"]}
-	*/
-	setLogLevel(id, log_level) {
-		this.#log_level.set(id, log_level);
-	}
-	/**
-	* @type {InfoSessionManager["getSubscriptions"]}
-	*/
-	getSubscriptions(uri) {
-		return Promise.resolve([...this.#subscriptions.get(uri) ?? []]);
-	}
-	/**
-	* @type {InfoSessionManager["addSubscription"]}
-	*/
-	addSubscription(id, uri) {
-		let subscriptions = this.#subscriptions.get(uri);
-		if (!subscriptions) {
-			subscriptions = /* @__PURE__ */ new Set();
-			this.#subscriptions.set(uri, subscriptions);
-		}
-		subscriptions.add(id);
-	}
-	/**
-	* @type {InfoSessionManager["removeSubscription"]}
-	*/
-	removeSubscription(id, uri) {
-		let subscriptions = this.#subscriptions.get(uri);
-		if (subscriptions) subscriptions.delete(id);
-	}
-	/**
-	* @type {InfoSessionManager["delete"]}
-	*/
-	delete(id) {
-		this.#subscriptions.delete(id);
-		this.#log_level.delete(id);
-		this.#client_capabilities.delete(id);
-		this.#client_info.delete(id);
-	}
-};
-const node_env = globalThis.process?.env?.NODE_ENV;
-var dev_fallback_default = node_env && !node_env.toLowerCase().startsWith("prod");
-/**
-* @import { AuthInfo, McpServer } from "tmcp";
-* @import { OAuth  } from "@tmcp/auth";
-* @import { StreamSessionManager, InfoSessionManager } from "@tmcp/session-manager";
-* @import { OptionalizeSessionManager } from "./type-utils.js"
-*/
-/**
-* @typedef {{
-* 	origin?: string | string[] | boolean
-* 	methods?: string[]
-* 	allowedHeaders?: string[]
-* 	exposedHeaders?: string[]
-* 	credentials?: boolean
-* 	maxAge?: number
-* }} CorsConfig
-*/
-/**
-* @typedef {{
-* 	getSessionId?: () => string
-* 	path?: string | null
-* 	oauth?: OAuth<"built">
-* 	cors?: CorsConfig | boolean,
-* 	sessionManager?: { streams?: StreamSessionManager, info?: OptionalizeSessionManager<InfoSessionManager> }
-* 	disableSse?: boolean
-* }} HttpTransportOptions
-*/
-/**
-* @template {Record<string, unknown> | undefined} [TCustom=undefined]
-*/
-var HttpTransport = class {
-	/**
-	* @typedef {NonNullable<Required<Pick<HttpTransportOptions, "sessionManager">["sessionManager"]>>} SessionManager
-	*/
-	/**
-	* @type {McpServer<any, TCustom>}
-	*/
-	#server;
-	/**
-	* @type {Required<Omit<HttpTransportOptions, 'oauth' | 'cors' | 'sessionManager' | 'disableSse'>> & { cors?: CorsConfig | boolean, sessionManager: SessionManager, disableSse?: boolean }}
-	*/
-	#options;
-	/**
-	* @type {string | null}
-	*/
-	#path;
-	/**
-	* @type {AsyncLocalStorage<ReadableStreamDefaultController | undefined>}
-	*/
-	#controller_storage = new AsyncLocalStorage();
-	/**
-	* @type {AsyncLocalStorage<string>}
-	*/
-	#session_id_storage = new AsyncLocalStorage();
-	/**
-	* @type {OAuth<"built"> | undefined}
-	*/
-	#oauth;
-	#text_encoder = new TextEncoder();
-	/**
-	*
-	* @param {McpServer<any, TCustom>} server
-	* @param {HttpTransportOptions} [options]
-	*/
-	constructor(server, options) {
-		this.#server = server;
-		const { getSessionId = () => crypto.randomUUID(), path = "/mcp", oauth, cors, disableSse, sessionManager: _sessionManager = {
-			streams: new InMemoryStreamSessionManager(),
-			info: new InMemoryInfoSessionManager()
-		} } = options ?? { getSessionId: () => crypto.randomUUID() };
-		/**
-		* @type {SessionManager}
-		*/
-		const sessionManager = {
-			streams: _sessionManager.streams ?? new InMemoryStreamSessionManager(),
-			info: _sessionManager.info ?? new InMemoryInfoSessionManager()
-		};
-		if (options?.path === void 0 && dev_fallback_default) console.warn("[tmcp][transport-http] `options.path` is undefined, in future versions passing `undefined` will default to respond on all paths. To keep the current behavior, explicitly set `path` to '/mcp' or your desired path.");
-		if (oauth) this.#oauth = oauth;
-		this.#options = {
-			getSessionId,
-			path,
-			cors,
-			sessionManager,
-			disableSse
-		};
-		this.#path = path;
-		this.#server.on("initialize", ({ capabilities, clientInfo }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			this.#options.sessionManager.info.setClientCapabilities(sessionId, capabilities);
-			this.#options.sessionManager.info.setClientInfo(sessionId, clientInfo);
-		});
-		this.#server.on("subscription", async ({ uri, action }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			if (action === "remove") this.#options.sessionManager.info.removeSubscription?.(sessionId, uri);
-			else this.#options.sessionManager.info.addSubscription(sessionId, uri);
-		});
-		this.#server.on("loglevelchange", ({ level }) => {
-			const sessionId = this.#session_id_storage.getStore();
-			if (!sessionId) return;
-			this.#options.sessionManager.info.setLogLevel(sessionId, level);
-		});
-		this.#server.on("broadcast", async ({ request }) => {
-			let sessions = void 0;
-			if (request.method === "notifications/resources/updated") sessions = await this.#options.sessionManager.info.getSubscriptions(request.params.uri);
-			await this.#options.sessionManager.streams.send(sessions, "event: message\ndata: " + JSON.stringify(request) + "\n\n");
-		});
-		this.#server.on("send", async ({ request }) => {
-			const controller = this.#controller_storage.getStore();
-			if (!controller) return;
-			controller.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(request) + "\n\n"));
-		});
-	}
-	/**
-	* Applies CORS headers to a response based on the configuration
-	* @param {Response} response - The response to modify
-	* @param {Request} request - The original request
-	*/
-	#apply_cors_headers(response, request) {
-		const cors_config = this.#options.cors;
-		if (!cors_config) return;
-		if (cors_config === true) {
-			response.headers.set("Access-Control-Allow-Origin", "*");
-			response.headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-			response.headers.set("Access-Control-Allow-Headers", "*");
-			return;
-		}
-		const config = cors_config;
-		const origin = request.headers.get("origin");
-		if (config.origin !== void 0) {
-			if (config.origin === true || config.origin === "*") response.headers.set("Access-Control-Allow-Origin", "*");
-			else if (typeof config.origin === "string") {
-				if (origin === config.origin) response.headers.set("Access-Control-Allow-Origin", config.origin);
-			} else if (Array.isArray(config.origin)) {
-				if (origin && config.origin.includes(origin)) response.headers.set("Access-Control-Allow-Origin", origin);
-			}
-		}
-		const methods = config.methods ?? [
-			"GET",
-			"POST",
-			"DELETE",
-			"OPTIONS"
-		];
-		response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
-		const allowed_headers = config.allowedHeaders ?? "*";
-		if (Array.isArray(allowed_headers)) response.headers.set("Access-Control-Allow-Headers", allowed_headers.join(", "));
-		else response.headers.set("Access-Control-Allow-Headers", allowed_headers);
-		if (config.exposedHeaders) response.headers.set("Access-Control-Expose-Headers", config.exposedHeaders.join(", "));
-		if (config.credentials) response.headers.set("Access-Control-Allow-Credentials", "true");
-		if (config.maxAge !== void 0) response.headers.set("Access-Control-Max-Age", config.maxAge.toString());
-	}
-	/**
-	* @param {string} session_id
-	*/
-	async #handle_delete(session_id) {
-		await this.#options.sessionManager.streams.delete(session_id);
-		await this.#options.sessionManager.info.delete(session_id);
-		return new Response(null, {
-			status: 200,
-			headers: { "mcp-session-id": session_id }
-		});
-	}
-	/**
-	*
-	* @param {string} session_id
-	* @returns
-	*/
-	async #handle_get(session_id) {
-		if (this.#options.disableSse) return new Response(null, {
-			status: 405,
-			headers: { Allow: "POST, DELETE, OPTIONS" }
-		});
-		const sessions = this.#options.sessionManager;
-		const text_encoder = this.#text_encoder;
-		if (await sessions.streams.has(session_id)) return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32e3,
-				message: "Conflict: Only one SSE stream is allowed per session"
-			},
-			id: null
-		}), {
-			headers: {
-				"Content-Type": "application/json",
-				"mcp-session-id": session_id
-			},
-			status: 409
-		});
-		const stream = new ReadableStream({
-			async start(controller) {
-				await sessions.streams.create(session_id, controller);
-				controller.enqueue(text_encoder.encode(": connected\n\n"));
-			},
-			async cancel() {
-				await sessions.streams.delete(session_id);
-			}
-		});
-		return new Response(stream, {
-			headers: {
-				"Content-Type": "text/event-stream",
-				"Cache-Control": "no-cache",
-				Connection: "keep-alive",
-				"mcp-session-id": session_id
-			},
-			status: 200
-		});
-	}
-	/**
-	*
-	* @param {string} session_id
-	* @param {Request} request
-	* @param {AuthInfo | null} auth_info
-	* @param {TCustom} [ctx]
-	*/
-	async #handle_post(session_id, request, auth_info, ctx) {
-		const content_type = request.headers.get("content-type");
-		if (!content_type || !content_type.includes("application/json")) return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32600,
-				message: "Invalid Request",
-				data: "Content-Type must be application/json"
-			}
-		}), {
-			status: 415,
-			headers: {
-				"Content-Type": "application/json",
-				"mcp-session-id": session_id
-			}
-		});
-		try {
-			const body = await request.clone().json();
-			/**
-			* @type {ReadableStreamDefaultController | undefined}
-			*/
-			let controller;
-			const stream = new ReadableStream({ start(_controller) {
-				controller = _controller;
-			} });
-			const session_id_storage = this.#session_id_storage;
-			const handle = async () => {
-				const client_capabilities = await this.#options.sessionManager.info.getClientCapabilities(session_id).catch(() => void 0);
-				const client_info = await this.#options.sessionManager.info.getClientInfo(session_id).catch(() => void 0);
-				const log_level = await this.#options.sessionManager.info.getLogLevel(session_id).catch(() => void 0);
-				const response = await this.#controller_storage.run(controller, () => session_id_storage.run(session_id, () => this.#server.receive(body, {
-					sessionId: session_id,
-					auth: auth_info ?? void 0,
-					sessionInfo: {
-						clientCapabilities: client_capabilities,
-						clientInfo: client_info,
-						logLevel: log_level
-					},
-					custom: ctx
-				})));
-				controller?.enqueue(this.#text_encoder.encode("event: message\ndata: " + JSON.stringify(response) + "\n\n"));
-				controller?.close();
-			};
-			handle();
-			const has_request = (Array.isArray(body) ? body : [body]).some((message) => message.id != null);
-			const status = !has_request ? 202 : 200;
-			return new Response(has_request ? stream : null, {
-				headers: has_request ? {
-					"Content-Type": "text/event-stream",
-					"Cache-Control": "no-cache",
-					connection: "keep-alive",
-					"mcp-session-id": session_id
-				} : void 0,
-				status
-			});
-		} catch (error) {
-			return new Response(JSON.stringify({
-				jsonrpc: "2.0",
-				error: {
-					code: -32700,
-					message: "Parse error",
-					data: error.message
-				}
-			}), {
-				status: 400,
-				headers: {
-					"Content-Type": "application/json",
-					"mcp-session-id": session_id
-				}
-			});
-		}
-	}
-	/**
-	*
-	* @param {string} method
-	* @returns
-	*/
-	#handle_default(method) {
-		return new Response(JSON.stringify({
-			jsonrpc: "2.0",
-			error: {
-				code: -32601,
-				message: "Method not found",
-				data: `HTTP method ${method} not supported`
-			}
-		}), {
-			status: 405,
-			headers: {
-				"Content-Type": "application/json",
-				Allow: "GET, POST, DELETE, OPTIONS"
-			}
-		});
-	}
-	/**
-	*
-	* @param {Request} request
-	* @param {TCustom} [ctx]
-	* @returns {Promise<Response | null>}
-	*/
-	async respond(request, ctx) {
-		const url = new URL(request.url);
-		/**
-		* @type {AuthInfo | null}
-		*/
-		let auth_info = null;
-		if (this.#oauth) {
-			try {
-				const response = await this.#oauth.respond(request);
-				if (response) return response;
-			} catch (error) {
-				return new Response(JSON.stringify({
-					error: "server_error",
-					error_description: error.message
-				}), {
-					status: 500,
-					headers: { "Content-Type": "application/json" }
-				});
-			}
-			auth_info = await this.#oauth.verify(request);
-		}
-		if (url.pathname !== this.#path && this.#path !== null) return null;
-		const method = request.method;
-		const session_id = request.headers.get("mcp-session-id") || this.#options.getSessionId();
-		/**
-		* @type {Response | null}
-		*/
-		let response = null;
-		if (method === "OPTIONS") response = new Response(null, {
-			status: 204,
-			headers: { "Content-Type": "application/json" }
-		});
-		else if (method === "DELETE") response = await this.#handle_delete(session_id);
-		else if (method === "GET") response = await this.#handle_get(session_id);
-		else if (method === "POST") response = await this.#handle_post(session_id, request, auth_info, ctx);
-		else response = this.#handle_default(method);
-		if (response) this.#apply_cors_headers(response, request);
-		return response;
-	}
-};
-const noColor = /* @__PURE__ */ (() => {
-	const env = globalThis.process?.env ?? {};
-	return env.NO_COLOR === "1" || env.TERM === "dumb";
-})();
-const _c = (c, r = 39) => (t) => noColor ? t : `\u001B[${c}m${t}\u001B[${r}m`;
-const bold = /* @__PURE__ */ _c(1, 22);
-const red = /* @__PURE__ */ _c(31);
-const green = /* @__PURE__ */ _c(32);
-const gray = /* @__PURE__ */ _c(90);
-function lazyInherit(target, source, sourceKey) {
-	for (const key of [...Object.getOwnPropertyNames(source), ...Object.getOwnPropertySymbols(source)]) {
-		if (key === "constructor") continue;
-		const targetDesc = Object.getOwnPropertyDescriptor(target, key);
-		const desc = Object.getOwnPropertyDescriptor(source, key);
-		let modified = false;
-		if (desc.get) {
-			modified = true;
-			desc.get = targetDesc?.get || function() {
-				return this[sourceKey][key];
-			};
-		}
-		if (desc.set) {
-			modified = true;
-			desc.set = targetDesc?.set || function(value) {
-				this[sourceKey][key] = value;
-			};
-		}
-		if (!targetDesc?.value && typeof desc.value === "function") {
-			modified = true;
-			desc.value = function(...args) {
-				return this[sourceKey][key](...args);
-			};
-		}
-		if (modified) Object.defineProperty(target, key, desc);
-	}
-}
-/**
-* URL wrapper with fast paths to access to the following props:
-*
-*  - `url.pathname`
-*  - `url.search`
-*  - `url.searchParams`
-*  - `url.protocol`
-*
-* **NOTES:**
-*
-* - It is assumed that the input URL is **already encoded** and formatted from an HTTP request and contains no hash.
-* - Triggering the setters or getters on other props will deoptimize to full URL parsing.
-* - Changes to `searchParams` will be discarded as we don't track them.
-*/
-const FastURL = /* @__PURE__ */ (() => {
-	const NativeURL = globalThis.URL;
-	const FastURL = class URL {
-		#url;
-		#href;
-		#protocol;
-		#host;
-		#pathname;
-		#search;
-		#searchParams;
-		#pos;
-		constructor(url) {
-			if (typeof url === "string") this.#href = url;
-			else {
-				this.#protocol = url.protocol;
-				this.#host = url.host;
-				this.#pathname = url.pathname;
-				this.#search = url.search;
-			}
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeURL;
-		}
-		get _url() {
-			if (this.#url) return this.#url;
-			this.#url = new NativeURL(this.href);
-			this.#href = void 0;
-			this.#protocol = void 0;
-			this.#host = void 0;
-			this.#pathname = void 0;
-			this.#search = void 0;
-			this.#searchParams = void 0;
-			this.#pos = void 0;
-			return this.#url;
-		}
-		get href() {
-			if (this.#url) return this.#url.href;
-			if (!this.#href) this.#href = `${this.#protocol || "http:"}//${this.#host || "localhost"}${this.#pathname || "/"}${this.#search || ""}`;
-			return this.#href;
-		}
-		#getPos() {
-			if (!this.#pos) {
-				const url = this.href;
-				const protoIndex = url.indexOf("://");
-				const pathnameIndex = protoIndex === -1 ? -1 : url.indexOf("/", protoIndex + 4);
-				this.#pos = [
-					protoIndex,
-					pathnameIndex,
-					pathnameIndex === -1 ? -1 : url.indexOf("?", pathnameIndex)
-				];
-			}
-			return this.#pos;
-		}
-		get pathname() {
-			if (this.#url) return this.#url.pathname;
-			if (this.#pathname === void 0) {
-				const [, pathnameIndex, queryIndex] = this.#getPos();
-				if (pathnameIndex === -1) return this._url.pathname;
-				this.#pathname = this.href.slice(pathnameIndex, queryIndex === -1 ? void 0 : queryIndex);
-			}
-			return this.#pathname;
-		}
-		get search() {
-			if (this.#url) return this.#url.search;
-			if (this.#search === void 0) {
-				const [, pathnameIndex, queryIndex] = this.#getPos();
-				if (pathnameIndex === -1) return this._url.search;
-				const url = this.href;
-				this.#search = queryIndex === -1 || queryIndex === url.length - 1 ? "" : url.slice(queryIndex);
-			}
-			return this.#search;
-		}
-		get searchParams() {
-			if (this.#url) return this.#url.searchParams;
-			if (!this.#searchParams) this.#searchParams = new URLSearchParams(this.search);
-			return this.#searchParams;
-		}
-		get protocol() {
-			if (this.#url) return this.#url.protocol;
-			if (this.#protocol === void 0) {
-				const [protocolIndex] = this.#getPos();
-				if (protocolIndex === -1) return this._url.protocol;
-				this.#protocol = this.href.slice(0, protocolIndex + 1);
-			}
-			return this.#protocol;
-		}
-		toString() {
-			return this.href;
-		}
-		toJSON() {
-			return this.href;
-		}
-	};
-	lazyInherit(FastURL.prototype, NativeURL.prototype, "_url");
-	Object.setPrototypeOf(FastURL.prototype, NativeURL.prototype);
-	Object.setPrototypeOf(FastURL, NativeURL);
-	return FastURL;
-})();
-function resolvePortAndHost(opts) {
-	const _port = opts.port ?? globalThis.process?.env.PORT ?? 3e3;
-	const port = typeof _port === "number" ? _port : Number.parseInt(_port, 10);
-	if (port < 0 || port > 65535) throw new RangeError(`Port must be between 0 and 65535 (got "${port}").`);
-	return {
-		port,
-		hostname: opts.hostname ?? globalThis.process?.env.HOST
-	};
-}
-function fmtURL(host, port, secure) {
-	if (!host || !port) return;
-	if (host.includes(":")) host = `[${host}]`;
-	return `http${secure ? "s" : ""}://${host}:${port}/`;
-}
-function printListening(opts, url) {
-	if (!url || (opts.silent ?? globalThis.process?.env?.TEST)) return;
-	let additionalInfo = "";
-	try {
-		const _url = new URL(url);
-		if (_url.hostname === "[::]" || _url.hostname === "0.0.0.0") {
-			_url.hostname = "localhost";
-			url = _url.href;
-			additionalInfo = " (all interfaces)";
-		}
-	} catch {}
-	let listeningOn = `➜ Listening on:`;
-	if (globalThis.process.stdout?.isTTY) {
-		listeningOn = `\u001B[32m${listeningOn}\u001B[0m`;
-		url = `\u001B[36m${url}\u001B[0m`;
-		additionalInfo = `\u001B[2m${additionalInfo}\u001B[0m`;
-	}
-	console.log(`${listeningOn} ${url}${additionalInfo}`);
-}
-function resolveTLSOptions(opts) {
-	if (!opts.tls || opts.protocol === "http") return;
-	const cert = resolveCertOrKey(opts.tls.cert);
-	const key = resolveCertOrKey(opts.tls.key);
-	if (!cert && !key) {
-		if (opts.protocol === "https") throw new TypeError("TLS `cert` and `key` must be provided for `https` protocol.");
-		return;
-	}
-	if (!cert || !key) throw new TypeError("TLS `cert` and `key` must be provided together.");
-	return {
-		cert,
-		key,
-		passphrase: opts.tls.passphrase
-	};
-}
-function resolveCertOrKey(value) {
-	if (!value) return;
-	if (typeof value !== "string") throw new TypeError("TLS certificate and key must be strings in PEM format or file paths.");
-	if (value.startsWith("-----BEGIN ")) return value;
-	const { readFileSync } = process.getBuiltinModule("node:fs");
-	return readFileSync(value, "utf8");
-}
-function createWaitUntil() {
-	const promises = /* @__PURE__ */ new Set();
-	return {
-		waitUntil: (promise) => {
-			if (typeof promise?.then !== "function") return;
-			promises.add(Promise.resolve(promise).catch(console.error).finally(() => {
-				promises.delete(promise);
-			}));
-		},
-		wait: () => {
-			return Promise.all(promises);
-		}
-	};
-}
-function wrapFetch(server) {
-	const fetchHandler = server.options.fetch;
-	const middleware = server.options.middleware || [];
-	return middleware.length === 0 ? fetchHandler : (request) => callMiddleware(request, fetchHandler, middleware, 0);
-}
-function callMiddleware(request, fetchHandler, middleware, index) {
-	if (index === middleware.length) return fetchHandler(request);
-	return middleware[index](request, () => callMiddleware(request, fetchHandler, middleware, index + 1));
-}
-const errorPlugin = (server) => {
-	const errorHandler = server.options.error;
-	if (!errorHandler) return;
-	server.options.middleware.unshift((_req, next) => {
-		try {
-			const res = next();
-			return res instanceof Promise ? res.catch((error) => errorHandler(error)) : res;
-		} catch (error) {
-			return errorHandler(error);
-		}
-	});
-};
-const gracefulShutdownPlugin = (server) => {
-	const config = server.options?.gracefulShutdown;
-	if (!globalThis.process?.on || config === false || config === void 0 && (process.env.CI || process.env.TEST)) return;
-	const gracefulTimeout = config === true || !config?.gracefulTimeout ? Number.parseInt(process.env.SERVER_SHUTDOWN_TIMEOUT || "") || 5 : config.gracefulTimeout;
-	let isClosing = false;
-	let isClosed = false;
-	const w = server.options.silent ? () => {} : process.stderr.write.bind(process.stderr);
-	const forceClose = async () => {
-		if (isClosed) return;
-		w(red("\x1B[2K\rForcibly closing connections...\n"));
-		isClosed = true;
-		await server.close(true);
-	};
-	const shutdown = async () => {
-		if (isClosing || isClosed) return;
-		setTimeout(() => {
-			globalThis.process.once("SIGINT", forceClose);
-		}, 100);
-		isClosing = true;
-		const closePromise = server.close();
-		for (let remaining = gracefulTimeout; remaining > 0; remaining--) {
-			w(gray(`\rStopping server gracefully (${remaining}s)... Press ${bold("Ctrl+C")} again to force close.`));
-			if (await Promise.race([closePromise.then(() => true), new Promise((r) => setTimeout(() => r(false), 1e3))])) {
-				w("\x1B[2K\r" + green("Server closed successfully.\n"));
-				isClosed = true;
-				return;
-			}
-		}
-		w("\x1B[2K\rGraceful shutdown timed out.\n");
-		await forceClose();
-	};
-	for (const sig of ["SIGINT", "SIGTERM"]) globalThis.process.on(sig, shutdown);
-};
-async function sendNodeResponse(nodeRes, webRes) {
-	if (!webRes) {
-		nodeRes.statusCode = 500;
-		return endNodeResponse(nodeRes);
-	}
-	if (webRes._toNodeResponse) {
-		const res = webRes._toNodeResponse();
-		writeHead(nodeRes, res.status, res.statusText, res.headers);
-		if (res.body) {
-			if (res.body instanceof ReadableStream) return streamBody(res.body, nodeRes);
-			else if (typeof res.body?.pipe === "function") {
-				res.body.pipe(nodeRes);
-				return new Promise((resolve) => nodeRes.on("close", resolve));
-			}
-			nodeRes.write(res.body);
-		}
-		return endNodeResponse(nodeRes);
-	}
-	const rawHeaders = [...webRes.headers];
-	writeHead(nodeRes, webRes.status, webRes.statusText, rawHeaders);
-	return webRes.body ? streamBody(webRes.body, nodeRes) : endNodeResponse(nodeRes);
-}
-function writeHead(nodeRes, status, statusText, rawHeaders) {
-	const writeHeaders = globalThis.Deno ? rawHeaders : rawHeaders.flat();
-	if (!nodeRes.headersSent) if (nodeRes.req?.httpVersion === "2.0") nodeRes.writeHead(status, writeHeaders);
-	else nodeRes.writeHead(status, statusText, writeHeaders);
-}
-function endNodeResponse(nodeRes) {
-	return new Promise((resolve) => nodeRes.end(resolve));
-}
-function streamBody(stream, nodeRes) {
-	if (nodeRes.destroyed) {
-		stream.cancel();
-		return;
-	}
-	const reader = stream.getReader();
-	function streamCancel(error) {
-		reader.cancel(error).catch(() => {});
-		if (error) nodeRes.destroy(error);
-	}
-	function streamHandle({ done, value }) {
-		try {
-			if (done) nodeRes.end();
-			else if (nodeRes.write(value)) reader.read().then(streamHandle, streamCancel);
-			else nodeRes.once("drain", () => reader.read().then(streamHandle, streamCancel));
-		} catch (error) {
-			streamCancel(error instanceof Error ? error : void 0);
-		}
-	}
-	nodeRes.on("close", streamCancel);
-	nodeRes.on("error", streamCancel);
-	reader.read().then(streamHandle, streamCancel);
-	return reader.closed.catch(streamCancel).finally(() => {
-		nodeRes.off("close", streamCancel);
-		nodeRes.off("error", streamCancel);
-	});
-}
-/**
-* Validates an HTTP Host header value (domain, IPv4, or bracketed IPv6) with optional port.
-* Intended for preliminary filtering invalid values like "localhost:3000/foobar?"
-*/
-const HOST_RE = /^(\[(?:[A-Fa-f0-9:.]+)\]|(?:[A-Za-z0-9_-]+\.)*[A-Za-z0-9_-]+|(?:\d{1,3}\.){3}\d{1,3})(:\d{1,5})?$/;
-var NodeRequestURL = class extends FastURL {
-	#req;
-	constructor({ req }) {
-		const path = req.url || "/";
-		if (path[0] === "/") {
-			const qIndex = path.indexOf("?");
-			const pathname = qIndex === -1 ? path : path?.slice(0, qIndex) || "/";
-			const search = qIndex === -1 ? "" : path?.slice(qIndex) || "";
-			let host = req.headers.host || req.headers[":authority"];
-			if (host) {
-				if (!HOST_RE.test(host)) throw new TypeError(`Invalid host header: ${host}`);
-			} else if (req.socket) host = `${req.socket.localFamily === "IPv6" ? "[" + req.socket.localAddress + "]" : req.socket.localAddress}:${req.socket?.localPort || "80"}`;
-			else host = "localhost";
-			const protocol = req.socket?.encrypted || req.headers["x-forwarded-proto"] === "https" || req.headers[":scheme"] === "https" ? "https:" : "http:";
-			super({
-				protocol,
-				host,
-				pathname,
-				search
-			});
-		} else super(path);
-		this.#req = req;
-	}
-	get pathname() {
-		return super.pathname;
-	}
-	set pathname(value) {
-		this._url.pathname = value;
-		this.#req.url = this._url.pathname + this._url.search;
-	}
-};
-const NodeRequestHeaders = /* @__PURE__ */ (() => {
-	const NativeHeaders = globalThis.Headers;
-	class Headers {
-		#req;
-		#headers;
-		constructor(req) {
-			this.#req = req;
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeHeaders;
-		}
-		get _headers() {
-			if (!this.#headers) {
-				const headers = new NativeHeaders();
-				const rawHeaders = this.#req.rawHeaders;
-				const len = rawHeaders.length;
-				for (let i = 0; i < len; i += 2) {
-					const key = rawHeaders[i];
-					if (key.charCodeAt(0) === 58) continue;
-					const value = rawHeaders[i + 1];
-					headers.append(key, value);
-				}
-				this.#headers = headers;
-			}
-			return this.#headers;
-		}
-		get(name) {
-			if (this.#headers) return this.#headers.get(name);
-			const value = this.#req.headers[name.toLowerCase()];
-			return Array.isArray(value) ? value.join(", ") : value || null;
-		}
-		has(name) {
-			if (this.#headers) return this.#headers.has(name);
-			return name.toLowerCase() in this.#req.headers;
-		}
-		getSetCookie() {
-			if (this.#headers) return this.#headers.getSetCookie();
-			const value = this.#req.headers["set-cookie"];
-			return Array.isArray(value) ? value : value ? [value] : [];
-		}
-		*_entries() {
-			const rawHeaders = this.#req.rawHeaders;
-			const len = rawHeaders.length;
-			for (let i = 0; i < len; i += 2) {
-				const key = rawHeaders[i];
-				if (key.charCodeAt(0) === 58) continue;
-				yield [key.toLowerCase(), rawHeaders[i + 1]];
-			}
-		}
-		entries() {
-			return this.#headers ? this.#headers.entries() : this._entries();
-		}
-		[Symbol.iterator]() {
-			return this.entries();
-		}
-	}
-	lazyInherit(Headers.prototype, NativeHeaders.prototype, "_headers");
-	Object.setPrototypeOf(Headers, NativeHeaders);
-	Object.setPrototypeOf(Headers.prototype, NativeHeaders.prototype);
-	return Headers;
-})();
-const NodeRequest = /* @__PURE__ */ (() => {
-	const NativeRequest = globalThis.Request;
-	class Request {
-		runtime;
-		#req;
-		#url;
-		#bodyStream;
-		#request;
-		#headers;
-		#abortController;
-		constructor(ctx) {
-			this.#req = ctx.req;
-			this.runtime = {
-				name: "node",
-				node: ctx
-			};
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeRequest;
-		}
-		get ip() {
-			return this.#req.socket?.remoteAddress;
-		}
-		get method() {
-			if (this.#request) return this.#request.method;
-			return this.#req.method || "GET";
-		}
-		get _url() {
-			return this.#url ||= new NodeRequestURL({ req: this.#req });
-		}
-		set _url(url) {
-			this.#url = url;
-		}
-		get url() {
-			if (this.#request) return this.#request.url;
-			return this._url.href;
-		}
-		get headers() {
-			if (this.#request) return this.#request.headers;
-			return this.#headers ||= new NodeRequestHeaders(this.#req);
-		}
-		get _abortController() {
-			if (!this.#abortController) {
-				this.#abortController = new AbortController();
-				const { req, res } = this.runtime.node;
-				const abortController = this.#abortController;
-				const abort = (err) => abortController.abort?.(err);
-				if (res) res.once("close", () => {
-					const reqError = req.errored;
-					if (reqError) abort(reqError);
-					else if (!res.writableEnded) abort();
-				});
-				else req.once("close", () => {
-					if (!req.complete) abort();
-				});
-			}
-			return this.#abortController;
-		}
-		get signal() {
-			return this.#request ? this.#request.signal : this._abortController.signal;
-		}
-		get body() {
-			if (this.#request) return this.#request.body;
-			if (this.#bodyStream === void 0) {
-				const method = this.method;
-				this.#bodyStream = !(method === "GET" || method === "HEAD") ? Readable.toWeb(this.#req) : null;
-			}
-			return this.#bodyStream;
-		}
-		text() {
-			if (this.#request) return this.#request.text();
-			if (this.#bodyStream !== void 0) return this.#bodyStream ? new Response(this.#bodyStream).text() : Promise.resolve("");
-			return readBody(this.#req).then((buf) => buf.toString());
-		}
-		json() {
-			if (this.#request) return this.#request.json();
-			return this.text().then((text) => JSON.parse(text));
-		}
-		get _request() {
-			if (!this.#request) {
-				const body = this.body;
-				this.#request = new NativeRequest(this.url, {
-					method: this.method,
-					headers: this.headers,
-					signal: this._abortController.signal,
-					body,
-					duplex: body ? "half" : void 0
-				});
-				this.#headers = void 0;
-				this.#bodyStream = void 0;
-			}
-			return this.#request;
-		}
-	}
-	lazyInherit(Request.prototype, NativeRequest.prototype, "_request");
-	Object.setPrototypeOf(Request.prototype, NativeRequest.prototype);
-	return Request;
-})();
-function readBody(req) {
-	if ("rawBody" in req && Buffer.isBuffer(req.rawBody)) return Promise.resolve(req.rawBody);
-	return new Promise((resolve, reject) => {
-		const chunks = [];
-		const onData = (chunk) => {
-			chunks.push(chunk);
-		};
-		const onError = (err) => {
-			reject(err);
-		};
-		const onEnd = () => {
-			req.off("error", onError);
-			req.off("data", onData);
-			resolve(Buffer.concat(chunks));
-		};
-		req.on("data", onData).once("end", onEnd).once("error", onError);
-	});
-}
-/**
-* Fast Response for Node.js runtime
-*
-* It is faster because in most cases it doesn't create a full Response instance.
-*/
-const NodeResponse = /* @__PURE__ */ (() => {
-	const NativeResponse = globalThis.Response;
-	const STATUS_CODES = globalThis.process?.getBuiltinModule?.("node:http")?.STATUS_CODES || {};
-	class NodeResponse {
-		#body;
-		#init;
-		#headers;
-		#response;
-		constructor(body, init) {
-			this.#body = body;
-			this.#init = init;
-		}
-		static [Symbol.hasInstance](val) {
-			return val instanceof NativeResponse;
-		}
-		get status() {
-			return this.#response?.status || this.#init?.status || 200;
-		}
-		get statusText() {
-			return this.#response?.statusText || this.#init?.statusText || STATUS_CODES[this.status] || "";
-		}
-		get headers() {
-			if (this.#response) return this.#response.headers;
-			if (this.#headers) return this.#headers;
-			const initHeaders = this.#init?.headers;
-			return this.#headers = initHeaders instanceof Headers ? initHeaders : new Headers(initHeaders);
-		}
-		get ok() {
-			if (this.#response) return this.#response.ok;
-			const status = this.status;
-			return status >= 200 && status < 300;
-		}
-		get _response() {
-			if (this.#response) return this.#response;
-			let body = this.#body;
-			if (body && typeof body.pipe === "function" && !(body instanceof Readable)) {
-				const stream = new PassThrough();
-				body.pipe(stream);
-				const abort = body.abort;
-				if (abort) stream.once("close", () => abort());
-				body = stream;
-			}
-			this.#response = new NativeResponse(body, this.#headers ? {
-				...this.#init,
-				headers: this.#headers
-			} : this.#init);
-			this.#init = void 0;
-			this.#headers = void 0;
-			this.#body = void 0;
-			return this.#response;
-		}
-		_toNodeResponse() {
-			const status = this.status;
-			const statusText = this.statusText;
-			let body;
-			let contentType;
-			let contentLength;
-			if (this.#response) body = this.#response.body;
-			else if (this.#body) if (this.#body instanceof ReadableStream) body = this.#body;
-			else if (typeof this.#body === "string") {
-				body = this.#body;
-				contentType = "text/plain; charset=UTF-8";
-				contentLength = Buffer.byteLength(this.#body);
-			} else if (this.#body instanceof ArrayBuffer) {
-				body = Buffer.from(this.#body);
-				contentLength = this.#body.byteLength;
-			} else if (this.#body instanceof Uint8Array) {
-				body = this.#body;
-				contentLength = this.#body.byteLength;
-			} else if (this.#body instanceof DataView) {
-				body = Buffer.from(this.#body.buffer);
-				contentLength = this.#body.byteLength;
-			} else if (this.#body instanceof Blob) {
-				body = this.#body.stream();
-				contentType = this.#body.type;
-				contentLength = this.#body.size;
-			} else if (typeof this.#body.pipe === "function") body = this.#body;
-			else body = this._response.body;
-			const headers = [];
-			const initHeaders = this.#init?.headers;
-			const headerEntries = this.#response?.headers || this.#headers || (initHeaders ? Array.isArray(initHeaders) ? initHeaders : initHeaders?.entries ? initHeaders.entries() : Object.entries(initHeaders).map(([k, v]) => [k.toLowerCase(), v]) : void 0);
-			let hasContentTypeHeader;
-			let hasContentLength;
-			if (headerEntries) for (const [key, value] of headerEntries) {
-				if (Array.isArray(value)) for (const v of value) headers.push([key, v]);
-				else headers.push([key, value]);
-				if (key === "content-type") hasContentTypeHeader = true;
-				else if (key === "content-length") hasContentLength = true;
-			}
-			if (contentType && !hasContentTypeHeader) headers.push(["content-type", contentType]);
-			if (contentLength && !hasContentLength) headers.push(["content-length", String(contentLength)]);
-			this.#init = void 0;
-			this.#headers = void 0;
-			this.#response = void 0;
-			this.#body = void 0;
-			return {
-				status,
-				statusText,
-				headers,
-				body
-			};
-		}
-	}
-	lazyInherit(NodeResponse.prototype, NativeResponse.prototype, "_response");
-	Object.setPrototypeOf(NodeResponse, NativeResponse);
-	Object.setPrototypeOf(NodeResponse.prototype, NativeResponse.prototype);
-	return NodeResponse;
-})();
-function serve(options) {
-	return new NodeServer(options);
-}
-var NodeServer = class {
-	runtime = "node";
-	options;
-	node;
-	serveOptions;
-	fetch;
-	waitUntil;
-	#isSecure;
-	#listeningPromise;
-	#wait;
-	constructor(options) {
-		this.options = {
-			...options,
-			middleware: [...options.middleware || []]
-		};
-		for (const plugin of options.plugins || []) plugin(this);
-		errorPlugin(this);
-		const fetchHandler = this.fetch = wrapFetch(this);
-		const handler = (nodeReq, nodeRes) => {
-			const request = new NodeRequest({
-				req: nodeReq,
-				res: nodeRes
-			});
-			request.waitUntil = this.#wait?.waitUntil;
-			const res = fetchHandler(request);
-			return res instanceof Promise ? res.then((resolvedRes) => sendNodeResponse(nodeRes, resolvedRes)) : sendNodeResponse(nodeRes, res);
-		};
-		this.node = {
-			handler,
-			server: void 0
-		};
-		const loader = globalThis.__srvxLoader__;
-		if (loader) {
-			loader({ server: this });
-			return;
-		}
-		gracefulShutdownPlugin(this);
-		this.#wait = createWaitUntil();
-		this.waitUntil = this.#wait.waitUntil;
-		const tls = resolveTLSOptions(this.options);
-		const { port, hostname: host } = resolvePortAndHost(this.options);
-		this.serveOptions = {
-			port,
-			host,
-			exclusive: !this.options.reusePort,
-			...tls ? {
-				cert: tls.cert,
-				key: tls.key,
-				passphrase: tls.passphrase
-			} : {},
-			...this.options.node
-		};
-		let server;
-		this.#isSecure = !!this.serveOptions.cert && this.options.protocol !== "http";
-		if (this.options.node?.http2 ?? this.#isSecure) if (this.#isSecure) server = nodeHTTP2.createSecureServer({
-			allowHTTP1: true,
-			...this.serveOptions
-		}, handler);
-		else throw new Error("node.http2 option requires tls certificate!");
-		else if (this.#isSecure) server = nodeHTTPS.createServer(this.serveOptions, handler);
-		else server = nodeHTTP.createServer(this.serveOptions, handler);
-		this.node.server = server;
-		if (!options.manual) this.serve();
-	}
-	serve() {
-		if (this.#listeningPromise) return Promise.resolve(this.#listeningPromise).then(() => this);
-		this.#listeningPromise = new Promise((resolve) => {
-			this.node.server.listen(this.serveOptions, () => {
-				printListening(this.options, this.url);
-				resolve();
-			});
-		});
-	}
-	get url() {
-		const addr = this.node?.server?.address();
-		if (!addr) return;
-		return typeof addr === "string" ? addr : fmtURL(addr.address, addr.port, this.#isSecure);
-	}
-	ready() {
-		return Promise.resolve(this.#listeningPromise).then(() => this);
-	}
-	async close(closeAll) {
-		await Promise.all([this.#wait?.wait(), new Promise((resolve, reject) => {
-			const server = this.node?.server;
-			if (server && closeAll && "closeAllConnections" in server) server.closeAllConnections();
-			if (!server || !server.listening) return resolve();
-			server.close((error) => error ? reject(error) : resolve());
-		})]);
-	}
-};
-var require_models = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __extends = exports && exports.__extends || (function() {
-		var extendStatics = function(d, b) {
-			extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d, b) {
-				d.__proto__ = b;
-			} || function(d, b) {
-				for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
-			};
-			return extendStatics(d, b);
-		};
-		return function(d, b) {
-			if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-			extendStatics(d, b);
-			function __() {
-				this.constructor = d;
-			}
-			d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-		};
-	})();
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.createJSONRPCNotification = exports.createJSONRPCRequest = exports.createJSONRPCSuccessResponse = exports.createJSONRPCErrorResponse = exports.JSONRPCErrorCode = exports.JSONRPCErrorException = exports.isJSONRPCResponses = exports.isJSONRPCResponse = exports.isJSONRPCRequests = exports.isJSONRPCRequest = exports.isJSONRPCID = exports.JSONRPC = void 0;
-	exports.JSONRPC = "2.0";
-	var isJSONRPCID = function(id) {
-		return typeof id === "string" || typeof id === "number" || id === null;
-	};
-	exports.isJSONRPCID = isJSONRPCID;
-	var isJSONRPCRequest = function(payload) {
-		return payload.jsonrpc === exports.JSONRPC && payload.method !== void 0 && payload.result === void 0 && payload.error === void 0;
-	};
-	exports.isJSONRPCRequest = isJSONRPCRequest;
-	var isJSONRPCRequests = function(payload) {
-		return Array.isArray(payload) && payload.every(exports.isJSONRPCRequest);
-	};
-	exports.isJSONRPCRequests = isJSONRPCRequests;
-	var isJSONRPCResponse = function(payload) {
-		return payload.jsonrpc === exports.JSONRPC && payload.id !== void 0 && (payload.result !== void 0 || payload.error !== void 0);
-	};
-	exports.isJSONRPCResponse = isJSONRPCResponse;
-	var isJSONRPCResponses = function(payload) {
-		return Array.isArray(payload) && payload.every(exports.isJSONRPCResponse);
-	};
-	exports.isJSONRPCResponses = isJSONRPCResponses;
-	var createJSONRPCError = function(code, message, data) {
-		var error = {
-			code,
-			message
-		};
-		if (data != null) error.data = data;
-		return error;
-	};
-	exports.JSONRPCErrorException = function(_super) {
-		__extends(JSONRPCErrorException, _super);
-		function JSONRPCErrorException(message, code, data) {
-			var _this = _super.call(this, message) || this;
-			Object.setPrototypeOf(_this, JSONRPCErrorException.prototype);
-			_this.code = code;
-			_this.data = data;
-			return _this;
-		}
-		JSONRPCErrorException.prototype.toObject = function() {
-			return createJSONRPCError(this.code, this.message, this.data);
-		};
-		return JSONRPCErrorException;
-	}(Error);
-	(function(JSONRPCErrorCode) {
-		JSONRPCErrorCode[JSONRPCErrorCode["ParseError"] = -32700] = "ParseError";
-		JSONRPCErrorCode[JSONRPCErrorCode["InvalidRequest"] = -32600] = "InvalidRequest";
-		JSONRPCErrorCode[JSONRPCErrorCode["MethodNotFound"] = -32601] = "MethodNotFound";
-		JSONRPCErrorCode[JSONRPCErrorCode["InvalidParams"] = -32602] = "InvalidParams";
-		JSONRPCErrorCode[JSONRPCErrorCode["InternalError"] = -32603] = "InternalError";
-	})(exports.JSONRPCErrorCode || (exports.JSONRPCErrorCode = {}));
-	var createJSONRPCErrorResponse = function(id, code, message, data) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			id,
-			error: createJSONRPCError(code, message, data)
-		};
-	};
-	exports.createJSONRPCErrorResponse = createJSONRPCErrorResponse;
-	var createJSONRPCSuccessResponse = function(id, result) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			id,
-			result: result !== null && result !== void 0 ? result : null
-		};
-	};
-	exports.createJSONRPCSuccessResponse = createJSONRPCSuccessResponse;
-	var createJSONRPCRequest = function(id, method, params) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			id,
-			method,
-			params
-		};
-	};
-	exports.createJSONRPCRequest = createJSONRPCRequest;
-	var createJSONRPCNotification = function(method, params) {
-		return {
-			jsonrpc: exports.JSONRPC,
-			method,
-			params
-		};
-	};
-	exports.createJSONRPCNotification = createJSONRPCNotification;
-}));
-var require_internal = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.DefaultErrorCode = void 0;
-	exports.DefaultErrorCode = 0;
-}));
-var require_client = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
-		function adopt(value) {
-			return value instanceof P ? value : new P(function(resolve) {
-				resolve(value);
-			});
-		}
-		return new (P || (P = Promise))(function(resolve, reject) {
-			function fulfilled(value) {
-				try {
-					step(generator.next(value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function rejected(value) {
-				try {
-					step(generator["throw"](value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function step(result) {
-				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-			}
-			step((generator = generator.apply(thisArg, _arguments || [])).next());
-		});
-	};
-	var __generator = exports && exports.__generator || function(thisArg, body) {
-		var _ = {
-			label: 0,
-			sent: function() {
-				if (t[0] & 1) throw t[1];
-				return t[1];
-			},
-			trys: [],
-			ops: []
-		}, f, y, t, g;
-		return g = {
-			next: verb(0),
-			"throw": verb(1),
-			"return": verb(2)
-		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-			return this;
-		}), g;
-		function verb(n) {
-			return function(v) {
-				return step([n, v]);
-			};
-		}
-		function step(op) {
-			if (f) throw new TypeError("Generator is already executing.");
-			while (g && (g = 0, op[0] && (_ = 0)), _) try {
-				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-				if (y = 0, t) op = [op[0] & 2, t.value];
-				switch (op[0]) {
-					case 0:
-					case 1:
-						t = op;
-						break;
-					case 4:
-						_.label++;
-						return {
-							value: op[1],
-							done: false
-						};
-					case 5:
-						_.label++;
-						y = op[1];
-						op = [0];
-						continue;
-					case 7:
-						op = _.ops.pop();
-						_.trys.pop();
-						continue;
-					default:
-						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-							_ = 0;
-							continue;
-						}
-						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-							_.label = op[1];
-							break;
-						}
-						if (op[0] === 6 && _.label < t[1]) {
-							_.label = t[1];
-							t = op;
-							break;
-						}
-						if (t && _.label < t[2]) {
-							_.label = t[2];
-							_.ops.push(op);
-							break;
-						}
-						if (t[2]) _.ops.pop();
-						_.trys.pop();
-						continue;
-				}
-				op = body.call(thisArg, _);
-			} catch (e) {
-				op = [6, e];
-				y = 0;
-			} finally {
-				f = t = 0;
-			}
-			if (op[0] & 5) throw op[1];
-			return {
-				value: op[0] ? op[1] : void 0,
-				done: true
-			};
-		}
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.JSONRPCClient = void 0;
-	var models_1 = require_models();
-	var internal_1 = require_internal();
-	exports.JSONRPCClient = function() {
-		function JSONRPCClient(_send, createID) {
-			this._send = _send;
-			this.createID = createID;
-			this.idToResolveMap = /* @__PURE__ */ new Map();
-			this.id = 0;
-		}
-		JSONRPCClient.prototype._createID = function() {
-			if (this.createID) return this.createID();
-			else return ++this.id;
-		};
-		JSONRPCClient.prototype.timeout = function(delay, overrideCreateJSONRPCErrorResponse) {
-			var _this = this;
-			if (overrideCreateJSONRPCErrorResponse === void 0) overrideCreateJSONRPCErrorResponse = function(id) {
-				return (0, models_1.createJSONRPCErrorResponse)(id, internal_1.DefaultErrorCode, "Request timeout");
-			};
-			var timeoutRequest = function(ids, request) {
-				var timeoutID = setTimeout(function() {
-					ids.forEach(function(id) {
-						var resolve = _this.idToResolveMap.get(id);
-						if (resolve) {
-							_this.idToResolveMap.delete(id);
-							resolve(overrideCreateJSONRPCErrorResponse(id));
-						}
-					});
-				}, delay);
-				return request().then(function(result) {
-					clearTimeout(timeoutID);
-					return result;
-				}, function(error) {
-					clearTimeout(timeoutID);
-					return Promise.reject(error);
-				});
-			};
-			var requestAdvanced = function(request, clientParams) {
-				return timeoutRequest((!Array.isArray(request) ? [request] : request).map(function(request) {
-					return request.id;
-				}).filter(isDefinedAndNonNull), function() {
-					return _this.requestAdvanced(request, clientParams);
-				});
-			};
-			return {
-				request: function(method, params, clientParams) {
-					var id = _this._createID();
-					return timeoutRequest([id], function() {
-						return _this.requestWithID(method, params, clientParams, id);
-					});
-				},
-				requestAdvanced: function(request, clientParams) {
-					return requestAdvanced(request, clientParams);
-				}
-			};
-		};
-		JSONRPCClient.prototype.request = function(method, params, clientParams) {
-			return this.requestWithID(method, params, clientParams, this._createID());
-		};
-		JSONRPCClient.prototype.requestWithID = function(method, params, clientParams, id) {
-			return __awaiter(this, void 0, void 0, function() {
-				var request, response;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0:
-							request = (0, models_1.createJSONRPCRequest)(id, method, params);
-							return [4, this.requestAdvanced(request, clientParams)];
-						case 1:
-							response = _a.sent();
-							if (response.result !== void 0 && !response.error) return [2, response.result];
-							else if (response.result === void 0 && response.error) return [2, Promise.reject(new models_1.JSONRPCErrorException(response.error.message, response.error.code, response.error.data))];
-							else return [2, Promise.reject(/* @__PURE__ */ new Error("An unexpected error occurred"))];
-							return [2];
-					}
-				});
-			});
-		};
-		JSONRPCClient.prototype.requestAdvanced = function(requests, clientParams) {
-			var _this = this;
-			var areRequestsOriginallyArray = Array.isArray(requests);
-			if (!Array.isArray(requests)) requests = [requests];
-			var requestsWithID = requests.filter(function(request) {
-				return isDefinedAndNonNull(request.id);
-			});
-			var promises = requestsWithID.map(function(request) {
-				return new Promise(function(resolve) {
-					return _this.idToResolveMap.set(request.id, resolve);
-				});
-			});
-			var promise = Promise.all(promises).then(function(responses) {
-				if (areRequestsOriginallyArray || !responses.length) return responses;
-				else return responses[0];
-			});
-			return this.send(areRequestsOriginallyArray ? requests : requests[0], clientParams).then(function() {
-				return promise;
-			}, function(error) {
-				requestsWithID.forEach(function(request) {
-					_this.receive((0, models_1.createJSONRPCErrorResponse)(request.id, internal_1.DefaultErrorCode, error && error.message || "Failed to send a request"));
-				});
-				return promise;
-			});
-		};
-		JSONRPCClient.prototype.notify = function(method, params, clientParams) {
-			var request = (0, models_1.createJSONRPCNotification)(method, params);
-			this.send(request, clientParams).then(void 0, function() {});
-		};
-		JSONRPCClient.prototype.send = function(payload, clientParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				return __generator(this, function(_a) {
-					return [2, this._send(payload, clientParams)];
-				});
-			});
-		};
-		JSONRPCClient.prototype.rejectAllPendingRequests = function(message) {
-			this.idToResolveMap.forEach(function(resolve, id) {
-				return resolve((0, models_1.createJSONRPCErrorResponse)(id, internal_1.DefaultErrorCode, message));
-			});
-			this.idToResolveMap.clear();
-		};
-		JSONRPCClient.prototype.receive = function(responses) {
-			var _this = this;
-			if (!Array.isArray(responses)) responses = [responses];
-			responses.forEach(function(response) {
-				var resolve = _this.idToResolveMap.get(response.id);
-				if (resolve) {
-					_this.idToResolveMap.delete(response.id);
-					resolve(response);
-				}
-			});
-		};
-		return JSONRPCClient;
-	}();
-	var isDefinedAndNonNull = function(value) {
-		return value !== void 0 && value !== null;
-	};
-}));
-var require_interfaces = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-}));
-var require_server = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __assign = exports && exports.__assign || function() {
-		__assign = Object.assign || function(t) {
-			for (var s, i = 1, n = arguments.length; i < n; i++) {
-				s = arguments[i];
-				for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-			}
-			return t;
-		};
-		return __assign.apply(this, arguments);
-	};
-	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
-		function adopt(value) {
-			return value instanceof P ? value : new P(function(resolve) {
-				resolve(value);
-			});
-		}
-		return new (P || (P = Promise))(function(resolve, reject) {
-			function fulfilled(value) {
-				try {
-					step(generator.next(value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function rejected(value) {
-				try {
-					step(generator["throw"](value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function step(result) {
-				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-			}
-			step((generator = generator.apply(thisArg, _arguments || [])).next());
-		});
-	};
-	var __generator = exports && exports.__generator || function(thisArg, body) {
-		var _ = {
-			label: 0,
-			sent: function() {
-				if (t[0] & 1) throw t[1];
-				return t[1];
-			},
-			trys: [],
-			ops: []
-		}, f, y, t, g;
-		return g = {
-			next: verb(0),
-			"throw": verb(1),
-			"return": verb(2)
-		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-			return this;
-		}), g;
-		function verb(n) {
-			return function(v) {
-				return step([n, v]);
-			};
-		}
-		function step(op) {
-			if (f) throw new TypeError("Generator is already executing.");
-			while (g && (g = 0, op[0] && (_ = 0)), _) try {
-				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-				if (y = 0, t) op = [op[0] & 2, t.value];
-				switch (op[0]) {
-					case 0:
-					case 1:
-						t = op;
-						break;
-					case 4:
-						_.label++;
-						return {
-							value: op[1],
-							done: false
-						};
-					case 5:
-						_.label++;
-						y = op[1];
-						op = [0];
-						continue;
-					case 7:
-						op = _.ops.pop();
-						_.trys.pop();
-						continue;
-					default:
-						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-							_ = 0;
-							continue;
-						}
-						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-							_.label = op[1];
-							break;
-						}
-						if (op[0] === 6 && _.label < t[1]) {
-							_.label = t[1];
-							t = op;
-							break;
-						}
-						if (t && _.label < t[2]) {
-							_.label = t[2];
-							_.ops.push(op);
-							break;
-						}
-						if (t[2]) _.ops.pop();
-						_.trys.pop();
-						continue;
-				}
-				op = body.call(thisArg, _);
-			} catch (e) {
-				op = [6, e];
-				y = 0;
-			} finally {
-				f = t = 0;
-			}
-			if (op[0] & 5) throw op[1];
-			return {
-				value: op[0] ? op[1] : void 0,
-				done: true
-			};
-		}
-	};
-	var __spreadArray = exports && exports.__spreadArray || function(to, from, pack) {
-		if (pack || arguments.length === 2) {
-			for (var i = 0, l = from.length, ar; i < l; i++) if (ar || !(i in from)) {
-				if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-				ar[i] = from[i];
-			}
-		}
-		return to.concat(ar || Array.prototype.slice.call(from));
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.JSONRPCServer = void 0;
-	var models_1 = require_models();
-	var internal_1 = require_internal();
-	var createParseErrorResponse = function() {
-		return (0, models_1.createJSONRPCErrorResponse)(null, models_1.JSONRPCErrorCode.ParseError, "Parse error");
-	};
-	var createInvalidRequestResponse = function(request) {
-		return (0, models_1.createJSONRPCErrorResponse)((0, models_1.isJSONRPCID)(request.id) ? request.id : null, models_1.JSONRPCErrorCode.InvalidRequest, "Invalid Request");
-	};
-	var createMethodNotFoundResponse = function(id) {
-		return (0, models_1.createJSONRPCErrorResponse)(id, models_1.JSONRPCErrorCode.MethodNotFound, "Method not found");
-	};
-	exports.JSONRPCServer = function() {
-		function JSONRPCServer(options) {
-			if (options === void 0) options = {};
-			var _a;
-			this.mapErrorToJSONRPCErrorResponse = defaultMapErrorToJSONRPCErrorResponse;
-			this.nameToMethodDictionary = {};
-			this.middleware = null;
-			this.errorListener = (_a = options.errorListener) !== null && _a !== void 0 ? _a : console.warn;
-		}
-		JSONRPCServer.prototype.hasMethod = function(name) {
-			return !!this.nameToMethodDictionary[name];
-		};
-		JSONRPCServer.prototype.addMethod = function(name, method) {
-			this.addMethodAdvanced(name, this.toJSONRPCMethod(method));
-		};
-		JSONRPCServer.prototype.removeMethod = function(name) {
-			delete this.nameToMethodDictionary[name];
-		};
-		JSONRPCServer.prototype.toJSONRPCMethod = function(method) {
-			return function(request, serverParams) {
-				var response = method(request.params, serverParams);
-				return Promise.resolve(response).then(function(result) {
-					return mapResultToJSONRPCResponse(request.id, result);
-				});
-			};
-		};
-		JSONRPCServer.prototype.addMethodAdvanced = function(name, method) {
-			var _a;
-			this.nameToMethodDictionary = __assign(__assign({}, this.nameToMethodDictionary), (_a = {}, _a[name] = method, _a));
-		};
-		JSONRPCServer.prototype.receiveJSON = function(json, serverParams) {
-			var request = this.tryParseRequestJSON(json);
-			if (request) return this.receive(request, serverParams);
-			else return Promise.resolve(createParseErrorResponse());
-		};
-		JSONRPCServer.prototype.tryParseRequestJSON = function(json) {
-			try {
-				return JSON.parse(json);
-			} catch (_a) {
-				return null;
-			}
-		};
-		JSONRPCServer.prototype.receive = function(request, serverParams) {
-			if (Array.isArray(request)) return this.receiveMultiple(request, serverParams);
-			else return this.receiveSingle(request, serverParams);
-		};
-		JSONRPCServer.prototype.receiveMultiple = function(requests, serverParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				var responses;
-				var _this = this;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0: return [4, Promise.all(requests.map(function(request) {
-							return _this.receiveSingle(request, serverParams);
-						}))];
-						case 1:
-							responses = _a.sent().filter(isNonNull);
-							if (responses.length === 1) return [2, responses[0]];
-							else if (responses.length) return [2, responses];
-							else return [2, null];
-							return [2];
-					}
-				});
-			});
-		};
-		JSONRPCServer.prototype.receiveSingle = function(request, serverParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				var method, response;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0:
-							method = this.nameToMethodDictionary[request.method];
-							if (!!(0, models_1.isJSONRPCRequest)(request)) return [3, 1];
-							return [2, createInvalidRequestResponse(request)];
-						case 1: return [4, this.callMethod(method, request, serverParams)];
-						case 2:
-							response = _a.sent();
-							return [2, mapResponse(request, response)];
-					}
-				});
-			});
-		};
-		JSONRPCServer.prototype.applyMiddleware = function() {
-			var middlewares = [];
-			for (var _i = 0; _i < arguments.length; _i++) middlewares[_i] = arguments[_i];
-			if (this.middleware) this.middleware = this.combineMiddlewares(__spreadArray([this.middleware], middlewares, true));
-			else this.middleware = this.combineMiddlewares(middlewares);
-		};
-		JSONRPCServer.prototype.combineMiddlewares = function(middlewares) {
-			if (!middlewares.length) return null;
-			else return middlewares.reduce(this.middlewareReducer);
-		};
-		JSONRPCServer.prototype.middlewareReducer = function(prevMiddleware, nextMiddleware) {
-			return function(next, request, serverParams) {
-				return prevMiddleware(function(request, serverParams) {
-					return nextMiddleware(next, request, serverParams);
-				}, request, serverParams);
-			};
-		};
-		JSONRPCServer.prototype.callMethod = function(method, request, serverParams) {
-			var _this = this;
-			var callMethod = function(request, serverParams) {
-				if (method) return method(request, serverParams);
-				else if (request.id !== void 0) return Promise.resolve(createMethodNotFoundResponse(request.id));
-				else return Promise.resolve(null);
-			};
-			var onError = function(error) {
-				_this.errorListener("An unexpected error occurred while executing \"".concat(request.method, "\" JSON-RPC method:"), error);
-				return Promise.resolve(_this.mapErrorToJSONRPCErrorResponseIfNecessary(request.id, error));
-			};
-			try {
-				return (this.middleware || noopMiddleware)(callMethod, request, serverParams).then(void 0, onError);
-			} catch (error) {
-				return onError(error);
-			}
-		};
-		JSONRPCServer.prototype.mapErrorToJSONRPCErrorResponseIfNecessary = function(id, error) {
-			if (id !== void 0) return this.mapErrorToJSONRPCErrorResponse(id, error);
-			else return null;
-		};
-		return JSONRPCServer;
-	}();
-	var isNonNull = function(value) {
-		return value !== null;
-	};
-	var noopMiddleware = function(next, request, serverParams) {
-		return next(request, serverParams);
-	};
-	var mapResultToJSONRPCResponse = function(id, result) {
-		if (id !== void 0) return (0, models_1.createJSONRPCSuccessResponse)(id, result);
-		else return null;
-	};
-	var defaultMapErrorToJSONRPCErrorResponse = function(id, error) {
-		var _a;
-		var message = (_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : "An unexpected error occurred";
-		var code = internal_1.DefaultErrorCode;
-		var data;
-		if (error instanceof models_1.JSONRPCErrorException) {
-			code = error.code;
-			data = error.data;
-		}
-		return (0, models_1.createJSONRPCErrorResponse)(id, code, message, data);
-	};
-	var mapResponse = function(request, response) {
-		if (response) return response;
-		else if (request.id !== void 0) return (0, models_1.createJSONRPCErrorResponse)(request.id, models_1.JSONRPCErrorCode.InternalError, "Internal error");
-		else return null;
-	};
-}));
-var require_server_and_client = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
-		function adopt(value) {
-			return value instanceof P ? value : new P(function(resolve) {
-				resolve(value);
-			});
-		}
-		return new (P || (P = Promise))(function(resolve, reject) {
-			function fulfilled(value) {
-				try {
-					step(generator.next(value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function rejected(value) {
-				try {
-					step(generator["throw"](value));
-				} catch (e) {
-					reject(e);
-				}
-			}
-			function step(result) {
-				result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-			}
-			step((generator = generator.apply(thisArg, _arguments || [])).next());
-		});
-	};
-	var __generator = exports && exports.__generator || function(thisArg, body) {
-		var _ = {
-			label: 0,
-			sent: function() {
-				if (t[0] & 1) throw t[1];
-				return t[1];
-			},
-			trys: [],
-			ops: []
-		}, f, y, t, g;
-		return g = {
-			next: verb(0),
-			"throw": verb(1),
-			"return": verb(2)
-		}, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
-			return this;
-		}), g;
-		function verb(n) {
-			return function(v) {
-				return step([n, v]);
-			};
-		}
-		function step(op) {
-			if (f) throw new TypeError("Generator is already executing.");
-			while (g && (g = 0, op[0] && (_ = 0)), _) try {
-				if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-				if (y = 0, t) op = [op[0] & 2, t.value];
-				switch (op[0]) {
-					case 0:
-					case 1:
-						t = op;
-						break;
-					case 4:
-						_.label++;
-						return {
-							value: op[1],
-							done: false
-						};
-					case 5:
-						_.label++;
-						y = op[1];
-						op = [0];
-						continue;
-					case 7:
-						op = _.ops.pop();
-						_.trys.pop();
-						continue;
-					default:
-						if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-							_ = 0;
-							continue;
-						}
-						if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-							_.label = op[1];
-							break;
-						}
-						if (op[0] === 6 && _.label < t[1]) {
-							_.label = t[1];
-							t = op;
-							break;
-						}
-						if (t && _.label < t[2]) {
-							_.label = t[2];
-							_.ops.push(op);
-							break;
-						}
-						if (t[2]) _.ops.pop();
-						_.trys.pop();
-						continue;
-				}
-				op = body.call(thisArg, _);
-			} catch (e) {
-				op = [6, e];
-				y = 0;
-			} finally {
-				f = t = 0;
-			}
-			if (op[0] & 5) throw op[1];
-			return {
-				value: op[0] ? op[1] : void 0,
-				done: true
-			};
-		}
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.JSONRPCServerAndClient = void 0;
-	var models_1 = require_models();
-	exports.JSONRPCServerAndClient = function() {
-		function JSONRPCServerAndClient(server, client, options) {
-			if (options === void 0) options = {};
-			var _a;
-			this.server = server;
-			this.client = client;
-			this.errorListener = (_a = options.errorListener) !== null && _a !== void 0 ? _a : console.warn;
-		}
-		JSONRPCServerAndClient.prototype.applyServerMiddleware = function() {
-			var _a;
-			var middlewares = [];
-			for (var _i = 0; _i < arguments.length; _i++) middlewares[_i] = arguments[_i];
-			(_a = this.server).applyMiddleware.apply(_a, middlewares);
-		};
-		JSONRPCServerAndClient.prototype.hasMethod = function(name) {
-			return this.server.hasMethod(name);
-		};
-		JSONRPCServerAndClient.prototype.addMethod = function(name, method) {
-			this.server.addMethod(name, method);
-		};
-		JSONRPCServerAndClient.prototype.addMethodAdvanced = function(name, method) {
-			this.server.addMethodAdvanced(name, method);
-		};
-		JSONRPCServerAndClient.prototype.removeMethod = function(name) {
-			this.server.removeMethod(name);
-		};
-		JSONRPCServerAndClient.prototype.timeout = function(delay) {
-			return this.client.timeout(delay);
-		};
-		JSONRPCServerAndClient.prototype.request = function(method, params, clientParams) {
-			return this.client.request(method, params, clientParams);
-		};
-		JSONRPCServerAndClient.prototype.requestAdvanced = function(jsonRPCRequest, clientParams) {
-			return this.client.requestAdvanced(jsonRPCRequest, clientParams);
-		};
-		JSONRPCServerAndClient.prototype.notify = function(method, params, clientParams) {
-			this.client.notify(method, params, clientParams);
-		};
-		JSONRPCServerAndClient.prototype.rejectAllPendingRequests = function(message) {
-			this.client.rejectAllPendingRequests(message);
-		};
-		JSONRPCServerAndClient.prototype.receiveAndSend = function(payload, serverParams, clientParams) {
-			return __awaiter(this, void 0, void 0, function() {
-				var response, message;
-				return __generator(this, function(_a) {
-					switch (_a.label) {
-						case 0:
-							if (!((0, models_1.isJSONRPCResponse)(payload) || (0, models_1.isJSONRPCResponses)(payload))) return [3, 1];
-							this.client.receive(payload);
-							return [3, 4];
-						case 1:
-							if (!((0, models_1.isJSONRPCRequest)(payload) || (0, models_1.isJSONRPCRequests)(payload))) return [3, 3];
-							return [4, this.server.receive(payload, serverParams)];
-						case 2:
-							response = _a.sent();
-							if (response) return [2, this.client.send(response, clientParams)];
-							return [3, 4];
-						case 3:
-							message = "Received an invalid JSON-RPC message";
-							this.errorListener(message, payload);
-							return [2, Promise.reject(new Error(message))];
-						case 4: return [2];
-					}
-				});
-			});
-		};
-		return JSONRPCServerAndClient;
-	}();
-}));
-var require_dist = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
-		if (k2 === void 0) k2 = k;
-		var desc = Object.getOwnPropertyDescriptor(m, k);
-		if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) desc = {
-			enumerable: true,
-			get: function() {
-				return m[k];
-			}
-		};
-		Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-		if (k2 === void 0) k2 = k;
-		o[k2] = m[k];
-	}));
-	var __exportStar = exports && exports.__exportStar || function(m, exports$1) {
-		for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports$1, p)) __createBinding(exports$1, m, p);
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	__exportStar(require_client(), exports);
-	__exportStar(require_interfaces(), exports);
-	__exportStar(require_models(), exports);
-	__exportStar(require_server(), exports);
-	__exportStar(require_server_and_client(), exports);
-}));
-/**
-* @fileoverview URI template parser implementation without regex
-*/
-/**
-* @typedef {import('./types.js').ParsedTemplate} ParsedTemplate
-* @typedef {import('./types.js').TemplateExpression} TemplateExpression
-* @typedef {import('./types.js').TemplatePart} TemplatePart
-* @typedef {import('./types.js').ExpressionPart} ExpressionPart
-*/
-/**
-* Parse a URI template string into its component parts
-* @param {string} template - The URI template to parse
-* @returns {ParsedTemplate} Parsed template representation
-*/
-function parse_template(template) {
-	/** @type {TemplatePart[]} */
-	const parts = [];
-	let current_literal = "";
-	let i = 0;
-	while (i < template.length) {
-		const char = template[i];
-		if (char === "{") {
-			if (current_literal) {
-				parts.push({
-					type: "literal",
-					value: current_literal
-				});
-				current_literal = "";
-			}
-			const expression_start = i + 1;
-			let expression_end = expression_start;
-			let brace_count = 1;
-			while (expression_end < template.length && brace_count > 0) {
-				if (template[expression_end] === "{") brace_count++;
-				else if (template[expression_end] === "}") brace_count--;
-				expression_end++;
-			}
-			if (brace_count > 0) throw new Error(`Unclosed expression in template: ${template}`);
-			const parsed_expression = parse_expression(template.slice(expression_start, expression_end - 1));
-			parts.push(parsed_expression);
-			i = expression_end;
-		} else {
-			current_literal += char;
-			i++;
-		}
-	}
-	if (current_literal) parts.push({
-		type: "literal",
-		value: current_literal
-	});
-	return {
-		template,
-		parts
-	};
-}
-/**
-* Parse an expression content (without braces)
-* @param {string} content - Expression content
-* @returns {TemplatePart} Parsed expression part
-*/
-function parse_expression(content) {
-	if (!content.trim()) throw new Error("Empty expression");
-	const first_char = content[0];
-	const operators = [
-		"+",
-		"#",
-		".",
-		"/",
-		";",
-		"?",
-		"&"
-	];
-	/** @type {string | undefined} */
-	let operator = void 0;
-	let variables_part = content;
-	if (operators.includes(first_char)) {
-		operator = first_char;
-		variables_part = content.slice(1);
-	}
-	return {
-		type: "expression",
-		expressions: split_variables(variables_part).map(parse_variable),
-		operator
-	};
-}
-/**
-* Split variables by comma, handling nested structures
-* @param {string} variables - Variables string
-* @returns {string[]} Array of variable strings
-*/
-function split_variables(variables) {
-	/** @type {string[]} */
-	const result = [];
-	let current = "";
-	let i = 0;
-	while (i < variables.length) {
-		const char = variables[i];
-		if (char === ",") {
-			if (current.trim()) {
-				result.push(current.trim());
-				current = "";
-			}
-		} else current += char;
-		i++;
-	}
-	if (current.trim()) result.push(current.trim());
-	return result;
-}
-/**
-* Parse a single variable specification
-* @param {string} variable - Variable string
-* @returns {TemplateExpression} Parsed variable expression
-*/
-function parse_variable(variable) {
-	let name = variable;
-	/** @type {number | undefined} */
-	let prefix = void 0;
-	let explode = false;
-	if (name.endsWith("*")) {
-		explode = true;
-		name = name.slice(0, -1);
-	}
-	const colon_index = name.indexOf(":");
-	if (colon_index !== -1) {
-		const prefix_str = name.slice(colon_index + 1);
-		prefix = parseInt(prefix_str, 10);
-		if (isNaN(prefix) || prefix < 0) throw new Error(`Invalid prefix length: ${prefix_str}`);
-		name = name.slice(0, colon_index);
-	}
-	if (!name) throw new Error("Empty variable name");
-	return {
-		name,
-		prefix,
-		explode
-	};
-}
-/**
-* Match a URI against a parsed template
-* @param {string} uri - URI to match
-* @param {ParsedTemplate} parsed_template - Parsed template
-* @returns {Record<string, string | string[]> | null} Extracted parameters or null
-*/
-function match_uri(uri, parsed_template) {
-	/** @type {Record<string, string | string[]>} */
-	const params = {};
-	const result = match_parts(uri, 0, parsed_template.parts, 0, params);
-	if (!result || result.uri_index !== uri.length) return null;
-	return params;
-}
-/**
-* Recursively match template parts with backtracking for consecutive variables
-* @param {string} uri - URI to match
-* @param {number} uri_index - Current position in URI
-* @param {TemplatePart[]} parts - Template parts to match
-* @param {number} part_index - Current template part index
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {{ uri_index: number } | null} Match result or null
-*/
-function match_parts(uri, uri_index, parts, part_index, params) {
-	if (part_index >= parts.length) return { uri_index };
-	const part = parts[part_index];
-	if (part.type === "literal") {
-		if (!uri.slice(uri_index).startsWith(part.value)) return null;
-		return match_parts(uri, uri_index + part.value.length, parts, part_index + 1, params);
-	} else {
-		const next_part = parts[part_index + 1];
-		const sorted_boundaries = find_expression_boundaries(uri, uri_index, next_part).sort((a, b) => {
-			if (next_part && next_part.type === "expression" && !next_part.operator) return b - a;
-			return a - b;
-		});
-		for (const boundary of sorted_boundaries) {
-			const segment = uri.slice(uri_index, boundary);
-			const temp_params = { ...params };
-			if (match_simple_expression(segment, part, temp_params, uri, uri_index)) {
-				const rest_result = match_parts(uri, boundary, parts, part_index + 1, temp_params);
-				if (rest_result) {
-					Object.assign(params, temp_params);
-					return rest_result;
-				}
-			}
-		}
-		return null;
-	}
-}
-/**
-* Find possible boundaries for an expression
-* @param {string} uri - URI to search
-* @param {number} start_index - Start position
-* @param {TemplatePart | undefined} next_part - Next template part
-* @returns {number[]} Array of possible boundary positions
-*/
-function find_expression_boundaries(uri, start_index, next_part) {
-	/** @type {number[]} */
-	const boundaries = [];
-	if (next_part && next_part.type === "literal") {
-		let search_index = start_index;
-		while (search_index < uri.length) {
-			const found_index = uri.indexOf(next_part.value, search_index);
-			if (found_index === -1) break;
-			boundaries.push(found_index);
-			search_index = found_index + 1;
-		}
-		if (boundaries.length === 0) return [];
-	} else if (next_part && next_part.type === "expression") {
-		const next_expr = next_part;
-		if (next_expr.operator === ".") {
-			for (let i = start_index; i < uri.length; i++) if (uri[i] === ".") boundaries.push(i);
-			boundaries.push(uri.length);
-		} else if (next_expr.operator === "/") {
-			for (let i = start_index; i < uri.length; i++) if (uri[i] === "/") boundaries.push(i);
-		} else for (let i = start_index; i <= uri.length; i++) boundaries.push(i);
-	} else boundaries.push(uri.length);
-	return boundaries.sort((a, b) => a - b);
-}
-/**
-* Match a simple expression (no complex operators)
-* @param {string} segment - URI segment to match
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @param {string} uri - Full URI
-* @param {number} uri_index - Current URI index
-* @returns {boolean} Whether the match was successful
-*/
-function match_simple_expression(segment, expression, params, uri, uri_index) {
-	if (expression.type !== "expression") return false;
-	switch (expression.operator) {
-		case "+": return handle_reserved_match(segment, expression, params);
-		case "#": return handle_fragment_match(segment, expression, params);
-		case ".": return handle_dot_match(segment, expression, params);
-		case "/": return handle_path_match(segment, expression, params);
-		case ";": return handle_semicolon_match(segment, expression, params);
-		case "?":
-		case "&": return handle_query_match(segment, expression, params);
-		default: return handle_simple_match(segment, expression, params, uri, uri_index);
-	}
-}
-/**
-* Handle fragment match (# operator)
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_fragment_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	if (!segment.startsWith("#")) {
-		for (const expr of expression.expressions) params[expr.name] = "";
-		return segment === "";
-	}
-	const fragment_content = segment.slice(1);
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		let value = fragment_content;
-		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-		params[expr.name] = decodeURIComponent(value);
-		return true;
-	} else {
-		const values = fragment_content.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle reserved string match (+ operator)
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_reserved_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		let value = segment;
-		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-		params[expr.name] = decodeURIComponent(value);
-		return true;
-	} else {
-		const values = segment.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle simple string match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @param {string} uri - Full URI
-* @param {number} uri_index - Current URI index
-* @returns {boolean} Whether the match was successful
-*/
-function handle_simple_match(segment, expression, params, uri, uri_index) {
-	if (expression.type !== "expression") return false;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		let value = segment;
-		if (value.includes("/")) return false;
-		if (value === "" && uri_index + segment.length === uri.length && uri.endsWith("/")) return false;
-		if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-		params[expr.name] = decodeURIComponent(value);
-		return true;
-	} else {
-		const values = segment.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (value.includes("/")) return false;
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle dot notation match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_dot_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	if (segment === "") {
-		for (const expr of expression.expressions) params[expr.name] = "";
-		return true;
-	}
-	const clean_segment = segment.startsWith(".") ? segment.slice(1) : segment;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		if (expr.explode) {
-			const values = clean_segment.split(".");
-			params[expr.name] = values.map((v) => decodeURIComponent(v));
-		} else params[expr.name] = decodeURIComponent(clean_segment);
-		return true;
-	} else {
-		const values = clean_segment.split(".");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle path match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_path_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	const clean_segment = segment.startsWith("/") ? segment.slice(1) : segment;
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		params[expr.name] = decodeURIComponent(clean_segment);
-		return true;
-	} else {
-		const values = clean_segment.split(",");
-		for (let i = 0; i < expression.expressions.length; i++) {
-			const expr = expression.expressions[i];
-			let value = values[i] || "";
-			if (expr.prefix && value.length > expr.prefix) value = value.slice(0, expr.prefix);
-			params[expr.name] = decodeURIComponent(value);
-		}
-		return true;
-	}
-}
-/**
-* Handle semicolon match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_semicolon_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	const parts = segment.split(";").filter((p) => p);
-	for (const part of parts) {
-		const eq_index = part.indexOf("=");
-		if (eq_index !== -1) {
-			const key = part.slice(0, eq_index);
-			const value = part.slice(eq_index + 1);
-			const expr = expression.expressions.find((e) => e.name === key);
-			if (expr) params[expr.name] = decodeURIComponent(value);
-		}
-	}
-	return true;
-}
-/**
-* Handle query match
-* @param {string} segment - URI segment
-* @param {TemplatePart} expression - Expression part
-* @param {Record<string, string | string[]>} params - Parameters object
-* @returns {boolean} Whether the match was successful
-*/
-function handle_query_match(segment, expression, params) {
-	if (expression.type !== "expression") return false;
-	const clean_segment = segment.replace(/^[?&]/, "");
-	if (expression.expressions.length === 1) {
-		const expr = expression.expressions[0];
-		if (expr.explode) {
-			const values = clean_segment.split("&");
-			params[expr.name] = values.map((v) => decodeURIComponent(v));
-		} else {
-			const parts = clean_segment.split("&");
-			for (const part of parts) {
-				const eq_index = part.indexOf("=");
-				if (eq_index !== -1) {
-					const key = part.slice(0, eq_index);
-					const value = part.slice(eq_index + 1);
-					if (key === expr.name) params[expr.name] = decodeURIComponent(value);
-				}
-			}
-		}
-	} else {
-		const parts = clean_segment.split("&");
-		for (const part of parts) {
-			const eq_index = part.indexOf("=");
-			if (eq_index !== -1) {
-				const key = part.slice(0, eq_index);
-				const value = part.slice(eq_index + 1);
-				const expr = expression.expressions.find((e) => e.name === key);
-				if (expr) params[expr.name] = decodeURIComponent(value);
-			}
-		}
-	}
-	return true;
-}
-/**
-* @fileoverview Main UriTemplateMatcher class
-*/
-/**
-* @typedef {import('./types.js').MatchResult} MatchResult
-* @typedef {import('./types.js').ParsedTemplate} ParsedTemplate
-*/
-/**
-* URI Template Matcher class for registering and matching URI templates
-*/
-var UriTemplateMatcher = class {
-	/**
-	* Create a new UriTemplateMatcher instance
-	*/
-	constructor() {
-		/** @type {ParsedTemplate[]} */
-		this.templates = [];
-	}
-	/**
-	* Add a URI template to the matcher
-	* @param {string} template - The URI template string to add
-	* @throws {Error} If template is invalid
-	*/
-	add(template) {
-		if (typeof template !== "string") throw new Error("Template must be a string");
-		if (template !== "" && template.trim() === "") throw new Error("Template cannot be empty");
-		try {
-			const parsed = parse_template(template);
-			this.templates.push(parsed);
-		} catch (error) {
-			throw new Error(`Invalid template: ${template} - ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
-	/**
-	* Match a URI against all registered templates
-	* @param {string} uri - The URI to match
-	* @returns {MatchResult | null} Match result or null if no match found
-	* @throws {Error} If URI is invalid
-	*/
-	match(uri) {
-		if (typeof uri !== "string") throw new Error("URI must be a string");
-		for (const template of this.templates) {
-			const params = match_uri(uri, template);
-			if (params !== null) return {
-				template: template.template,
-				params
-			};
-		}
-		return null;
-	}
-	/**
-	* Clear all registered templates
-	*/
-	clear() {
-		this.templates = [];
-	}
-	/**
-	* Get all registered template strings
-	* @returns {string[]} Array of template strings
-	*/
-	all() {
-		return this.templates.map((t) => t.template);
-	}
-};
-var import_dist = require_dist();
-const JSONRPC_VERSION = "2.0";
-var McpError = class extends Error {
-	/**
-	* @param {number} code
-	* @param {string} message
-	*/
-	constructor(code, message) {
-		super(`MCP error ${code}: ${message}`);
-		this.name = "McpError";
-	}
-};
-/**
-* A progress token, used to associate progress notifications with the original request.
-*/
-const ProgressTokenSchema = /* @__PURE__ */ union([/* @__PURE__ */ string(), /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer())]);
-/**
-* An opaque token used to represent a cursor for pagination.
-*/
-const CursorSchema = /* @__PURE__ */ string();
-const BaseRequestParamsSchema = /* @__PURE__ */ looseObject({ _meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({ progressToken: /* @__PURE__ */ optional(ProgressTokenSchema) })) });
-const RequestSchema = /* @__PURE__ */ object({
-	method: /* @__PURE__ */ string(),
-	params: /* @__PURE__ */ optional(BaseRequestParamsSchema)
-});
-const BaseNotificationParamsSchema = /* @__PURE__ */ looseObject({ _meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({})) });
-const NotificationSchema = /* @__PURE__ */ object({
-	method: /* @__PURE__ */ string(),
-	params: /* @__PURE__ */ optional(BaseNotificationParamsSchema)
-});
-const ResultSchema = /* @__PURE__ */ looseObject({ _meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({})) });
-/**
-* A uniquely identifying ID for a request in JSON-RPC.
-*/
-const RequestIdSchema = /* @__PURE__ */ union([/* @__PURE__ */ string(), /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer())]);
-/**
-* A request that expects a response.
-*/
-const JSONRPCRequestSchema = /* @__PURE__ */ object({
-	jsonrpc: /* @__PURE__ */ literal(JSONRPC_VERSION),
-	id: RequestIdSchema,
-	...RequestSchema.entries
-});
-/**
-* A notification which does not expect a response.
-*/
-const JSONRPCNotificationSchema = /* @__PURE__ */ object({
-	jsonrpc: /* @__PURE__ */ literal(JSONRPC_VERSION),
-	...NotificationSchema.entries
-});
-/**
-* A successful (non-error) response to a request.
-*/
-const JSONRPCResponseSchema = /* @__PURE__ */ strictObject({
-	jsonrpc: /* @__PURE__ */ literal(JSONRPC_VERSION),
-	id: RequestIdSchema,
-	result: ResultSchema
-});
-/**
-* A response to a request that indicates an error occurred.
-*/
-const JSONRPCErrorSchema = /* @__PURE__ */ strictObject({
-	jsonrpc: /* @__PURE__ */ literal(JSONRPC_VERSION),
-	id: RequestIdSchema,
-	error: /* @__PURE__ */ object({
-		code: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer()),
-		message: /* @__PURE__ */ string(),
-		data: /* @__PURE__ */ optional(/* @__PURE__ */ unknown())
-	})
-});
-({ ...ResultSchema.entries });
-({ ...NotificationSchema.entries }), { ...BaseNotificationParamsSchema.entries };
-/**
-* Base metadata interface for common properties across resources, tools, prompts, and implementations.
-*/
-const BaseMetadataSchema = /* @__PURE__ */ object({
-	name: /* @__PURE__ */ string(),
-	title: /* @__PURE__ */ optional(/* @__PURE__ */ string())
-});
-const IconsSchema = /* @__PURE__ */ object({ icons: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ object({
-	src: /* @__PURE__ */ string(),
-	mimeType: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	sizes: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string()))
-}))) });
-/**
-* Describes the name and version of an MCP implementation.
-*/
-const ImplementationSchema = /* @__PURE__ */ object({
-	...BaseMetadataSchema.entries,
-	version: /* @__PURE__ */ string(),
-	websiteUrl: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	...IconsSchema.entries
-});
-/**
-* Capabilities a client may support. Known capabilities are defined here, in this schema, but this is not a closed set: any client can define its own, additional capabilities.
-*/
-const ClientCapabilitiesSchema = /* @__PURE__ */ object({
-	experimental: /* @__PURE__ */ optional(/* @__PURE__ */ object({})),
-	sampling: /* @__PURE__ */ optional(/* @__PURE__ */ object({})),
-	elicitation: /* @__PURE__ */ optional(/* @__PURE__ */ object({})),
-	roots: /* @__PURE__ */ optional(/* @__PURE__ */ object({ listChanged: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()) }))
-});
-const InitializeRequestParamsSchema = /* @__PURE__ */ object({
-	...BaseRequestParamsSchema.entries,
-	protocolVersion: /* @__PURE__ */ string(),
-	capabilities: ClientCapabilitiesSchema,
-	clientInfo: ImplementationSchema
-});
-({ ...RequestSchema.entries });
-({ ...ResultSchema.entries });
-({ ...NotificationSchema.entries });
-({ ...RequestSchema.entries });
-const ProgressSchema = /* @__PURE__ */ object({
-	progress: /* @__PURE__ */ number(),
-	total: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
-	message: /* @__PURE__ */ optional(/* @__PURE__ */ string())
-});
-({ ...NotificationSchema.entries }), {
-	...BaseNotificationParamsSchema.entries,
-	...ProgressSchema.entries
-};
-const PaginatedRequestSchema = /* @__PURE__ */ object({
-	...RequestSchema.entries,
-	params: /* @__PURE__ */ optional(/* @__PURE__ */ object({
-		...BaseRequestParamsSchema.entries,
-		cursor: /* @__PURE__ */ optional(CursorSchema)
-	}))
-});
-const PaginatedResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	nextCursor: /* @__PURE__ */ optional(CursorSchema)
-});
-/**
-* The contents of a specific resource or sub-resource.
-*/
-const ResourceContentsSchema = /* @__PURE__ */ object({
-	uri: /* @__PURE__ */ string(),
-	mimeType: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	_meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({}))
-});
-const TextResourceContentsSchema = /* @__PURE__ */ object({
-	...ResourceContentsSchema.entries,
-	text: /* @__PURE__ */ string()
-});
-const BlobResourceContentsSchema = /* @__PURE__ */ object({
-	...ResourceContentsSchema.entries,
-	blob: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ base64())
-});
-/**
-* A known resource that the server is capable of reading.
-*/
-const ResourceSchema = /* @__PURE__ */ object({
-	...BaseMetadataSchema.entries,
-	uri: /* @__PURE__ */ string(),
-	description: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	mimeType: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	_meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({})),
-	...IconsSchema.entries
-});
-({ ...BaseMetadataSchema.entries }), { ...IconsSchema.entries };
-({ ...PaginatedRequestSchema.entries });
-({ ...PaginatedResultSchema.entries });
-({ ...PaginatedRequestSchema.entries });
-({ ...PaginatedResultSchema.entries });
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-/**
-* The server's response to a resources/read request from the client.
-*/
-const ReadResourceResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	contents: /* @__PURE__ */ array(/* @__PURE__ */ union([TextResourceContentsSchema, BlobResourceContentsSchema]))
-});
-({ ...NotificationSchema.entries });
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-({ ...NotificationSchema.entries }), { ...BaseNotificationParamsSchema.entries };
-({ ...BaseMetadataSchema.entries }), { ...IconsSchema.entries };
-({ ...PaginatedRequestSchema.entries });
-({ ...PaginatedResultSchema.entries });
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-/**
-* Text provided to or from an LLM.
-*/
-const TextContentSchema = /* @__PURE__ */ object({
-	type: /* @__PURE__ */ literal("text"),
-	text: /* @__PURE__ */ string(),
-	_meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({}))
-});
-/**
-* An image provided to or from an LLM.
-*/
-const ImageContentSchema = /* @__PURE__ */ object({
-	type: /* @__PURE__ */ literal("image"),
-	data: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ base64()),
-	mimeType: /* @__PURE__ */ string(),
-	_meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({}))
-});
-/**
-* An Audio provided to or from an LLM.
-*/
-const AudioContentSchema = /* @__PURE__ */ object({
-	type: /* @__PURE__ */ literal("audio"),
-	data: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ base64()),
-	mimeType: /* @__PURE__ */ string(),
-	_meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({}))
-});
-/**
-* The contents of a resource, embedded into a prompt or tool call result.
-*/
-const EmbeddedResourceSchema = /* @__PURE__ */ object({
-	type: /* @__PURE__ */ literal("resource"),
-	resource: /* @__PURE__ */ union([TextResourceContentsSchema, BlobResourceContentsSchema]),
-	_meta: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({}))
-});
-/**
-* A content block that can be used in prompts and tool results.
-*/
-const ContentBlockSchema = /* @__PURE__ */ union([
-	TextContentSchema,
-	ImageContentSchema,
-	AudioContentSchema,
-	/* @__PURE__ */ object({
-		...ResourceSchema.entries,
-		type: /* @__PURE__ */ literal("resource_link")
-	}),
-	EmbeddedResourceSchema
-]);
-/**
-* Describes a message returned as part of a prompt.
-*/
-const PromptMessageSchema = /* @__PURE__ */ object({
-	role: /* @__PURE__ */ picklist(["user", "assistant"]),
-	content: ContentBlockSchema
-});
-/**
-* The server's response to a prompts/get request from the client.
-*/
-const GetPromptResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	description: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	messages: /* @__PURE__ */ array(PromptMessageSchema)
-});
-({ ...NotificationSchema.entries });
-({ ...BaseMetadataSchema.entries }), { ...IconsSchema.entries };
-({ ...PaginatedRequestSchema.entries });
-({ ...PaginatedResultSchema.entries });
-/**
-* The server's response to a tool call.
-*/
-const CallToolResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	content: /* @__PURE__ */ optional(/* @__PURE__ */ array(ContentBlockSchema), []),
-	structuredContent: /* @__PURE__ */ optional(/* @__PURE__ */ looseObject({})),
-	isError: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
-});
-({ ...ResultSchema.entries });
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-({ ...NotificationSchema.entries });
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-({ ...NotificationSchema.entries }), { ...BaseNotificationParamsSchema.entries };
-/**
-* The server's preferences for model selection, requested of the client during sampling.
-*/
-const ModelPreferencesSchema = /* @__PURE__ */ object({
-	hints: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ object({ name: /* @__PURE__ */ optional(/* @__PURE__ */ string()) }))),
-	costPriority: /* @__PURE__ */ optional(/* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0), /* @__PURE__ */ maxValue(1))),
-	speedPriority: /* @__PURE__ */ optional(/* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0), /* @__PURE__ */ maxValue(1))),
-	intelligencePriority: /* @__PURE__ */ optional(/* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0), /* @__PURE__ */ maxValue(1)))
-});
-/**
-* Describes a message issued to or received from an LLM API.
-*/
-const SamplingMessageSchema = /* @__PURE__ */ object({
-	role: /* @__PURE__ */ picklist(["user", "assistant"]),
-	content: /* @__PURE__ */ union([
-		TextContentSchema,
-		ImageContentSchema,
-		AudioContentSchema
-	])
-});
-const CreateMessageRequestParamsSchema = /* @__PURE__ */ object({
-	...BaseRequestParamsSchema.entries,
-	messages: /* @__PURE__ */ array(SamplingMessageSchema),
-	systemPrompt: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	includeContext: /* @__PURE__ */ optional(/* @__PURE__ */ picklist([
-		"none",
-		"thisServer",
-		"allServers"
-	])),
-	temperature: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
-	maxTokens: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer()),
-	stopSequences: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
-	metadata: /* @__PURE__ */ optional(/* @__PURE__ */ object({})),
-	modelPreferences: /* @__PURE__ */ optional(ModelPreferencesSchema)
-});
-({ ...RequestSchema.entries });
-/**
-* The client's response to a sampling/create_message request from the server. The client should inform the user before returning the sampled message, to allow them to inspect the response (human in the loop) and decide whether to allow the server to see it.
-*/
-const CreateMessageResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	model: /* @__PURE__ */ string(),
-	stopReason: /* @__PURE__ */ optional(/* @__PURE__ */ union([/* @__PURE__ */ picklist([
-		"endTurn",
-		"stopSequence",
-		"maxTokens"
-	]), /* @__PURE__ */ string()])),
-	role: /* @__PURE__ */ picklist(["user", "assistant"]),
-	content: /* @__PURE__ */ variant("type", [
-		TextContentSchema,
-		ImageContentSchema,
-		AudioContentSchema
-	])
-});
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-/**
-* The client's response to an elicitation/create request from the server.
-*/
-const ElicitResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	action: /* @__PURE__ */ picklist([
-		"accept",
-		"decline",
-		"cancel"
-	]),
-	content: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ unknown()))
-});
-({ ...RequestSchema.entries }), { ...BaseRequestParamsSchema.entries };
-/**
-* The server's response to a completion/complete request
-*/
-const CompleteResultSchema = /* @__PURE__ */ object({
-	...ResultSchema.entries,
-	completion: /* @__PURE__ */ object({
-		values: /* @__PURE__ */ pipe(/* @__PURE__ */ array(/* @__PURE__ */ string()), /* @__PURE__ */ maxLength(100)),
-		total: /* @__PURE__ */ optional(/* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer())),
-		hasMore: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
-	})
-});
-({ ...RequestSchema.entries });
-({ ...ResultSchema.entries });
-({ ...NotificationSchema.entries });
-/**
-* @typedef {v.InferInput<typeof IconsSchema>} Icons
-*/
-/**
-* @typedef {v.InferInput<typeof ClientCapabilitiesSchema>} ClientCapabilities
-*/
-/**
-* @typedef {v.InferInput<typeof ServerCapabilitiesSchema>} ServerCapabilities
-*/
-/**
-* @typedef {v.InferInput<typeof ImplementationSchema>} ClientInfo
-*/
-/**
-* @typedef {v.InferInput<typeof ImplementationSchema> & { description?: string }} ServerInfo
-*/
-/**
-* @typedef {v.InferInput<typeof InitializeRequestParamsSchema>} InitializeRequestParams
-*/
-/**
-* @template {Record<string, unknown> | undefined} TStructuredContent
-* @typedef {Omit<v.InferInput<typeof CallToolResultSchema>, "structuredContent" | "isError"> & (undefined extends TStructuredContent ? { structuredContent?: undefined, isError?: boolean } : ({ structuredContent: TStructuredContent, isError?: false } | { isError: true, structuredContent?: TStructuredContent }))} CallToolResult
-*/
-/**
-* @typedef {v.InferInput<typeof ReadResourceResultSchema>} ReadResourceResult
-*/
-/**
-* @typedef {v.InferInput<typeof GetPromptResultSchema>} GetPromptResult
-*/
-/**
-* @typedef {v.InferInput<typeof CompleteResultSchema>} CompleteResult
-*/
-/**
-* @typedef {v.InferInput<typeof CreateMessageRequestParamsSchema>} CreateMessageRequestParams
-*/
-/**
-* @typedef {v.InferInput<typeof CreateMessageResultSchema>} CreateMessageResult
-*/
-/**
-* @typedef {v.InferInput<typeof ModelPreferencesSchema>} ModelPreferences
-*/
-/**
-* @typedef {v.InferInput<typeof SamplingMessageSchema>} SamplingMessage
-*/
-/**
-* @typedef {v.InferInput<typeof ModelHintSchema>} ModelHint
-*/
-/**
-* @typedef {v.InferInput<typeof ResourceSchema>} Resource
-*/
-/**
-* @typedef {v.InferInput<typeof JSONRPCRequestSchema>} JSONRPCRequest
-*/
-/**
-* @typedef {v.InferInput<typeof JSONRPCMessageSchema>} JSONRPCMessage
-*/
-/**
-* @typedef {v.InferInput<typeof JSONRPCResponseSchema>} JSONRPCResponse
-*/
-/**
-* @typedef {v.InferInput<typeof LoggingLevelSchema>} LoggingLevel
-*/
-/**
-* @typedef {v.InferInput<typeof ToolAnnotationsSchema>} ToolAnnotations
-*/
-/**
-* @typedef {v.InferInput<typeof ElicitResultSchema>} ElicitResult
-*/
-/**
-* @typedef {v.InferInput<typeof InitializeResultSchema>} InitializeResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListToolsResultSchema>} ListToolsResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListPromptsResultSchema>} ListPromptsResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListResourcesResultSchema>} ListResourcesResult
-*/
-/**
-* @typedef {v.InferInput<typeof ListResourceTemplatesResultSchema>} ListResourceTemplatesResult
-*/
-/**
-* @typedef {v.InferInput<typeof EmbeddedResourceSchema>} EmbeddedResource
-*/
-/**
-* @typedef {v.InferInput<typeof ResourceLinkSchema>} ResourceLink
-*/
-/**
-* Supported MCP protocol versions in order of preference (newest first)
-*/
-const SUPPORTED_VERSIONS = [
-	"2025-06-18",
-	"2025-03-26",
-	"2024-11-05"
-];
-/**
-* Latest stable protocol version
-*/
-const LATEST_PROTOCOL_VERSION = SUPPORTED_VERSIONS[0];
-/**
-* Check if a protocol version is supported
-* @param {string} version - The protocol version to check
-* @returns {boolean} True if the version is supported
-*/
-function is_supported_version(version) {
-	return SUPPORTED_VERSIONS.includes(version);
-}
-/**
-* Get the latest supported protocol version
-* @returns {string} The latest protocol version
-*/
-function get_latest_version() {
-	return LATEST_PROTOCOL_VERSION;
-}
-/**
-* Get all supported protocol versions
-* @returns {string[]} Array of supported protocol versions
-*/
-function get_supported_versions() {
-	return [...SUPPORTED_VERSIONS];
-}
-/**
-* Negotiate protocol version between client and server
-* According to MCP spec:
-* - If server supports client's version, return same version
-* - Otherwise, return server's latest supported version
-* @param {string} client_version - The protocol version requested by client
-* @returns {string} The negotiated protocol version
-*/
-function negotiate_protocol_version(client_version) {
-	if (is_supported_version(client_version)) return client_version;
-	return get_latest_version();
-}
-/**
-* Check if version negotiation should result in an error
-* @param {string} client_version - The protocol version requested by client
-* @returns {boolean} True if negotiation should fail
-*/
-function should_version_negotiation_fail(client_version) {
-	try {
-		const date = new Date(client_version);
-		return !/^\d{4}-\d{2}-\d{2}$/.test(client_version) || isNaN(date.getTime());
-	} catch {
-		return true;
-	}
-}
-/**
-* @import {McpEvents} from "./internal.js"
-*/
-/**
-*	@template {keyof McpEvents} Key
-* @param {Key} type
-* @param {Parameters<McpEvents[Key]>[0]} detail
-* @returns
-*/
-function event(type, detail) {
-	return new CustomEvent(type, { detail });
-}
-var sqids_exports = /* @__PURE__ */ __exportAll({
-	default: () => Sqids$1,
-	defaultOptions: () => defaultOptions
-});
-var defaultOptions, Sqids$1;
-var init_sqids = __esmMin((() => {
-	defaultOptions = {
-		alphabet: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-		minLength: 0,
-		blocklist: new Set([
-			"0rgasm",
-			"1d10t",
-			"1d1ot",
-			"1di0t",
-			"1diot",
-			"1eccacu10",
-			"1eccacu1o",
-			"1eccacul0",
-			"1eccaculo",
-			"1mbec11e",
-			"1mbec1le",
-			"1mbeci1e",
-			"1mbecile",
-			"a11upat0",
-			"a11upato",
-			"a1lupat0",
-			"a1lupato",
-			"aand",
-			"ah01e",
-			"ah0le",
-			"aho1e",
-			"ahole",
-			"al1upat0",
-			"al1upato",
-			"allupat0",
-			"allupato",
-			"ana1",
-			"ana1e",
-			"anal",
-			"anale",
-			"anus",
-			"arrapat0",
-			"arrapato",
-			"arsch",
-			"arse",
-			"ass",
-			"b00b",
-			"b00be",
-			"b01ata",
-			"b0ceta",
-			"b0iata",
-			"b0ob",
-			"b0obe",
-			"b0sta",
-			"b1tch",
-			"b1te",
-			"b1tte",
-			"ba1atkar",
-			"balatkar",
-			"bastard0",
-			"bastardo",
-			"batt0na",
-			"battona",
-			"bitch",
-			"bite",
-			"bitte",
-			"bo0b",
-			"bo0be",
-			"bo1ata",
-			"boceta",
-			"boiata",
-			"boob",
-			"boobe",
-			"bosta",
-			"bran1age",
-			"bran1er",
-			"bran1ette",
-			"bran1eur",
-			"bran1euse",
-			"branlage",
-			"branler",
-			"branlette",
-			"branleur",
-			"branleuse",
-			"c0ck",
-			"c0g110ne",
-			"c0g11one",
-			"c0g1i0ne",
-			"c0g1ione",
-			"c0gl10ne",
-			"c0gl1one",
-			"c0gli0ne",
-			"c0glione",
-			"c0na",
-			"c0nnard",
-			"c0nnasse",
-			"c0nne",
-			"c0u111es",
-			"c0u11les",
-			"c0u1l1es",
-			"c0u1lles",
-			"c0ui11es",
-			"c0ui1les",
-			"c0uil1es",
-			"c0uilles",
-			"c11t",
-			"c11t0",
-			"c11to",
-			"c1it",
-			"c1it0",
-			"c1ito",
-			"cabr0n",
-			"cabra0",
-			"cabrao",
-			"cabron",
-			"caca",
-			"cacca",
-			"cacete",
-			"cagante",
-			"cagar",
-			"cagare",
-			"cagna",
-			"cara1h0",
-			"cara1ho",
-			"caracu10",
-			"caracu1o",
-			"caracul0",
-			"caraculo",
-			"caralh0",
-			"caralho",
-			"cazz0",
-			"cazz1mma",
-			"cazzata",
-			"cazzimma",
-			"cazzo",
-			"ch00t1a",
-			"ch00t1ya",
-			"ch00tia",
-			"ch00tiya",
-			"ch0d",
-			"ch0ot1a",
-			"ch0ot1ya",
-			"ch0otia",
-			"ch0otiya",
-			"ch1asse",
-			"ch1avata",
-			"ch1er",
-			"ch1ng0",
-			"ch1ngadaz0s",
-			"ch1ngadazos",
-			"ch1ngader1ta",
-			"ch1ngaderita",
-			"ch1ngar",
-			"ch1ngo",
-			"ch1ngues",
-			"ch1nk",
-			"chatte",
-			"chiasse",
-			"chiavata",
-			"chier",
-			"ching0",
-			"chingadaz0s",
-			"chingadazos",
-			"chingader1ta",
-			"chingaderita",
-			"chingar",
-			"chingo",
-			"chingues",
-			"chink",
-			"cho0t1a",
-			"cho0t1ya",
-			"cho0tia",
-			"cho0tiya",
-			"chod",
-			"choot1a",
-			"choot1ya",
-			"chootia",
-			"chootiya",
-			"cl1t",
-			"cl1t0",
-			"cl1to",
-			"clit",
-			"clit0",
-			"clito",
-			"cock",
-			"cog110ne",
-			"cog11one",
-			"cog1i0ne",
-			"cog1ione",
-			"cogl10ne",
-			"cogl1one",
-			"cogli0ne",
-			"coglione",
-			"cona",
-			"connard",
-			"connasse",
-			"conne",
-			"cou111es",
-			"cou11les",
-			"cou1l1es",
-			"cou1lles",
-			"coui11es",
-			"coui1les",
-			"couil1es",
-			"couilles",
-			"cracker",
-			"crap",
-			"cu10",
-			"cu1att0ne",
-			"cu1attone",
-			"cu1er0",
-			"cu1ero",
-			"cu1o",
-			"cul0",
-			"culatt0ne",
-			"culattone",
-			"culer0",
-			"culero",
-			"culo",
-			"cum",
-			"cunt",
-			"d11d0",
-			"d11do",
-			"d1ck",
-			"d1ld0",
-			"d1ldo",
-			"damn",
-			"de1ch",
-			"deich",
-			"depp",
-			"di1d0",
-			"di1do",
-			"dick",
-			"dild0",
-			"dildo",
-			"dyke",
-			"encu1e",
-			"encule",
-			"enema",
-			"enf01re",
-			"enf0ire",
-			"enfo1re",
-			"enfoire",
-			"estup1d0",
-			"estup1do",
-			"estupid0",
-			"estupido",
-			"etr0n",
-			"etron",
-			"f0da",
-			"f0der",
-			"f0ttere",
-			"f0tters1",
-			"f0ttersi",
-			"f0tze",
-			"f0utre",
-			"f1ca",
-			"f1cker",
-			"f1ga",
-			"fag",
-			"fica",
-			"ficker",
-			"figa",
-			"foda",
-			"foder",
-			"fottere",
-			"fotters1",
-			"fottersi",
-			"fotze",
-			"foutre",
-			"fr0c10",
-			"fr0c1o",
-			"fr0ci0",
-			"fr0cio",
-			"fr0sc10",
-			"fr0sc1o",
-			"fr0sci0",
-			"fr0scio",
-			"froc10",
-			"froc1o",
-			"froci0",
-			"frocio",
-			"frosc10",
-			"frosc1o",
-			"frosci0",
-			"froscio",
-			"fuck",
-			"g00",
-			"g0o",
-			"g0u1ne",
-			"g0uine",
-			"gandu",
-			"go0",
-			"goo",
-			"gou1ne",
-			"gouine",
-			"gr0gnasse",
-			"grognasse",
-			"haram1",
-			"harami",
-			"haramzade",
-			"hund1n",
-			"hundin",
-			"id10t",
-			"id1ot",
-			"idi0t",
-			"idiot",
-			"imbec11e",
-			"imbec1le",
-			"imbeci1e",
-			"imbecile",
-			"j1zz",
-			"jerk",
-			"jizz",
-			"k1ke",
-			"kam1ne",
-			"kamine",
-			"kike",
-			"leccacu10",
-			"leccacu1o",
-			"leccacul0",
-			"leccaculo",
-			"m1erda",
-			"m1gn0tta",
-			"m1gnotta",
-			"m1nch1a",
-			"m1nchia",
-			"m1st",
-			"mam0n",
-			"mamahuev0",
-			"mamahuevo",
-			"mamon",
-			"masturbat10n",
-			"masturbat1on",
-			"masturbate",
-			"masturbati0n",
-			"masturbation",
-			"merd0s0",
-			"merd0so",
-			"merda",
-			"merde",
-			"merdos0",
-			"merdoso",
-			"mierda",
-			"mign0tta",
-			"mignotta",
-			"minch1a",
-			"minchia",
-			"mist",
-			"musch1",
-			"muschi",
-			"n1gger",
-			"neger",
-			"negr0",
-			"negre",
-			"negro",
-			"nerch1a",
-			"nerchia",
-			"nigger",
-			"orgasm",
-			"p00p",
-			"p011a",
-			"p01la",
-			"p0l1a",
-			"p0lla",
-			"p0mp1n0",
-			"p0mp1no",
-			"p0mpin0",
-			"p0mpino",
-			"p0op",
-			"p0rca",
-			"p0rn",
-			"p0rra",
-			"p0uff1asse",
-			"p0uffiasse",
-			"p1p1",
-			"p1pi",
-			"p1r1a",
-			"p1rla",
-			"p1sc10",
-			"p1sc1o",
-			"p1sci0",
-			"p1scio",
-			"p1sser",
-			"pa11e",
-			"pa1le",
-			"pal1e",
-			"palle",
-			"pane1e1r0",
-			"pane1e1ro",
-			"pane1eir0",
-			"pane1eiro",
-			"panele1r0",
-			"panele1ro",
-			"paneleir0",
-			"paneleiro",
-			"patakha",
-			"pec0r1na",
-			"pec0rina",
-			"pecor1na",
-			"pecorina",
-			"pen1s",
-			"pendej0",
-			"pendejo",
-			"penis",
-			"pip1",
-			"pipi",
-			"pir1a",
-			"pirla",
-			"pisc10",
-			"pisc1o",
-			"pisci0",
-			"piscio",
-			"pisser",
-			"po0p",
-			"po11a",
-			"po1la",
-			"pol1a",
-			"polla",
-			"pomp1n0",
-			"pomp1no",
-			"pompin0",
-			"pompino",
-			"poop",
-			"porca",
-			"porn",
-			"porra",
-			"pouff1asse",
-			"pouffiasse",
-			"pr1ck",
-			"prick",
-			"pussy",
-			"put1za",
-			"puta",
-			"puta1n",
-			"putain",
-			"pute",
-			"putiza",
-			"puttana",
-			"queca",
-			"r0mp1ba11e",
-			"r0mp1ba1le",
-			"r0mp1bal1e",
-			"r0mp1balle",
-			"r0mpiba11e",
-			"r0mpiba1le",
-			"r0mpibal1e",
-			"r0mpiballe",
-			"rand1",
-			"randi",
-			"rape",
-			"recch10ne",
-			"recch1one",
-			"recchi0ne",
-			"recchione",
-			"retard",
-			"romp1ba11e",
-			"romp1ba1le",
-			"romp1bal1e",
-			"romp1balle",
-			"rompiba11e",
-			"rompiba1le",
-			"rompibal1e",
-			"rompiballe",
-			"ruff1an0",
-			"ruff1ano",
-			"ruffian0",
-			"ruffiano",
-			"s1ut",
-			"sa10pe",
-			"sa1aud",
-			"sa1ope",
-			"sacanagem",
-			"sal0pe",
-			"salaud",
-			"salope",
-			"saugnapf",
-			"sb0rr0ne",
-			"sb0rra",
-			"sb0rrone",
-			"sbattere",
-			"sbatters1",
-			"sbattersi",
-			"sborr0ne",
-			"sborra",
-			"sborrone",
-			"sc0pare",
-			"sc0pata",
-			"sch1ampe",
-			"sche1se",
-			"sche1sse",
-			"scheise",
-			"scheisse",
-			"schlampe",
-			"schwachs1nn1g",
-			"schwachs1nnig",
-			"schwachsinn1g",
-			"schwachsinnig",
-			"schwanz",
-			"scopare",
-			"scopata",
-			"sexy",
-			"sh1t",
-			"shit",
-			"slut",
-			"sp0mp1nare",
-			"sp0mpinare",
-			"spomp1nare",
-			"spompinare",
-			"str0nz0",
-			"str0nza",
-			"str0nzo",
-			"stronz0",
-			"stronza",
-			"stronzo",
-			"stup1d",
-			"stupid",
-			"succh1am1",
-			"succh1ami",
-			"succhiam1",
-			"succhiami",
-			"sucker",
-			"t0pa",
-			"tapette",
-			"test1c1e",
-			"test1cle",
-			"testic1e",
-			"testicle",
-			"tette",
-			"topa",
-			"tr01a",
-			"tr0ia",
-			"tr0mbare",
-			"tr1ng1er",
-			"tr1ngler",
-			"tring1er",
-			"tringler",
-			"tro1a",
-			"troia",
-			"trombare",
-			"turd",
-			"twat",
-			"vaffancu10",
-			"vaffancu1o",
-			"vaffancul0",
-			"vaffanculo",
-			"vag1na",
-			"vagina",
-			"verdammt",
-			"verga",
-			"w1chsen",
-			"wank",
-			"wichsen",
-			"x0ch0ta",
-			"x0chota",
-			"xana",
-			"xoch0ta",
-			"xochota",
-			"z0cc01a",
-			"z0cc0la",
-			"z0cco1a",
-			"z0ccola",
-			"z1z1",
-			"z1zi",
-			"ziz1",
-			"zizi",
-			"zocc01a",
-			"zocc0la",
-			"zocco1a",
-			"zoccola"
-		])
-	};
-	Sqids$1 = class {
-		constructor(options) {
-			var _a, _b, _c;
-			const alphabet = (_a = options === null || options === void 0 ? void 0 : options.alphabet) !== null && _a !== void 0 ? _a : defaultOptions.alphabet;
-			const minLength = (_b = options === null || options === void 0 ? void 0 : options.minLength) !== null && _b !== void 0 ? _b : defaultOptions.minLength;
-			const blocklist = (_c = options === null || options === void 0 ? void 0 : options.blocklist) !== null && _c !== void 0 ? _c : defaultOptions.blocklist;
-			if (new Blob([alphabet]).size !== alphabet.length) throw new Error("Alphabet cannot contain multibyte characters");
-			const minAlphabetLength = 3;
-			if (alphabet.length < minAlphabetLength) throw new Error(`Alphabet length must be at least ${minAlphabetLength}`);
-			if (new Set(alphabet).size !== alphabet.length) throw new Error("Alphabet must contain unique characters");
-			const minLengthLimit = 255;
-			if (typeof minLength !== "number" || minLength < 0 || minLength > minLengthLimit) throw new Error(`Minimum length has to be between 0 and ${minLengthLimit}`);
-			const filteredBlocklist = /* @__PURE__ */ new Set();
-			const alphabetChars = alphabet.toLowerCase().split("");
-			for (const word of blocklist) if (word.length >= 3) {
-				const wordLowercased = word.toLowerCase();
-				const wordChars = wordLowercased.split("");
-				if (wordChars.filter((c) => alphabetChars.includes(c)).length === wordChars.length) filteredBlocklist.add(wordLowercased);
-			}
-			this.alphabet = this.shuffle(alphabet);
-			this.minLength = minLength;
-			this.blocklist = filteredBlocklist;
-		}
-		encode(numbers) {
-			if (numbers.length === 0) return "";
-			if (numbers.filter((n) => n >= 0 && n <= this.maxValue()).length !== numbers.length) throw new Error(`Encoding supports numbers between 0 and ${this.maxValue()}`);
-			return this.encodeNumbers(numbers);
-		}
-		decode(id) {
-			const ret = [];
-			if (id === "") return ret;
-			const alphabetChars = this.alphabet.split("");
-			for (const c of id.split("")) if (!alphabetChars.includes(c)) return ret;
-			const prefix = id.charAt(0);
-			const offset = this.alphabet.indexOf(prefix);
-			let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
-			alphabet = alphabet.split("").reverse().join("");
-			let slicedId = id.slice(1);
-			while (slicedId.length > 0) {
-				const separator = alphabet.slice(0, 1);
-				const chunks = slicedId.split(separator);
-				if (chunks.length > 0) {
-					if (chunks[0] === "") return ret;
-					ret.push(this.toNumber(chunks[0], alphabet.slice(1)));
-					if (chunks.length > 1) alphabet = this.shuffle(alphabet);
-				}
-				slicedId = chunks.slice(1).join(separator);
-			}
-			return ret;
-		}
-		encodeNumbers(numbers, increment = 0) {
-			if (increment > this.alphabet.length) throw new Error("Reached max attempts to re-generate the ID");
-			let offset = numbers.reduce((a, v, i) => this.alphabet[v % this.alphabet.length].codePointAt(0) + i + a, numbers.length) % this.alphabet.length;
-			offset = (offset + increment) % this.alphabet.length;
-			let alphabet = this.alphabet.slice(offset) + this.alphabet.slice(0, offset);
-			const prefix = alphabet.charAt(0);
-			alphabet = alphabet.split("").reverse().join("");
-			const ret = [prefix];
-			for (let i = 0; i !== numbers.length; i++) {
-				const num = numbers[i];
-				ret.push(this.toId(num, alphabet.slice(1)));
-				if (i < numbers.length - 1) {
-					ret.push(alphabet.slice(0, 1));
-					alphabet = this.shuffle(alphabet);
-				}
-			}
-			let id = ret.join("");
-			if (this.minLength > id.length) {
-				id += alphabet.slice(0, 1);
-				while (this.minLength - id.length > 0) {
-					alphabet = this.shuffle(alphabet);
-					id += alphabet.slice(0, Math.min(this.minLength - id.length, alphabet.length));
-				}
-			}
-			if (this.isBlockedId(id)) id = this.encodeNumbers(numbers, increment + 1);
-			return id;
-		}
-		shuffle(alphabet) {
-			const chars = alphabet.split("");
-			for (let i = 0, j = chars.length - 1; j > 0; i++, j--) {
-				const r = (i * j + chars[i].codePointAt(0) + chars[j].codePointAt(0)) % chars.length;
-				[chars[i], chars[r]] = [chars[r], chars[i]];
-			}
-			return chars.join("");
-		}
-		toId(num, alphabet) {
-			const id = [];
-			const chars = alphabet.split("");
-			let result = num;
-			do {
-				id.unshift(chars[result % chars.length]);
-				result = Math.floor(result / chars.length);
-			} while (result > 0);
-			return id.join("");
-		}
-		toNumber(id, alphabet) {
-			const chars = alphabet.split("");
-			return id.split("").reduce((a, v) => a * chars.length + chars.indexOf(v), 0);
-		}
-		isBlockedId(id) {
-			const lowercaseId = id.toLowerCase();
-			for (const word of this.blocklist) if (word.length <= lowercaseId.length) {
-				if (lowercaseId.length <= 3 || word.length <= 3) {
-					if (lowercaseId === word) return true;
-				} else if (/\d/.test(word)) {
-					if (lowercaseId.startsWith(word) || lowercaseId.endsWith(word)) return true;
-				} else if (lowercaseId.includes(word)) return true;
-			}
-			return false;
-		}
-		maxValue() {
-			return Number.MAX_SAFE_INTEGER;
-		}
-	};
-}));
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import SqidsType from "sqids";
-* @import { JSONRPCRequest, JSONRPCParams } from "json-rpc-2.0";
-* @import { ExtractURITemplateVariables } from "./internal/uri-template.js";
-* @import { CallToolResult as CallToolResultType, ReadResourceResult as ReadResourceResultType, GetPromptResult as GetPromptResultType, ServerInfo as ServerInfoType, ClientCapabilities as ClientCapabilitiesType, JSONRPCRequest as JSONRPCRequestType, JSONRPCResponse, CreateMessageRequestParams as CreateMessageRequestParamsType, CreateMessageResult as CreateMessageResultType, Resource as ResourceType, LoggingLevel as LoggingLevelType, ToolAnnotations, ClientInfo as ClientInfoType, ElicitResult as ElicitResultType, Icons as IconsType, JSONRPCMessage, InitializeResult as InitializeResultType, ListToolsResult as ListToolsResultType, ListPromptsResult as ListPromptsResultType, ListResourceTemplatesResult as ListResourceTemplatesResultType, ListResourcesResult as ListResourcesResultType, CompleteResult as CompleteResultType } from "./validation/index.js";
-* @import { Tool, Completion, Prompt, StoredResource, ServerOptions, SubscriptionsKeys, ChangedArgs, McpEvents, AllSame, TemplateOptions } from "./internal/internal.js";
-* @import { CreatedTool, ToolOptions, CreatedPrompt, PromptOptions, CreatedResource, CreatedTemplate, ResourceOptions } from "./internal/internal.js";
-*/
-/**
-* Information about a validated access token, provided to request handlers.
-* @typedef {Object} AuthInfo
-* @property {string} token - The access token.
-* @property {string} clientId - The client ID associated with this token.
-* @property {string[]} scopes - Scopes associated with this token.
-* @property {number} [expiresAt] - When the token expires (in seconds since epoch).
-* @property {URL} [resource] - The RFC 8707 resource server identifier for which this token is valid.
-*   If set, this MUST match the MCP server's resource identifier (minus hash fragment).
-* @property {Record<string, unknown>} [extra] - Additional data associated with the token.
-*   This field should be used for any additional data that needs to be attached to the auth info.
-*/
-/**
-* @template {Record<string, unknown> | undefined} [TCustom=undefined]
-* @typedef {Object} Context
-* @property {string} [sessionId]
-* @property {{ clientCapabilities?: ClientCapabilitiesType, clientInfo?: ClientInfoType, logLevel?: LoggingLevel }} [sessionInfo]
-* @property {AuthInfo} [auth]
-* @property {TCustom} [custom]
-*/
-/**
-* @typedef {IconsType} Icons
-*/
-/**
-* @typedef {Record<SubscriptionsKeys, string[]>} Subscriptions
-*/
-/**
-* @template {Record<string, unknown> | undefined} TStructuredContent
-* @typedef {CallToolResultType<TStructuredContent>} CallToolResult
-*/
-/**
-* @typedef {ReadResourceResultType} ReadResourceResult
-*/
-/**
-* @typedef {GetPromptResultType} GetPromptResult
-*/
-/**
-* @typedef {ClientCapabilitiesType} ClientCapabilities
-*/
-/**
-* @typedef {ServerInfoType} ServerInfo
-*/
-/**
-* @typedef {CreateMessageRequestParamsType} CreateMessageRequestParams
-*/
-/**
-* @typedef {CreateMessageResultType} CreateMessageResult
-*/
-/**
-* @typedef {ResourceType} Resource
-*/
-/**
-* @typedef  {LoggingLevelType} LoggingLevel
-*/
-/**
-* @typedef  {ClientInfoType} ClientInfo
-*/
-/**
-* @typedef  {ElicitResultType} ElicitResult
-*/
-/**
-* @typedef {InitializeResultType} InitializeResult
-*/
-/**
-* @typedef {ListToolsResultType} ListToolsResult
-*/
-/**
-* @typedef {ListPromptsResultType} ListPromptsResult
-*/
-/**
-* @typedef {ListResourceTemplatesResultType} ListResourceTemplatesResult
-*/
-/**
-* @typedef {ListResourcesResultType} ListResourcesResult
-*/
-/**
-* @typedef {CompleteResultType} CompleteResult
-*/
-/**
-* @type {SqidsType | undefined}
-*/
-let Sqids;
-async function get_sqids() {
-	if (!Sqids) Sqids = new (await (Promise.resolve().then(() => (init_sqids(), sqids_exports)))).default();
-	return Sqids;
-}
-/**
-* Encode a cursor for pagination
-* @param {number} offset
-*/
-async function encode_cursor(offset) {
-	return (await get_sqids()).encode([offset]);
-}
-/**
-* Decode a cursor from pagination
-* @param {string} cursor
-*/
-async function decode_cursor(cursor) {
-	const [decoded] = (await get_sqids()).decode(cursor);
-	return decoded;
-}
-/**
-* @param {()=>boolean | Promise<boolean>} enabled
-*/
-async function safe_enabled(enabled) {
-	try {
-		return await enabled();
-	} catch {
-		return false;
-	}
-}
-/**
-* @template {StandardSchemaV1 | undefined} [StandardSchema=undefined]
-* @template {Record<string, unknown> | undefined} [CustomContext=undefined]
-*/
-var McpServer = class {
-	#server = new import_dist.JSONRPCServer();
-	/**
-	* @type {JSONRPCClient<"broadcast" | "standalone"> | undefined}
-	*/
-	#client;
-	#options;
-	/**
-	* @type {Map<string, Tool<any, any>>}
-	*/
-	#tools = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, Prompt<any>>}
-	*/
-	#prompts = /* @__PURE__ */ new Map();
-	/**
-	* @type {Map<string, StoredResource>}
-	*/
-	#resources = /* @__PURE__ */ new Map();
-	#templates = new UriTemplateMatcher();
-	/**
-	* @type {Array<{uri: string, name?: string}>}
-	*/
-	roots = [];
-	/**
-	* @type {{ [ref: string]: Map<string, Partial<Record<string, Completion>>> }}
-	*/
-	#completions = {
-		"ref/prompt": /* @__PURE__ */ new Map(),
-		"ref/resource": /* @__PURE__ */ new Map()
-	};
-	#event_target = new EventTarget();
-	/**
-	* @type {AsyncLocalStorage<Context<CustomContext> & { progress_token?: string }>}
-	*/
-	#ctx_storage = new AsyncLocalStorage();
-	/**
-	* @param {ServerInfo} server_info
-	* @param {ServerOptions<StandardSchema>} options
-	*/
-	constructor(server_info, options) {
-		this.#options = options;
-		this.#server.addMethod("initialize", (initialize_request) => {
-			try {
-				const validated_initialize = parse$1(InitializeRequestParamsSchema, initialize_request);
-				if (should_version_negotiation_fail(validated_initialize.protocolVersion)) throw new McpError(-32602, "Invalid protocol version format");
-				const negotiated_version = negotiate_protocol_version(validated_initialize.protocolVersion);
-				this.#event_target.dispatchEvent(event("initialize", validated_initialize));
-				return {
-					protocolVersion: negotiated_version,
-					...options,
-					serverInfo: server_info
-				};
-			} catch (error) {
-				if (error instanceof McpError) throw error;
-				if (error.message?.includes("Protocol version")) throw new McpError(-32602, `Protocol version validation failed: ${error.message}. Server supports: ${get_supported_versions().join(", ")}`);
-				throw new McpError(-32603, `Initialization failed: ${error.message}`);
-			}
-		});
-		this.#server.addMethod("ping", () => {
-			return {};
-		});
-		this.#server.addMethod("notifications/initialized", () => {
-			return null;
-		});
-		this.#init_tools();
-		this.#init_prompts();
-		this.#init_resources();
-		this.#init_roots();
-		this.#init_completion();
-		this.#init_logging();
-	}
-	/**
-	* Utility method to specify the type of the custom context for this server instance without the need to specify the standard schema type.
-	* @example
-	* const server = new McpServer({ ... }, { ... }).withContext<{ name: string }>();
-	* @template {Record<string, unknown>} TCustom
-	* @returns {McpServer<StandardSchema, TCustom>}
-	*/
-	withContext() {
-		return this;
-	}
-	get #progress_token() {
-		return this.#ctx_storage.getStore()?.progress_token;
-	}
-	/**
-	* The context of the current request, include the session ID, any auth information, and custom data.
-	* @type {Context<CustomContext>}
-	*/
-	get ctx() {
-		const { progress_token, ...rest } = this.#ctx_storage.getStore() ?? {};
-		return rest;
-	}
-	get #client_capabilities() {
-		return this.#ctx_storage.getStore()?.sessionInfo?.clientCapabilities;
-	}
-	/**
-	* Get the client information (name, version, etc.) of the client that initiated the current request...useful if you want to do something different based on the client.
-	* @deprecated Use `server.ctx.sessionInfo.clientInfo` instead.
-	*/
-	currentClientInfo() {
-		return this.#ctx_storage.getStore()?.sessionInfo?.clientInfo;
-	}
-	/**
-	* Get the client capabilities of the client that initiated the current request, you can use this to verify the client support something before invoking the respective method.
-	* @deprecated Use `server.ctx.sessionInfo.clientCapabilities` instead.
-	*/
-	currentClientCapabilities() {
-		return this.#client_capabilities;
-	}
-	#lazyily_create_client() {
-		if (!this.#client) this.#client = new import_dist.JSONRPCClient((payload, kind) => {
-			if (kind === "broadcast") {
-				this.#event_target.dispatchEvent(event("broadcast", { request: payload }));
-				return;
-			}
-			this.#event_target.dispatchEvent(event("send", { request: payload }));
-		});
-	}
-	/**
-	* @template {keyof McpEvents} TEvent
-	* @param {TEvent} event
-	* @param {McpEvents[TEvent]} callback
-	* @param {AddEventListenerOptions} [options]
-	*/
-	on(event, callback, options) {
-		if (event === "send" || event === "broadcast") this.#lazyily_create_client();
-		/**
-		* @param {Event} e
-		*/
-		const listener = (e) => {
-			callback(
-				/** @type {CustomEvent} */
-				e.detail
-			);
-		};
-		this.#event_target.addEventListener(event, listener, options);
-		return () => {
-			this.#event_target.removeEventListener(event, listener, options);
-		};
-	}
-	/**
-	* @param {string} method
-	* @param {JSONRPCParams} [params]
-	* @param {"broadcast" | "standalone"} [kind]
-	*/
-	#notify(method, params, kind = "standalone") {
-		this.#client?.notify(method, params, kind);
-	}
-	/**
-	*
-	*/
-	#init_tools() {
-		if (!this.#options.capabilities?.tools) return;
-		this.#server.addMethod("tools/list", async ({ cursor } = {}) => {
-			const all_tools = (await Promise.all([...this.#tools].map(async ([name, tool]) => {
-				if (tool.enabled != null && await safe_enabled(tool.enabled) === false) return null;
-				return {
-					name,
-					title: tool.title || tool.description,
-					description: tool.description,
-					icons: tool.icons,
-					_meta: tool._meta,
-					inputSchema: tool.schema && this.#options.adapter ? await this.#options.adapter.toJsonSchema(tool.schema) : {
-						type: "object",
-						properties: {}
-					},
-					...tool.outputSchema && this.#options.adapter ? { outputSchema: await this.#options.adapter.toJsonSchema(tool.outputSchema) } : {},
-					...tool.annotations ? { annotations: tool.annotations } : {}
-				};
-			}))).filter((tool) => tool !== null);
-			const pagination_options = this.#options.pagination?.tools;
-			if (!pagination_options || pagination_options.size == null) return { tools: all_tools };
-			const page_length = pagination_options.size;
-			const start_index = cursor ? await decode_cursor(cursor) : 0;
-			const end_index = start_index + page_length;
-			const tools = all_tools.slice(start_index, end_index);
-			const next_cursor = end_index < all_tools.length ? await encode_cursor(end_index) : null;
-			return {
-				tools,
-				...next_cursor && { nextCursor: next_cursor }
-			};
-		});
-		this.#server.addMethod("tools/call", async ({ name, arguments: args }) => {
-			const tool = this.#tools.get(name);
-			if (!tool) return {
-				isError: true,
-				content: [{
-					type: "text",
-					text: `Tool ${name} not found`
-				}]
-			};
-			let validated_args = args;
-			if (tool.schema) {
-				let validation_result = tool.schema["~standard"].validate(args);
-				if (validation_result instanceof Promise) validation_result = await validation_result;
-				if (validation_result.issues) return {
-					isError: true,
-					content: [{
-						type: "text",
-						text: `Invalid arguments for tool ${name}: ${JSON.stringify(validation_result.issues)}`
-					}]
-				};
-				validated_args = validation_result.value;
-			}
-			const parsed_result = parse$1(CallToolResultSchema, tool.schema ? await tool.execute(validated_args) : await tool.execute());
-			if (tool.outputSchema && parsed_result.structuredContent !== void 0) {
-				let output_validation = tool.outputSchema["~standard"].validate(parsed_result.structuredContent);
-				if (output_validation instanceof Promise) output_validation = await output_validation;
-				if (output_validation.issues) return {
-					isError: true,
-					content: [{
-						type: "text",
-						text: `Tool ${name} returned invalid structured content: ${JSON.stringify(output_validation.issues)}`
-					}]
-				};
-				parsed_result.structuredContent = output_validation.value;
-			}
-			return parsed_result;
-		});
-	}
-	/**
-	*
-	*/
-	#init_prompts() {
-		if (!this.#options.capabilities?.prompts) return;
-		this.#server.addMethod("prompts/list", async ({ cursor } = {}) => {
-			const all_prompts = (await Promise.all([...this.#prompts].map(async ([name, prompt]) => {
-				if (prompt.enabled != null && await safe_enabled(prompt.enabled) === false) return null;
-				const arguments_schema = prompt.schema && this.#options.adapter ? await this.#options.adapter.toJsonSchema(prompt.schema) : {
-					type: "object",
-					properties: {},
-					required: []
-				};
-				const keys = Object.keys(arguments_schema.properties ?? {});
-				const required = arguments_schema.required ?? [];
-				return {
-					name,
-					title: prompt.title || prompt.description,
-					icons: prompt.icons,
-					description: prompt.description,
-					arguments: keys.map((key) => {
-						const property = arguments_schema.properties?.[key];
-						const description = property && property !== true ? property.description : key;
-						return {
-							name: key,
-							required: required.includes(key),
-							description
-						};
-					})
-				};
-			}))).filter((prompt) => prompt !== null);
-			const pagination_options = this.#options.pagination?.prompts;
-			if (!pagination_options || pagination_options.size == null) return { prompts: all_prompts };
-			const page_length = pagination_options.size;
-			const start_index = cursor ? await decode_cursor(cursor) : 0;
-			const end_index = start_index + page_length;
-			const prompts = all_prompts.slice(start_index, end_index);
-			const next_cursor = end_index < all_prompts.length ? await encode_cursor(end_index) : null;
-			return {
-				prompts,
-				...next_cursor && { nextCursor: next_cursor }
-			};
-		});
-		this.#server.addMethod("prompts/get", async ({ name, arguments: args }) => {
-			const prompt = this.#prompts.get(name);
-			if (!prompt) throw new McpError(-32601, `Prompt ${name} not found`);
-			if (!prompt.schema) return parse$1(GetPromptResultSchema, await prompt.execute());
-			let validated_args = prompt.schema["~standard"].validate(args);
-			if (validated_args instanceof Promise) validated_args = await validated_args;
-			if (validated_args.issues) throw new McpError(-32602, `Invalid arguments for prompt ${name}: ${JSON.stringify(validated_args.issues)}`);
-			return parse$1(GetPromptResultSchema, await prompt.execute(validated_args.value));
-		});
-	}
-	/**
-	*
-	*/
-	#init_resources() {
-		if (!this.#options.capabilities?.resources) return;
-		if (this.#options.capabilities?.resources?.subscribe) {
-			this.#server.addMethod("resources/subscribe", async ({ uri }) => {
-				this.#event_target.dispatchEvent(event("subscription", {
-					uri,
-					action: "add"
-				}));
-				return {};
-			});
-			this.#server.addMethod("resources/unsubscribe", async ({ uri }) => {
-				this.#event_target.dispatchEvent(event("subscription", {
-					uri,
-					action: "remove"
-				}));
-				return {};
-			});
-		}
-		this.#server.addMethod("resources/list", async ({ cursor } = {}) => {
-			const all_resources = [];
-			for (const [uri, resource] of this.#resources) if (!resource.template) {
-				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) continue;
-				all_resources.push({
-					name: resource.name,
-					title: resource.title || resource.description,
-					description: resource.description,
-					uri,
-					mimeType: resource.mimeType,
-					icons: resource.icons
-				});
-			} else if (resource.list_resources) {
-				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) continue;
-				const template_resources = await resource.list_resources();
-				all_resources.push(...template_resources);
-			}
-			const pagination_options = this.#options.pagination?.resources;
-			if (!pagination_options || pagination_options.size == null) return { resources: all_resources };
-			const page_length = pagination_options.size;
-			const start_index = cursor ? await decode_cursor(cursor) : 0;
-			const end_index = start_index + page_length;
-			const resources = all_resources.slice(start_index, end_index);
-			const next_cursor = end_index < all_resources.length ? await encode_cursor(end_index) : null;
-			return {
-				resources,
-				...next_cursor && { nextCursor: next_cursor }
-			};
-		});
-		this.#server.addMethod("resources/templates/list", async () => {
-			return { resourceTemplates: (await Promise.all([...this.#resources].map(async ([uri, resource]) => {
-				if (!resource.template) return null;
-				if (resource.enabled != null && await safe_enabled(resource.enabled) === false) return null;
-				return {
-					name: resource.name,
-					icons: resource.icons,
-					title: resource.title || resource.description,
-					description: resource.description,
-					mimeType: resource.mimeType,
-					uriTemplate: uri
-				};
-			}))).filter((resource) => resource != null) };
-		});
-		this.#server.addMethod("resources/read", async ({ uri }) => {
-			let resource = this.#resources.get(uri);
-			let params;
-			if (!resource) {
-				const match = this.#templates.match(uri);
-				if (match) {
-					resource = this.#resources.get(match.template);
-					params = match.params;
-				}
-				if (!resource) throw new McpError(-32601, `Resource ${uri} not found`);
-			}
-			if (resource.template) {
-				if (!params) throw new McpError(-32602, "Missing parameters for template resource");
-				return parse$1(ReadResourceResultSchema, await resource.execute(uri, params));
-			}
-			return parse$1(ReadResourceResultSchema, await resource.execute(uri));
-		});
-	}
-	/**
-	*
-	*/
-	#init_roots() {
-		this.#server.addMethod("notifications/roots/list_changed", () => {
-			this.#refresh_roots();
-			return null;
-		});
-	}
-	/**
-	* Request roots list from client
-	*/
-	async #refresh_roots() {
-		if (!this.#client_capabilities?.roots) return;
-		this.#lazyily_create_client();
-		try {
-			this.roots = (await this.#client?.request("roots/list", void 0, "standalone"))?.roots || [];
-		} catch {
-			this.roots = [];
-		}
-	}
-	#init_completion() {
-		this.#server.addMethod("completion/complete", async ({ argument, ref, context }) => {
-			const completions = this.#completions[ref.type];
-			if (!completions) return null;
-			const complete = completions.get(ref.uri ?? ref.name);
-			if (!complete) return null;
-			const actual_complete = complete[argument.name];
-			if (!actual_complete) return null;
-			return parse$1(CompleteResultSchema, await actual_complete(argument.value, context));
-		});
-	}
-	#init_logging() {
-		if (!this.#options.capabilities?.logging) return;
-		this.#server.addMethod("logging/setLevel", ({ level }) => {
-			this.#event_target.dispatchEvent(event("loglevelchange", { level }));
-			return {};
-		});
-	}
-	#notify_tools_list_changed() {
-		if (this.#options.capabilities?.tools?.listChanged) this.#notify("notifications/tools/list_changed", {}, "broadcast");
-	}
-	#notify_prompts_list_changed() {
-		if (this.#options.capabilities?.prompts?.listChanged) this.#notify("notifications/prompts/list_changed", {}, "broadcast");
-	}
-	#notify_resources_list_changed() {
-		if (this.#options.capabilities?.resources?.listChanged) this.#notify("notifications/resources/list_changed", {}, "broadcast");
-	}
-	/**
-	* Use the `defineTool` utility to create a reusable tool and pass it to this method to add it to the server.
-	* @template {Array<CreatedTool<any, any>>} T
-	* @template {T extends Array<CreatedTool<infer TSchema, infer TOutputSchema>> ? AllSame<TSchema, StandardSchema | undefined> extends true ? AllSame<TOutputSchema, StandardSchema | undefined> extends true ? T : never : never : never} U
-	* @param {T & NoInfer<U>} tools
-	*/
-	tools(tools) {
-		for (const tool of tools) this.tool(tool);
-	}
-	/**
-	* Use the `definePrompt` utility to create a reusable tool and pass it to this method to add it to the server.
-	* @template {Array<CreatedPrompt<any>>} T
-	* @template {T extends Array<CreatedPrompt<infer TSchema>> ? AllSame<TSchema, StandardSchema | undefined> extends true ?  T : never : never} U
-	* @param {T & NoInfer<U>} prompts
-	*/
-	prompts(prompts) {
-		for (const prompt of prompts) this.prompt(prompt);
-	}
-	/**
-	* Use the `defineResource` utility to create a reusable resource and pass it to this method to add it to the server.
-	*
-	* @param {CreatedResource[]} resources
-	*/
-	resources(resources) {
-		for (const resource of resources) this.resource(resource);
-	}
-	/**
-	* Use the `defineTemplate` utility to create a reusable template and pass it to this method to add it to the server.
-	*
-	* @param {CreatedTemplate<any>[]} templates
-	*/
-	templates(templates) {
-		for (const template of templates) this.template(template);
-	}
-	/**
-	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-	*
-	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
-	* @overload
-	* @param {CreatedTool<TSchema, TOutputSchema>} tool_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-	*
-	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
-	* @overload
-	* @param {ToolOptions<TSchema, TOutputSchema>} tool_or_options
-	* @param {TSchema extends undefined ? (()=>Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
-	* @returns {void}
-	* */
-	/**
-	* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-	* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-	*
-	* Tools will be invoked by the LLM when it thinks it needs to use them, you can use the annotations to provide additional information about the tool, like what it does, how to use it, etc.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @template {StandardSchema | undefined} [TOutputSchema=undefined]
-	* @param {CreatedTool<TSchema, TOutputSchema> | ToolOptions<TSchema, TOutputSchema>} tool_or_options
-	* @param {undefined | TSchema extends undefined ? (()=>Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} [execute]
-	*/
-	tool(tool_or_options, execute) {
-		if ("execute" in tool_or_options) execute = tool_or_options.execute;
-		this.#notify_tools_list_changed();
-		const stored_tool = tool_or_options;
-		stored_tool.execute = execute;
-		this.#tools.set(tool_or_options.name, stored_tool);
-	}
-	/**
-	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
-	* Use the description and title to help the user to understand what the prompt does and when to use it.
-	*
-	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
-	* for each input that will be used to provide completions for the user.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @overload
-	* @param {CreatedPrompt<TSchema>} prompt_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
-	* Use the description and title to help the user to understand what the prompt does and when to use it.
-	*
-	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
-	* for each input that will be used to provide completions for the user.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @overload
-	* @param {PromptOptions<TSchema>} prompt_or_options
-	* @param {TSchema extends undefined ? (()=>Promise<GetPromptResult> | GetPromptResult) : (input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<GetPromptResult> | GetPromptResult} execute
-	* @returns {void}
-	* */
-	/**
-	* Add a prompt to the server. Prompts are used to provide the user with pre-defined messages that adds context to the LLM.
-	* Use the description and title to help the user to understand what the prompt does and when to use it.
-	*
-	* A prompt can also have a schema that defines the input it expects, the user will be prompted to enter the inputs you request. It can also have a complete function
-	* for each input that will be used to provide completions for the user.
-	* @template {StandardSchema | undefined} [TSchema=undefined]
-	* @param {CreatedPrompt<TSchema> | PromptOptions<TSchema>} prompt_or_options
-	* @param {TSchema extends undefined ? (()=>Promise<GetPromptResult> | GetPromptResult) : (input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<GetPromptResult> | GetPromptResult} [execute]
-	*/
-	prompt(prompt_or_options, execute) {
-		if ("execute" in prompt_or_options) execute = prompt_or_options.execute;
-		if (prompt_or_options.complete) this.#completions["ref/prompt"].set(prompt_or_options.name, prompt_or_options.complete);
-		this.#notify_prompts_list_changed();
-		const stored_prompt = prompt_or_options;
-		stored_prompt.execute = execute;
-		this.#prompts.set(prompt_or_options.name, stored_prompt);
-	}
-	/**
-	* @type {(resource: StoredResource & { uri: string })=> void}
-	*/
-	#resource(resource) {
-		if (resource.template && resource.complete) this.#completions["ref/resource"].set(resource.uri, resource.complete);
-		if (resource.template) this.#templates.add(resource.uri);
-		this.#notify_resources_list_changed();
-		this.#resources.set(resource.uri, resource);
-	}
-	/**
-	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Use the description and title to help the user to understand what the resource is.
-	* @overload
-	* @param {CreatedResource} resource_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Use the description and title to help the user to understand what the resource is.
-	* @overload
-	* @param {ResourceOptions} resource_or_options
-	* @param {(uri: string) => Promise<ReadResourceResult> | ReadResourceResult} execute
-	* @returns {void}
-	*/
-	/**
-	* Add a resource to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Use the description and title to help the user to understand what the resource is.
-	* @param {CreatedResource | ResourceOptions} resource_or_options
-	* @param {(uri: string) => Promise<ReadResourceResult> | ReadResourceResult} [execute]
-	*/
-	resource(resource_or_options, execute) {
-		if ("execute" in resource_or_options) execute = resource_or_options.execute;
-		const stored_resource = resource_or_options;
-		stored_resource.execute = execute;
-		stored_resource.template = false;
-		this.#resource(stored_resource);
-	}
-	/**
-	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
-	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
-	* be invoked to provide completions for the template variables to the user.
-	* Use the description and title to help the user to understand what the resource is.
-	* @template {string} TUri
-	* @template {ExtractURITemplateVariables<TUri>} TVariables
-	* @overload
-	* @param {CreatedTemplate<TUri>} template_or_options
-	* @returns {void}
-	*/
-	/**
-	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
-	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
-	* be invoked to provide completions for the template variables to the user.
-	* Use the description and title to help the user to understand what the resource is.
-	* @template {string} TUri
-	* @template {ExtractURITemplateVariables<TUri>} TVariables
-	* @overload
-	* @param {TemplateOptions<TUri>} template_or_options
-	* @param {(uri: string, params: Record<TVariables, string | string[]>) => Promise<ReadResourceResult> | ReadResourceResult} execute
-	* @returns {void}
-	*/
-	/**
-	* Add a resource template to the server. Resources are added manually to the context by the user to provide the LLM with additional context.
-	* Resource templates are used to create resources dynamically based on a URI template. The URI template should be a valid URI template as defined in RFC 6570.
-	* Resource templates can have a list method that returns a list of resources that match the template and a complete method that returns a list of resources given one of the template variables, this method will
-	* be invoked to provide completions for the template variables to the user.
-	* Use the description and title to help the user to understand what the resource is.
-	* @template {string} TUri
-	* @template {ExtractURITemplateVariables<TUri>} TVariables
-	* @param {CreatedTemplate<TUri> | TemplateOptions<TUri>} template_or_options
-	* @param {(uri: string, params: Record<TVariables, string | string[]>) => Promise<ReadResourceResult> | ReadResourceResult} [execute]
-	*/
-	template(template_or_options, execute) {
-		if ("execute" in template_or_options) execute = template_or_options.execute;
-		const stored_template = template_or_options;
-		stored_template.execute = execute;
-		stored_template.list_resources = template_or_options.list;
-		stored_template.template = true;
-		this.#resource(stored_template);
-	}
-	/**
-	* The main function that receive a JSONRpc message and either dispatch a `send` event or process the request.
-	*
-	* @param {JSONRPCMessage} message
-	* @param {Context<CustomContext>} [ctx]
-	* @returns {ReturnType<JSONRPCServer['receive']> | ReturnType<JSONRPCClient['receive'] | undefined>}
-	*/
-	receive(message, ctx) {
-		const validated_message = /* @__PURE__ */ safeParse$1(/* @__PURE__ */ union([JSONRPCRequestSchema, JSONRPCNotificationSchema]), message);
-		if (validated_message.success) {
-			const progress_token = validated_message.output.params?._meta?.progressToken;
-			return this.#ctx_storage.run({
-				...ctx ?? {},
-				progress_token
-			}, async () => await this.#server.receive(validated_message.output));
-		}
-		const validated_response = parse$1(/* @__PURE__ */ union([JSONRPCResponseSchema, JSONRPCErrorSchema]), message);
-		this.#lazyily_create_client();
-		return this.#ctx_storage.run(ctx ?? {}, async () => this.#client?.receive(validated_response));
-	}
-	/**
-	* Lower level api to send a request to the client, mostly useful to call client methods that not yet supported by the server or
-	* if you want to send requests with json schema that is not expressible with your validation library.
-	* @param {{ method: string, params?: JSONRPCParams }} request
-	* @returns {Promise<unknown>}
-	*/
-	async request({ method, params }) {
-		this.#lazyily_create_client();
-		return this.#client?.request(method, params, "standalone");
-	}
-	/**
-	* Send a notification for subscriptions
-	* @template {keyof ChangedArgs} TWhat
-	* @param {[what: TWhat, ...ChangedArgs[TWhat]]} args
-	*/
-	changed(...args) {
-		const [what, id] = args;
-		if (what === "prompts") this.#notify_prompts_list_changed();
-		else if (what === "tools") this.#notify_tools_list_changed();
-		else if (what === "resources") this.#notify_resources_list_changed();
-		else {
-			const resource = this.#resources.get(id);
-			if (!resource) return;
-			this.#notify(`notifications/resources/updated`, {
-				uri: id,
-				title: resource.name
-			}, "broadcast");
-		}
-	}
-	/**
-	* Refresh roots list from client
-	*/
-	async refreshRoots() {
-		await this.#refresh_roots();
-	}
-	/**
-	* Emit an elicitation request to the client. Elicitations are used to ask the user for input in a structured way, the client will show a UI to the user to fill the input.
-	* The schema should be a valid Standard Schema V1 schema and should be an Object with the properties you need.
-	* The client will return the validated input as a JSON object that matches the schema.
-	*
-	* If the client doesn't support elicitation, it will throw an error.
-	*
-	* @template {StandardSchema extends undefined ? never : StandardSchema} TSchema
-	* @param {string} message
-	* @param {TSchema} schema
-	* @returns {Promise<ElicitResult & { content?: StandardSchemaV1.InferOutput<TSchema> }>}
-	*/
-	async elicitation(message, schema) {
-		if (!this.#client_capabilities?.elicitation) throw new McpError(-32601, "Client doesn't support elicitation");
-		this.#lazyily_create_client();
-		const elicit_result = parse$1(ElicitResultSchema, await this.#client?.request("elicitation/create", {
-			message,
-			requestedSchema: await this.#options.adapter?.toJsonSchema(schema)
-		}, "standalone"));
-		let validated_result = schema["~standard"].validate(elicit_result.content);
-		if (validated_result instanceof Promise) validated_result = await validated_result;
-		if (validated_result.issues) throw new McpError(-32603, `Invalid elicitation result: ${JSON.stringify(validated_result.issues)}`);
-		return {
-			...elicit_result,
-			content: validated_result.value
-		};
-	}
-	/**
-	* Request language model sampling from the client
-	* @param {CreateMessageRequestParams} request
-	* @returns {Promise<CreateMessageResult>}
-	*/
-	async message(request) {
-		if (!this.#client_capabilities?.sampling) throw new McpError(-32601, "Client doesn't support sampling");
-		this.#lazyily_create_client();
-		const validated_request = parse$1(CreateMessageRequestParamsSchema, request);
-		return parse$1(CreateMessageResultSchema, await this.#client?.request("sampling/createMessage", validated_request, "standalone"));
-	}
-	/**
-	* Send a progress notification to the client. This is useful for long-running operations where you want to inform the user about the progress.
-	*
-	* @param {number} progress The current progress value, it should be between 0 and total and should always increase
-	* @param {number} [total] The total value, defaults to 1
-	* @param {string} [message] An optional message to accompany the progress update
-	*/
-	progress(progress, total = 1, message = void 0) {
-		if (this.#progress_token != null) this.#notify("notifications/progress", {
-			progress,
-			total,
-			message,
-			progressToken: this.#progress_token
-		});
-	}
-	/**
-	* Log a message to the client if logging is enabled and the level is appropriate
-	*
-	* @param {LoggingLevel} level
-	* @param {unknown} data
-	* @param {string} [logger]
-	*/
-	log(level, data, logger) {
-		if (!this.#options.capabilities?.logging) throw new McpError(-32601, "The server doesn't support logging, please enable it in capabilities");
-		const current_session_level = this.#ctx_storage.getStore()?.sessionInfo?.logLevel ?? this.#options.logging?.default ?? "info";
-		if (current_session_level && this.#should_log(level, current_session_level)) this.#notify("notifications/message", {
-			level,
-			data,
-			logger
-		});
-	}
-	/**
-	* Check if a log message should be sent based on severity levels
-	* @param {LoggingLevel} message_level
-	* @param {LoggingLevel} session_level
-	* @returns {boolean}
-	*/
-	#should_log(message_level, session_level) {
-		const levels = [
-			"debug",
-			"info",
-			"notice",
-			"warning",
-			"error",
-			"critical",
-			"alert",
-			"emergency"
-		];
-		return levels.indexOf(message_level) >= levels.indexOf(session_level);
-	}
-};
-/**
-* @import { StandardSchemaV1 } from "@standard-schema/spec";
-* @import { ToolOptions, CreatedTool } from "./internal/internal.js";
-*/
-/**
-* Add a tool to the server. If you want to receive any input you need to provide a schema. The schema needs to be a valid Standard Schema V1 schema and needs to be an Object with the properties you need,
-* Use the description and title to help the LLM to understand what the tool does and when to use it. If you provide an outputSchema, you need to return a structuredContent that matches the schema.
-*
-* @template {StandardSchemaV1 | undefined} [TSchema=undefined]
-* @template {StandardSchemaV1 | undefined} [TOutputSchema=undefined]
-* @param {ToolOptions<TSchema, TOutputSchema>} options
-* @param {TSchema extends undefined ? (()=>Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>) : ((input: StandardSchemaV1.InferInput<TSchema extends undefined ? never : TSchema>) => Promise<import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>> | import("./index.js").CallToolResult<TOutputSchema extends undefined ? undefined : StandardSchemaV1.InferInput<TOutputSchema extends undefined ? never : TOutputSchema>>)} execute
-*/
-function defineTool(options, execute) {
-	return {
-		...options,
-		execute
-	};
-}
-/**
-* @import { EmbeddedResource, ResourceLink, CallToolResult, ReadResourceResult, GetPromptResult,  CompleteResult } from "../validation/index.js";
-*/
-/**
-* @satisfies {Record<string, (...args: any[])=>CallToolResult<any>>}
-*/
-const tool = {
-	text(text) {
-		return { content: [{
-			type: "text",
-			text
-		}] };
-	},
-	error(text) {
-		return {
-			isError: true,
-			content: [{
-				type: "text",
-				text
-			}]
-		};
-	},
-	media(type, data, mime_type) {
-		return { content: [{
-			type,
-			data,
-			mimeType: mime_type
-		}] };
-	},
-	resource(resource) {
-		return { content: [{
-			type: "resource",
-			resource
-		}] };
-	},
-	resourceLink(resource_link) {
-		return { content: [{
-			type: "resource_link",
-			...resource_link
-		}] };
-	},
-	structured(obj) {
-		return {
-			content: [{
-				type: "text",
-				text: JSON.stringify(obj)
-			}],
-			structuredContent: obj
-		};
-	},
-	mix(results, obj) {
-		return {
-			isError: results.some((r) => r.isError),
-			content: results.flatMap((r) => r.content ? r.content : []),
-			structuredContent: obj
-		};
-	}
-};
 function getUserAgent() {
 	if (typeof navigator === "object" && "userAgent" in navigator) return navigator.userAgent;
 	if (typeof process === "object" && process.version !== void 0) return `Node.js/${process.version.substr(1)} (${process.platform}; ${process.arch})`;
@@ -26765,7 +22562,7 @@ function lowercaseKeys(object) {
 		return newObj;
 	}, {});
 }
-function isPlainObject$4(value) {
+function isPlainObject$2(value) {
 	if (typeof value !== "object" || value === null) return false;
 	if (Object.prototype.toString.call(value) !== "[object Object]") return false;
 	const proto = Object.getPrototypeOf(value);
@@ -26776,7 +22573,7 @@ function isPlainObject$4(value) {
 function mergeDeep(defaults, options) {
 	const result = Object.assign({}, defaults);
 	Object.keys(options).forEach((key) => {
-		if (isPlainObject$4(options[key])) if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
+		if (isPlainObject$2(options[key])) if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
 		else result[key] = mergeDeep(defaults[key], options[key]);
 		else Object.assign(result, { [key]: options[key] });
 	});
@@ -27106,7 +22903,7 @@ var RequestError = class extends Error {
 };
 var VERSION$14 = "10.0.7";
 var defaults_default = { headers: { "user-agent": `octokit-request.js/${VERSION$14} ${getUserAgent()}` } };
-function isPlainObject$3(value) {
+function isPlainObject$1(value) {
 	if (typeof value !== "object" || value === null) return false;
 	if (Object.prototype.toString.call(value) !== "[object Object]") return false;
 	const proto = Object.getPrototypeOf(value);
@@ -27120,7 +22917,7 @@ async function fetchWrapper(requestOptions) {
 	if (!fetch) throw new Error("fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing");
 	const log = requestOptions.request?.log || console;
 	const parseSuccessResponseBody = requestOptions.request?.parseSuccessResponseBody !== false;
-	const body = isPlainObject$3(requestOptions.body) || Array.isArray(requestOptions.body) ? JSON.stringify(requestOptions.body) : requestOptions.body;
+	const body = isPlainObject$1(requestOptions.body) || Array.isArray(requestOptions.body) ? JSON.stringify(requestOptions.body) : requestOptions.body;
 	const requestHeaders = Object.fromEntries(Object.entries(requestOptions.headers).map(([name, value]) => [name, String(value)]));
 	let fetchResponse;
 	try {
@@ -30316,8 +26113,8 @@ function routeMatcher$1(paths) {
 	const regex2 = `^(?:${paths.map((path) => path.split("/").map((c) => c.startsWith("{") ? "(?:.+?)" : c).join("/")).map((r) => `(?:${r})`).join("|")})[^/]*$`;
 	return new RegExp(regex2, "i");
 }
-var regex$1 = routeMatcher$1(triggers_notification_paths_default);
-var triggersNotification = regex$1.test.bind(regex$1);
+var regex = routeMatcher$1(triggers_notification_paths_default);
+var triggersNotification = regex.test.bind(regex);
 var groups = {};
 var createGroups = function(Bottleneck, common) {
 	groups.global = new Bottleneck.Group({
@@ -32568,6 +28365,456 @@ async function clank8yOctokit() {
 async function getOctokit() {
 	return await clank8yOctokit();
 }
+/**
+* Adds an error message to the errors array.
+*
+* @param errors The array of error messages.
+* @param message The error message to add.
+*
+* @returns The new errors.
+*/
+function addError(errors, message) {
+	if (errors) {
+		errors.push(message);
+		return errors;
+	}
+	return [message];
+}
+/**
+* Throws an error or logs a warning based on the configuration.
+*
+* @param message The message to throw or log.
+* @param config The conversion configuration.
+*/
+function handleError(message, config) {
+	switch (config?.errorMode) {
+		case "ignore": break;
+		case "warn":
+			console.warn(message);
+			break;
+		default: throw new Error(message);
+	}
+}
+/**
+* Converts any supported Valibot action to the JSON Schema format.
+*
+* @param jsonSchema The JSON Schema object.
+* @param valibotAction The Valibot action object.
+* @param config The conversion configuration.
+*
+* @returns The converted JSON Schema.
+*/
+function convertAction(jsonSchema, valibotAction, config) {
+	if (config?.ignoreActions?.includes(valibotAction.type)) return jsonSchema;
+	let errors;
+	switch (valibotAction.type) {
+		case "base64":
+			jsonSchema.contentEncoding = "base64";
+			break;
+		case "bic":
+		case "cuid2":
+		case "decimal":
+		case "digits":
+		case "emoji":
+		case "hexadecimal":
+		case "hex_color":
+		case "nanoid":
+		case "octal":
+		case "ulid":
+			jsonSchema.pattern = valibotAction.requirement.source;
+			break;
+		case "description":
+			jsonSchema.description = valibotAction.description;
+			break;
+		case "email":
+			jsonSchema.format = "email";
+			break;
+		case "empty":
+			if (jsonSchema.type === "array") jsonSchema.maxItems = 0;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.maxLength = 0;
+			}
+			break;
+		case "entries":
+			jsonSchema.minProperties = valibotAction.requirement;
+			jsonSchema.maxProperties = valibotAction.requirement;
+			break;
+		case "examples":
+			if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.examples];
+			else jsonSchema.examples = valibotAction.examples;
+			break;
+		case "integer":
+			jsonSchema.type = "integer";
+			break;
+		case "ipv4":
+			jsonSchema.format = "ipv4";
+			break;
+		case "ipv6":
+			jsonSchema.format = "ipv6";
+			break;
+		case "iso_date":
+			jsonSchema.format = "date";
+			break;
+		case "iso_date_time":
+		case "iso_timestamp":
+			jsonSchema.format = "date-time";
+			break;
+		case "iso_time":
+			jsonSchema.format = "time";
+			break;
+		case "length":
+			if (jsonSchema.type === "array") {
+				jsonSchema.minItems = valibotAction.requirement;
+				jsonSchema.maxItems = valibotAction.requirement;
+			} else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = valibotAction.requirement;
+				jsonSchema.maxLength = valibotAction.requirement;
+			}
+			break;
+		case "max_entries":
+			jsonSchema.maxProperties = valibotAction.requirement;
+			break;
+		case "max_length":
+			if (jsonSchema.type === "array") jsonSchema.maxItems = valibotAction.requirement;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.maxLength = valibotAction.requirement;
+			}
+			break;
+		case "max_value":
+			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "max_value" action is not supported on type "${jsonSchema.type}".`);
+			jsonSchema.maximum = valibotAction.requirement;
+			break;
+		case "metadata":
+			if (typeof valibotAction.metadata.title === "string") jsonSchema.title = valibotAction.metadata.title;
+			if (typeof valibotAction.metadata.description === "string") jsonSchema.description = valibotAction.metadata.description;
+			if (Array.isArray(valibotAction.metadata.examples)) if (Array.isArray(jsonSchema.examples)) jsonSchema.examples = [...jsonSchema.examples, ...valibotAction.metadata.examples];
+			else jsonSchema.examples = valibotAction.metadata.examples;
+			break;
+		case "min_entries":
+			jsonSchema.minProperties = valibotAction.requirement;
+			break;
+		case "min_length":
+			if (jsonSchema.type === "array") jsonSchema.minItems = valibotAction.requirement;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = valibotAction.requirement;
+			}
+			break;
+		case "min_value":
+			if (jsonSchema.type !== "number" && jsonSchema.type !== "integer") errors = addError(errors, `The "min_value" action is not supported on type "${jsonSchema.type}".`);
+			jsonSchema.minimum = valibotAction.requirement;
+			break;
+		case "multiple_of":
+			jsonSchema.multipleOf = valibotAction.requirement;
+			break;
+		case "non_empty":
+			if (jsonSchema.type === "array") jsonSchema.minItems = 1;
+			else {
+				if (jsonSchema.type !== "string") errors = addError(errors, `The "${valibotAction.type}" action is not supported on type "${jsonSchema.type}".`);
+				jsonSchema.minLength = 1;
+			}
+			break;
+		case "regex":
+			if (valibotAction.requirement.flags) errors = addError(errors, "RegExp flags are not supported by JSON Schema.");
+			jsonSchema.pattern = valibotAction.requirement.source;
+			break;
+		case "title":
+			jsonSchema.title = valibotAction.title;
+			break;
+		case "url":
+			jsonSchema.format = "uri";
+			break;
+		case "uuid":
+			jsonSchema.format = "uuid";
+			break;
+		case "value":
+			jsonSchema.const = valibotAction.requirement;
+			break;
+		default: errors = addError(errors, `The "${valibotAction.type}" action cannot be converted to JSON Schema.`);
+	}
+	if (config?.overrideAction) {
+		const actionOverride = config.overrideAction({
+			valibotAction,
+			jsonSchema,
+			errors
+		});
+		if (actionOverride) return { ...actionOverride };
+	}
+	if (errors) for (const message of errors) handleError(message, config);
+	return jsonSchema;
+}
+/**
+* Flattens a Valibot pipe by recursively expanding nested pipes.
+*
+* @param pipe The pipeline to flatten.
+*
+* @returns A flat pipeline.
+*/
+function flattenPipe(pipe) {
+	return pipe.flatMap((item) => "pipe" in item ? flattenPipe(item.pipe) : item);
+}
+let refCount = 0;
+/**
+* Converts any supported Valibot schema to the JSON Schema format.
+*
+* @param jsonSchema The JSON Schema object.
+* @param valibotSchema The Valibot schema object.
+* @param config The conversion configuration.
+* @param context The conversion context.
+* @param skipRef Whether to skip using a reference.
+*
+* @returns The converted JSON Schema.
+*/
+function convertSchema(jsonSchema, valibotSchema, config, context, skipRef = false) {
+	if (!skipRef) {
+		const referenceId = context.referenceMap.get(valibotSchema);
+		if (referenceId) {
+			jsonSchema.$ref = `#/$defs/${referenceId}`;
+			if (config?.overrideRef) {
+				const refOverride = config.overrideRef({
+					...context,
+					referenceId,
+					valibotSchema,
+					jsonSchema
+				});
+				if (refOverride) jsonSchema.$ref = refOverride;
+			}
+			return jsonSchema;
+		}
+	}
+	if ("pipe" in valibotSchema) {
+		const flatPipe = flattenPipe(valibotSchema.pipe);
+		let startIndex = 0;
+		let stopIndex = flatPipe.length - 1;
+		if (config?.typeMode === "input") {
+			const inputStopIndex = flatPipe.slice(1).findIndex((item) => item.kind === "schema" || item.kind === "transformation" && (item.type === "find_item" || item.type === "parse_json" || item.type === "raw_transform" || item.type === "reduce_items" || item.type === "stringify_json" || item.type === "to_bigint" || item.type === "to_boolean" || item.type === "to_date" || item.type === "to_number" || item.type === "to_string" || item.type === "transform"));
+			if (inputStopIndex !== -1) stopIndex = inputStopIndex;
+		} else if (config?.typeMode === "output") {
+			const outputStartIndex = flatPipe.findLastIndex((item) => item.kind === "schema");
+			if (outputStartIndex !== -1) startIndex = outputStartIndex;
+		}
+		for (let index = startIndex; index <= stopIndex; index++) {
+			const valibotPipeItem = flatPipe[index];
+			if (valibotPipeItem.kind === "schema") {
+				if (index > startIndex) handleError("Set the \"typeMode\" config to \"input\" or \"output\" to convert pipelines with multiple schemas.", config);
+				jsonSchema = convertSchema(jsonSchema, valibotPipeItem, config, context, true);
+			} else jsonSchema = convertAction(jsonSchema, valibotPipeItem, config);
+		}
+		return jsonSchema;
+	}
+	let errors;
+	switch (valibotSchema.type) {
+		case "boolean":
+			jsonSchema.type = "boolean";
+			break;
+		case "null":
+			if (config?.target === "openapi-3.0") jsonSchema.enum = [null];
+			else jsonSchema.type = "null";
+			break;
+		case "number":
+			jsonSchema.type = "number";
+			break;
+		case "string":
+			jsonSchema.type = "string";
+			break;
+		case "array":
+			jsonSchema.type = "array";
+			jsonSchema.items = convertSchema({}, valibotSchema.item, config, context);
+			break;
+		case "tuple":
+		case "tuple_with_rest":
+		case "loose_tuple":
+		case "strict_tuple":
+			jsonSchema.type = "array";
+			if (config?.target === "openapi-3.0") {
+				jsonSchema.items = { anyOf: [] };
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.items.anyOf.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items.anyOf.push(convertSchema({}, valibotSchema.rest, config, context));
+				else if (valibotSchema.type === "strict_tuple" || valibotSchema.type === "tuple") jsonSchema.maxItems = valibotSchema.items.length;
+			} else if (config?.target === "draft-2020-12") {
+				jsonSchema.prefixItems = [];
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.prefixItems.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.items = convertSchema({}, valibotSchema.rest, config, context);
+				else if (valibotSchema.type === "strict_tuple") jsonSchema.items = false;
+			} else {
+				jsonSchema.items = [];
+				jsonSchema.minItems = valibotSchema.items.length;
+				for (const item of valibotSchema.items) jsonSchema.items.push(convertSchema({}, item, config, context));
+				if (valibotSchema.type === "tuple_with_rest") jsonSchema.additionalItems = convertSchema({}, valibotSchema.rest, config, context);
+				else if (valibotSchema.type === "strict_tuple") jsonSchema.additionalItems = false;
+			}
+			break;
+		case "object":
+		case "object_with_rest":
+		case "loose_object":
+		case "strict_object":
+			jsonSchema.type = "object";
+			jsonSchema.properties = {};
+			jsonSchema.required = [];
+			for (const key in valibotSchema.entries) {
+				const entry = valibotSchema.entries[key];
+				jsonSchema.properties[key] = convertSchema({}, entry, config, context);
+				if (entry.type !== "exact_optional" && entry.type !== "nullish" && entry.type !== "optional") jsonSchema.required.push(key);
+			}
+			if (valibotSchema.type === "object_with_rest") jsonSchema.additionalProperties = convertSchema({}, valibotSchema.rest, config, context);
+			else if (valibotSchema.type === "strict_object") jsonSchema.additionalProperties = false;
+			break;
+		case "record":
+			if (config?.target === "openapi-3.0" && "pipe" in valibotSchema.key) errors = addError(errors, "The \"record\" schema with a schema for the key that contains a \"pipe\" cannot be converted to JSON Schema.");
+			if (valibotSchema.key.type !== "string") errors = addError(errors, `The "record" schema with the "${valibotSchema.key.type}" schema for the key cannot be converted to JSON Schema.`);
+			jsonSchema.type = "object";
+			if (config?.target !== "openapi-3.0") jsonSchema.propertyNames = convertSchema({}, valibotSchema.key, config, context);
+			jsonSchema.additionalProperties = convertSchema({}, valibotSchema.value, config, context);
+			break;
+		case "any":
+		case "unknown": break;
+		case "nullable":
+		case "nullish":
+			if (config?.target === "openapi-3.0") {
+				const innerSchema = convertSchema({}, valibotSchema.wrapped, config, context);
+				Object.assign(jsonSchema, innerSchema);
+				jsonSchema.nullable = true;
+			} else jsonSchema.anyOf = [convertSchema({}, valibotSchema.wrapped, config, context), { type: "null" }];
+			if (valibotSchema.default !== void 0) jsonSchema.default = /* @__PURE__ */ getDefault(valibotSchema);
+			break;
+		case "exact_optional":
+		case "optional":
+		case "undefinedable":
+			jsonSchema = convertSchema(jsonSchema, valibotSchema.wrapped, config, context);
+			if (valibotSchema.default !== void 0) jsonSchema.default = /* @__PURE__ */ getDefault(valibotSchema);
+			break;
+		case "literal":
+			if (typeof valibotSchema.literal !== "boolean" && typeof valibotSchema.literal !== "number" && typeof valibotSchema.literal !== "string") errors = addError(errors, "The value of the \"literal\" schema is not JSON compatible.");
+			if (config?.target === "openapi-3.0") jsonSchema.enum = [valibotSchema.literal];
+			else jsonSchema.const = valibotSchema.literal;
+			break;
+		case "enum":
+			jsonSchema.enum = valibotSchema.options;
+			break;
+		case "picklist":
+			if (valibotSchema.options.some((option) => typeof option !== "number" && typeof option !== "string")) errors = addError(errors, "An option of the \"picklist\" schema is not JSON compatible.");
+			jsonSchema.enum = valibotSchema.options;
+			break;
+		case "union":
+			jsonSchema.anyOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "variant":
+			jsonSchema.oneOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "intersect":
+			jsonSchema.allOf = valibotSchema.options.map((option) => convertSchema({}, option, config, context));
+			break;
+		case "lazy": {
+			let wrappedValibotSchema = context.getterMap.get(valibotSchema.getter);
+			if (!wrappedValibotSchema) {
+				wrappedValibotSchema = valibotSchema.getter(void 0);
+				context.getterMap.set(valibotSchema.getter, wrappedValibotSchema);
+			}
+			let referenceId = context.referenceMap.get(wrappedValibotSchema);
+			if (!referenceId) {
+				referenceId = `${refCount++}`;
+				context.referenceMap.set(wrappedValibotSchema, referenceId);
+				context.definitions[referenceId] = convertSchema({}, wrappedValibotSchema, config, context, true);
+			}
+			jsonSchema.$ref = `#/$defs/${referenceId}`;
+			if (config?.overrideRef) {
+				const refOverride = config.overrideRef({
+					...context,
+					referenceId,
+					valibotSchema: wrappedValibotSchema,
+					jsonSchema
+				});
+				if (refOverride) jsonSchema.$ref = refOverride;
+			}
+			break;
+		}
+		default: errors = addError(errors, `The "${valibotSchema.type}" schema cannot be converted to JSON Schema.`);
+	}
+	if (config?.overrideSchema) {
+		const schemaOverride = config.overrideSchema({
+			...context,
+			referenceId: context.referenceMap.get(valibotSchema),
+			valibotSchema,
+			jsonSchema,
+			errors
+		});
+		if (schemaOverride) return { ...schemaOverride };
+	}
+	if (errors) for (const message of errors) handleError(message, config);
+	return jsonSchema;
+}
+let store;
+/**
+* Returns the current global schema definitions.
+*
+* @returns The schema definitions.
+*
+* @beta
+*/
+function getGlobalDefs() {
+	return store;
+}
+/**
+* Converts a Valibot schema to the JSON Schema format.
+*
+* @param schema The Valibot schema object.
+* @param config The JSON Schema configuration.
+*
+* @returns The converted JSON Schema.
+*/
+function toJsonSchema(schema, config) {
+	const context = {
+		definitions: {},
+		referenceMap: /* @__PURE__ */ new Map(),
+		getterMap: /* @__PURE__ */ new Map()
+	};
+	const definitions = config?.definitions ?? getGlobalDefs();
+	if (definitions) {
+		for (const key in definitions) context.referenceMap.set(definitions[key], key);
+		for (const key in definitions) context.definitions[key] = convertSchema({}, definitions[key], config, context, true);
+	}
+	const jsonSchema = convertSchema({}, schema, config, context);
+	const target = config?.target ?? "draft-07";
+	if (target === "draft-2020-12") jsonSchema.$schema = "https://json-schema.org/draft/2020-12/schema";
+	else if (target === "draft-07") jsonSchema.$schema = "http://json-schema.org/draft-07/schema#";
+	if (context.referenceMap.size) jsonSchema.$defs = context.definitions;
+	return jsonSchema;
+}
+function resultText(result) {
+	return (result.content ?? []).filter((item) => typeof item === "object" && item !== null && item.type === "text" && typeof item.text === "string").map((item) => item.text).join("\n");
+}
+function definedToolToPiTool(definedTool) {
+	const parameters = definedTool.schema ? toJsonSchema(definedTool.schema) : {
+		type: "object",
+		properties: {},
+		additionalProperties: false
+	};
+	return {
+		name: definedTool.name,
+		label: definedTool.title ?? definedTool.name,
+		description: definedTool.description ?? "",
+		parameters,
+		execute: async (_toolCallId, params) => {
+			const result = await definedTool.execute(params);
+			if (result?.isError === true) throw new Error(resultText(result) || `Tool ${definedTool.name} failed`);
+			return {
+				content: Array.isArray(result?.content) ? result.content : [{
+					type: "text",
+					text: JSON.stringify(result)
+				}],
+				details: result?.structuredContent ?? result
+			};
+		}
+	};
+}
+function definedToolsToPiTools(definedTools) {
+	return definedTools.map(definedToolToPiTool);
+}
 const CLANK8Y_ARTIFACT_DIR = ".clank8y";
 const DIFF_ARTIFACT_FILE = "diff.txt";
 const REVIEW_COMMENTS_ARTIFACT_FILE = "review-comments.md";
@@ -32690,46 +28937,46 @@ function buildRepoIssueSearchQuery(repository, query) {
 	if (!normalizedQuery) throw new Error("GitHub issue search query must not be empty.");
 	return `repo:${repository} ${normalizedQuery}`;
 }
-var l$1 = Object.create;
-var u$2 = Object.defineProperty;
-var d$2 = Object.getOwnPropertyDescriptor;
-var f$2 = Object.getOwnPropertyNames;
+var l = Object.create;
+var u = Object.defineProperty;
+var d = Object.getOwnPropertyDescriptor;
+var f$1 = Object.getOwnPropertyNames;
 var p = Object.getPrototypeOf;
-var m$1 = Object.prototype.hasOwnProperty;
-var h$1 = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
-var g$1 = (e, t, n, r) => {
-	if (t && typeof t === "object" || typeof t === "function") for (var i = f$2(t), a = 0, o = i.length, s; a < o; a++) {
+var m = Object.prototype.hasOwnProperty;
+var h = (e, t) => () => (t || e((t = { exports: {} }).exports, t), t.exports);
+var g = (e, t, n, r) => {
+	if (t && typeof t === "object" || typeof t === "function") for (var i = f$1(t), a = 0, o = i.length, s; a < o; a++) {
 		s = i[a];
-		if (!m$1.call(e, s) && s !== n) u$2(e, s, {
+		if (!m.call(e, s) && s !== n) u(e, s, {
 			get: ((e) => t[e]).bind(null, s),
-			enumerable: !(r = d$2(t, s)) || r.enumerable
+			enumerable: !(r = d(t, s)) || r.enumerable
 		});
 	}
 	return e;
 };
-var _$2 = (e, t, n) => (n = e != null ? l$1(p(e)) : {}, g$1(t || !e || !e.__esModule ? u$2(n, "default", {
+var _ = (e, t, n) => (n = e != null ? l(p(e)) : {}, g(t || !e || !e.__esModule ? u(n, "default", {
 	value: e,
 	enumerable: true
 }) : n, e));
-var v$1 = /* @__PURE__ */ createRequire$1(import.meta.url);
-const y$2 = /^path$/i;
-const b$1 = {
+var v = /* @__PURE__ */ createRequire$1(import.meta.url);
+const y = /^path$/i;
+const b = {
 	key: "PATH",
 	value: ""
 };
-function x$1(e) {
+function x(e) {
 	for (const t in e) {
-		if (!Object.prototype.hasOwnProperty.call(e, t) || !y$2.test(t)) continue;
+		if (!Object.prototype.hasOwnProperty.call(e, t) || !y.test(t)) continue;
 		const n = e[t];
-		if (!n) return b$1;
+		if (!n) return b;
 		return {
 			key: t,
 			value: n
 		};
 	}
-	return b$1;
+	return b;
 }
-function S$2(e, t) {
+function S(e, t) {
 	const i = t.value.split(delimiter);
 	let o = e;
 	let s;
@@ -32743,16 +28990,16 @@ function S$2(e, t) {
 		value: i.join(delimiter)
 	};
 }
-function C$2(e, t) {
+function C(e, t) {
 	const n = {
 		...process.env,
 		...t
 	};
-	const r = S$2(e, x$1(n));
+	const r = S(e, x(n));
 	n[r.key] = r.value;
 	return n;
 }
-const w$2 = (e) => {
+const w = (e) => {
 	let t = e.length;
 	const n = new PassThrough();
 	const r = () => {
@@ -32764,10 +29011,10 @@ const w$2 = (e) => {
 	}
 	return n;
 };
-var T$3 = h$1((exports, t) => {
+var T = h((exports, t) => {
 	t.exports = a;
 	a.sync = o;
-	var n = v$1("fs");
+	var n = v("fs");
 	function r(e, t) {
 		var n = t.pathExt !== void 0 ? t.pathExt : process.env.PATHEXT;
 		if (!n) return true;
@@ -32792,10 +29039,10 @@ var T$3 = h$1((exports, t) => {
 		return i(n.statSync(e), e, t);
 	}
 });
-var E = h$1((exports, t) => {
+var E = h((exports, t) => {
 	t.exports = r;
 	r.sync = i;
-	var n = v$1("fs");
+	var n = v("fs");
 	function r(e, t, r) {
 		n.stat(e, function(e, n) {
 			r(e, e ? false : a(n, t));
@@ -32820,10 +29067,10 @@ var E = h$1((exports, t) => {
 		return n & l || n & c && i === o || n & s && r === a || n & u && a === 0;
 	}
 });
-var D$1 = h$1((exports, t) => {
-	v$1("fs");
+var D = h((exports, t) => {
+	v("fs");
 	var r;
-	if (process.platform === "win32" || global.TESTING_WINDOWS) r = T$3();
+	if (process.platform === "win32" || global.TESTING_WINDOWS) r = T();
 	else r = E();
 	t.exports = i;
 	i.sync = a;
@@ -32860,11 +29107,11 @@ var D$1 = h$1((exports, t) => {
 		}
 	}
 });
-var O$2 = h$1((exports, t) => {
+var O = h((exports, t) => {
 	const n = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-	const r = v$1("path");
+	const r = v("path");
 	const i = n ? ";" : ":";
-	const a = D$1();
+	const a = D();
 	const o = (e) => Object.assign(/* @__PURE__ */ new Error(`not found: ${e}`), { code: "ENOENT" });
 	const s = (e, t) => {
 		const r = t.colon || i;
@@ -32930,7 +29177,7 @@ var O$2 = h$1((exports, t) => {
 	t.exports = c;
 	c.sync = l;
 });
-var k$2 = h$1((exports, t) => {
+var k = h((exports, t) => {
 	const n = (e = {}) => {
 		const t = e.env || process.env;
 		if ((e.platform || process.platform) !== "win32") return "PATH";
@@ -32939,10 +29186,10 @@ var k$2 = h$1((exports, t) => {
 	t.exports = n;
 	t.exports.default = n;
 });
-var A$3 = h$1((exports, t) => {
-	const n = v$1("path");
-	const r = O$2();
-	const i = k$2();
+var A = h((exports, t) => {
+	const n = v("path");
+	const r = O();
+	const i = k();
 	function a(e, t) {
 		const a = e.options.env || process.env;
 		const o = process.cwd();
@@ -32968,7 +29215,7 @@ var A$3 = h$1((exports, t) => {
 	}
 	t.exports = o;
 });
-var j = h$1((exports, t) => {
+var j = h((exports, t) => {
 	const n = /([()\][%!^"`<>&|;, *?])/g;
 	function r(e) {
 		e = e.replace(n, "^$1");
@@ -32986,10 +29233,10 @@ var j = h$1((exports, t) => {
 	t.exports.command = r;
 	t.exports.argument = i;
 });
-var M = h$1((exports, t) => {
+var M = h((exports, t) => {
 	t.exports = /^#!(.*)/;
 });
-var N$2 = h$1((exports, t) => {
+var N = h((exports, t) => {
 	const n = M();
 	t.exports = (e = "") => {
 		const t = e.match(n);
@@ -33000,9 +29247,9 @@ var N$2 = h$1((exports, t) => {
 		return i ? `${a} ${i}` : a;
 	};
 });
-var P$2 = h$1((exports, t) => {
-	const n = v$1("fs");
-	const r = N$2();
+var P = h((exports, t) => {
+	const n = v("fs");
+	const r = N();
 	function i(e) {
 		const t = 150;
 		const i = Buffer.alloc(t);
@@ -33016,11 +29263,11 @@ var P$2 = h$1((exports, t) => {
 	}
 	t.exports = i;
 });
-var F$2 = h$1((exports, t) => {
-	const n = v$1("path");
-	const r = A$3();
+var F = h((exports, t) => {
+	const n = v("path");
+	const r = A();
 	const i = j();
-	const a = P$2();
+	const a = P();
 	const o = process.platform === "win32";
 	const s = /\.(?:com|exe)$/i;
 	const c = /node_modules[\\/].bin[\\/][^\\/]+\.cmd$/i;
@@ -33075,7 +29322,7 @@ var F$2 = h$1((exports, t) => {
 	}
 	t.exports = d;
 });
-var I$2 = h$1((exports, t) => {
+var I = h((exports, t) => {
 	const n = process.platform === "win32";
 	function r(e, t) {
 		return Object.assign(/* @__PURE__ */ new Error(`${t} ${e.command} ENOENT`), {
@@ -33112,10 +29359,10 @@ var I$2 = h$1((exports, t) => {
 		notFoundError: r
 	};
 });
-var R$2 = _$2(h$1((exports, t) => {
-	const n = v$1("child_process");
-	const r = F$2();
-	const i = I$2();
+var R = _(h((exports, t) => {
+	const n = v("child_process");
+	const r = F();
+	const i = I();
 	function a(e, t, a) {
 		const o = r(e, t, a);
 		const s = n.spawn(o.command, o.args, o.options);
@@ -33134,7 +29381,7 @@ var R$2 = _$2(h$1((exports, t) => {
 	t.exports._parse = r;
 	t.exports._enoent = i;
 })(), 1);
-var z$1 = class extends Error {
+var z = class extends Error {
 	result;
 	output;
 	get exitCode() {
@@ -33146,11 +29393,11 @@ var z$1 = class extends Error {
 		this.output = t;
 	}
 };
-const B$1 = {
+const B = {
 	timeout: void 0,
 	persist: false
 };
-const V$2 = { windowsHide: true };
+const V = { windowsHide: true };
 function H(e, t) {
 	return {
 		command: normalize(e),
@@ -33171,12 +29418,12 @@ function U(e) {
 	}
 	return t.signal;
 }
-async function W$2(e) {
+async function W(e) {
 	let t = "";
 	for await (const n of e) t += n.toString();
 	return t;
 }
-var G$2 = class {
+var G = class {
 	_process;
 	_aborted = false;
 	_options;
@@ -33196,7 +29443,7 @@ var G$2 = class {
 	}
 	constructor(e, t, n) {
 		this._options = {
-			...B$1,
+			...B,
 			...n
 		};
 		this._command = e;
@@ -33215,7 +29462,7 @@ var G$2 = class {
 		return this._process?.killed === true;
 	}
 	pipe(e, t, n) {
-		return q$1(e, t, {
+		return q(e, t, {
 			...n,
 			stdin: this
 		});
@@ -33226,18 +29473,18 @@ var G$2 = class {
 		const t = [];
 		if (this._streamErr) t.push(this._streamErr);
 		if (this._streamOut) t.push(this._streamOut);
-		const n = w$2(t);
+		const n = w(t);
 		const r = f.createInterface({ input: n });
 		for await (const e of r) yield e.toString();
 		await this._processClosed;
 		e.removeAllListeners();
 		if (this._thrownError) throw this._thrownError;
-		if (this._options?.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z$1(this);
+		if (this._options?.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z(this);
 	}
 	async _waitForOutput() {
 		const e = this._process;
 		if (!e) throw new Error("No process was started");
-		const [t, n] = await Promise.all([this._streamOut ? W$2(this._streamOut) : "", this._streamErr ? W$2(this._streamErr) : ""]);
+		const [t, n] = await Promise.all([this._streamOut ? W(this._streamOut) : "", this._streamErr ? W(this._streamErr) : ""]);
 		await this._processClosed;
 		if (this._options?.stdin) await this._options.stdin;
 		e.removeAllListeners();
@@ -33247,7 +29494,7 @@ var G$2 = class {
 			stdout: t,
 			exitCode: this.exitCode
 		};
-		if (this._options.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z$1(this, r);
+		if (this._options.throwOnError && this.exitCode !== 0 && this.exitCode !== void 0) throw new z(this, r);
 		return r;
 	}
 	then(e, t) {
@@ -33259,7 +29506,7 @@ var G$2 = class {
 		const e = cwd();
 		const n = this._options;
 		const r = {
-			...V$2,
+			...V,
 			...n.nodeOptions
 		};
 		const i = [];
@@ -33268,9 +29515,9 @@ var G$2 = class {
 		if (n.signal !== void 0) i.push(n.signal);
 		if (n.persist === true) r.detached = true;
 		if (i.length > 0) r.signal = U(i);
-		r.env = C$2(e, r.env);
+		r.env = C(e, r.env);
 		const { command: a, args: s } = H(this._command, this._args);
-		const c = (0, R$2._parse)(a, s, r);
+		const c = (0, R._parse)(a, s, r);
 		const l = spawn(c.command, c.args, c.options);
 		if (l.stderr) this._streamErr = l.stderr;
 		if (l.stdout) this._streamOut = l.stdout;
@@ -33301,11 +29548,11 @@ var G$2 = class {
 	};
 };
 const K = (e, t, n) => {
-	const r = new G$2(e, t, n);
+	const r = new G(e, t, n);
 	r.spawn();
 	return r;
 };
-const q$1 = K;
+const q = K;
 const GITHUB_HOST = "github.com";
 const CLANK8Y_BOT_LOGIN = "clank8y[bot]";
 const CLANK8Y_BOT_ID = 263439080;
@@ -33562,16 +29809,8 @@ async function getAuthenticatedLogin() {
 	const { data } = await (await getOctokit()).rest.users.getAuthenticated();
 	return data.login;
 }
-function incidentFixGitHubMCP() {
-	const mcp = new McpServer({
-		name: "clank8y-incident-fix-github-mcp",
-		description: "A MCP server that helps incident-fix workflows inspect branches and manage repo checkouts safely.",
-		version: "1.0.0"
-	}, {
-		adapter: new ValibotJsonSchemaAdapter(),
-		capabilities: { tools: { listChanged: true } }
-	});
-	const githubMcpTools = [
+function incidentFixGitHubTools() {
+	return definedToolsToPiTools([
 		defineTool({
 			name: GET_REPO_BRANCHES_TOOL_NAME,
 			description: "Read-only GitHub-backed branch metadata for a repository. Call this near the start before deciding whether the default branch is the right base.",
@@ -33943,54 +30182,7 @@ function incidentFixGitHubMCP() {
 				return tool.error(`Failed to update repository pull request body: ${message}`);
 			}
 		})
-	];
-	mcp.tools(githubMcpTools);
-	const transport = new HttpTransport(mcp, { path: "/mcp" });
-	const server = serve({
-		manual: true,
-		port: 0,
-		fetch: async (req) => {
-			const response = await transport.respond(req);
-			if (!response) return new NodeResponse("Not found", { status: 404 });
-			return response;
-		}
-	});
-	let status = { state: "stopped" };
-	return {
-		serverType: "http",
-		allowedTools: githubMcpTools.map((definedTool) => definedTool.name),
-		get status() {
-			return status;
-		},
-		start: async () => {
-			await server.serve();
-			const { url } = await server.ready();
-			if (!url) {
-				await server.close(true);
-				throw new Error("Failed to start IncidentFix GitHub MCP server");
-			}
-			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
-			status = {
-				state: "running",
-				url: actualUrl
-			};
-			return {
-				url: actualUrl,
-				toolNames: githubMcpTools.map((definedTool) => definedTool.name)
-			};
-		},
-		stop: async () => {
-			await server.close(true);
-			status = { state: "stopped" };
-		}
-	};
-}
-function incidentFixMCPs() {
-	return {
-		github: incidentFixGitHubMCP(),
-		codex: codexMCP(),
-		angular: angularMCP()
-	};
+	]);
 }
 const PERSONA = [
 	"## Persona",
@@ -34054,9 +30246,9 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"Core rules:",
 		"- Prefer confirmed facts over plausible stories.",
 		"- Keep uncertainty explicit. If you do not know, say so.",
-		"- Do not mutate remote state unless a dedicated MCP tool exists for that action.",
+		"- Do not mutate remote state unless a dedicated tool exists for that action.",
 		"- Local repo edits, builds, tests, and local git operations are allowed once a repo has been prepared.",
-		"- Remote authenticated operations must stay behind MCP tools."
+		"- Remote authenticated operations must stay behind tools."
 	].join("\n"),
 	"",
 	[
@@ -34079,7 +30271,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- leave a deterministic markdown report at `.clank8y/report.md`",
 		"",
 		"The MCP surface includes read-side repository preparation, issue/PR search, and authenticated remote write operations.",
-		"Use the dedicated GitHub MCP tools for remote state changes instead of trying to do those operations through normal shell commands.",
+		"Use the dedicated GitHub tools for remote state changes instead of trying to do those operations through normal shell commands.",
 		"",
 		"**If the problem cannot be debugged and identified, do not create any issues, branches, or pull requests. Report-only is the correct outcome to reduce noise.**"
 	].join("\n"),
@@ -34087,8 +30279,8 @@ const BASE_INCIDENT_FIX_PROMPT = [
 	[
 		"## Required workflow",
 		"",
-		"You have three MCP servers available:",
-		"- **GitHub MCP** for branch discovery, issue/PR search, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.",
+		"You have three tool groups available:",
+		"- **GitHub tools** for branch discovery, issue/PR search, authenticated repo checkout preparation, push, issue creation/update, and pull request creation/update.",
 		"- **Angular MCP** for Angular API, syntax, and best-practice verification.",
 		"- **Codex MCP** for Cumulocity Web SDK and design-system verification.",
 		"",
@@ -34177,7 +30369,7 @@ const BASE_INCIDENT_FIX_PROMPT = [
 		"- Always search for existing issues/PRs before creating new ones.",
 		"",
 		"### Tooling constraints:",
-		"- Use GitHub MCP for authenticated remote operations.",
+		"- Use GitHub tools for authenticated remote operations.",
 		"- Use Angular MCP for Angular-specific guidance and API verification.",
 		"- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.",
 		"- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally."
@@ -34231,7 +30423,8 @@ function buildIncidentFixPrompt(promptContext) {
 function getIncidentFixModeRuntime(promptContext) {
 	return {
 		prompt: buildIncidentFixPrompt(promptContext),
-		mcps: incidentFixMCPs()
+		externalMcpServers: incidentFixExternalMcpServers(),
+		tools: incidentFixGitHubTools()
 	};
 }
 const LIST_ITEM_MARKER = "-";
@@ -34281,7 +30474,7 @@ function normalizeValue(value) {
 	if (Array.isArray(value)) return value.map(normalizeValue);
 	if (value instanceof Set) return Array.from(value).map(normalizeValue);
 	if (value instanceof Map) return Object.fromEntries(Array.from(value, ([k, v]) => [String(k), normalizeValue(v)]));
-	if (isPlainObject$2(value)) {
+	if (isPlainObject(value)) {
 		const normalized = {};
 		for (const key in value) if (Object.prototype.hasOwnProperty.call(value, key)) normalized[key] = normalizeValue(value[key]);
 		return normalized;
@@ -34300,7 +30493,7 @@ function isJsonObject(value) {
 function isEmptyObject(value) {
 	return Object.keys(value).length === 0;
 }
-function isPlainObject$2(value) {
+function isPlainObject(value) {
 	if (value === null || typeof value !== "object") return false;
 	const prototype = Object.getPrototypeOf(value);
 	return prototype === null || prototype === Object.prototype;
@@ -35172,16 +31365,8 @@ async function fetchAllPullRequestReviewComments() {
 		per_page: 100
 	});
 }
-function reviewGitHubMCP() {
-	const mcp = new McpServer({
-		name: "clank8y-review-github-mcp",
-		description: "A MCP server that helps you complete pull request reviews",
-		version: "1.0.0"
-	}, {
-		adapter: new ValibotJsonSchemaAdapter(),
-		capabilities: { tools: { listChanged: true } }
-	});
-	const githubMcpTools = [
+function reviewGitHubTools() {
+	return definedToolsToPiTools([
 		defineTool({
 			name: SET_PULL_REQUEST_CONTEXT_TOOL_NAME,
 			description: "Set the pull request context for the current review session. Call this before any other pull request tools and provide the repository plus pull request number from the prompt context.",
@@ -35189,7 +31374,7 @@ function reviewGitHubMCP() {
 			schema: /* @__PURE__ */ pipe(/* @__PURE__ */ object({
 				repository: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ description("Repository in owner/repo format for the pull request to review.")),
 				pr_number: /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ description("The pull request number to set as the active review context."))
-			}), /* @__PURE__ */ description("Arguments for selecting the active pull request before any review-specific GitHub MCP tools are used."))
+			}), /* @__PURE__ */ description("Arguments for selecting the active pull request before any review-specific GitHub tools are used."))
 		}, async ({ repository, pr_number }) => {
 			try {
 				const pullRequest = await setPullRequestContext({
@@ -35444,66 +31629,15 @@ function reviewGitHubMCP() {
 				return tool.error(`Failed to create pull request comment: ${message}`);
 			}
 		})
-	];
-	mcp.tools(githubMcpTools);
-	const transport = new HttpTransport(mcp, { path: "/mcp" });
-	const server = serve({
-		manual: true,
-		port: 0,
-		fetch: async (req) => {
-			const response = await transport.respond(req);
-			if (!response) return new NodeResponse("Not found", { status: 404 });
-			return response;
-		}
-	});
-	let status = { state: "stopped" };
-	return {
-		serverType: "http",
-		allowedTools: githubMcpTools.map((tool) => tool.name),
-		get status() {
-			return status;
-		},
-		start: async () => {
-			await server.serve();
-			const { url } = await server.ready();
-			if (!url) {
-				await server.close(true);
-				throw new Error("Failed to start GitHub MCP server");
-			}
-			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
-			status = {
-				state: "running",
-				url: actualUrl
-			};
-			return {
-				url: actualUrl,
-				toolNames: githubMcpTools.map((tool) => tool.name)
-			};
-		},
-		stop: async () => {
-			await server.close(true);
-			status = { state: "stopped" };
-		}
-	};
+	]);
 }
 let _activePullRequestContext = null;
-function parseRepository(repository) {
-	const normalizedRepository = repository.trim();
-	if (!normalizedRepository) throw new Error("Repository is required (format: owner/repo).");
-	const segments = normalizedRepository.split("/");
-	const [owner, repo] = segments;
-	if (segments.length !== 2 || !owner || !repo) throw new Error(`Invalid repository value '${normalizedRepository}'. Expected format: owner/repo.`);
-	return {
-		owner,
-		repo
-	};
-}
 function resetPullRequestContext() {
 	_activePullRequestContext = null;
 }
 async function setPullRequestContext(params) {
 	if (!Number.isFinite(params.prNumber) || params.prNumber < 1) throw new Error(`Invalid pull request number '${String(params.prNumber)}'.`);
-	const repository = parseRepository(params.repository);
+	const repository = parseGitHubRepository(params.repository);
 	const { data: pr } = await (await getOctokit()).rest.pulls.get({
 		owner: repository.owner,
 		repo: repository.repo,
@@ -35617,15 +31751,15 @@ const BASE_REVIEW_PROMPT = [
 	[
 		"## Required workflow",
 		"",
-		"You have three MCP servers available:",
-		"- **GitHub MCP** — PR metadata, diffs, file content, and review submission.",
+		"You have three tool groups available:",
+		"- **GitHub tools** — PR metadata, diffs, file content, and review submission.",
 		"- **Angular MCP** — Angular documentation, best practices, and code examples.",
 		"- **Codex MCP** — Cumulocity Web SDK documentation: components, services, design system, hooks, pipes, CSS utilities.",
 		"",
 		"### Step-by-step:",
 		"",
-		`1) **Set PR context** via the GitHub MCP tool \`${SET_PULL_REQUEST_CONTEXT_TOOL_NAME}\` using the \`repository\` (in \`owner/repo\` form) and \`pr_number\` from EVENT-LEVEL INSTRUCTIONS.`,
-		"   - Do not call any other GitHub MCP tool before this.",
+		`1) **Set PR context** via the GitHub tool \`${SET_PULL_REQUEST_CONTEXT_TOOL_NAME}\` using the \`repository\` (in \`owner/repo\` form) and \`pr_number\` from EVENT-LEVEL INSTRUCTIONS.`,
+		"   - Do not call any other GitHub tool before this.",
 		"",
 		`2) **Prepare review** via \`${PREPARE_PULL_REQUEST_REVIEW_TOOL_NAME}\` (single entrypoint).`,
 		"   - This returns PR metadata, file summary, a `diff.path`, and a separate `previousReviews.path` artifact with previous review bodies and inline comment history.",
@@ -35693,7 +31827,7 @@ const BASE_REVIEW_PROMPT = [
 		"- If EVENT-LEVEL INSTRUCTIONS includes `report_back_to: none` or says not to mention `@clank8y`, do not mention `@clank8y` in the review body or comment.",
 		"",
 		"### Tooling constraints:",
-		"- Use GitHub MCP tools for PR operations.",
+		"- Use GitHub tools for PR operations.",
 		"- Use Angular MCP to verify Angular patterns — do not rely solely on your training data.",
 		"- Use Codex MCP to verify Cumulocity patterns — the platform has a rich component/service library.",
 		"- Native file tools are allowed only so you can read `.clank8y/diff.txt` and `.clank8y/review-comments.md`.",
@@ -35712,9 +31846,8 @@ function buildReviewPrompt(promptContext) {
 		normalized
 	].join("\n");
 }
-function reviewMCPs() {
+function reviewExternalMcpServers() {
 	return {
-		github: reviewGitHubMCP(),
 		codex: codexMCP(),
 		angular: angularMCP()
 	};
@@ -35723,7 +31856,8 @@ function getReviewModeRuntime(promptContext) {
 	resetPullRequestContext();
 	return {
 		prompt: buildReviewPrompt(promptContext),
-		mcps: reviewMCPs()
+		externalMcpServers: reviewExternalMcpServers(),
+		tools: reviewGitHubTools()
 	};
 }
 const MODE_SELECTION_TOOL_NAME = "select-clank8y-mode";
@@ -35734,22 +31868,6 @@ const CLANK8Y_MODES = [
 	"Task",
 	"IncidentFix"
 ];
-const MODE_DESCRIPTIONS = {
-	Review: "Review: choose this for pull request review in a repository context.",
-	Task: "Task: choose this for single-repository development work such as addressing requested changes on an issue or pull request, making local edits, validating them, and reporting back on GitHub.",
-	IncidentFix: "IncidentFix: choose this for sandboxed incident investigation or deep-fix workflows that may inspect one or more repositories and produce a .clank8y/report.md artifact."
-};
-function createClank8yModeSchema(disabledModes = {}) {
-	const enabledModes = CLANK8Y_MODES.filter((mode) => disabledModes[mode] !== true);
-	if (enabledModes.length === 0) throw new Error("No clank8y modes are enabled for this run.");
-	return /* @__PURE__ */ pipe(/* @__PURE__ */ union(enabledModes.map((mode) => /* @__PURE__ */ pipe(/* @__PURE__ */ literal(mode), /* @__PURE__ */ description(MODE_DESCRIPTIONS[mode])))), /* @__PURE__ */ description("The execution mode selected for the current clank8y run."));
-}
-function createClank8yModeSelectionSchema(disabledModes = {}) {
-	return /* @__PURE__ */ object({
-		mode: createClank8yModeSchema(disabledModes),
-		reason: /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ minLength(1, "Mode selection reason is required."), /* @__PURE__ */ description("A concise explanation for why this mode fits the current run."))
-	});
-}
 const MODE_SELECTION_WORKFLOW = [
 	"## Mode selection",
 	"",
@@ -35770,71 +31888,52 @@ function buildModeSelectionPrompt(promptContext) {
 		normalized
 	].join("\n");
 }
-function createSelectModeMCPRuntime(options) {
-	let selection = null;
-	const mcp = new McpServer({
-		name: "clank8y-select-mode-mcp",
-		description: "A MCP server that selects the clank8y execution mode for the current run.",
-		version: "1.0.0"
+const MODE_DESCRIPTIONS = {
+	Review: "Review: choose this for pull request review in a repository context.",
+	Task: "Task: choose this for single-repository development work such as addressing requested changes on an issue or pull request, making local edits, validating them, and reporting back on GitHub.",
+	IncidentFix: "IncidentFix: choose this for sandboxed incident investigation or deep-fix workflows that may inspect one or more repositories and produce a .clank8y/report.md artifact."
+};
+function createModeSelectionParameters(disabledModes) {
+	const enabledModes = CLANK8Y_MODES.filter((mode) => disabledModes[mode] !== true);
+	if (enabledModes.length === 0) throw new Error("No clank8y modes are enabled for this run.");
+	const modeSchemas = enabledModes.map((mode) => Type.Literal(mode, { description: MODE_DESCRIPTIONS[mode] }));
+	const modeSchema = modeSchemas.length === 1 ? modeSchemas[0] : Type.Union(modeSchemas);
+	return Type.Object({
+		mode: modeSchema,
+		reason: Type.String({
+			minLength: 1,
+			description: "A concise explanation for why this mode fits the current run."
+		})
 	}, {
-		adapter: new ValibotJsonSchemaAdapter(),
-		capabilities: { tools: { listChanged: true } }
+		additionalProperties: false,
+		description: MODE_SELECTION_TOOL_DESCRIPTION
 	});
-	const selectModeTool = defineTool({
-		name: MODE_SELECTION_TOOL_NAME,
-		description: MODE_SELECTION_TOOL_DESCRIPTION,
-		title: MODE_SELECTION_TOOL_TITLE,
-		schema: createClank8yModeSelectionSchema(options.disabledModes)
-	}, async (input) => {
-		selection = input;
-		return tool.text(`${MODE_SELECTION_TOOL_TITLE} received: ${input.mode}.`);
-	});
-	mcp.tools([selectModeTool]);
-	const transport = new HttpTransport(mcp, { path: "/mcp" });
-	const server = serve({
-		manual: true,
-		port: 0,
-		fetch: async (req) => {
-			const response = await transport.respond(req);
-			if (!response) return new NodeResponse("Not found", { status: 404 });
-			return response;
-		}
-	});
-	let status = { state: "stopped" };
+}
+function createSelectModeToolRuntime(disabledModes) {
+	let selection = null;
 	return {
-		mcp: {
-			serverType: "http",
-			allowedTools: [MODE_SELECTION_TOOL_NAME],
-			get status() {
-				return status;
-			},
-			start: async () => {
-				await server.serve();
-				const { url } = await server.ready();
-				if (!url) {
-					await server.close(true);
-					throw new Error("Failed to start select mode MCP server");
-				}
-				const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
-				status = {
-					state: "running",
-					url: actualUrl
-				};
+		tools: [{
+			name: MODE_SELECTION_TOOL_NAME,
+			label: MODE_SELECTION_TOOL_TITLE,
+			description: MODE_SELECTION_TOOL_DESCRIPTION,
+			parameters: createModeSelectionParameters(disabledModes),
+			execute: async (_toolCallId, params) => {
+				selection = params;
 				return {
-					url: actualUrl,
-					toolNames: [MODE_SELECTION_TOOL_NAME]
+					content: [{
+						type: "text",
+						text: `${MODE_SELECTION_TOOL_TITLE} received: ${selection.mode}.`
+					}],
+					details: selection,
+					terminate: true
 				};
-			},
-			stop: async () => {
-				await server.close(true);
-				status = { state: "stopped" };
 			}
-		},
+		}],
 		getSelection: () => selection
 	};
 }
 function getSelectModeRuntime(promptContext, disabledModes = {}) {
-	const runtime = createSelectModeMCPRuntime({ disabledModes });
+	const runtime = createSelectModeToolRuntime(disabledModes);
 	return {
 		prompt: buildModeSelectionPrompt(promptContext),
 		...runtime
@@ -35870,6 +31969,12 @@ function updateTaskContext(context) {
 function getActiveTaskContext() {
 	if (!activeTaskContext) throw new Error(`Task context is not initialized. Call ${PREPARE_TASK_WORKSPACE_TOOL_NAME} first.`);
 	return activeTaskContext;
+}
+function taskExternalMcpServers() {
+	return {
+		codex: codexMCP(),
+		angular: angularMCP()
+	};
 }
 const REVIEW_THREADS_QUERY = `
   query TaskReviewThreads($owner: String!, $repo: String!, $number: Int!, $after: String) {
@@ -36036,16 +32141,8 @@ async function ensureCleanTaskWorktree(repositoryPath) {
 	const { stdout } = await runClank8yGit(["status", "--porcelain"], { cwd: repositoryPath });
 	if (stdout.trim()) throw new Error("Working tree is not clean. Finish or discard local changes before creating a new task branch.");
 }
-function taskGitHubMCP() {
-	const mcp = new McpServer({
-		name: "clank8y-task-github-mcp",
-		description: "A MCP server that prepares single-repository task workspaces and performs constrained GitHub write operations.",
-		version: "1.0.0"
-	}, {
-		adapter: new ValibotJsonSchemaAdapter(),
-		capabilities: { tools: { listChanged: true } }
-	});
-	const githubMcpTools = [
+function taskGitHubTools() {
+	return definedToolsToPiTools([
 		defineTool({
 			name: LIST_REPOSITORY_BRANCHES_TOOL_NAME,
 			description: "List branches for a single repository before preparing an issue-driven task workspace from a specific base branch.",
@@ -36597,54 +32694,7 @@ function taskGitHubMCP() {
 				return tool.error(`Failed to update pull request body: ${message}`);
 			}
 		})
-	];
-	mcp.tools(githubMcpTools);
-	const transport = new HttpTransport(mcp, { path: "/mcp" });
-	const server = serve({
-		manual: true,
-		port: 0,
-		fetch: async (req) => {
-			const response = await transport.respond(req);
-			if (!response) return new NodeResponse("Not found", { status: 404 });
-			return response;
-		}
-	});
-	let status = { state: "stopped" };
-	return {
-		serverType: "http",
-		allowedTools: githubMcpTools.map((definedTool) => definedTool.name),
-		get status() {
-			return status;
-		},
-		start: async () => {
-			await server.serve();
-			const { url } = await server.ready();
-			if (!url) {
-				await server.close(true);
-				throw new Error("Failed to start Task GitHub MCP server");
-			}
-			const actualUrl = url.endsWith("/") ? `${url}mcp` : `${url}/mcp`;
-			status = {
-				state: "running",
-				url: actualUrl
-			};
-			return {
-				url: actualUrl,
-				toolNames: githubMcpTools.map((definedTool) => definedTool.name)
-			};
-		},
-		stop: async () => {
-			await server.close(true);
-			status = { state: "stopped" };
-		}
-	};
-}
-function taskMCPs() {
-	return {
-		github: taskGitHubMCP(),
-		codex: codexMCP(),
-		angular: angularMCP()
-	};
+	]);
 }
 const BASE_TASK_PROMPT = [
 	PERSONA,
@@ -36661,7 +32711,7 @@ const BASE_TASK_PROMPT = [
 		"Core rules:",
 		"- Work in exactly one repository for the entire run.",
 		"- Use local `.clank8y` artifacts as your primary working context after setup.",
-		"- Remote GitHub writes must go through the dedicated GitHub MCP tools.",
+		"- Remote GitHub writes must go through the dedicated GitHub tools.",
 		"- Never use raw `git push`; publish only through the dedicated push tool.",
 		"- Keep `.clank8y/report.md` updated with the real state of the work."
 	].join("\n"),
@@ -36722,15 +32772,9 @@ function getTaskModeRuntime(promptContext) {
 	resetTaskContext();
 	return {
 		prompt: buildTaskPrompt(promptContext),
-		mcps: taskMCPs()
+		externalMcpServers: taskExternalMcpServers(),
+		tools: taskGitHubTools()
 	};
-}
-/**
-* Returns the tool definitions that are active for every mode.
-* Add tools here that should be available across all modes.
-*/
-function getSharedTools() {
-	return [];
 }
 function getModeRuntime(mode, promptContext) {
 	switch (mode) {
@@ -36740,1602 +32784,6 @@ function getModeRuntime(mode, promptContext) {
 		default: throw new Error(`Unsupported clank8y mode: ${mode}`);
 	}
 }
-const LogLevels = {
-	silent: Number.NEGATIVE_INFINITY,
-	fatal: 0,
-	error: 0,
-	warn: 1,
-	log: 2,
-	info: 3,
-	success: 3,
-	fail: 3,
-	ready: 3,
-	start: 3,
-	box: 3,
-	debug: 4,
-	trace: 5,
-	verbose: Number.POSITIVE_INFINITY
-};
-const LogTypes = {
-	silent: { level: -1 },
-	fatal: { level: LogLevels.fatal },
-	error: { level: LogLevels.error },
-	warn: { level: LogLevels.warn },
-	log: { level: LogLevels.log },
-	info: { level: LogLevels.info },
-	success: { level: LogLevels.success },
-	fail: { level: LogLevels.fail },
-	ready: { level: LogLevels.info },
-	start: { level: LogLevels.info },
-	box: { level: LogLevels.info },
-	debug: { level: LogLevels.debug },
-	trace: { level: LogLevels.trace },
-	verbose: { level: LogLevels.verbose }
-};
-function isPlainObject$1(value) {
-	if (value === null || typeof value !== "object") return false;
-	const prototype = Object.getPrototypeOf(value);
-	if (prototype !== null && prototype !== Object.prototype && Object.getPrototypeOf(prototype) !== null) return false;
-	if (Symbol.iterator in value) return false;
-	if (Symbol.toStringTag in value) return Object.prototype.toString.call(value) === "[object Module]";
-	return true;
-}
-function _defu(baseObject, defaults, namespace = ".", merger) {
-	if (!isPlainObject$1(defaults)) return _defu(baseObject, {}, namespace, merger);
-	const object = Object.assign({}, defaults);
-	for (const key in baseObject) {
-		if (key === "__proto__" || key === "constructor") continue;
-		const value = baseObject[key];
-		if (value === null || value === void 0) continue;
-		if (merger && merger(object, key, value, namespace)) continue;
-		if (Array.isArray(value) && Array.isArray(object[key])) object[key] = [...value, ...object[key]];
-		else if (isPlainObject$1(value) && isPlainObject$1(object[key])) object[key] = _defu(value, object[key], (namespace ? `${namespace}.` : "") + key.toString(), merger);
-		else object[key] = value;
-	}
-	return object;
-}
-function createDefu(merger) {
-	return (...arguments_) => arguments_.reduce((p, c) => _defu(p, c, "", merger), {});
-}
-const defu = createDefu();
-function isPlainObject(obj) {
-	return Object.prototype.toString.call(obj) === "[object Object]";
-}
-function isLogObj(arg) {
-	if (!isPlainObject(arg)) return false;
-	if (!arg.message && !arg.args) return false;
-	if (arg.stack) return false;
-	return true;
-}
-let paused = false;
-const queue = [];
-var Consola = class Consola {
-	options;
-	_lastLog;
-	_mockFn;
-	/**
-	* Creates an instance of Consola with specified options or defaults.
-	*
-	* @param {Partial<ConsolaOptions>} [options={}] - Configuration options for the Consola instance.
-	*/
-	constructor(options = {}) {
-		const types = options.types || LogTypes;
-		this.options = defu({
-			...options,
-			defaults: { ...options.defaults },
-			level: _normalizeLogLevel(options.level, types),
-			reporters: [...options.reporters || []]
-		}, {
-			types: LogTypes,
-			throttle: 1e3,
-			throttleMin: 5,
-			formatOptions: {
-				date: true,
-				colors: false,
-				compact: true
-			}
-		});
-		for (const type in types) {
-			const defaults = {
-				type,
-				...this.options.defaults,
-				...types[type]
-			};
-			this[type] = this._wrapLogFn(defaults);
-			this[type].raw = this._wrapLogFn(defaults, true);
-		}
-		if (this.options.mockFn) this.mockTypes();
-		this._lastLog = {};
-	}
-	/**
-	* Gets the current log level of the Consola instance.
-	*
-	* @returns {number} The current log level.
-	*/
-	get level() {
-		return this.options.level;
-	}
-	/**
-	* Sets the minimum log level that will be output by the instance.
-	*
-	* @param {number} level - The new log level to set.
-	*/
-	set level(level) {
-		this.options.level = _normalizeLogLevel(level, this.options.types, this.options.level);
-	}
-	/**
-	* Displays a prompt to the user and returns the response.
-	* Throw an error if `prompt` is not supported by the current configuration.
-	*
-	* @template T
-	* @param {string} message - The message to display in the prompt.
-	* @param {T} [opts] - Optional options for the prompt. See {@link PromptOptions}.
-	* @returns {promise<T>} A promise that infer with the prompt options. See {@link PromptOptions}.
-	*/
-	prompt(message, opts) {
-		if (!this.options.prompt) throw new Error("prompt is not supported!");
-		return this.options.prompt(message, opts);
-	}
-	/**
-	* Creates a new instance of Consola, inheriting options from the current instance, with possible overrides.
-	*
-	* @param {Partial<ConsolaOptions>} options - Optional overrides for the new instance. See {@link ConsolaOptions}.
-	* @returns {ConsolaInstance} A new Consola instance. See {@link ConsolaInstance}.
-	*/
-	create(options) {
-		const instance = new Consola({
-			...this.options,
-			...options
-		});
-		if (this._mockFn) instance.mockTypes(this._mockFn);
-		return instance;
-	}
-	/**
-	* Creates a new Consola instance with the specified default log object properties.
-	*
-	* @param {InputLogObject} defaults - Default properties to include in any log from the new instance. See {@link InputLogObject}.
-	* @returns {ConsolaInstance} A new Consola instance. See {@link ConsolaInstance}.
-	*/
-	withDefaults(defaults) {
-		return this.create({
-			...this.options,
-			defaults: {
-				...this.options.defaults,
-				...defaults
-			}
-		});
-	}
-	/**
-	* Creates a new Consola instance with a specified tag, which will be included in every log.
-	*
-	* @param {string} tag - The tag to include in each log of the new instance.
-	* @returns {ConsolaInstance} A new Consola instance. See {@link ConsolaInstance}.
-	*/
-	withTag(tag) {
-		return this.withDefaults({ tag: this.options.defaults.tag ? this.options.defaults.tag + ":" + tag : tag });
-	}
-	/**
-	* Adds a custom reporter to the Consola instance.
-	* Reporters will be called for each log message, depending on their implementation and log level.
-	*
-	* @param {ConsolaReporter} reporter - The reporter to add. See {@link ConsolaReporter}.
-	* @returns {Consola} The current Consola instance.
-	*/
-	addReporter(reporter) {
-		this.options.reporters.push(reporter);
-		return this;
-	}
-	/**
-	* Removes a custom reporter from the Consola instance.
-	* If no reporter is specified, all reporters will be removed.
-	*
-	* @param {ConsolaReporter} reporter - The reporter to remove. See {@link ConsolaReporter}.
-	* @returns {Consola} The current Consola instance.
-	*/
-	removeReporter(reporter) {
-		if (reporter) {
-			const i = this.options.reporters.indexOf(reporter);
-			if (i !== -1) return this.options.reporters.splice(i, 1);
-		} else this.options.reporters.splice(0);
-		return this;
-	}
-	/**
-	* Replaces all reporters of the Consola instance with the specified array of reporters.
-	*
-	* @param {ConsolaReporter[]} reporters - The new reporters to set. See {@link ConsolaReporter}.
-	* @returns {Consola} The current Consola instance.
-	*/
-	setReporters(reporters) {
-		this.options.reporters = Array.isArray(reporters) ? reporters : [reporters];
-		return this;
-	}
-	wrapAll() {
-		this.wrapConsole();
-		this.wrapStd();
-	}
-	restoreAll() {
-		this.restoreConsole();
-		this.restoreStd();
-	}
-	/**
-	* Overrides console methods with Consola logging methods for consistent logging.
-	*/
-	wrapConsole() {
-		for (const type in this.options.types) {
-			if (!console["__" + type]) console["__" + type] = console[type];
-			console[type] = this[type].raw;
-		}
-	}
-	/**
-	* Restores the original console methods, removing Consola overrides.
-	*/
-	restoreConsole() {
-		for (const type in this.options.types) if (console["__" + type]) {
-			console[type] = console["__" + type];
-			delete console["__" + type];
-		}
-	}
-	/**
-	* Overrides standard output and error streams to redirect them through Consola.
-	*/
-	wrapStd() {
-		this._wrapStream(this.options.stdout, "log");
-		this._wrapStream(this.options.stderr, "log");
-	}
-	_wrapStream(stream, type) {
-		if (!stream) return;
-		if (!stream.__write) stream.__write = stream.write;
-		stream.write = (data) => {
-			this[type].raw(String(data).trim());
-		};
-	}
-	/**
-	* Restores the original standard output and error streams, removing the Consola redirection.
-	*/
-	restoreStd() {
-		this._restoreStream(this.options.stdout);
-		this._restoreStream(this.options.stderr);
-	}
-	_restoreStream(stream) {
-		if (!stream) return;
-		if (stream.__write) {
-			stream.write = stream.__write;
-			delete stream.__write;
-		}
-	}
-	/**
-	* Pauses logging, queues incoming logs until resumed.
-	*/
-	pauseLogs() {
-		paused = true;
-	}
-	/**
-	* Resumes logging, processing any queued logs.
-	*/
-	resumeLogs() {
-		paused = false;
-		const _queue = queue.splice(0);
-		for (const item of _queue) item[0]._logFn(item[1], item[2]);
-	}
-	/**
-	* Replaces logging methods with mocks if a mock function is provided.
-	*
-	* @param {ConsolaOptions["mockFn"]} mockFn - The function to use for mocking logging methods. See {@link ConsolaOptions["mockFn"]}.
-	*/
-	mockTypes(mockFn) {
-		const _mockFn = mockFn || this.options.mockFn;
-		this._mockFn = _mockFn;
-		if (typeof _mockFn !== "function") return;
-		for (const type in this.options.types) {
-			this[type] = _mockFn(type, this.options.types[type]) || this[type];
-			this[type].raw = this[type];
-		}
-	}
-	_wrapLogFn(defaults, isRaw) {
-		return (...args) => {
-			if (paused) {
-				queue.push([
-					this,
-					defaults,
-					args,
-					isRaw
-				]);
-				return;
-			}
-			return this._logFn(defaults, args, isRaw);
-		};
-	}
-	_logFn(defaults, args, isRaw) {
-		if ((defaults.level || 0) > this.level) return false;
-		const logObj = {
-			date: /* @__PURE__ */ new Date(),
-			args: [],
-			...defaults,
-			level: _normalizeLogLevel(defaults.level, this.options.types)
-		};
-		if (!isRaw && args.length === 1 && isLogObj(args[0])) Object.assign(logObj, args[0]);
-		else logObj.args = [...args];
-		if (logObj.message) {
-			logObj.args.unshift(logObj.message);
-			delete logObj.message;
-		}
-		if (logObj.additional) {
-			if (!Array.isArray(logObj.additional)) logObj.additional = logObj.additional.split("\n");
-			logObj.args.push("\n" + logObj.additional.join("\n"));
-			delete logObj.additional;
-		}
-		logObj.type = typeof logObj.type === "string" ? logObj.type.toLowerCase() : "log";
-		logObj.tag = typeof logObj.tag === "string" ? logObj.tag : "";
-		const resolveLog = (newLog = false) => {
-			const repeated = (this._lastLog.count || 0) - this.options.throttleMin;
-			if (this._lastLog.object && repeated > 0) {
-				const args2 = [...this._lastLog.object.args];
-				if (repeated > 1) args2.push(`(repeated ${repeated} times)`);
-				this._log({
-					...this._lastLog.object,
-					args: args2
-				});
-				this._lastLog.count = 1;
-			}
-			if (newLog) {
-				this._lastLog.object = logObj;
-				this._log(logObj);
-			}
-		};
-		clearTimeout(this._lastLog.timeout);
-		const diffTime = this._lastLog.time && logObj.date ? logObj.date.getTime() - this._lastLog.time.getTime() : 0;
-		this._lastLog.time = logObj.date;
-		if (diffTime < this.options.throttle) try {
-			const serializedLog = JSON.stringify([
-				logObj.type,
-				logObj.tag,
-				logObj.args
-			]);
-			const isSameLog = this._lastLog.serialized === serializedLog;
-			this._lastLog.serialized = serializedLog;
-			if (isSameLog) {
-				this._lastLog.count = (this._lastLog.count || 0) + 1;
-				if (this._lastLog.count > this.options.throttleMin) {
-					this._lastLog.timeout = setTimeout(resolveLog, this.options.throttle);
-					return;
-				}
-			}
-		} catch {}
-		resolveLog(true);
-	}
-	_log(logObj) {
-		for (const reporter of this.options.reporters) reporter.log(logObj, { options: this.options });
-	}
-};
-function _normalizeLogLevel(input, types = {}, defaultLevel = 3) {
-	if (input === void 0) return defaultLevel;
-	if (typeof input === "number") return input;
-	if (types[input] && types[input].level !== void 0) return types[input].level;
-	return defaultLevel;
-}
-Consola.prototype.add = Consola.prototype.addReporter;
-Consola.prototype.remove = Consola.prototype.removeReporter;
-Consola.prototype.clear = Consola.prototype.removeReporter;
-Consola.prototype.withScope = Consola.prototype.withTag;
-Consola.prototype.mock = Consola.prototype.mockTypes;
-Consola.prototype.pause = Consola.prototype.pauseLogs;
-Consola.prototype.resume = Consola.prototype.resumeLogs;
-function createConsola$1(options = {}) {
-	return new Consola(options);
-}
-function parseStack(stack, message) {
-	const cwd = process.cwd() + sep;
-	return stack.split("\n").splice(message.split("\n").length).map((l) => l.trim().replace("file://", "").replace(cwd, ""));
-}
-function writeStream(data, stream) {
-	return (stream.__write || stream.write).call(stream, data);
-}
-const bracket = (x) => x ? `[${x}]` : "";
-var BasicReporter = class {
-	formatStack(stack, message, opts) {
-		const indent = "  ".repeat((opts?.errorLevel || 0) + 1);
-		return indent + parseStack(stack, message).join(`
-${indent}`);
-	}
-	formatError(err, opts) {
-		const message = err.message ?? formatWithOptions(opts, err);
-		const stack = err.stack ? this.formatStack(err.stack, message, opts) : "";
-		const level = opts?.errorLevel || 0;
-		const causedPrefix = level > 0 ? `${"  ".repeat(level)}[cause]: ` : "";
-		const causedError = err.cause ? "\n\n" + this.formatError(err.cause, {
-			...opts,
-			errorLevel: level + 1
-		}) : "";
-		return causedPrefix + message + "\n" + stack + causedError;
-	}
-	formatArgs(args, opts) {
-		return formatWithOptions(opts, ...args.map((arg) => {
-			if (arg && typeof arg.stack === "string") return this.formatError(arg, opts);
-			return arg;
-		}));
-	}
-	formatDate(date, opts) {
-		return opts.date ? date.toLocaleTimeString() : "";
-	}
-	filterAndJoin(arr) {
-		return arr.filter(Boolean).join(" ");
-	}
-	formatLogObj(logObj, opts) {
-		const message = this.formatArgs(logObj.args, opts);
-		if (logObj.type === "box") return "\n" + [
-			bracket(logObj.tag),
-			logObj.title && logObj.title,
-			...message.split("\n")
-		].filter(Boolean).map((l) => " > " + l).join("\n") + "\n";
-		return this.filterAndJoin([
-			bracket(logObj.type),
-			bracket(logObj.tag),
-			message
-		]);
-	}
-	log(logObj, ctx) {
-		return writeStream(this.formatLogObj(logObj, {
-			columns: ctx.options.stdout.columns || 0,
-			...ctx.options.formatOptions
-		}) + "\n", logObj.level < 2 ? ctx.options.stderr || process.stderr : ctx.options.stdout || process.stdout);
-	}
-};
-var prompt_exports = /* @__PURE__ */ __exportAll({
-	kCancel: () => kCancel,
-	prompt: () => prompt
-});
-function getDefaultExportFromCjs(x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
-}
-function requireSrc() {
-	if (hasRequiredSrc) return src;
-	hasRequiredSrc = 1;
-	const ESC = "\x1B";
-	const CSI = `${ESC}[`;
-	const beep = "\x07";
-	const cursor = {
-		to(x, y) {
-			if (!y) return `${CSI}${x + 1}G`;
-			return `${CSI}${y + 1};${x + 1}H`;
-		},
-		move(x, y) {
-			let ret = "";
-			if (x < 0) ret += `${CSI}${-x}D`;
-			else if (x > 0) ret += `${CSI}${x}C`;
-			if (y < 0) ret += `${CSI}${-y}A`;
-			else if (y > 0) ret += `${CSI}${y}B`;
-			return ret;
-		},
-		up: (count = 1) => `${CSI}${count}A`,
-		down: (count = 1) => `${CSI}${count}B`,
-		forward: (count = 1) => `${CSI}${count}C`,
-		backward: (count = 1) => `${CSI}${count}D`,
-		nextLine: (count = 1) => `${CSI}E`.repeat(count),
-		prevLine: (count = 1) => `${CSI}F`.repeat(count),
-		left: `${CSI}G`,
-		hide: `${CSI}?25l`,
-		show: `${CSI}?25h`,
-		save: `${ESC}7`,
-		restore: `${ESC}8`
-	};
-	src = {
-		cursor,
-		scroll: {
-			up: (count = 1) => `${CSI}S`.repeat(count),
-			down: (count = 1) => `${CSI}T`.repeat(count)
-		},
-		erase: {
-			screen: `${CSI}2J`,
-			up: (count = 1) => `${CSI}1J`.repeat(count),
-			down: (count = 1) => `${CSI}J`.repeat(count),
-			line: `${CSI}2K`,
-			lineEnd: `${CSI}K`,
-			lineStart: `${CSI}1K`,
-			lines(count) {
-				let clear = "";
-				for (let i = 0; i < count; i++) clear += this.line + (i < count - 1 ? cursor.up() : "");
-				if (count) clear += cursor.left;
-				return clear;
-			}
-		},
-		beep
-	};
-	return src;
-}
-function requirePicocolors() {
-	if (hasRequiredPicocolors) return picocolors.exports;
-	hasRequiredPicocolors = 1;
-	let p = process || {}, argv = p.argv || [], env = p.env || {};
-	let isColorSupported = !(!!env.NO_COLOR || argv.includes("--no-color")) && (!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || (p.stdout || {}).isTTY && env.TERM !== "dumb" || !!env.CI);
-	let formatter = (open, close, replace = open) => (input) => {
-		let string = "" + input, index = string.indexOf(close, open.length);
-		return ~index ? open + replaceClose(string, close, replace, index) + close : open + string + close;
-	};
-	let replaceClose = (string, close, replace, index) => {
-		let result = "", cursor = 0;
-		do {
-			result += string.substring(cursor, index) + replace;
-			cursor = index + close.length;
-			index = string.indexOf(close, cursor);
-		} while (~index);
-		return result + string.substring(cursor);
-	};
-	let createColors = (enabled = isColorSupported) => {
-		let f = enabled ? formatter : () => String;
-		return {
-			isColorSupported: enabled,
-			reset: f("\x1B[0m", "\x1B[0m"),
-			bold: f("\x1B[1m", "\x1B[22m", "\x1B[22m\x1B[1m"),
-			dim: f("\x1B[2m", "\x1B[22m", "\x1B[22m\x1B[2m"),
-			italic: f("\x1B[3m", "\x1B[23m"),
-			underline: f("\x1B[4m", "\x1B[24m"),
-			inverse: f("\x1B[7m", "\x1B[27m"),
-			hidden: f("\x1B[8m", "\x1B[28m"),
-			strikethrough: f("\x1B[9m", "\x1B[29m"),
-			black: f("\x1B[30m", "\x1B[39m"),
-			red: f("\x1B[31m", "\x1B[39m"),
-			green: f("\x1B[32m", "\x1B[39m"),
-			yellow: f("\x1B[33m", "\x1B[39m"),
-			blue: f("\x1B[34m", "\x1B[39m"),
-			magenta: f("\x1B[35m", "\x1B[39m"),
-			cyan: f("\x1B[36m", "\x1B[39m"),
-			white: f("\x1B[37m", "\x1B[39m"),
-			gray: f("\x1B[90m", "\x1B[39m"),
-			bgBlack: f("\x1B[40m", "\x1B[49m"),
-			bgRed: f("\x1B[41m", "\x1B[49m"),
-			bgGreen: f("\x1B[42m", "\x1B[49m"),
-			bgYellow: f("\x1B[43m", "\x1B[49m"),
-			bgBlue: f("\x1B[44m", "\x1B[49m"),
-			bgMagenta: f("\x1B[45m", "\x1B[49m"),
-			bgCyan: f("\x1B[46m", "\x1B[49m"),
-			bgWhite: f("\x1B[47m", "\x1B[49m"),
-			blackBright: f("\x1B[90m", "\x1B[39m"),
-			redBright: f("\x1B[91m", "\x1B[39m"),
-			greenBright: f("\x1B[92m", "\x1B[39m"),
-			yellowBright: f("\x1B[93m", "\x1B[39m"),
-			blueBright: f("\x1B[94m", "\x1B[39m"),
-			magentaBright: f("\x1B[95m", "\x1B[39m"),
-			cyanBright: f("\x1B[96m", "\x1B[39m"),
-			whiteBright: f("\x1B[97m", "\x1B[39m"),
-			bgBlackBright: f("\x1B[100m", "\x1B[49m"),
-			bgRedBright: f("\x1B[101m", "\x1B[49m"),
-			bgGreenBright: f("\x1B[102m", "\x1B[49m"),
-			bgYellowBright: f("\x1B[103m", "\x1B[49m"),
-			bgBlueBright: f("\x1B[104m", "\x1B[49m"),
-			bgMagentaBright: f("\x1B[105m", "\x1B[49m"),
-			bgCyanBright: f("\x1B[106m", "\x1B[49m"),
-			bgWhiteBright: f("\x1B[107m", "\x1B[49m")
-		};
-	};
-	picocolors.exports = createColors();
-	picocolors.exports.createColors = createColors;
-	return picocolors.exports;
-}
-function J({ onlyFirst: t = false } = {}) {
-	const F = ["[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))", "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
-	return new RegExp(F, t ? void 0 : "g");
-}
-function T$1(t) {
-	if (typeof t != "string") throw new TypeError(`Expected a \`string\`, got \`${typeof t}\``);
-	return t.replace(Q, "");
-}
-function O$1(t) {
-	return t && t.__esModule && Object.prototype.hasOwnProperty.call(t, "default") ? t.default : t;
-}
-function A$1(t, u = {}) {
-	if (typeof t != "string" || t.length === 0 || (u = {
-		ambiguousIsNarrow: true,
-		...u
-	}, t = T$1(t), t.length === 0)) return 0;
-	t = t.replace(FD(), "  ");
-	const F = u.ambiguousIsNarrow ? 1 : 2;
-	let e = 0;
-	for (const s of t) {
-		const i = s.codePointAt(0);
-		if (i <= 31 || i >= 127 && i <= 159 || i >= 768 && i <= 879) continue;
-		switch (DD.eastAsianWidth(s)) {
-			case "F":
-			case "W":
-				e += 2;
-				break;
-			case "A":
-				e += F;
-				break;
-			default: e += 1;
-		}
-	}
-	return e;
-}
-function sD() {
-	const t = /* @__PURE__ */ new Map();
-	for (const [u, F] of Object.entries(r$1)) {
-		for (const [e, s] of Object.entries(F)) r$1[e] = {
-			open: `\x1B[${s[0]}m`,
-			close: `\x1B[${s[1]}m`
-		}, F[e] = r$1[e], t.set(s[0], s[1]);
-		Object.defineProperty(r$1, u, {
-			value: F,
-			enumerable: false
-		});
-	}
-	return Object.defineProperty(r$1, "codes", {
-		value: t,
-		enumerable: false
-	}), r$1.color.close = "\x1B[39m", r$1.bgColor.close = "\x1B[49m", r$1.color.ansi = L$1(), r$1.color.ansi256 = N$1(), r$1.color.ansi16m = I$1(), r$1.bgColor.ansi = L$1(m), r$1.bgColor.ansi256 = N$1(m), r$1.bgColor.ansi16m = I$1(m), Object.defineProperties(r$1, {
-		rgbToAnsi256: {
-			value: (u, F, e) => u === F && F === e ? u < 8 ? 16 : u > 248 ? 231 : Math.round((u - 8) / 247 * 24) + 232 : 16 + 36 * Math.round(u / 255 * 5) + 6 * Math.round(F / 255 * 5) + Math.round(e / 255 * 5),
-			enumerable: false
-		},
-		hexToRgb: {
-			value: (u) => {
-				const F = /[a-f\d]{6}|[a-f\d]{3}/i.exec(u.toString(16));
-				if (!F) return [
-					0,
-					0,
-					0
-				];
-				let [e] = F;
-				e.length === 3 && (e = [...e].map((i) => i + i).join(""));
-				const s = Number.parseInt(e, 16);
-				return [
-					s >> 16 & 255,
-					s >> 8 & 255,
-					s & 255
-				];
-			},
-			enumerable: false
-		},
-		hexToAnsi256: {
-			value: (u) => r$1.rgbToAnsi256(...r$1.hexToRgb(u)),
-			enumerable: false
-		},
-		ansi256ToAnsi: {
-			value: (u) => {
-				if (u < 8) return 30 + u;
-				if (u < 16) return 90 + (u - 8);
-				let F, e, s;
-				if (u >= 232) F = ((u - 232) * 10 + 8) / 255, e = F, s = F;
-				else {
-					u -= 16;
-					const C = u % 36;
-					F = Math.floor(u / 36) / 5, e = Math.floor(C / 6) / 5, s = C % 6 / 5;
-				}
-				const i = Math.max(F, e, s) * 2;
-				if (i === 0) return 30;
-				let D = 30 + (Math.round(s) << 2 | Math.round(e) << 1 | Math.round(F));
-				return i === 2 && (D += 60), D;
-			},
-			enumerable: false
-		},
-		rgbToAnsi: {
-			value: (u, F, e) => r$1.ansi256ToAnsi(r$1.rgbToAnsi256(u, F, e)),
-			enumerable: false
-		},
-		hexToAnsi: {
-			value: (u) => r$1.ansi256ToAnsi(r$1.hexToAnsi256(u)),
-			enumerable: false
-		}
-	}), r$1;
-}
-function G$1(t, u, F) {
-	return String(t).normalize().replace(/\r\n/g, `
-`).split(`
-`).map((e) => oD(e, u, F)).join(`
-`);
-}
-function k$1(t, u) {
-	if (typeof t == "string") return c$1.aliases.get(t) === u;
-	for (const F of t) if (F !== void 0 && k$1(F, u)) return true;
-	return false;
-}
-function lD(t, u) {
-	if (t === u) return;
-	const F = t.split(`
-`), e = u.split(`
-`), s = [];
-	for (let i = 0; i < Math.max(F.length, e.length); i++) F[i] !== e[i] && s.push(i);
-	return s;
-}
-function d$1(t, u) {
-	const F = t;
-	F.isTTY && F.setRawMode(u);
-}
-function ce() {
-	return process$1.platform !== "win32" ? process$1.env.TERM !== "linux" : !!process$1.env.CI || !!process$1.env.WT_SESSION || !!process$1.env.TERMINUS_SUBLIME || process$1.env.ConEmuTask === "{cmd::Cmder}" || process$1.env.TERM_PROGRAM === "Terminus-Sublime" || process$1.env.TERM_PROGRAM === "vscode" || process$1.env.TERM === "xterm-256color" || process$1.env.TERM === "alacritty" || process$1.env.TERMINAL_EMULATOR === "JetBrains-JediTerm";
-}
-async function prompt(message, opts = {}) {
-	const handleCancel = (value) => {
-		if (typeof value !== "symbol" || value.toString() !== "Symbol(clack:cancel)") return value;
-		switch (opts.cancel) {
-			case "reject": {
-				const error = /* @__PURE__ */ new Error("Prompt cancelled.");
-				error.name = "ConsolaPromptCancelledError";
-				if (Error.captureStackTrace) Error.captureStackTrace(error, prompt);
-				throw error;
-			}
-			case "undefined": return;
-			case "null": return null;
-			case "symbol": return kCancel;
-			default:
-			case "default": return opts.default ?? opts.initial;
-		}
-	};
-	if (!opts.type || opts.type === "text") return await he({
-		message,
-		defaultValue: opts.default,
-		placeholder: opts.placeholder,
-		initialValue: opts.initial
-	}).then(handleCancel);
-	if (opts.type === "confirm") return await ye({
-		message,
-		initialValue: opts.initial
-	}).then(handleCancel);
-	if (opts.type === "select") return await ve({
-		message,
-		options: opts.options.map((o) => typeof o === "string" ? {
-			value: o,
-			label: o
-		} : o),
-		initialValue: opts.initial
-	}).then(handleCancel);
-	if (opts.type === "multiselect") return await fe({
-		message,
-		options: opts.options.map((o) => typeof o === "string" ? {
-			value: o,
-			label: o
-		} : o),
-		required: opts.required,
-		initialValues: opts.initial
-	}).then(handleCancel);
-	throw new Error(`Unknown prompt type: ${opts.type}`);
-}
-var src, hasRequiredSrc, srcExports, picocolors, hasRequiredPicocolors, e, Q, P$1, X, DD, uD, FD, m, L$1, N$1, I$1, r$1, tD, eD, iD, v, CD, w$1, W$1, rD, R$1, y$1, V$1, z, ED, _$1, nD, oD, c$1, S$1, AD, pD, h, x, fD, bD, mD, Y, wD, SD, $D, q, jD, PD, V, u$1, le, L$2, W, C$1, o$1, d, k, P, A$2, T$2, F$1, w, B, he, ye, ve, fe, kCancel;
-var init_prompt = __esmMin((() => {
-	srcExports = requireSrc();
-	picocolors = { exports: {} };
-	e = /* @__PURE__ */ getDefaultExportFromCjs(/* @__PURE__ */ requirePicocolors());
-	Q = J();
-	P$1 = { exports: {} };
-	(function(t) {
-		var u = {};
-		t.exports = u, u.eastAsianWidth = function(e) {
-			var s = e.charCodeAt(0), i = e.length == 2 ? e.charCodeAt(1) : 0, D = s;
-			return 55296 <= s && s <= 56319 && 56320 <= i && i <= 57343 && (s &= 1023, i &= 1023, D = s << 10 | i, D += 65536), D == 12288 || 65281 <= D && D <= 65376 || 65504 <= D && D <= 65510 ? "F" : D == 8361 || 65377 <= D && D <= 65470 || 65474 <= D && D <= 65479 || 65482 <= D && D <= 65487 || 65490 <= D && D <= 65495 || 65498 <= D && D <= 65500 || 65512 <= D && D <= 65518 ? "H" : 4352 <= D && D <= 4447 || 4515 <= D && D <= 4519 || 4602 <= D && D <= 4607 || 9001 <= D && D <= 9002 || 11904 <= D && D <= 11929 || 11931 <= D && D <= 12019 || 12032 <= D && D <= 12245 || 12272 <= D && D <= 12283 || 12289 <= D && D <= 12350 || 12353 <= D && D <= 12438 || 12441 <= D && D <= 12543 || 12549 <= D && D <= 12589 || 12593 <= D && D <= 12686 || 12688 <= D && D <= 12730 || 12736 <= D && D <= 12771 || 12784 <= D && D <= 12830 || 12832 <= D && D <= 12871 || 12880 <= D && D <= 13054 || 13056 <= D && D <= 19903 || 19968 <= D && D <= 42124 || 42128 <= D && D <= 42182 || 43360 <= D && D <= 43388 || 44032 <= D && D <= 55203 || 55216 <= D && D <= 55238 || 55243 <= D && D <= 55291 || 63744 <= D && D <= 64255 || 65040 <= D && D <= 65049 || 65072 <= D && D <= 65106 || 65108 <= D && D <= 65126 || 65128 <= D && D <= 65131 || 110592 <= D && D <= 110593 || 127488 <= D && D <= 127490 || 127504 <= D && D <= 127546 || 127552 <= D && D <= 127560 || 127568 <= D && D <= 127569 || 131072 <= D && D <= 194367 || 177984 <= D && D <= 196605 || 196608 <= D && D <= 262141 ? "W" : 32 <= D && D <= 126 || 162 <= D && D <= 163 || 165 <= D && D <= 166 || D == 172 || D == 175 || 10214 <= D && D <= 10221 || 10629 <= D && D <= 10630 ? "Na" : D == 161 || D == 164 || 167 <= D && D <= 168 || D == 170 || 173 <= D && D <= 174 || 176 <= D && D <= 180 || 182 <= D && D <= 186 || 188 <= D && D <= 191 || D == 198 || D == 208 || 215 <= D && D <= 216 || 222 <= D && D <= 225 || D == 230 || 232 <= D && D <= 234 || 236 <= D && D <= 237 || D == 240 || 242 <= D && D <= 243 || 247 <= D && D <= 250 || D == 252 || D == 254 || D == 257 || D == 273 || D == 275 || D == 283 || 294 <= D && D <= 295 || D == 299 || 305 <= D && D <= 307 || D == 312 || 319 <= D && D <= 322 || D == 324 || 328 <= D && D <= 331 || D == 333 || 338 <= D && D <= 339 || 358 <= D && D <= 359 || D == 363 || D == 462 || D == 464 || D == 466 || D == 468 || D == 470 || D == 472 || D == 474 || D == 476 || D == 593 || D == 609 || D == 708 || D == 711 || 713 <= D && D <= 715 || D == 717 || D == 720 || 728 <= D && D <= 731 || D == 733 || D == 735 || 768 <= D && D <= 879 || 913 <= D && D <= 929 || 931 <= D && D <= 937 || 945 <= D && D <= 961 || 963 <= D && D <= 969 || D == 1025 || 1040 <= D && D <= 1103 || D == 1105 || D == 8208 || 8211 <= D && D <= 8214 || 8216 <= D && D <= 8217 || 8220 <= D && D <= 8221 || 8224 <= D && D <= 8226 || 8228 <= D && D <= 8231 || D == 8240 || 8242 <= D && D <= 8243 || D == 8245 || D == 8251 || D == 8254 || D == 8308 || D == 8319 || 8321 <= D && D <= 8324 || D == 8364 || D == 8451 || D == 8453 || D == 8457 || D == 8467 || D == 8470 || 8481 <= D && D <= 8482 || D == 8486 || D == 8491 || 8531 <= D && D <= 8532 || 8539 <= D && D <= 8542 || 8544 <= D && D <= 8555 || 8560 <= D && D <= 8569 || D == 8585 || 8592 <= D && D <= 8601 || 8632 <= D && D <= 8633 || D == 8658 || D == 8660 || D == 8679 || D == 8704 || 8706 <= D && D <= 8707 || 8711 <= D && D <= 8712 || D == 8715 || D == 8719 || D == 8721 || D == 8725 || D == 8730 || 8733 <= D && D <= 8736 || D == 8739 || D == 8741 || 8743 <= D && D <= 8748 || D == 8750 || 8756 <= D && D <= 8759 || 8764 <= D && D <= 8765 || D == 8776 || D == 8780 || D == 8786 || 8800 <= D && D <= 8801 || 8804 <= D && D <= 8807 || 8810 <= D && D <= 8811 || 8814 <= D && D <= 8815 || 8834 <= D && D <= 8835 || 8838 <= D && D <= 8839 || D == 8853 || D == 8857 || D == 8869 || D == 8895 || D == 8978 || 9312 <= D && D <= 9449 || 9451 <= D && D <= 9547 || 9552 <= D && D <= 9587 || 9600 <= D && D <= 9615 || 9618 <= D && D <= 9621 || 9632 <= D && D <= 9633 || 9635 <= D && D <= 9641 || 9650 <= D && D <= 9651 || 9654 <= D && D <= 9655 || 9660 <= D && D <= 9661 || 9664 <= D && D <= 9665 || 9670 <= D && D <= 9672 || D == 9675 || 9678 <= D && D <= 9681 || 9698 <= D && D <= 9701 || D == 9711 || 9733 <= D && D <= 9734 || D == 9737 || 9742 <= D && D <= 9743 || 9748 <= D && D <= 9749 || D == 9756 || D == 9758 || D == 9792 || D == 9794 || 9824 <= D && D <= 9825 || 9827 <= D && D <= 9829 || 9831 <= D && D <= 9834 || 9836 <= D && D <= 9837 || D == 9839 || 9886 <= D && D <= 9887 || 9918 <= D && D <= 9919 || 9924 <= D && D <= 9933 || 9935 <= D && D <= 9953 || D == 9955 || 9960 <= D && D <= 9983 || D == 10045 || D == 10071 || 10102 <= D && D <= 10111 || 11093 <= D && D <= 11097 || 12872 <= D && D <= 12879 || 57344 <= D && D <= 63743 || 65024 <= D && D <= 65039 || D == 65533 || 127232 <= D && D <= 127242 || 127248 <= D && D <= 127277 || 127280 <= D && D <= 127337 || 127344 <= D && D <= 127386 || 917760 <= D && D <= 917999 || 983040 <= D && D <= 1048573 || 1048576 <= D && D <= 1114109 ? "A" : "N";
-		}, u.characterLength = function(e) {
-			var s = this.eastAsianWidth(e);
-			return s == "F" || s == "W" || s == "A" ? 2 : 1;
-		};
-		function F(e) {
-			return e.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[^\uD800-\uDFFF]/g) || [];
-		}
-		u.length = function(e) {
-			for (var s = F(e), i = 0, D = 0; D < s.length; D++) i = i + this.characterLength(s[D]);
-			return i;
-		}, u.slice = function(e, s, i) {
-			textLen = u.length(e), s = s || 0, i = i || 1, s < 0 && (s = textLen + s), i < 0 && (i = textLen + i);
-			for (var D = "", C = 0, o = F(e), E = 0; E < o.length; E++) {
-				var a = o[E], n = u.length(a);
-				if (C >= s - (n == 2 ? 1 : 0)) if (C + n <= i) D += a;
-				else break;
-				C += n;
-			}
-			return D;
-		};
-	})(P$1);
-	X = P$1.exports;
-	DD = O$1(X);
-	uD = function() {
-		return /\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62(?:\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73|\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74|\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67)\uDB40\uDC7F|(?:\uD83E\uDDD1\uD83C\uDFFF\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFF\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFE])|(?:\uD83E\uDDD1\uD83C\uDFFE\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFE\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFD\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFD\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFC\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFC\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFB\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFC-\uDFFF])|\uD83D\uDC68(?:\uD83C\uDFFB(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFC-\uDFFF])|[\u2695\u2696\u2708]\uFE0F|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))?|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83D\uDC68|(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFE])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])\uFE0F|\u200D(?:(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D[\uDC66\uDC67])|\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC)?|(?:\uD83D\uDC69(?:\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69]))|\uD83E\uDDD1(?:\uD83C[\uDFFB-\uDFFF])\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1)(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC69(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83E\uDDD1(?:\u200D(?:\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83D\uDC69\u200D\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D\uDC69\u200D\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|(?:\uD83D\uDC41\uFE0F\u200D\uD83D\uDDE8|\uD83E\uDDD1(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDC69(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDE36\u200D\uD83C\uDF2B|\uD83C\uDFF3\uFE0F\u200D\u26A7|\uD83D\uDC3B\u200D\u2744|(?:(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF])\u200D[\u2640\u2642]|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])\u200D[\u2640\u2642]|\uD83C\uDFF4\u200D\u2620|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])\u200D[\u2640\u2642]|[\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u2328\u23CF\u23ED-\u23EF\u23F1\u23F2\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB\u25FC\u2600-\u2604\u260E\u2611\u2618\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u2692\u2694-\u2697\u2699\u269B\u269C\u26A0\u26A7\u26B0\u26B1\u26C8\u26CF\u26D1\u26D3\u26E9\u26F0\u26F1\u26F4\u26F7\u26F8\u2702\u2708\u2709\u270F\u2712\u2714\u2716\u271D\u2721\u2733\u2734\u2744\u2747\u2763\u27A1\u2934\u2935\u2B05-\u2B07\u3030\u303D\u3297\u3299]|\uD83C[\uDD70\uDD71\uDD7E\uDD7F\uDE02\uDE37\uDF21\uDF24-\uDF2C\uDF36\uDF7D\uDF96\uDF97\uDF99-\uDF9B\uDF9E\uDF9F\uDFCD\uDFCE\uDFD4-\uDFDF\uDFF5\uDFF7]|\uD83D[\uDC3F\uDCFD\uDD49\uDD4A\uDD6F\uDD70\uDD73\uDD76-\uDD79\uDD87\uDD8A-\uDD8D\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA\uDECB\uDECD-\uDECF\uDEE0-\uDEE5\uDEE9\uDEF0\uDEF3])\uFE0F|\uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08|\uD83D\uDC69\u200D\uD83D\uDC67|\uD83D\uDC69\u200D\uD83D\uDC66|\uD83D\uDE35\u200D\uD83D\uDCAB|\uD83D\uDE2E\u200D\uD83D\uDCA8|\uD83D\uDC15\u200D\uD83E\uDDBA|\uD83E\uDDD1(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83D\uDC69(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83C\uDDFD\uD83C\uDDF0|\uD83C\uDDF6\uD83C\uDDE6|\uD83C\uDDF4\uD83C\uDDF2|\uD83D\uDC08\u200D\u2B1B|\u2764\uFE0F\u200D(?:\uD83D\uDD25|\uD83E\uDE79)|\uD83D\uDC41\uFE0F|\uD83C\uDFF3\uFE0F|\uD83C\uDDFF(?:\uD83C[\uDDE6\uDDF2\uDDFC])|\uD83C\uDDFE(?:\uD83C[\uDDEA\uDDF9])|\uD83C\uDDFC(?:\uD83C[\uDDEB\uDDF8])|\uD83C\uDDFB(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA])|\uD83C\uDDFA(?:\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF])|\uD83C\uDDF9(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF])|\uD83C\uDDF8(?:\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF])|\uD83C\uDDF7(?:\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC])|\uD83C\uDDF5(?:\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE])|\uD83C\uDDF3(?:\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF])|\uD83C\uDDF2(?:\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF])|\uD83C\uDDF1(?:\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE])|\uD83C\uDDF0(?:\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF])|\uD83C\uDDEF(?:\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5])|\uD83C\uDDEE(?:\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9])|\uD83C\uDDED(?:\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA])|\uD83C\uDDEC(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE])|\uD83C\uDDEB(?:\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7])|\uD83C\uDDEA(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA])|\uD83C\uDDE9(?:\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF])|\uD83C\uDDE8(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF5\uDDF7\uDDFA-\uDDFF])|\uD83C\uDDE7(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF])|\uD83C\uDDE6(?:\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF])|[#\*0-9]\uFE0F\u20E3|\u2764\uFE0F|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|\uD83C\uDFF4|(?:[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5])(?:\uD83C[\uDFFB-\uDFFF])|(?:[\u261D\u270C\u270D]|\uD83D[\uDD74\uDD90])(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC08\uDC15\uDC3B\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE2E\uDE35\uDE36\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5]|\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD]|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF]|[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF84\uDF86-\uDF93\uDFA0-\uDFC1\uDFC5\uDFC6\uDFC8\uDFC9\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC07\uDC09-\uDC14\uDC16-\uDC3A\uDC3C-\uDC3E\uDC40\uDC44\uDC45\uDC51-\uDC65\uDC6A\uDC79-\uDC7B\uDC7D-\uDC80\uDC84\uDC88-\uDC8E\uDC90\uDC92-\uDCA9\uDCAB-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDDA4\uDDFB-\uDE2D\uDE2F-\uDE34\uDE37-\uDE44\uDE48-\uDE4A\uDE80-\uDEA2\uDEA4-\uDEB3\uDEB7-\uDEBF\uDEC1-\uDEC5\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0D\uDD0E\uDD10-\uDD17\uDD1D\uDD20-\uDD25\uDD27-\uDD2F\uDD3A\uDD3F-\uDD45\uDD47-\uDD76\uDD78\uDD7A-\uDDB4\uDDB7\uDDBA\uDDBC-\uDDCB\uDDD0\uDDE0-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6]|(?:[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF93\uDFA0-\uDFCA\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF4\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC3E\uDC40\uDC42-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDD7A\uDD95\uDD96\uDDA4\uDDFB-\uDE4F\uDE80-\uDEC5\uDECC\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])|(?:[#\*0-9\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB-\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u261D\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692-\u2697\u2699\u269B\u269C\u26A0\u26A1\u26A7\u26AA\u26AB\u26B0\u26B1\u26BD\u26BE\u26C4\u26C5\u26C8\u26CE\u26CF\u26D1\u26D3\u26D4\u26E9\u26EA\u26F0-\u26F5\u26F7-\u26FA\u26FD\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716\u271D\u2721\u2728\u2733\u2734\u2744\u2747\u274C\u274E\u2753-\u2755\u2757\u2763\u2764\u2795-\u2797\u27A1\u27B0\u27BF\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B50\u2B55\u3030\u303D\u3297\u3299]|\uD83C[\uDC04\uDCCF\uDD70\uDD71\uDD7E\uDD7F\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE1A\uDE2F\uDE32-\uDE3A\uDE50\uDE51\uDF00-\uDF21\uDF24-\uDF93\uDF96\uDF97\uDF99-\uDF9B\uDF9E-\uDFF0\uDFF3-\uDFF5\uDFF7-\uDFFF]|\uD83D[\uDC00-\uDCFD\uDCFF-\uDD3D\uDD49-\uDD4E\uDD50-\uDD67\uDD6F\uDD70\uDD73-\uDD7A\uDD87\uDD8A-\uDD8D\uDD90\uDD95\uDD96\uDDA4\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA-\uDE4F\uDE80-\uDEC5\uDECB-\uDED2\uDED5-\uDED7\uDEE0-\uDEE5\uDEE9\uDEEB\uDEEC\uDEF0\uDEF3-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])\uFE0F|(?:[\u261D\u26F9\u270A-\u270D]|\uD83C[\uDF85\uDFC2-\uDFC4\uDFC7\uDFCA-\uDFCC]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66-\uDC78\uDC7C\uDC81-\uDC83\uDC85-\uDC87\uDC8F\uDC91\uDCAA\uDD74\uDD75\uDD7A\uDD90\uDD95\uDD96\uDE45-\uDE47\uDE4B-\uDE4F\uDEA3\uDEB4-\uDEB6\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1F\uDD26\uDD30-\uDD39\uDD3C-\uDD3E\uDD77\uDDB5\uDDB6\uDDB8\uDDB9\uDDBB\uDDCD-\uDDCF\uDDD1-\uDDDD])/g;
-	};
-	FD = O$1(uD);
-	m = 10, L$1 = (t = 0) => (u) => `\x1B[${u + t}m`, N$1 = (t = 0) => (u) => `\x1B[${38 + t};5;${u}m`, I$1 = (t = 0) => (u, F, e) => `\x1B[${38 + t};2;${u};${F};${e}m`, r$1 = {
-		modifier: {
-			reset: [0, 0],
-			bold: [1, 22],
-			dim: [2, 22],
-			italic: [3, 23],
-			underline: [4, 24],
-			overline: [53, 55],
-			inverse: [7, 27],
-			hidden: [8, 28],
-			strikethrough: [9, 29]
-		},
-		color: {
-			black: [30, 39],
-			red: [31, 39],
-			green: [32, 39],
-			yellow: [33, 39],
-			blue: [34, 39],
-			magenta: [35, 39],
-			cyan: [36, 39],
-			white: [37, 39],
-			blackBright: [90, 39],
-			gray: [90, 39],
-			grey: [90, 39],
-			redBright: [91, 39],
-			greenBright: [92, 39],
-			yellowBright: [93, 39],
-			blueBright: [94, 39],
-			magentaBright: [95, 39],
-			cyanBright: [96, 39],
-			whiteBright: [97, 39]
-		},
-		bgColor: {
-			bgBlack: [40, 49],
-			bgRed: [41, 49],
-			bgGreen: [42, 49],
-			bgYellow: [43, 49],
-			bgBlue: [44, 49],
-			bgMagenta: [45, 49],
-			bgCyan: [46, 49],
-			bgWhite: [47, 49],
-			bgBlackBright: [100, 49],
-			bgGray: [100, 49],
-			bgGrey: [100, 49],
-			bgRedBright: [101, 49],
-			bgGreenBright: [102, 49],
-			bgYellowBright: [103, 49],
-			bgBlueBright: [104, 49],
-			bgMagentaBright: [105, 49],
-			bgCyanBright: [106, 49],
-			bgWhiteBright: [107, 49]
-		}
-	};
-	Object.keys(r$1.modifier);
-	tD = Object.keys(r$1.color), eD = Object.keys(r$1.bgColor);
-	[...tD, ...eD];
-	iD = sD(), v = new Set(["\x1B", ""]), CD = 39, w$1 = "\x07", W$1 = "[", rD = "]", R$1 = "m", y$1 = `${rD}8;;`, V$1 = (t) => `${v.values().next().value}${W$1}${t}${R$1}`, z = (t) => `${v.values().next().value}${y$1}${t}${w$1}`, ED = (t) => t.split(" ").map((u) => A$1(u)), _$1 = (t, u, F) => {
-		const e = [...u];
-		let s = false, i = false, D = A$1(T$1(t[t.length - 1]));
-		for (const [C, o] of e.entries()) {
-			const E = A$1(o);
-			if (D + E <= F ? t[t.length - 1] += o : (t.push(o), D = 0), v.has(o) && (s = true, i = e.slice(C + 1).join("").startsWith(y$1)), s) {
-				i ? o === w$1 && (s = false, i = false) : o === R$1 && (s = false);
-				continue;
-			}
-			D += E, D === F && C < e.length - 1 && (t.push(""), D = 0);
-		}
-		!D && t[t.length - 1].length > 0 && t.length > 1 && (t[t.length - 2] += t.pop());
-	}, nD = (t) => {
-		const u = t.split(" ");
-		let F = u.length;
-		for (; F > 0 && !(A$1(u[F - 1]) > 0);) F--;
-		return F === u.length ? t : u.slice(0, F).join(" ") + u.slice(F).join("");
-	}, oD = (t, u, F = {}) => {
-		if (F.trim !== false && t.trim() === "") return "";
-		let e = "", s, i;
-		const D = ED(t);
-		let C = [""];
-		for (const [E, a] of t.split(" ").entries()) {
-			F.trim !== false && (C[C.length - 1] = C[C.length - 1].trimStart());
-			let n = A$1(C[C.length - 1]);
-			if (E !== 0 && (n >= u && (F.wordWrap === false || F.trim === false) && (C.push(""), n = 0), (n > 0 || F.trim === false) && (C[C.length - 1] += " ", n++)), F.hard && D[E] > u) {
-				const B = u - n, p = 1 + Math.floor((D[E] - B - 1) / u);
-				Math.floor((D[E] - 1) / u) < p && C.push(""), _$1(C, a, u);
-				continue;
-			}
-			if (n + D[E] > u && n > 0 && D[E] > 0) {
-				if (F.wordWrap === false && n < u) {
-					_$1(C, a, u);
-					continue;
-				}
-				C.push("");
-			}
-			if (n + D[E] > u && F.wordWrap === false) {
-				_$1(C, a, u);
-				continue;
-			}
-			C[C.length - 1] += a;
-		}
-		F.trim !== false && (C = C.map((E) => nD(E)));
-		const o = [...C.join(`
-`)];
-		for (const [E, a] of o.entries()) {
-			if (e += a, v.has(a)) {
-				const { groups: B } = new RegExp(`(?:\\${W$1}(?<code>\\d+)m|\\${y$1}(?<uri>.*)${w$1})`).exec(o.slice(E).join("")) || { groups: {} };
-				if (B.code !== void 0) {
-					const p = Number.parseFloat(B.code);
-					s = p === CD ? void 0 : p;
-				} else B.uri !== void 0 && (i = B.uri.length === 0 ? void 0 : B.uri);
-			}
-			const n = iD.codes.get(Number(s));
-			o[E + 1] === `
-` ? (i && (e += z("")), s && n && (e += V$1(n))) : a === `
-` && (s && n && (e += V$1(s)), i && (e += z(i)));
-		}
-		return e;
-	};
-	c$1 = {
-		actions: new Set([
-			"up",
-			"down",
-			"left",
-			"right",
-			"space",
-			"enter",
-			"cancel"
-		]),
-		aliases: new Map([
-			["k", "up"],
-			["j", "down"],
-			["h", "left"],
-			["l", "right"],
-			["", "cancel"],
-			["escape", "cancel"]
-		])
-	};
-	globalThis.process.platform.startsWith("win");
-	S$1 = Symbol("clack:cancel");
-	AD = Object.defineProperty, pD = (t, u, F) => u in t ? AD(t, u, {
-		enumerable: true,
-		configurable: true,
-		writable: true,
-		value: F
-	}) : t[u] = F, h = (t, u, F) => (pD(t, typeof u != "symbol" ? u + "" : u, F), F);
-	x = class {
-		constructor(u, F = true) {
-			h(this, "input"), h(this, "output"), h(this, "_abortSignal"), h(this, "rl"), h(this, "opts"), h(this, "_render"), h(this, "_track", false), h(this, "_prevFrame", ""), h(this, "_subscribers", /* @__PURE__ */ new Map()), h(this, "_cursor", 0), h(this, "state", "initial"), h(this, "error", ""), h(this, "value");
-			const { input: e = stdin, output: s = stdout, render: i, signal: D, ...C } = u;
-			this.opts = C, this.onKeypress = this.onKeypress.bind(this), this.close = this.close.bind(this), this.render = this.render.bind(this), this._render = i.bind(this), this._track = F, this._abortSignal = D, this.input = e, this.output = s;
-		}
-		unsubscribe() {
-			this._subscribers.clear();
-		}
-		setSubscriber(u, F) {
-			const e = this._subscribers.get(u) ?? [];
-			e.push(F), this._subscribers.set(u, e);
-		}
-		on(u, F) {
-			this.setSubscriber(u, { cb: F });
-		}
-		once(u, F) {
-			this.setSubscriber(u, {
-				cb: F,
-				once: true
-			});
-		}
-		emit(u, ...F) {
-			const e = this._subscribers.get(u) ?? [], s = [];
-			for (const i of e) i.cb(...F), i.once && s.push(() => e.splice(e.indexOf(i), 1));
-			for (const i of s) i();
-		}
-		prompt() {
-			return new Promise((u, F) => {
-				if (this._abortSignal) {
-					if (this._abortSignal.aborted) return this.state = "cancel", this.close(), u(S$1);
-					this._abortSignal.addEventListener("abort", () => {
-						this.state = "cancel", this.close();
-					}, { once: true });
-				}
-				const e = new WriteStream(0);
-				e._write = (s, i, D) => {
-					this._track && (this.value = this.rl?.line.replace(/\t/g, ""), this._cursor = this.rl?.cursor ?? 0, this.emit("value", this.value)), D();
-				}, this.input.pipe(e), this.rl = f.createInterface({
-					input: this.input,
-					output: e,
-					tabSize: 2,
-					prompt: "",
-					escapeCodeTimeout: 50
-				}), f.emitKeypressEvents(this.input, this.rl), this.rl.prompt(), this.opts.initialValue !== void 0 && this._track && this.rl.write(this.opts.initialValue), this.input.on("keypress", this.onKeypress), d$1(this.input, true), this.output.on("resize", this.render), this.render(), this.once("submit", () => {
-					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(this.value);
-				}), this.once("cancel", () => {
-					this.output.write(srcExports.cursor.show), this.output.off("resize", this.render), d$1(this.input, false), u(S$1);
-				});
-			});
-		}
-		onKeypress(u, F) {
-			if (this.state === "error" && (this.state = "active"), F?.name && (!this._track && c$1.aliases.has(F.name) && this.emit("cursor", c$1.aliases.get(F.name)), c$1.actions.has(F.name) && this.emit("cursor", F.name)), u && (u.toLowerCase() === "y" || u.toLowerCase() === "n") && this.emit("confirm", u.toLowerCase() === "y"), u === "	" && this.opts.placeholder && (this.value || (this.rl?.write(this.opts.placeholder), this.emit("value", this.opts.placeholder))), u && this.emit("key", u.toLowerCase()), F?.name === "return") {
-				if (this.opts.validate) {
-					const e = this.opts.validate(this.value);
-					e && (this.error = e instanceof Error ? e.message : e, this.state = "error", this.rl?.write(this.value));
-				}
-				this.state !== "error" && (this.state = "submit");
-			}
-			k$1([
-				u,
-				F?.name,
-				F?.sequence
-			], "cancel") && (this.state = "cancel"), (this.state === "submit" || this.state === "cancel") && this.emit("finalize"), this.render(), (this.state === "submit" || this.state === "cancel") && this.close();
-		}
-		close() {
-			this.input.unpipe(), this.input.removeListener("keypress", this.onKeypress), this.output.write(`
-`), d$1(this.input, false), this.rl?.close(), this.rl = void 0, this.emit(`${this.state}`, this.value), this.unsubscribe();
-		}
-		restoreCursor() {
-			const u = G$1(this._prevFrame, process.stdout.columns, { hard: true }).split(`
-`).length - 1;
-			this.output.write(srcExports.cursor.move(-999, u * -1));
-		}
-		render() {
-			const u = G$1(this._render(this) ?? "", process.stdout.columns, { hard: true });
-			if (u !== this._prevFrame) {
-				if (this.state === "initial") this.output.write(srcExports.cursor.hide);
-				else {
-					const F = lD(this._prevFrame, u);
-					if (this.restoreCursor(), F && F?.length === 1) {
-						const e = F[0];
-						this.output.write(srcExports.cursor.move(0, e)), this.output.write(srcExports.erase.lines(1));
-						const s = u.split(`
-`);
-						this.output.write(s[e]), this._prevFrame = u, this.output.write(srcExports.cursor.move(0, s.length - e - 1));
-						return;
-					}
-					if (F && F?.length > 1) {
-						const e = F[0];
-						this.output.write(srcExports.cursor.move(0, e)), this.output.write(srcExports.erase.down());
-						const s = u.split(`
-`).slice(e);
-						this.output.write(s.join(`
-`)), this._prevFrame = u;
-						return;
-					}
-					this.output.write(srcExports.erase.down());
-				}
-				this.output.write(u), this.state === "initial" && (this.state = "active"), this._prevFrame = u;
-			}
-		}
-	};
-	fD = class extends x {
-		get cursor() {
-			return this.value ? 0 : 1;
-		}
-		get _value() {
-			return this.cursor === 0;
-		}
-		constructor(u) {
-			super(u, false), this.value = !!u.initialValue, this.on("value", () => {
-				this.value = this._value;
-			}), this.on("confirm", (F) => {
-				this.output.write(srcExports.cursor.move(0, -1)), this.value = F, this.state = "submit", this.close();
-			}), this.on("cursor", () => {
-				this.value = !this.value;
-			});
-		}
-	};
-	bD = Object.defineProperty, mD = (t, u, F) => u in t ? bD(t, u, {
-		enumerable: true,
-		configurable: true,
-		writable: true,
-		value: F
-	}) : t[u] = F, Y = (t, u, F) => (mD(t, typeof u != "symbol" ? u + "" : u, F), F);
-	wD = class extends x {
-		constructor(u) {
-			super(u, false), Y(this, "options"), Y(this, "cursor", 0), this.options = u.options, this.value = [...u.initialValues ?? []], this.cursor = Math.max(this.options.findIndex(({ value: F }) => F === u.cursorAt), 0), this.on("key", (F) => {
-				F === "a" && this.toggleAll();
-			}), this.on("cursor", (F) => {
-				switch (F) {
-					case "left":
-					case "up":
-						this.cursor = this.cursor === 0 ? this.options.length - 1 : this.cursor - 1;
-						break;
-					case "down":
-					case "right":
-						this.cursor = this.cursor === this.options.length - 1 ? 0 : this.cursor + 1;
-						break;
-					case "space":
-						this.toggleValue();
-						break;
-				}
-			});
-		}
-		get _value() {
-			return this.options[this.cursor].value;
-		}
-		toggleAll() {
-			this.value = this.value.length === this.options.length ? [] : this.options.map((F) => F.value);
-		}
-		toggleValue() {
-			this.value = this.value.includes(this._value) ? this.value.filter((F) => F !== this._value) : [...this.value, this._value];
-		}
-	};
-	SD = Object.defineProperty, $D = (t, u, F) => u in t ? SD(t, u, {
-		enumerable: true,
-		configurable: true,
-		writable: true,
-		value: F
-	}) : t[u] = F, q = (t, u, F) => ($D(t, typeof u != "symbol" ? u + "" : u, F), F);
-	jD = class extends x {
-		constructor(u) {
-			super(u, false), q(this, "options"), q(this, "cursor", 0), this.options = u.options, this.cursor = this.options.findIndex(({ value: F }) => F === u.initialValue), this.cursor === -1 && (this.cursor = 0), this.changeValue(), this.on("cursor", (F) => {
-				switch (F) {
-					case "left":
-					case "up":
-						this.cursor = this.cursor === 0 ? this.options.length - 1 : this.cursor - 1;
-						break;
-					case "down":
-					case "right":
-						this.cursor = this.cursor === this.options.length - 1 ? 0 : this.cursor + 1;
-						break;
-				}
-				this.changeValue();
-			});
-		}
-		get _value() {
-			return this.options[this.cursor];
-		}
-		changeValue() {
-			this.value = this._value.value;
-		}
-	};
-	PD = class extends x {
-		get valueWithCursor() {
-			if (this.state === "submit") return this.value;
-			if (this.cursor >= this.value.length) return `${this.value}\u2588`;
-			const u = this.value.slice(0, this.cursor), [F, ...e$1] = this.value.slice(this.cursor);
-			return `${u}${e.inverse(F)}${e$1.join("")}`;
-		}
-		get cursor() {
-			return this._cursor;
-		}
-		constructor(u) {
-			super(u), this.on("finalize", () => {
-				this.value || (this.value = u.defaultValue);
-			});
-		}
-	};
-	V = ce(), u$1 = (t, n) => V ? t : n, le = u$1("❯", ">"), L$2 = u$1("■", "x"), W = u$1("▲", "x"), C$1 = u$1("✔", "√"), o$1 = u$1(""), d = u$1(""), k = u$1("●", ">"), P = u$1("○", " "), A$2 = u$1("◻", "[•]"), T$2 = u$1("◼", "[+]"), F$1 = u$1("◻", "[ ]"), w = (t) => {
-		switch (t) {
-			case "initial":
-			case "active": return e.cyan(le);
-			case "cancel": return e.red(L$2);
-			case "error": return e.yellow(W);
-			case "submit": return e.green(C$1);
-		}
-	}, B = (t) => {
-		const { cursor: n, options: s, style: r } = t, i = t.maxItems ?? Number.POSITIVE_INFINITY, a = Math.max(process.stdout.rows - 4, 0), c = Math.min(a, Math.max(i, 5));
-		let l = 0;
-		n >= l + c - 3 ? l = Math.max(Math.min(n - c + 3, s.length - c), 0) : n < l + 2 && (l = Math.max(n - 2, 0));
-		const $ = c < s.length && l > 0, p = c < s.length && l + c < s.length;
-		return s.slice(l, l + c).map((M, v, x) => {
-			const j = v === 0 && $, E = v === x.length - 1 && p;
-			return j || E ? e.dim("...") : r(M, v + l === n);
-		});
-	}, he = (t) => new PD({
-		validate: t.validate,
-		placeholder: t.placeholder,
-		defaultValue: t.defaultValue,
-		initialValue: t.initialValue,
-		render() {
-			const n = `${e.gray(o$1)}
-${w(this.state)} ${t.message}
-`, s = t.placeholder ? e.inverse(t.placeholder[0]) + e.dim(t.placeholder.slice(1)) : e.inverse(e.hidden("_")), r = this.value ? this.valueWithCursor : s;
-			switch (this.state) {
-				case "error": return `${n.trim()}
-${e.yellow(o$1)} ${r}
-${e.yellow(d)} ${e.yellow(this.error)}
-`;
-				case "submit": return `${n}${e.gray(o$1)} ${e.dim(this.value || t.placeholder)}`;
-				case "cancel": return `${n}${e.gray(o$1)} ${e.strikethrough(e.dim(this.value ?? ""))}${this.value?.trim() ? `
-${e.gray(o$1)}` : ""}`;
-				default: return `${n}${e.cyan(o$1)} ${r}
-${e.cyan(d)}
-`;
-			}
-		}
-	}).prompt(), ye = (t) => {
-		const n = t.active ?? "Yes", s = t.inactive ?? "No";
-		return new fD({
-			active: n,
-			inactive: s,
-			initialValue: t.initialValue ?? true,
-			render() {
-				const r = `${e.gray(o$1)}
-${w(this.state)} ${t.message}
-`, i = this.value ? n : s;
-				switch (this.state) {
-					case "submit": return `${r}${e.gray(o$1)} ${e.dim(i)}`;
-					case "cancel": return `${r}${e.gray(o$1)} ${e.strikethrough(e.dim(i))}
-${e.gray(o$1)}`;
-					default: return `${r}${e.cyan(o$1)} ${this.value ? `${e.green(k)} ${n}` : `${e.dim(P)} ${e.dim(n)}`} ${e.dim("/")} ${this.value ? `${e.dim(P)} ${e.dim(s)}` : `${e.green(k)} ${s}`}
-${e.cyan(d)}
-`;
-				}
-			}
-		}).prompt();
-	}, ve = (t) => {
-		const n = (s, r) => {
-			const i = s.label ?? String(s.value);
-			switch (r) {
-				case "selected": return `${e.dim(i)}`;
-				case "active": return `${e.green(k)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}`;
-				case "cancelled": return `${e.strikethrough(e.dim(i))}`;
-				default: return `${e.dim(P)} ${e.dim(i)}`;
-			}
-		};
-		return new jD({
-			options: t.options,
-			initialValue: t.initialValue,
-			render() {
-				const s = `${e.gray(o$1)}
-${w(this.state)} ${t.message}
-`;
-				switch (this.state) {
-					case "submit": return `${s}${e.gray(o$1)} ${n(this.options[this.cursor], "selected")}`;
-					case "cancel": return `${s}${e.gray(o$1)} ${n(this.options[this.cursor], "cancelled")}
-${e.gray(o$1)}`;
-					default: return `${s}${e.cyan(o$1)} ${B({
-						cursor: this.cursor,
-						options: this.options,
-						maxItems: t.maxItems,
-						style: (r, i) => n(r, i ? "active" : "inactive")
-					}).join(`
-${e.cyan(o$1)}  `)}
-${e.cyan(d)}
-`;
-				}
-			}
-		}).prompt();
-	}, fe = (t) => {
-		const n = (s, r) => {
-			const i = s.label ?? String(s.value);
-			return r === "active" ? `${e.cyan(A$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "selected" ? `${e.green(T$2)} ${e.dim(i)}` : r === "cancelled" ? `${e.strikethrough(e.dim(i))}` : r === "active-selected" ? `${e.green(T$2)} ${i} ${s.hint ? e.dim(`(${s.hint})`) : ""}` : r === "submitted" ? `${e.dim(i)}` : `${e.dim(F$1)} ${e.dim(i)}`;
-		};
-		return new wD({
-			options: t.options,
-			initialValues: t.initialValues,
-			required: t.required ?? true,
-			cursorAt: t.cursorAt,
-			validate(s) {
-				if (this.required && s.length === 0) return `Please select at least one option.
-${e.reset(e.dim(`Press ${e.gray(e.bgWhite(e.inverse(" space ")))} to select, ${e.gray(e.bgWhite(e.inverse(" enter ")))} to submit`))}`;
-			},
-			render() {
-				const s = `${e.gray(o$1)}
-${w(this.state)} ${t.message}
-`, r = (i, a) => {
-					const c = this.value.includes(i.value);
-					return a && c ? n(i, "active-selected") : c ? n(i, "selected") : n(i, a ? "active" : "inactive");
-				};
-				switch (this.state) {
-					case "submit": return `${s}${e.gray(o$1)} ${this.options.filter(({ value: i }) => this.value.includes(i)).map((i) => n(i, "submitted")).join(e.dim(", ")) || e.dim("none")}`;
-					case "cancel": {
-						const i = this.options.filter(({ value: a }) => this.value.includes(a)).map((a) => n(a, "cancelled")).join(e.dim(", "));
-						return `${s}${e.gray(o$1)} ${i.trim() ? `${i}
-${e.gray(o$1)}` : ""}`;
-					}
-					case "error": {
-						const i = this.error.split(`
-`).map((a, c) => c === 0 ? `${e.yellow(d)} ${e.yellow(a)}` : `   ${a}`).join(`
-`);
-						return `${s + e.yellow(o$1)} ${B({
-							options: this.options,
-							cursor: this.cursor,
-							maxItems: t.maxItems,
-							style: r
-						}).join(`
-${e.yellow(o$1)}  `)}
-${i}
-`;
-					}
-					default: return `${s}${e.cyan(o$1)} ${B({
-						options: this.options,
-						cursor: this.cursor,
-						maxItems: t.maxItems,
-						style: r
-					}).join(`
-${e.cyan(o$1)}  `)}
-${e.cyan(d)}
-`;
-				}
-			}
-		}).prompt();
-	};
-	`${e.gray(o$1)}`;
-	kCancel = Symbol.for("cancel");
-}));
-const r = Object.create(null), i = (e) => globalThis.process?.env || import.meta.env || globalThis.Deno?.env.toObject() || globalThis.__env__ || (e ? r : globalThis), o = new Proxy(r, {
-	get(e, s) {
-		return i()[s] ?? r[s];
-	},
-	has(e, s) {
-		return s in i() || s in r;
-	},
-	set(e, s, E) {
-		const B = i(true);
-		return B[s] = E, true;
-	},
-	deleteProperty(e, s) {
-		if (!s) return false;
-		const E = i(true);
-		return delete E[s], true;
-	},
-	ownKeys() {
-		const e = i(true);
-		return Object.keys(e);
-	}
-}), t = typeof process < "u" && process.env && process.env.NODE_ENV || "", f$1 = [
-	["APPVEYOR"],
-	[
-		"AWS_AMPLIFY",
-		"AWS_APP_ID",
-		{ ci: true }
-	],
-	["AZURE_PIPELINES", "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"],
-	["AZURE_STATIC", "INPUT_AZURE_STATIC_WEB_APPS_API_TOKEN"],
-	["APPCIRCLE", "AC_APPCIRCLE"],
-	["BAMBOO", "bamboo_planKey"],
-	["BITBUCKET", "BITBUCKET_COMMIT"],
-	["BITRISE", "BITRISE_IO"],
-	["BUDDY", "BUDDY_WORKSPACE_ID"],
-	["BUILDKITE"],
-	["CIRCLE", "CIRCLECI"],
-	["CIRRUS", "CIRRUS_CI"],
-	[
-		"CLOUDFLARE_PAGES",
-		"CF_PAGES",
-		{ ci: true }
-	],
-	["CODEBUILD", "CODEBUILD_BUILD_ARN"],
-	["CODEFRESH", "CF_BUILD_ID"],
-	["DRONE"],
-	["DRONE", "DRONE_BUILD_EVENT"],
-	["DSARI"],
-	["GITHUB_ACTIONS"],
-	["GITLAB", "GITLAB_CI"],
-	["GITLAB", "CI_MERGE_REQUEST_ID"],
-	["GOCD", "GO_PIPELINE_LABEL"],
-	["LAYERCI"],
-	["HUDSON", "HUDSON_URL"],
-	["JENKINS", "JENKINS_URL"],
-	["MAGNUM"],
-	["NETLIFY"],
-	[
-		"NETLIFY",
-		"NETLIFY_LOCAL",
-		{ ci: false }
-	],
-	["NEVERCODE"],
-	["RENDER"],
-	["SAIL", "SAILCI"],
-	["SEMAPHORE"],
-	["SCREWDRIVER"],
-	["SHIPPABLE"],
-	["SOLANO", "TDDIUM"],
-	["STRIDER"],
-	["TEAMCITY", "TEAMCITY_VERSION"],
-	["TRAVIS"],
-	["VERCEL", "NOW_BUILDER"],
-	[
-		"VERCEL",
-		"VERCEL",
-		{ ci: false }
-	],
-	[
-		"VERCEL",
-		"VERCEL_ENV",
-		{ ci: false }
-	],
-	["APPCENTER", "APPCENTER_BUILD_ID"],
-	[
-		"CODESANDBOX",
-		"CODESANDBOX_SSE",
-		{ ci: false }
-	],
-	[
-		"CODESANDBOX",
-		"CODESANDBOX_HOST",
-		{ ci: false }
-	],
-	["STACKBLITZ"],
-	["STORMKIT"],
-	["CLEAVR"],
-	["ZEABUR"],
-	[
-		"CODESPHERE",
-		"CODESPHERE_APP_ID",
-		{ ci: true }
-	],
-	["RAILWAY", "RAILWAY_PROJECT_ID"],
-	["RAILWAY", "RAILWAY_SERVICE_ID"],
-	["DENO-DEPLOY", "DENO_DEPLOYMENT_ID"],
-	[
-		"FIREBASE_APP_HOSTING",
-		"FIREBASE_APP_HOSTING",
-		{ ci: true }
-	]
-];
-function b() {
-	if (globalThis.process?.env) for (const e of f$1) {
-		const s = e[1] || e[0];
-		if (globalThis.process?.env[s]) return {
-			name: e[0].toLowerCase(),
-			...e[2]
-		};
-	}
-	return globalThis.process?.env?.SHELL === "/bin/jsh" && globalThis.process?.versions?.webcontainer ? {
-		name: "stackblitz",
-		ci: false
-	} : {
-		name: "",
-		ci: false
-	};
-}
-const l = b();
-l.name;
-function n(e) {
-	return e ? e !== "false" : false;
-}
-const I = globalThis.process?.platform || "", T = n(o.CI) || l.ci !== false, a = n(globalThis.process?.stdout && globalThis.process?.stdout.isTTY), g = n(o.DEBUG), R = t === "test" || n(o.TEST);
-n(o.MINIMAL);
-const A = /^win/i.test(I);
-!n(o.NO_COLOR) && (n(o.FORCE_COLOR) || (a || A) && o.TERM);
-const C = (globalThis.process?.versions?.node || "").replace(/^v/, "") || null;
-Number(C?.split(".")[0]);
-const y = globalThis.process || Object.create(null), _ = { versions: {} };
-new Proxy(y, { get(e, s) {
-	if (s === "env") return o;
-	if (s in e) return e[s];
-	if (s in _) return _[s];
-} });
-const c = globalThis.process?.release?.name === "node", O = !!globalThis.Bun || !!globalThis.process?.versions?.bun, D = !!globalThis.Deno, L = !!globalThis.fastly, S = !!globalThis.Netlify, u = !!globalThis.EdgeRuntime, N = globalThis.navigator?.userAgent === "Cloudflare-Workers", F = [
-	[S, "netlify"],
-	[u, "edge-light"],
-	[N, "workerd"],
-	[L, "fastly"],
-	[D, "deno"],
-	[O, "bun"],
-	[c, "node"]
-];
-function G() {
-	const e = F.find((s) => s[0]);
-	if (e) return { name: e[1] };
-}
-G()?.name;
-function ansiRegex({ onlyFirst = false } = {}) {
-	const pattern = [`[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?(?:\\u0007|\\u001B\\u005C|\\u009C))`, "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))"].join("|");
-	return new RegExp(pattern, onlyFirst ? void 0 : "g");
-}
-const regex = ansiRegex();
-function stripAnsi(string) {
-	if (typeof string !== "string") throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
-	return string.replace(regex, "");
-}
-function isAmbiguous(x) {
-	return x === 161 || x === 164 || x === 167 || x === 168 || x === 170 || x === 173 || x === 174 || x >= 176 && x <= 180 || x >= 182 && x <= 186 || x >= 188 && x <= 191 || x === 198 || x === 208 || x === 215 || x === 216 || x >= 222 && x <= 225 || x === 230 || x >= 232 && x <= 234 || x === 236 || x === 237 || x === 240 || x === 242 || x === 243 || x >= 247 && x <= 250 || x === 252 || x === 254 || x === 257 || x === 273 || x === 275 || x === 283 || x === 294 || x === 295 || x === 299 || x >= 305 && x <= 307 || x === 312 || x >= 319 && x <= 322 || x === 324 || x >= 328 && x <= 331 || x === 333 || x === 338 || x === 339 || x === 358 || x === 359 || x === 363 || x === 462 || x === 464 || x === 466 || x === 468 || x === 470 || x === 472 || x === 474 || x === 476 || x === 593 || x === 609 || x === 708 || x === 711 || x >= 713 && x <= 715 || x === 717 || x === 720 || x >= 728 && x <= 731 || x === 733 || x === 735 || x >= 768 && x <= 879 || x >= 913 && x <= 929 || x >= 931 && x <= 937 || x >= 945 && x <= 961 || x >= 963 && x <= 969 || x === 1025 || x >= 1040 && x <= 1103 || x === 1105 || x === 8208 || x >= 8211 && x <= 8214 || x === 8216 || x === 8217 || x === 8220 || x === 8221 || x >= 8224 && x <= 8226 || x >= 8228 && x <= 8231 || x === 8240 || x === 8242 || x === 8243 || x === 8245 || x === 8251 || x === 8254 || x === 8308 || x === 8319 || x >= 8321 && x <= 8324 || x === 8364 || x === 8451 || x === 8453 || x === 8457 || x === 8467 || x === 8470 || x === 8481 || x === 8482 || x === 8486 || x === 8491 || x === 8531 || x === 8532 || x >= 8539 && x <= 8542 || x >= 8544 && x <= 8555 || x >= 8560 && x <= 8569 || x === 8585 || x >= 8592 && x <= 8601 || x === 8632 || x === 8633 || x === 8658 || x === 8660 || x === 8679 || x === 8704 || x === 8706 || x === 8707 || x === 8711 || x === 8712 || x === 8715 || x === 8719 || x === 8721 || x === 8725 || x === 8730 || x >= 8733 && x <= 8736 || x === 8739 || x === 8741 || x >= 8743 && x <= 8748 || x === 8750 || x >= 8756 && x <= 8759 || x === 8764 || x === 8765 || x === 8776 || x === 8780 || x === 8786 || x === 8800 || x === 8801 || x >= 8804 && x <= 8807 || x === 8810 || x === 8811 || x === 8814 || x === 8815 || x === 8834 || x === 8835 || x === 8838 || x === 8839 || x === 8853 || x === 8857 || x === 8869 || x === 8895 || x === 8978 || x >= 9312 && x <= 9449 || x >= 9451 && x <= 9547 || x >= 9552 && x <= 9587 || x >= 9600 && x <= 9615 || x >= 9618 && x <= 9621 || x === 9632 || x === 9633 || x >= 9635 && x <= 9641 || x === 9650 || x === 9651 || x === 9654 || x === 9655 || x === 9660 || x === 9661 || x === 9664 || x === 9665 || x >= 9670 && x <= 9672 || x === 9675 || x >= 9678 && x <= 9681 || x >= 9698 && x <= 9701 || x === 9711 || x === 9733 || x === 9734 || x === 9737 || x === 9742 || x === 9743 || x === 9756 || x === 9758 || x === 9792 || x === 9794 || x === 9824 || x === 9825 || x >= 9827 && x <= 9829 || x >= 9831 && x <= 9834 || x === 9836 || x === 9837 || x === 9839 || x === 9886 || x === 9887 || x === 9919 || x >= 9926 && x <= 9933 || x >= 9935 && x <= 9939 || x >= 9941 && x <= 9953 || x === 9955 || x === 9960 || x === 9961 || x >= 9963 && x <= 9969 || x === 9972 || x >= 9974 && x <= 9977 || x === 9979 || x === 9980 || x === 9982 || x === 9983 || x === 10045 || x >= 10102 && x <= 10111 || x >= 11094 && x <= 11097 || x >= 12872 && x <= 12879 || x >= 57344 && x <= 63743 || x >= 65024 && x <= 65039 || x === 65533 || x >= 127232 && x <= 127242 || x >= 127248 && x <= 127277 || x >= 127280 && x <= 127337 || x >= 127344 && x <= 127373 || x === 127375 || x === 127376 || x >= 127387 && x <= 127404 || x >= 917760 && x <= 917999 || x >= 983040 && x <= 1048573 || x >= 1048576 && x <= 1114109;
-}
-function isFullWidth(x) {
-	return x === 12288 || x >= 65281 && x <= 65376 || x >= 65504 && x <= 65510;
-}
-function isWide(x) {
-	return x >= 4352 && x <= 4447 || x === 8986 || x === 8987 || x === 9001 || x === 9002 || x >= 9193 && x <= 9196 || x === 9200 || x === 9203 || x === 9725 || x === 9726 || x === 9748 || x === 9749 || x >= 9776 && x <= 9783 || x >= 9800 && x <= 9811 || x === 9855 || x >= 9866 && x <= 9871 || x === 9875 || x === 9889 || x === 9898 || x === 9899 || x === 9917 || x === 9918 || x === 9924 || x === 9925 || x === 9934 || x === 9940 || x === 9962 || x === 9970 || x === 9971 || x === 9973 || x === 9978 || x === 9981 || x === 9989 || x === 9994 || x === 9995 || x === 10024 || x === 10060 || x === 10062 || x >= 10067 && x <= 10069 || x === 10071 || x >= 10133 && x <= 10135 || x === 10160 || x === 10175 || x === 11035 || x === 11036 || x === 11088 || x === 11093 || x >= 11904 && x <= 11929 || x >= 11931 && x <= 12019 || x >= 12032 && x <= 12245 || x >= 12272 && x <= 12287 || x >= 12289 && x <= 12350 || x >= 12353 && x <= 12438 || x >= 12441 && x <= 12543 || x >= 12549 && x <= 12591 || x >= 12593 && x <= 12686 || x >= 12688 && x <= 12773 || x >= 12783 && x <= 12830 || x >= 12832 && x <= 12871 || x >= 12880 && x <= 42124 || x >= 42128 && x <= 42182 || x >= 43360 && x <= 43388 || x >= 44032 && x <= 55203 || x >= 63744 && x <= 64255 || x >= 65040 && x <= 65049 || x >= 65072 && x <= 65106 || x >= 65108 && x <= 65126 || x >= 65128 && x <= 65131 || x >= 94176 && x <= 94180 || x === 94192 || x === 94193 || x >= 94208 && x <= 100343 || x >= 100352 && x <= 101589 || x >= 101631 && x <= 101640 || x >= 110576 && x <= 110579 || x >= 110581 && x <= 110587 || x === 110589 || x === 110590 || x >= 110592 && x <= 110882 || x === 110898 || x >= 110928 && x <= 110930 || x === 110933 || x >= 110948 && x <= 110951 || x >= 110960 && x <= 111355 || x >= 119552 && x <= 119638 || x >= 119648 && x <= 119670 || x === 126980 || x === 127183 || x === 127374 || x >= 127377 && x <= 127386 || x >= 127488 && x <= 127490 || x >= 127504 && x <= 127547 || x >= 127552 && x <= 127560 || x === 127568 || x === 127569 || x >= 127584 && x <= 127589 || x >= 127744 && x <= 127776 || x >= 127789 && x <= 127797 || x >= 127799 && x <= 127868 || x >= 127870 && x <= 127891 || x >= 127904 && x <= 127946 || x >= 127951 && x <= 127955 || x >= 127968 && x <= 127984 || x === 127988 || x >= 127992 && x <= 128062 || x === 128064 || x >= 128066 && x <= 128252 || x >= 128255 && x <= 128317 || x >= 128331 && x <= 128334 || x >= 128336 && x <= 128359 || x === 128378 || x === 128405 || x === 128406 || x === 128420 || x >= 128507 && x <= 128591 || x >= 128640 && x <= 128709 || x === 128716 || x >= 128720 && x <= 128722 || x >= 128725 && x <= 128727 || x >= 128732 && x <= 128735 || x === 128747 || x === 128748 || x >= 128756 && x <= 128764 || x >= 128992 && x <= 129003 || x === 129008 || x >= 129292 && x <= 129338 || x >= 129340 && x <= 129349 || x >= 129351 && x <= 129535 || x >= 129648 && x <= 129660 || x >= 129664 && x <= 129673 || x >= 129679 && x <= 129734 || x >= 129742 && x <= 129756 || x >= 129759 && x <= 129769 || x >= 129776 && x <= 129784 || x >= 131072 && x <= 196605 || x >= 196608 && x <= 262141;
-}
-function validate(codePoint) {
-	if (!Number.isSafeInteger(codePoint)) throw new TypeError(`Expected a code point, got \`${typeof codePoint}\`.`);
-}
-function eastAsianWidth(codePoint, { ambiguousAsWide = false } = {}) {
-	validate(codePoint);
-	if (isFullWidth(codePoint) || isWide(codePoint) || ambiguousAsWide && isAmbiguous(codePoint)) return 2;
-	return 1;
-}
-const emojiRegex = () => {
-	return /[#*0-9]\uFE0F?\u20E3|[\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23ED-\u23EF\u23F1\u23F2\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB\u25FC\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692\u2694-\u2697\u2699\u269B\u269C\u26A0\u26A7\u26AA\u26B0\u26B1\u26BD\u26BE\u26C4\u26C8\u26CF\u26D1\u26E9\u26F0-\u26F5\u26F7\u26F8\u26FA\u2702\u2708\u2709\u270F\u2712\u2714\u2716\u271D\u2721\u2733\u2734\u2744\u2747\u2757\u2763\u27A1\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B55\u3030\u303D\u3297\u3299]\uFE0F?|[\u261D\u270C\u270D](?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?|[\u270A\u270B](?:\uD83C[\uDFFB-\uDFFF])?|[\u23E9-\u23EC\u23F0\u23F3\u25FD\u2693\u26A1\u26AB\u26C5\u26CE\u26D4\u26EA\u26FD\u2705\u2728\u274C\u274E\u2753-\u2755\u2795-\u2797\u27B0\u27BF\u2B50]|\u26D3\uFE0F?(?:\u200D\uD83D\uDCA5)?|\u26F9(?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?(?:\u200D[\u2640\u2642]\uFE0F?)?|\u2764\uFE0F?(?:\u200D(?:\uD83D\uDD25|\uD83E\uDE79))?|\uD83C(?:[\uDC04\uDD70\uDD71\uDD7E\uDD7F\uDE02\uDE37\uDF21\uDF24-\uDF2C\uDF36\uDF7D\uDF96\uDF97\uDF99-\uDF9B\uDF9E\uDF9F\uDFCD\uDFCE\uDFD4-\uDFDF\uDFF5\uDFF7]\uFE0F?|[\uDF85\uDFC2\uDFC7](?:\uD83C[\uDFFB-\uDFFF])?|[\uDFC4\uDFCA](?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDFCB\uDFCC](?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDCCF\uDD8E\uDD91-\uDD9A\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF43\uDF45-\uDF4A\uDF4C-\uDF7C\uDF7E-\uDF84\uDF86-\uDF93\uDFA0-\uDFC1\uDFC5\uDFC6\uDFC8\uDFC9\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF8-\uDFFF]|\uDDE6\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF]|\uDDE7\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF]|\uDDE8\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF7\uDDFA-\uDDFF]|\uDDE9\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF]|\uDDEA\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA]|\uDDEB\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7]|\uDDEC\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE]|\uDDED\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA]|\uDDEE\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9]|\uDDEF\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5]|\uDDF0\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF]|\uDDF1\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE]|\uDDF2\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF]|\uDDF3\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF]|\uDDF4\uD83C\uDDF2|\uDDF5\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE]|\uDDF6\uD83C\uDDE6|\uDDF7\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC]|\uDDF8\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF]|\uDDF9\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF]|\uDDFA\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF]|\uDDFB\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA]|\uDDFC\uD83C[\uDDEB\uDDF8]|\uDDFD\uD83C\uDDF0|\uDDFE\uD83C[\uDDEA\uDDF9]|\uDDFF\uD83C[\uDDE6\uDDF2\uDDFC]|\uDF44(?:\u200D\uD83D\uDFEB)?|\uDF4B(?:\u200D\uD83D\uDFE9)?|\uDFC3(?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:[\u2640\u2642]\uFE0F?(?:\u200D\u27A1\uFE0F?)?|\u27A1\uFE0F?))?|\uDFF3\uFE0F?(?:\u200D(?:\u26A7\uFE0F?|\uD83C\uDF08))?|\uDFF4(?:\u200D\u2620\uFE0F?|\uDB40\uDC67\uDB40\uDC62\uDB40(?:\uDC65\uDB40\uDC6E\uDB40\uDC67|\uDC73\uDB40\uDC63\uDB40\uDC74|\uDC77\uDB40\uDC6C\uDB40\uDC73)\uDB40\uDC7F)?)|\uD83D(?:[\uDC3F\uDCFD\uDD49\uDD4A\uDD6F\uDD70\uDD73\uDD76-\uDD79\uDD87\uDD8A-\uDD8D\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA\uDECB\uDECD-\uDECF\uDEE0-\uDEE5\uDEE9\uDEF0\uDEF3]\uFE0F?|[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC](?:\uD83C[\uDFFB-\uDFFF])?|[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4\uDEB5](?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDD74\uDD90](?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?|[\uDC00-\uDC07\uDC09-\uDC14\uDC16-\uDC25\uDC27-\uDC3A\uDC3C-\uDC3E\uDC40\uDC44\uDC45\uDC51-\uDC65\uDC6A\uDC79-\uDC7B\uDC7D-\uDC80\uDC84\uDC88-\uDC8E\uDC90\uDC92-\uDCA9\uDCAB-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDDA4\uDDFB-\uDE2D\uDE2F-\uDE34\uDE37-\uDE41\uDE43\uDE44\uDE48-\uDE4A\uDE80-\uDEA2\uDEA4-\uDEB3\uDEB7-\uDEBF\uDEC1-\uDEC5\uDED0-\uDED2\uDED5-\uDED7\uDEDC-\uDEDF\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB\uDFF0]|\uDC08(?:\u200D\u2B1B)?|\uDC15(?:\u200D\uD83E\uDDBA)?|\uDC26(?:\u200D(?:\u2B1B|\uD83D\uDD25))?|\uDC3B(?:\u200D\u2744\uFE0F?)?|\uDC41\uFE0F?(?:\u200D\uD83D\uDDE8\uFE0F?)?|\uDC68(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D(?:[\uDC68\uDC69]\u200D\uD83D(?:\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?)|[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?)|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]))|\uD83C(?:\uDFFB(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFC-\uDFFF])))?|\uDFFC(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB\uDFFD-\uDFFF])))?|\uDFFD(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])))?|\uDFFE(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB-\uDFFD\uDFFF])))?|\uDFFF(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?\uDC68\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D\uDC68\uD83C[\uDFFB-\uDFFE])))?))?|\uDC69(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:\uDC8B\u200D\uD83D)?[\uDC68\uDC69]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D(?:[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?|\uDC69\u200D\uD83D(?:\uDC66(?:\u200D\uD83D\uDC66)?|\uDC67(?:\u200D\uD83D[\uDC66\uDC67])?))|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]))|\uD83C(?:\uDFFB(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFC-\uDFFF])))?|\uDFFC(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB\uDFFD-\uDFFF])))?|\uDFFD(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])))?|\uDFFE(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB-\uDFFD\uDFFF])))?|\uDFFF(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D\uD83D(?:[\uDC68\uDC69]|\uDC8B\u200D\uD83D[\uDC68\uDC69])\uD83C[\uDFFB-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83D[\uDC68\uDC69]\uD83C[\uDFFB-\uDFFE])))?))?|\uDC6F(?:\u200D[\u2640\u2642]\uFE0F?)?|\uDD75(?:\uD83C[\uDFFB-\uDFFF]|\uFE0F)?(?:\u200D[\u2640\u2642]\uFE0F?)?|\uDE2E(?:\u200D\uD83D\uDCA8)?|\uDE35(?:\u200D\uD83D\uDCAB)?|\uDE36(?:\u200D\uD83C\uDF2B\uFE0F?)?|\uDE42(?:\u200D[\u2194\u2195]\uFE0F?)?|\uDEB6(?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:[\u2640\u2642]\uFE0F?(?:\u200D\u27A1\uFE0F?)?|\u27A1\uFE0F?))?)|\uD83E(?:[\uDD0C\uDD0F\uDD18-\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5\uDEC3-\uDEC5\uDEF0\uDEF2-\uDEF8](?:\uD83C[\uDFFB-\uDFFF])?|[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD\uDDCF\uDDD4\uDDD6-\uDDDD](?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDDDE\uDDDF](?:\u200D[\u2640\u2642]\uFE0F?)?|[\uDD0D\uDD0E\uDD10-\uDD17\uDD20-\uDD25\uDD27-\uDD2F\uDD3A\uDD3F-\uDD45\uDD47-\uDD76\uDD78-\uDDB4\uDDB7\uDDBA\uDDBC-\uDDCC\uDDD0\uDDE0-\uDDFF\uDE70-\uDE7C\uDE80-\uDE89\uDE8F-\uDEC2\uDEC6\uDECE-\uDEDC\uDEDF-\uDEE9]|\uDD3C(?:\u200D[\u2640\u2642]\uFE0F?|\uD83C[\uDFFB-\uDFFF])?|\uDDCE(?:\uD83C[\uDFFB-\uDFFF])?(?:\u200D(?:[\u2640\u2642]\uFE0F?(?:\u200D\u27A1\uFE0F?)?|\u27A1\uFE0F?))?|\uDDD1(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1|\uDDD1\u200D\uD83E\uDDD2(?:\u200D\uD83E\uDDD2)?|\uDDD2(?:\u200D\uD83E\uDDD2)?))|\uD83C(?:\uDFFB(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFC-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFC(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB\uDFFD-\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFD(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFE(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB-\uDFFD\uDFFF]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?|\uDFFF(?:\u200D(?:[\u2695\u2696\u2708]\uFE0F?|\u2764\uFE0F?\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1\uD83C[\uDFFB-\uDFFE]|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E(?:[\uDDAF\uDDBC\uDDBD](?:\u200D\u27A1\uFE0F?)?|[\uDDB0-\uDDB3]|\uDD1D\u200D\uD83E\uDDD1\uD83C[\uDFFB-\uDFFF])))?))?|\uDEF1(?:\uD83C(?:\uDFFB(?:\u200D\uD83E\uDEF2\uD83C[\uDFFC-\uDFFF])?|\uDFFC(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB\uDFFD-\uDFFF])?|\uDFFD(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])?|\uDFFE(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB-\uDFFD\uDFFF])?|\uDFFF(?:\u200D\uD83E\uDEF2\uD83C[\uDFFB-\uDFFE])?))?)/g;
-};
-const segmenter = globalThis.Intl?.Segmenter ? new Intl.Segmenter() : { segment: (str) => str.split("") };
-const defaultIgnorableCodePointRegex = /^\p{Default_Ignorable_Code_Point}$/u;
-function stringWidth$1(string, options = {}) {
-	if (typeof string !== "string" || string.length === 0) return 0;
-	const { ambiguousIsNarrow = true, countAnsiEscapeCodes = false } = options;
-	if (!countAnsiEscapeCodes) string = stripAnsi(string);
-	if (string.length === 0) return 0;
-	let width = 0;
-	const eastAsianWidthOptions = { ambiguousAsWide: !ambiguousIsNarrow };
-	for (const { segment: character } of segmenter.segment(string)) {
-		const codePoint = character.codePointAt(0);
-		if (codePoint <= 31 || codePoint >= 127 && codePoint <= 159) continue;
-		if (codePoint >= 8203 && codePoint <= 8207 || codePoint === 65279) continue;
-		if (codePoint >= 768 && codePoint <= 879 || codePoint >= 6832 && codePoint <= 6911 || codePoint >= 7616 && codePoint <= 7679 || codePoint >= 8400 && codePoint <= 8447 || codePoint >= 65056 && codePoint <= 65071) continue;
-		if (codePoint >= 55296 && codePoint <= 57343) continue;
-		if (codePoint >= 65024 && codePoint <= 65039) continue;
-		if (defaultIgnorableCodePointRegex.test(character)) continue;
-		if (emojiRegex().test(character)) {
-			width += 2;
-			continue;
-		}
-		width += eastAsianWidth(codePoint, eastAsianWidthOptions);
-	}
-	return width;
-}
-function isUnicodeSupported() {
-	const { env } = process$1;
-	const { TERM, TERM_PROGRAM } = env;
-	if (process$1.platform !== "win32") return TERM !== "linux";
-	return Boolean(env.WT_SESSION) || Boolean(env.TERMINUS_SUBLIME) || env.ConEmuTask === "{cmd::Cmder}" || TERM_PROGRAM === "Terminus-Sublime" || TERM_PROGRAM === "vscode" || TERM === "xterm-256color" || TERM === "alacritty" || TERM === "rxvt-unicode" || TERM === "rxvt-unicode-256color" || env.TERMINAL_EMULATOR === "JetBrains-JediTerm";
-}
-const TYPE_COLOR_MAP = {
-	info: "cyan",
-	fail: "red",
-	success: "green",
-	ready: "green",
-	start: "magenta"
-};
-const LEVEL_COLOR_MAP = {
-	0: "red",
-	1: "yellow"
-};
-const unicode = isUnicodeSupported();
-const s = (c, fallback) => unicode ? c : fallback;
-const TYPE_ICONS = {
-	error: s("✖", "×"),
-	fatal: s("✖", "×"),
-	ready: s("✔", "√"),
-	warn: s("⚠", "‼"),
-	info: s("ℹ", "i"),
-	success: s("✔", "√"),
-	debug: s("⚙", "D"),
-	trace: s("→", "→"),
-	fail: s("✖", "×"),
-	start: s("◐", "o"),
-	log: ""
-};
-function stringWidth(str) {
-	if (!(typeof Intl === "object") || !Intl.Segmenter) return stripAnsi$1(str).length;
-	return stringWidth$1(str);
-}
-var FancyReporter = class extends BasicReporter {
-	formatStack(stack, message, opts) {
-		const indent = "  ".repeat((opts?.errorLevel || 0) + 1);
-		return `
-${indent}` + parseStack(stack, message).map((line) => "  " + line.replace(/^at +/, (m) => colors.gray(m)).replace(/\((.+)\)/, (_, m) => `(${colors.cyan(m)})`)).join(`
-${indent}`);
-	}
-	formatType(logObj, isBadge, opts) {
-		const typeColor = TYPE_COLOR_MAP[logObj.type] || LEVEL_COLOR_MAP[logObj.level] || "gray";
-		if (isBadge) return getBgColor(typeColor)(colors.black(` ${logObj.type.toUpperCase()} `));
-		const _type = typeof TYPE_ICONS[logObj.type] === "string" ? TYPE_ICONS[logObj.type] : logObj.icon || logObj.type;
-		return _type ? getColor(typeColor)(_type) : "";
-	}
-	formatLogObj(logObj, opts) {
-		const [message, ...additional] = this.formatArgs(logObj.args, opts).split("\n");
-		if (logObj.type === "box") return box(characterFormat(message + (additional.length > 0 ? "\n" + additional.join("\n") : "")), {
-			title: logObj.title ? characterFormat(logObj.title) : void 0,
-			style: logObj.style
-		});
-		const date = this.formatDate(logObj.date, opts);
-		const coloredDate = date && colors.gray(date);
-		const isBadge = logObj.badge ?? logObj.level < 2;
-		const type = this.formatType(logObj, isBadge, opts);
-		const tag = logObj.tag ? colors.gray(logObj.tag) : "";
-		let line;
-		const left = this.filterAndJoin([type, characterFormat(message)]);
-		const right = this.filterAndJoin(opts.columns ? [tag, coloredDate] : [tag]);
-		const space = (opts.columns || 0) - stringWidth(left) - stringWidth(right) - 2;
-		line = space > 0 && (opts.columns || 0) >= 80 ? left + " ".repeat(space) + right : (right ? `${colors.gray(`[${right}]`)} ` : "") + left;
-		line += characterFormat(additional.length > 0 ? "\n" + additional.join("\n") : "");
-		if (logObj.type === "trace") {
-			const _err = /* @__PURE__ */ new Error("Trace: " + logObj.message);
-			line += this.formatStack(_err.stack || "", _err.message);
-		}
-		return isBadge ? "\n" + line + "\n" : line;
-	}
-};
-function characterFormat(str) {
-	return str.replace(/`([^`]+)`/gm, (_, m) => colors.cyan(m)).replace(/\s+_([^_]+)_\s+/gm, (_, m) => ` ${colors.underline(m)} `);
-}
-function getColor(color = "white") {
-	return colors[color] || colors.white;
-}
-function getBgColor(color = "bgWhite") {
-	return colors[`bg${color[0].toUpperCase()}${color.slice(1)}`] || colors.bgWhite;
-}
-function createConsola(options = {}) {
-	let level = _getDefaultLogLevel();
-	if (process.env.CONSOLA_LEVEL) level = Number.parseInt(process.env.CONSOLA_LEVEL) ?? level;
-	return createConsola$1({
-		level,
-		defaults: { level },
-		stdout: process.stdout,
-		stderr: process.stderr,
-		prompt: (...args) => Promise.resolve().then(() => (init_prompt(), prompt_exports)).then((m) => m.prompt(...args)),
-		reporters: options.reporters || [options.fancy ?? !(T || R) ? new FancyReporter() : new BasicReporter()],
-		...options
-	});
-}
-function _getDefaultLogLevel() {
-	if (g) return LogLevels.debug;
-	if (R) return LogLevels.warn;
-	return LogLevels.info;
-}
-const consola = createConsola();
 async function startAll(servers) {
 	const results = {};
 	for (const [name, server] of Object.entries(servers)) if (server.serverType === "http") {
@@ -38363,6 +32811,7 @@ let _nextRequestId = 1;
 /**
 * Parses `data:` lines from an SSE response body.
 * Multiple consecutive data lines are joined (per SSE spec).
+* @param text
 */
 function parseSseData(text) {
 	const dataLines = [];
@@ -38374,6 +32823,10 @@ function parseSseData(text) {
 *
 * Handles both plain-JSON and `text/event-stream` (SSE) responses as required
 * by the MCP Streamable HTTP Transport specification (2025-03-26).
+* @param url
+* @param body
+* @param sessionId
+* @param signal
 */
 async function mcpPost(url, body, sessionId, signal) {
 	const headers = {
@@ -38437,29 +32890,28 @@ async function callMcpTool(url, toolName, args, sessionId, signal) {
 		name: toolName,
 		arguments: args
 	}, sessionId, signal);
-	const typedResult = result;
-	if (typedResult?.isError === true) {
-		const errorText = (typedResult.content ?? []).filter((item) => typeof item === "object" && item !== null && item.type === "text").map((item) => item.text).join("\n");
-		throw new Error(errorText || "MCP tool returned an error");
-	}
-	const content = typedResult?.content;
-	if (Array.isArray(content)) {
-		const textItems = content.filter((item) => typeof item === "object" && item !== null && item.type === "text").map((item) => item.text);
-		return textItems.length === 1 ? textItems[0] : textItems.join("\n");
-	}
 	return result;
+}
+function mcpResultToPiToolContent$1(result) {
+	const content = result?.content;
+	if (Array.isArray(content)) return content;
+	return [{
+		type: "text",
+		text: typeof result === "string" ? result : JSON.stringify(result)
+	}];
 }
 /**
 * Connects to a remote MCP server via Streamable HTTP, lists its tools, wraps
-* each as a Pi SDK `AgentTool` with a namespaced name `mcp__<name>__<toolName>`,
-* and returns the connection handle.
+* selected tools as Pi SDK `AgentTool` objects with namespaced names
+* `mcp__<name>__<toolName>`, and returns the connection handle.
 *
 * Inspired by Astro's Flue pattern: connect → listTools → wrap → execute → close.
 *
 * @param name - Logical server name used for tool namespacing.
 * @param url  - Full URL of the MCP HTTP endpoint.
+* @param toolNames - Optional tool names to convert. Omit to convert all listed tools.
 */
-async function connectMcpServer(name, url, options = {}) {
+async function connectMcpServer(name, url, toolNames) {
 	const { result: _initResult, sessionId } = await sendRequest(url, "initialize", {
 		protocolVersion: "2024-11-05",
 		capabilities: { tools: {} },
@@ -38471,12 +32923,16 @@ async function connectMcpServer(name, url, options = {}) {
 	await sendNotification(url, "notifications/initialized", void 0, sessionId);
 	const { result: toolsResult } = await sendRequest(url, "tools/list", void 0, sessionId);
 	const rawTools = toolsResult?.tools ?? [];
-	const { allowedTools } = options;
-	const filteredTools = allowedTools && allowedTools.length > 0 && allowedTools[0] !== "*" ? rawTools.filter((t) => allowedTools.includes(t.name)) : rawTools;
-	const capturedSessionId = sessionId;
+	const rawToolNames = new Set(rawTools.map((tool) => tool.name));
+	const selectedToolNames = toolNames && toolNames.length > 0 ? new Set(toolNames) : null;
+	if (selectedToolNames) {
+		for (const requestedToolName of selectedToolNames) if (!rawToolNames.has(requestedToolName)) consola.warn(`MCP '${name}' requested tool '${requestedToolName}', but the server did not list it.`);
+	}
+	const selectedTools = selectedToolNames ? rawTools.filter((tool) => selectedToolNames.has(tool.name)) : rawTools;
+	const mcpSessionId = sessionId;
 	return {
 		name,
-		tools: filteredTools.map((tool) => {
+		tools: selectedTools.map((tool) => {
 			const inputSchema = tool.inputSchema ?? {
 				type: "object",
 				properties: {}
@@ -38487,12 +32943,9 @@ async function connectMcpServer(name, url, options = {}) {
 				description: tool.description ?? "",
 				parameters: inputSchema,
 				execute: async (_toolCallId, params, signal) => {
-					const result = await callMcpTool(url, tool.name, params, capturedSessionId, signal);
+					const result = await callMcpTool(url, tool.name, params, mcpSessionId, signal);
 					return {
-						content: [{
-							type: "text",
-							text: typeof result === "string" ? result : JSON.stringify(result)
-						}],
+						content: mcpResultToPiToolContent$1(result),
 						details: result
 					};
 				}
@@ -38501,66 +32954,198 @@ async function connectMcpServer(name, url, options = {}) {
 		close: async () => {}
 	};
 }
-/**
-* Converts a {@link ToolDef} to a Pi SDK {@link AgentTool}.
-*
-* The `parameters` JSON Schema is passed through as an `Unsafe` TypeBox schema
-* so the Pi agent can relay the schema to the LLM without strict local validation.
-* Tool errors should be thrown; the Pi SDK catches them and surfaces them to the LLM.
-*/
-function toolDefToAgentTool(toolDef) {
-	const schema = toolDef.parameters;
-	return {
-		name: toolDef.name,
-		label: toolDef.name,
-		description: toolDef.description ?? "",
-		parameters: schema,
-		execute: async (_toolCallId, params, signal) => {
-			const result = await toolDef.execute(params, signal);
-			return {
-				content: [{
-					type: "text",
-					text: typeof result === "string" ? result : JSON.stringify(result)
-				}],
-				details: result
+let _nextStdioRequestId = 1;
+function mcpResultToPiToolContent(result) {
+	const content = result?.content;
+	if (Array.isArray(content)) return content;
+	return [{
+		type: "text",
+		text: typeof result === "string" ? result : JSON.stringify(result)
+	}];
+}
+function createStdioJsonRpcClient(child) {
+	const pending = /* @__PURE__ */ new Map();
+	let stdoutBuffer = "";
+	let closed = false;
+	function rejectPending(error) {
+		for (const request of pending.values()) request.reject(error);
+		pending.clear();
+	}
+	child.stdout.setEncoding("utf8");
+	child.stdout.on("data", (chunk) => {
+		stdoutBuffer += chunk;
+		let newlineIndex = stdoutBuffer.indexOf("\n");
+		while (newlineIndex >= 0) {
+			const line = stdoutBuffer.slice(0, newlineIndex).trim();
+			stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+			newlineIndex = stdoutBuffer.indexOf("\n");
+			if (!line) continue;
+			let message;
+			try {
+				message = JSON.parse(line);
+			} catch {
+				continue;
+			}
+			if (message.id === void 0) continue;
+			const request = pending.get(message.id);
+			if (!request) continue;
+			pending.delete(message.id);
+			if (message.error) request.reject(/* @__PURE__ */ new Error(`MCP error: ${JSON.stringify(message.error)}`));
+			else request.resolve(message.result);
+		}
+	});
+	child.once("error", (error) => {
+		closed = true;
+		rejectPending(error);
+	});
+	child.once("exit", (code, signal) => {
+		closed = true;
+		rejectPending(/* @__PURE__ */ new Error(`MCP stdio process exited (${signal ?? code ?? "unknown"})`));
+	});
+	function writeMessage(message) {
+		if (closed || !child.stdin.writable) throw new Error("MCP stdio process is not writable");
+		child.stdin.write(`${JSON.stringify(message)}\n`);
+	}
+	async function request(method, params, signal) {
+		const id = _nextStdioRequestId++;
+		return new Promise((resolve, reject) => {
+			const abortHandler = () => {
+				pending.delete(id);
+				reject(/* @__PURE__ */ new Error(`MCP request aborted: ${method}`));
 			};
+			if (signal?.aborted) {
+				abortHandler();
+				return;
+			}
+			if (signal) signal.addEventListener("abort", abortHandler, { once: true });
+			pending.set(id, {
+				resolve: (value) => {
+					signal?.removeEventListener("abort", abortHandler);
+					resolve(value);
+				},
+				reject: (reason) => {
+					signal?.removeEventListener("abort", abortHandler);
+					reject(reason);
+				}
+			});
+			try {
+				writeMessage({
+					jsonrpc: "2.0",
+					id,
+					method,
+					...params !== void 0 ? { params } : {}
+				});
+			} catch (error) {
+				pending.delete(id);
+				signal?.removeEventListener("abort", abortHandler);
+				reject(error);
+			}
+		});
+	}
+	async function notify(method, params) {
+		writeMessage({
+			jsonrpc: "2.0",
+			method,
+			...params !== void 0 ? { params } : {}
+		});
+	}
+	return {
+		request,
+		notify
+	};
+}
+async function connectStdioMcpServer(name, command, args, toolNames) {
+	const child = spawn(command, args, { stdio: [
+		"pipe",
+		"pipe",
+		"pipe"
+	] });
+	child.stderr.resume();
+	const client = createStdioJsonRpcClient(child);
+	await client.request("initialize", {
+		protocolVersion: "2024-11-05",
+		capabilities: { tools: {} },
+		clientInfo: {
+			name: "clank8y",
+			version: "1.0.0"
+		}
+	});
+	await client.notify("notifications/initialized");
+	const rawTools = (await client.request("tools/list"))?.tools ?? [];
+	const rawToolNames = new Set(rawTools.map((tool) => tool.name));
+	const selectedToolNames = toolNames && toolNames.length > 0 ? new Set(toolNames) : null;
+	if (selectedToolNames) {
+		for (const requestedToolName of selectedToolNames) if (!rawToolNames.has(requestedToolName)) consola.warn(`MCP '${name}' requested tool '${requestedToolName}', but the server did not list it.`);
+	}
+	return {
+		name,
+		tools: (selectedToolNames ? rawTools.filter((tool) => selectedToolNames.has(tool.name)) : rawTools).map((tool) => {
+			const inputSchema = tool.inputSchema ?? {
+				type: "object",
+				properties: {}
+			};
+			return {
+				name: `mcp__${name}__${tool.name}`,
+				label: tool.name,
+				description: tool.description ?? "",
+				parameters: inputSchema,
+				execute: async (_toolCallId, params, signal) => {
+					const result = await client.request("tools/call", {
+						name: tool.name,
+						arguments: params
+					}, signal);
+					return {
+						content: mcpResultToPiToolContent(result),
+						details: result
+					};
+				}
+			};
+		}),
+		close: async () => {
+			if (!child.killed) child.kill("SIGTERM");
+		}
+	};
+}
+/**
+* Returns Pi SDK tools that are active for every clank8y mode.
+*
+* Mode selection and mode-local MCP tools are kept separate so the active mode
+* still owns its prompt and MCP surface while Pi gets one flat native tool list.
+*/
+function getSharedTools() {
+	return [];
+}
+async function createPiToolBundle(externalMcpServers, startResults, modeTools = []) {
+	const connections = [];
+	try {
+		for (const [name, server] of Object.entries(externalMcpServers)) {
+			const result = startResults[name];
+			if (server.serverType === "http") {
+				const httpResult = result;
+				if (!httpResult?.url) continue;
+				connections.push(await connectMcpServer(name, httpResult.url, server.toolNames));
+				continue;
+			}
+			const stdioResult = result;
+			if (!stdioResult?.command) continue;
+			connections.push(await connectStdioMcpServer(name, stdioResult.command, stdioResult.args, server.toolNames));
+		}
+	} catch (error) {
+		await Promise.all(connections.map((connection) => connection.close()));
+		throw error;
+	}
+	return {
+		tools: [
+			...getSharedTools(),
+			...modeTools,
+			...connections.flatMap((connection) => connection.tools)
+		],
+		close: async () => {
+			await Promise.all(connections.map((connection) => connection.close()));
 		}
 	};
 }
 const PI_AGENT_NAME = "pi";
-/**
-* Maps legacy clank8y model names to their canonical Pi SDK `[provider, id]` pairs.
-* Users can also pass `provider:model-id` strings directly (e.g. `anthropic:claude-opus-4-5`).
-*/
-const LEGACY_MODEL_MAP = {
-	"claude-sonnet-4.6": ["anthropic", "claude-sonnet-4-20250514"],
-	"claude-sonnet-4.5": ["anthropic", "claude-sonnet-4-5-20251022"],
-	"claude-haiku-4.5": ["anthropic", "claude-haiku-4-5-20251022"],
-	"claude-opus-4.6": ["anthropic", "claude-opus-4-5-20251001"],
-	"claude-opus-4.6-fast": ["anthropic", "claude-opus-4-5-20251001"],
-	"claude-opus-4.5": ["anthropic", "claude-opus-4-5-20251001"],
-	"claude-sonnet-4": ["anthropic", "claude-sonnet-4-20250514"],
-	"gpt-5.3-codex": ["openai", "gpt-4o"],
-	"gpt-5.2-codex": ["openai", "gpt-4o"],
-	"gpt-5.2": ["openai", "gpt-4o"],
-	"gpt-5.1-codex-max": ["openai", "gpt-4o"],
-	"gpt-5.1-codex": ["openai", "gpt-4o"],
-	"gpt-5.1": ["openai", "gpt-4o"],
-	"gpt-5.1-codex-mini": ["openai", "gpt-4o-mini"],
-	"gpt-5-mini": ["openai", "gpt-4o-mini"],
-	"gpt-4.1": ["openai", "gpt-4.1"],
-	"gemini-3-pro-preview": ["google", "gemini-2.5-pro-preview"]
-};
-function resolveModel(modelString) {
-	const colonIndex = modelString.indexOf(":");
-	if (colonIndex > 0) return getModel(modelString.slice(0, colonIndex), modelString.slice(colonIndex + 1));
-	const mapped = LEGACY_MODEL_MAP[modelString];
-	if (mapped) return getModel(mapped[0], mapped[1]);
-	if (modelString.startsWith("claude-")) return getModel("anthropic", modelString);
-	if (modelString.startsWith("gpt-") || modelString.startsWith("o1") || modelString.startsWith("o3")) return getModel("openai", modelString);
-	if (modelString.startsWith("gemini-")) return getModel("google", modelString);
-	return getModel("openai", modelString);
-}
 function resolveAgentToken$1() {
 	return getClank8yRuntimeContext().auth.agentToken;
 }
@@ -38623,21 +33208,6 @@ function accumulateUsage(event, totals) {
 		}
 	}
 }
-async function openMcpConnections(mcps, startResults) {
-	const connections = [];
-	for (const [name, server] of Object.entries(mcps)) {
-		if (server.serverType !== "http") continue;
-		const result = startResults[name];
-		if (!result?.url) continue;
-		const allowedTools = server.allowedTools[0] !== "*" ? server.allowedTools : void 0;
-		const conn = await connectMcpServer(name, result.url, { allowedTools });
-		connections.push(conn);
-	}
-	return connections;
-}
-async function closeMcpConnections(connections) {
-	await Promise.all(connections.map((c) => c.close()));
-}
 async function runPiAgent(systemPrompt, profile, agentTools) {
 	const totals = {
 		inputTokens: 0,
@@ -38650,12 +33220,12 @@ async function runPiAgent(systemPrompt, profile, agentTools) {
 	const agent = new Agent({
 		initialState: {
 			systemPrompt,
-			model: resolveModel(profile.model),
+			model: profile.model,
 			tools: agentTools
 		},
 		getApiKey: async () => agentToken
 	});
-	subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model);
+	subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model.id);
 	agent.subscribe((event) => {
 		accumulateUsage(event, totals);
 	});
@@ -38718,83 +33288,69 @@ const piAgent = (profile) => {
 	return {
 		name: PI_AGENT_NAME,
 		selectMode: async (selectModeOptions) => {
-			const mcpStatus = selectModeOptions.mcp.status;
-			if (mcpStatus.state !== "running" || !("url" in mcpStatus)) throw new Error("Select mode MCP server must be running before calling selectMode.");
-			const { url } = mcpStatus;
-			const connection = await connectMcpServer("selectMode", url, { allowedTools: selectModeOptions.mcp.allowedTools });
 			const agentToken = resolveAgentToken$1();
-			const model = resolveModel(profile.model);
 			const agent = new Agent({
 				initialState: {
 					systemPrompt: selectModeOptions.prompt,
-					model,
-					tools: connection.tools
+					model: profile.model,
+					tools: selectModeOptions.tools
 				},
 				getApiKey: async () => agentToken
 			});
-			subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model);
-			try {
-				await agent.prompt("Select the appropriate clank8y mode for this request.");
-			} finally {
-				await connection.close();
-			}
+			subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model.id);
+			await agent.prompt("Select the appropriate clank8y mode for this request.");
 		},
-		run: async ({ mode, prompt, mcps }) => {
-			const connections = await openMcpConnections(mcps, await startAll(mcps));
-			const sharedTools = getSharedTools().map(toolDefToAgentTool);
-			const mcpTools = connections.flatMap((c) => c.tools);
-			const allTools = [...sharedTools, ...mcpTools];
+		run: async ({ mode, prompt, externalMcpServers, tools }) => {
+			const startResults = await startAll(externalMcpServers);
+			let toolBundle;
 			try {
-				const { agent, totals } = await runPiAgent(prompt, profile, allTools);
+				toolBundle = await createPiToolBundle(externalMcpServers, startResults, tools);
+				const { agent, totals } = await runPiAgent(prompt, profile, toolBundle.tools);
 				logUsageSummary(totals);
 				if (mode === "IncidentFix") await ensureIncidentFixReport(agent);
 			} finally {
-				await closeMcpConnections(connections);
-				await stopAll(mcps);
+				await toolBundle?.close();
+				await stopAll(externalMcpServers);
 			}
 		}
 	};
 };
 const DEFAULT_CONFIGURATION = {
-	model: "claude-sonnet-4.6",
+	model: getModel("anthropic", "claude-sonnet-4-20250514"),
 	timeOutMs: 12e5,
-	tools: {
-		maxCalls: 60,
-		maxRuntimeMs: 6e4
-	},
-	agent: "pi",
 	disabledModes: {}
 };
-async function getClank8y(options) {
-	const { agent: agentName, ...profile } = defu$1(options, DEFAULT_CONFIGURATION);
-	let agent;
-	switch (agentName) {
-		case "pi":
-			agent = piAgent(profile);
-			break;
-		default: throw new Error(`Unsupported agent: ${agentName}`);
-	}
-	agent = await agent;
+function modelFromInput(model) {
+	if (!model) return DEFAULT_CONFIGURATION.model;
+	if (typeof model !== "string") return model;
+	const colonIndex = model.indexOf(":");
+	if (colonIndex <= 0 || colonIndex === model.length - 1) throw new Error(`Invalid model '${model}'. Use provider:model-id format.`);
+	return getModel(model.slice(0, colonIndex), model.slice(colonIndex + 1));
+}
+function getClank8y(options) {
+	const profile = {
+		model: modelFromInput(options.model),
+		timeOutMs: options.timeOutMs ?? DEFAULT_CONFIGURATION.timeOutMs,
+		disabledModes: options.disabledModes ?? DEFAULT_CONFIGURATION.disabledModes
+	};
 	return {
-		agent,
+		agent: piAgent(profile),
 		profile
 	};
 }
 async function executeClank8yAgent(options) {
-	const { agent, profile } = await getClank8y(options);
+	const { agent, profile } = getClank8y(options);
 	await resetClank8yArtifacts();
 	consola.success("Reset .clank8y artifacts directory.");
-	const { mcp, getSelection, prompt: selectModePrompt } = getSelectModeRuntime(options.promptContext, profile.disabledModes);
-	await mcp.start();
+	const { tools: selectionTools, getSelection, prompt: selectModePrompt } = getSelectModeRuntime(options.promptContext, profile.disabledModes);
 	await agent.selectMode({
 		prompt: selectModePrompt,
-		mcp
+		tools: selectionTools
 	});
-	await mcp.stop();
 	const selection = getSelection();
 	if (!selection) throw new Error("Mode selection failed: the model did not provide a valid clank8y mode selection.");
 	if (profile.disabledModes[selection.mode] === true) throw new Error(`Mode selection failed: selected mode '${selection.mode}' is not enabled for this run.`);
-	const { prompt, mcps } = getModeRuntime(selection.mode, options.promptContext);
+	const { prompt, externalMcpServers, tools } = getModeRuntime(selection.mode, options.promptContext);
 	await writePromptArtifact(prompt);
 	consola.success("Wrote .clank8y/prompt.md.");
 	if (selection.mode === "IncidentFix") {
@@ -38803,11 +33359,11 @@ async function executeClank8yAgent(options) {
 	}
 	logAgentMessage({
 		agent: agent.name,
-		model: profile.model
+		model: profile.model.id
 	}, `Selected mode: ${selection.mode}\nMode selection reason: ${selection.reason}`);
 	logAgentMessage({
 		agent: agent.name,
-		model: profile.model
+		model: profile.model.id
 	}, [
 		`mode: ${selection.mode}`,
 		"",
@@ -38816,7 +33372,8 @@ async function executeClank8yAgent(options) {
 	await agent.run({
 		mode: selection.mode,
 		prompt,
-		mcps
+		externalMcpServers,
+		tools
 	});
 	await agent.cleanup?.();
 	return selection;
@@ -38832,8 +33389,7 @@ async function runClank8y(options) {
 		promptContext: getClank8yRuntimeContext().promptContext,
 		disabledModes: options.disabledModes,
 		model: options.model,
-		timeOutMs: options.timeOutMs,
-		tools: options.tools
+		timeOutMs: options.timeOutMs
 	});
 	return {
 		status: "completed",
