@@ -16,6 +16,7 @@ packages:
 catalog:
   '@actions/core': ^3.0.0
   '@actions/github': ^9.0.0
+  '@ai-hero/sandcastle': ^0.5.10
   '@angular/cli': ^21.0.3
   '@earendil-works/pi-agent-core': ^0.74.0
   '@earendil-works/pi-ai': ^0.74.0
@@ -46,6 +47,4 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - workerd
-
-
 

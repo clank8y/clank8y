@@ -30,6 +30,7 @@
     "dotenv": "catalog:"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "catalog:",
     "@schplitt/eslint-config": "catalog:",
     "@types/node": "catalog:",
     "bumpp": "catalog:",
