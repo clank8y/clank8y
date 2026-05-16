@@ -27,25 +27,46 @@ jobs:
     steps:
       - uses: clank8y/clank8y@<sha> # pin to a specific commit SHA instead of a tag
         env:
-          PI_AGENT_TOKEN: ${{ secrets.PI_AGENT_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         with:
           prompt: ${{ inputs.prompt }} # do not set manually
-          # model: anthropic:claude-sonnet-4-20250514  # optional — provider:model-id
-          # timeout-ms: 1200000                       # optional — defaults to 1200000 (20 minutes)
+          model: anthropic:claude-sonnet-4-20250514 # required — provider:model-id
+          # timeout-ms: 1200000                    # optional — defaults to 1200000 (20 minutes)
 ```
 
 > **Note:** Do not fill in the `prompt` input manually. It is populated automatically by the clank8y webhook server with GitHub event metadata, target context, actor, and any quoted user instruction. Manually dispatching this workflow without that context will cause the agent to fail.
 
-## Pi Agent Token
+## Model and Provider API Keys
 
-clank8y needs a Pi agent API token for model access. Add it as a repository secret named `PI_AGENT_TOKEN`.
+clank8y needs a model string and provider credentials for Pi model access.
 
-The token is passed to the Pi runtime for model/provider access. clank8y no longer validates provider-specific token permissions itself.
+- `model` is a required GitHub Action input in `provider:model-id` format, for example `anthropic:claude-sonnet-4-20250514`.
+- Provider credentials are read directly by Pi / `@earendil-works/pi-ai` from the standard provider environment variables.
+- clank8y does not pass model-provider tokens through its own runtime context. Set the environment variable that matches the selected `model` provider.
+
+Common examples:
+
+| Model Provider | Example `model`                          | Secret/env Var to Set                                                                                                |
+| -------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Anthropic      | `anthropic:claude-sonnet-4-20250514`     | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN`                                                                       |
+| OpenAI         | `openai:gpt-5.1`                         | `OPENAI_API_KEY`                                                                                                     |
+| Google Gemini  | `google:gemini-3-pro-preview`            | `GEMINI_API_KEY`                                                                                                     |
+| Mistral        | `mistral:mistral-large-latest`           | `MISTRAL_API_KEY`                                                                                                    |
+| OpenRouter     | `openrouter:anthropic/claude-sonnet-4.5` | `OPENROUTER_API_KEY`                                                                                                 |
+| Groq           | `groq:llama-3.3-70b-versatile`           | `GROQ_API_KEY`                                                                                                       |
+| Amazon Bedrock | `amazon-bedrock:<model-id>`              | standard AWS credentials, e.g. `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY`, `AWS_PROFILE`, or Bedrock bearer token |
+| Google Vertex  | `google-vertex:<model-id>`               | `GOOGLE_CLOUD_API_KEY` or Application Default Credentials with project/location env vars                             |
+
+For the full list of supported provider environment variables and setup details, see Pi's provider API key docs: <https://pi.dev/docs/latest/providers#api-keys>
+
+clank8y exports the allowed typed model-string union as `PiModelString` from the `clank8y` package for TypeScript consumers. The GitHub Action still receives `model` as a string and casts it at the Action boundary; invalid provider/model combinations fail when Pi resolves or uses the model.
 
 ### How to configure
 
-1. Create or obtain the token expected by your Pi/model provider setup.
-2. Save it as `PI_AGENT_TOKEN` in repo **Settings → Secrets and variables → Actions**.
+1. Pick the Pi model string and set the workflow `model` input.
+2. Create or obtain the token expected by that model provider.
+3. Save the matching provider token as a repository secret, for example `ANTHROPIC_API_KEY` for `anthropic:*` or `OPENAI_API_KEY` for `openai:*`.
+4. Pass that secret as an environment variable in the clank8y workflow step.
 
 ## How It Works
 
@@ -94,10 +115,10 @@ Reviewer assignments and issue assignments use source-specific prompt guidance f
 
 ### Token flow
 
-| Token             | Purpose                                       | Who Sets It                            |
-| ----------------- | --------------------------------------------- | -------------------------------------- |
-| `PI_AGENT_TOKEN`  | Pi/model access                               | You (repo secret)                      |
-| clank8y bot token | Review/Task GitHub API access and repo writes | Auto-minted via OIDC — not set by user |
+| Token             | Purpose                                                       | Who Sets It                                      |
+| ----------------- | ------------------------------------------------------------- | ------------------------------------------------ |
+| Provider API key  | Pi/model access, e.g. `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | You (repo secret mapped to the matching env var) |
+| clank8y bot token | Review/Task GitHub API access and repo writes                 | Auto-minted via OIDC — not set by user           |
 
 The `id-token: write` permission allows clank8y to exchange an OIDC token for a short-lived bot token scoped to the target repository. The website token exchange currently mints repository-scoped permissions for `contents: write`, `pull_requests: write`, and `issues: write` so the GitHub-hosted runtime can complete both Review and Task workflows.
 

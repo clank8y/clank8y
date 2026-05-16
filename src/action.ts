@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 import process from 'node:process'
 import { CLANK8Y_DEFAULT_TOKEN_EXCHANGE_URL, CLANK8Y_OIDC_AUDIENCE } from '../shared/oidc'
 import { runClank8y } from 'clank8y'
-import type { RepositoryContext, RunInfo } from 'clank8y'
+import type { PiModelString, RepositoryContext, RunInfo } from 'clank8y'
 
 function resolveRequiredInput(name: string): string {
   const value = core.getInput(name).trim()
@@ -62,15 +62,6 @@ function requireRunInfo(repository: RepositoryContext): RunInfo {
     id: github.context.runId,
     url: `https://github.com/${repository.owner}/${repository.repo}/actions/runs/${github.context.runId}`,
   }
-}
-
-function resolveAgentToken(): string {
-  const token = process.env.PI_AGENT_TOKEN?.trim()
-  if (!token) {
-    throw new Error('Pi agent API key is missing. Set PI_AGENT_TOKEN.')
-  }
-
-  return token
 }
 
 function resolveTokenExchangeUrl(): string {
@@ -151,19 +142,16 @@ async function resolveGitHubToken(repository: RepositoryContext): Promise<string
 async function runClank8yEntry(): Promise<void> {
   requireGitHubActionRuntime()
 
-  const model = resolveOptionalInput('model')
+  const model = resolveRequiredInput('model') as PiModelString
   const timeOutMs = resolveTimeoutInput()
   const repository = requireRepositoryContext()
   const githubToken = await resolveGitHubToken(repository)
-  const agentToken = resolveAgentToken()
   core.setSecret(githubToken)
-  core.setSecret(agentToken)
 
   await runClank8y({
     promptContext: resolveRequiredInput('prompt'),
     auth: {
       githubToken,
-      agentToken,
     },
     disabledModes: {
       IncidentFix: true,

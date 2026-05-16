@@ -16,7 +16,7 @@ packages/
   ├── src/
   │   ├── index.ts            # Public package entrypoint for sandbox/custom runtimes
   │   ├── setup/              # Shared runtime context helpers used across modes
-  │   │   ├── context.ts      # Runtime context state (auth.agentToken + auth.githubToken)
+  │   │   ├── context.ts      # Runtime context state (auth.githubToken)
   │   │   └── index.ts        # Public setup barrel
   │   ├── formatters/         # Reusable pure formatting helpers shared across MCPs
   │   ├── tools/              # Pi tool assembly from shared/mode Pi tools plus HTTP and stdio/CLI MCP adapters
@@ -178,7 +178,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
 - `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
 - Website webhook dispatch should inject structured GitHub event metadata plus any quoted user instruction and let clank8y select `Review` vs `Task`; do not hard-force the mode for mention-driven or assignment-driven invocations. Source-specific prompt guidance is fine when it stays advisory, such as nudging reviewer assignment toward `Review` and issue assignment toward `Task`.
-- Pi agent authentication uses `agentToken` (formerly `copilotToken`) from `Clank8yRuntimeContext`. The `getApiKey` callback returns this token for every provider. Set `PI_AGENT_TOKEN` env var in the GitHub Actions runtime.
+- Pi agent authentication relies on provider-specific Pi environment variables such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, and `OPENROUTER_API_KEY`. Do not pass model-provider tokens through `Clank8yRuntimeContext`; the Pi provider layer reads its own environment variables.
 - Pi agent model options accept Pi's native `Model<any>` object or a simple `provider:model-id` string resolved once at the clank8y boundary with Pi's `getModel`. Do not add legacy alias maps or heuristic model-name mapping.
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
 - Keep shared runtime context helpers under `src/setup/`; place reusable git execution/config helpers under `src/utils/` rather than inside a single mode implementation.

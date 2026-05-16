@@ -5,18 +5,11 @@ import { logAgentMessage, logUsageSummary } from '../../logging'
 import type { UsageTotals } from '../../logging'
 import { startAll, stopAll } from '../../tools/external'
 import { createPiToolBundle } from '../../tools'
-import { getClank8yRuntimeContext } from '../../setup'
 import { doesReportArtifactExist, getReportArtifactPath } from '../../utils/artifacts'
 import type { Clank8yAgent, Clank8yAgentFactory, Clank8yProfile } from '..'
 import { writeFile } from 'node:fs/promises'
 
 export const PI_AGENT_NAME = 'pi'
-
-// ─── Agent token ──────────────────────────────────────────────────────────────
-
-function resolveAgentToken(): string {
-  return getClank8yRuntimeContext().auth.agentToken
-}
 
 // ─── Event subscription ──────────────────────────────────────────────────────
 
@@ -115,15 +108,12 @@ async function runPiAgent(
     cost: 0,
   }
 
-  const agentToken = resolveAgentToken()
-
   const agent = new Agent({
     initialState: {
       systemPrompt,
       model: profile.model,
       tools: agentTools,
     },
-    getApiKey: async () => agentToken,
   })
 
   subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model.id)
@@ -218,15 +208,12 @@ export const piAgent: Clank8yAgentFactory = (profile: Clank8yProfile): Clank8yAg
     name: PI_AGENT_NAME,
 
     selectMode: async (selectModeOptions) => {
-      const agentToken = resolveAgentToken()
-
       const agent = new Agent({
         initialState: {
           systemPrompt: selectModeOptions.prompt,
           model: profile.model,
           tools: selectModeOptions.tools,
         },
-        getApiKey: async () => agentToken,
       })
 
       subscribeToAgentEvents(agent, PI_AGENT_NAME, profile.model.id)
