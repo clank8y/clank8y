@@ -7,6 +7,7 @@ describe('external MCP server definitions', () => {
       docs: createRemoteHttpMcpServer({
         url: 'https://example.com/docs/mcp',
         toolNames: ['search-docs'],
+        headers: { authorization: 'Bearer token' },
       }),
       codex: createRemoteHttpMcpServer({
         url: 'https://example.com/codex/mcp',
@@ -20,6 +21,7 @@ describe('external MCP server definitions', () => {
       type: 'http',
       url: 'https://example.com/docs/mcp',
       toolNames: ['search-docs'],
+      headers: { authorization: 'Bearer token' },
     })
     expect(started.codex).toEqual({
       type: 'http',

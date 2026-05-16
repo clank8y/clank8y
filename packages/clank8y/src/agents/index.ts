@@ -1,3 +1,4 @@
+import { defu } from 'defu'
 import { getModel } from '@earendil-works/pi-ai'
 import type { Model } from '@earendil-works/pi-ai'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
@@ -92,10 +93,21 @@ function modelFromInput(model: Models | undefined): Model<any> {
 }
 
 function getClank8y(options: Clank8yAgentOptions): { agent: Clank8yAgent, profile: Clank8yProfile } {
+  const config = defu(
+    {
+      timeOutMs: options.timeOutMs,
+      disabledModes: options.disabledModes,
+    },
+    {
+      timeOutMs: DEFAULT_CONFIGURATION.timeOutMs,
+      disabledModes: DEFAULT_CONFIGURATION.disabledModes,
+    },
+  )
+
   const profile: Clank8yProfile = {
     model: modelFromInput(options.model),
-    timeOutMs: options.timeOutMs ?? DEFAULT_CONFIGURATION.timeOutMs,
-    disabledModes: options.disabledModes ?? DEFAULT_CONFIGURATION.disabledModes,
+    timeOutMs: config.timeOutMs,
+    disabledModes: config.disabledModes,
   }
 
   return {

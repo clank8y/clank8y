@@ -1,5 +1,6 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { ExternalMcpServers, ExternalMcpStartResult } from './external'
+import { assertUniqueToolNames } from './external/helpers'
 import { connectMcpServer } from './external/httpMcp'
 import type { ManagedMcpConnection } from './external/httpMcp'
 import { connectStdioMcpServer } from './external/stdioMcp'
@@ -31,12 +32,12 @@ export async function createPiToolBundle(
       const result = startResults[name]
 
       if (server.serverType === 'http') {
-        const httpResult = result as { type: 'http', url: string, toolNames: string[] } | undefined
+        const httpResult = result as { type: 'http', url: string, toolNames: string[], headers?: Record<string, string> } | undefined
         if (!httpResult?.url) {
           continue
         }
 
-        connections.push(await connectMcpServer(name, httpResult.url, server.toolNames ?? httpResult.toolNames))
+        connections.push(await connectMcpServer(name, httpResult.url, server.toolNames ?? httpResult.toolNames, httpResult.headers))
         continue
       }
 
@@ -52,12 +53,15 @@ export async function createPiToolBundle(
     throw error
   }
 
+  const tools = [
+    ...getSharedTools(),
+    ...modeTools,
+    ...connections.flatMap((connection) => connection.tools),
+  ]
+  assertUniqueToolNames(tools.map((tool) => tool.name), 'composing Pi tool bundle')
+
   return {
-    tools: [
-      ...getSharedTools(),
-      ...modeTools,
-      ...connections.flatMap((connection) => connection.tools),
-    ],
+    tools,
     close: async () => {
       await Promise.all(connections.map((connection) => connection.close()))
     },

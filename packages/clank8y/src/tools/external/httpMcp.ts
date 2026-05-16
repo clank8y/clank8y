@@ -1,6 +1,6 @@
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core'
-import { consola } from 'consola'
 import type { TSchema } from 'typebox'
+import { assertUniqueToolNames, mcpResultToPiToolContent, namespacedMcpToolName, selectMcpTools } from './helpers'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -25,6 +25,8 @@ export interface ManagedMcpConnection {
   close: () => Promise<void>
 }
 
+const DEFAULT_HTTP_MCP_TIMEOUT_MS = 10_000
+
 // ─── JSON-RPC request counter (module-local) ─────────────────────────────────
 
 let _nextRequestId = 1
@@ -32,19 +34,27 @@ let _nextRequestId = 1
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Parses `data:` lines from an SSE response body.
- * Multiple consecutive data lines are joined (per SSE spec).
+ * Parses the first `data:` event from an SSE response body.
+ * Multiple data lines within one event are joined with newlines per SSE spec.
  * @param text
  */
 export function parseSseData(text: string): string | null {
-  const dataLines: string[] = []
-  for (const line of text.split('\n')) {
-    if (line.startsWith('data: ')) {
-      dataLines.push(line.slice(6))
+  const events = text.split(/\r?\n\r?\n/)
+
+  for (const event of events) {
+    const dataLines: string[] = []
+    for (const line of event.split(/\r?\n/)) {
+      if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).replace(/^ /, ''))
+      }
+    }
+
+    if (dataLines.length > 0) {
+      return dataLines.join('\n')
     }
   }
 
-  return dataLines.length > 0 ? dataLines.join('') : null
+  return null
 }
 
 interface McpPostResult {
@@ -64,14 +74,17 @@ interface McpPostResult {
  * @param body
  * @param sessionId
  * @param signal
+ * @param extraHeaders
  */
 async function mcpPost(
   url: string,
   body: string,
   sessionId?: string,
   signal?: AbortSignal,
+  extraHeaders: Record<string, string> = {},
 ): Promise<McpPostResult> {
   const headers: Record<string, string> = {
+    ...extraHeaders,
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/event-stream',
   }
@@ -80,7 +93,9 @@ async function mcpPost(
     headers['Mcp-Session-Id'] = sessionId
   }
 
-  const response = await fetch(url, { method: 'POST', headers, body, signal })
+  const timeoutSignal = AbortSignal.timeout(DEFAULT_HTTP_MCP_TIMEOUT_MS)
+  const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
+  const response = await fetch(url, { method: 'POST', headers, body, signal: requestSignal })
 
   // 202 Accepted — used for notifications that don't return a body
   if (response.status === 202) {
@@ -121,6 +136,20 @@ async function mcpPost(
   return { result: json.result, sessionId: responseSessionId }
 }
 
+async function sendDelete(url: string, sessionId: string, headers?: Record<string, string>): Promise<void> {
+  const timeoutSignal = AbortSignal.timeout(DEFAULT_HTTP_MCP_TIMEOUT_MS)
+  await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      ...(headers ?? {}),
+      'Mcp-Session-Id': sessionId,
+    },
+    signal: timeoutSignal,
+  }).catch(() => {
+    // Session deletion is best-effort. Some stateless MCP servers do not support DELETE.
+  })
+}
+
 // ─── MCP request helpers ──────────────────────────────────────────────────────
 
 async function sendRequest(
@@ -129,6 +158,7 @@ async function sendRequest(
   params?: unknown,
   sessionId?: string,
   signal?: AbortSignal,
+  headers?: Record<string, string>,
 ): Promise<McpPostResult> {
   const id = _nextRequestId++
 
@@ -142,6 +172,7 @@ async function sendRequest(
     }),
     sessionId,
     signal,
+    headers,
   )
 }
 
@@ -150,6 +181,7 @@ async function sendNotification(
   method: string,
   params?: unknown,
   sessionId?: string,
+  headers?: Record<string, string>,
 ): Promise<void> {
   // Notifications have no `id` field and don't require a result
   await mcpPost(
@@ -160,6 +192,8 @@ async function sendNotification(
       ...(params !== undefined ? { params } : {}),
     }),
     sessionId,
+    undefined,
+    headers,
   )
 }
 
@@ -171,6 +205,7 @@ async function callMcpTool(
   args: Record<string, unknown>,
   sessionId?: string,
   signal?: AbortSignal,
+  headers?: Record<string, string>,
 ): Promise<unknown> {
   const { result } = await sendRequest(
     url,
@@ -178,18 +213,10 @@ async function callMcpTool(
     { name: toolName, arguments: args },
     sessionId,
     signal,
+    headers,
   )
 
   return result
-}
-
-function mcpResultToPiToolContent(result: unknown): AgentToolResult<unknown>['content'] {
-  const content = (result as { content?: AgentToolResult<unknown>['content'] } | null | undefined)?.content
-  if (Array.isArray(content)) {
-    return content
-  }
-
-  return [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
 }
 
 // ─── connectMcpServer ─────────────────────────────────────────────────────────
@@ -204,39 +231,28 @@ function mcpResultToPiToolContent(result: unknown): AgentToolResult<unknown>['co
  * @param name - Logical server name used for tool namespacing.
  * @param url  - Full URL of the MCP HTTP endpoint.
  * @param toolNames - Optional tool names to convert. Omit to convert all listed tools.
+ * @param headers - Optional HTTP headers for authenticated MCP servers.
  */
 export async function connectMcpServer(
   name: string,
   url: string,
   toolNames?: readonly string[],
+  headers?: Record<string, string>,
 ): Promise<ManagedMcpConnection> {
   // ── 1. Initialize ──────────────────────────────────────────────────────────
   const { result: _initResult, sessionId } = await sendRequest(url, 'initialize', {
     protocolVersion: '2024-11-05',
     capabilities: { tools: {} },
     clientInfo: { name: 'clank8y', version: '1.0.0' },
-  })
+  }, undefined, undefined, headers)
 
   // ── 2. Confirm initialization ──────────────────────────────────────────────
-  await sendNotification(url, 'notifications/initialized', undefined, sessionId)
+  await sendNotification(url, 'notifications/initialized', undefined, sessionId, headers)
 
   // ── 3. List tools ──────────────────────────────────────────────────────────
-  const { result: toolsResult } = await sendRequest(url, 'tools/list', undefined, sessionId)
+  const { result: toolsResult } = await sendRequest(url, 'tools/list', undefined, sessionId, undefined, headers)
   const rawTools: McpToolInfo[] = (toolsResult as { tools?: McpToolInfo[] })?.tools ?? []
-  const rawToolNames = new Set(rawTools.map((tool) => tool.name))
-  const selectedToolNames = toolNames && toolNames.length > 0 ? new Set(toolNames) : null
-
-  if (selectedToolNames) {
-    for (const requestedToolName of selectedToolNames) {
-      if (!rawToolNames.has(requestedToolName)) {
-        consola.warn(`MCP '${name}' requested tool '${requestedToolName}', but the server did not list it.`)
-      }
-    }
-  }
-
-  const selectedTools = selectedToolNames
-    ? rawTools.filter((tool) => selectedToolNames.has(tool.name))
-    : rawTools
+  const selectedTools = selectMcpTools(name, rawTools, toolNames)
 
   // ── 4. Wrap each selected tool as an AgentTool ─────────────────────────────
   const mcpSessionId = sessionId
@@ -244,7 +260,7 @@ export async function connectMcpServer(
     const inputSchema = (tool.inputSchema ?? { type: 'object', properties: {} }) as unknown as TSchema
 
     const agentTool: AgentTool = {
-      name: `mcp__${name}__${tool.name}`,
+      name: namespacedMcpToolName(name, tool.name),
       label: tool.name,
       description: tool.description ?? '',
       parameters: inputSchema,
@@ -255,6 +271,7 @@ export async function connectMcpServer(
           params as Record<string, unknown>,
           mcpSessionId,
           signal,
+          headers,
         )
 
         return {
@@ -267,13 +284,16 @@ export async function connectMcpServer(
     return agentTool
   })
 
+  assertUniqueToolNames(agentTools.map((tool) => tool.name), `connecting MCP '${name}'`)
+
   // ── 5. Return connection handle ────────────────────────────────────────────
   return {
     name,
     tools: agentTools,
     close: async () => {
-      // For session-aware MCP servers, we'd send DELETE /session here.
-      // Most stateless servers don't require explicit cleanup.
+      if (sessionId) {
+        await sendDelete(url, sessionId, headers)
+      }
     },
   }
 }

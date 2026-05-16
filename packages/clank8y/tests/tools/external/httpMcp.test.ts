@@ -12,8 +12,24 @@ afterEach(async () => {
   servers.length = 0
 })
 
-async function startFakeHttpMcpServer(): Promise<string> {
+interface FakeHttpMcpServerOptions {
+  onRequest?: (request: { method?: string, authorization?: string }) => void
+  toolResult?: unknown
+}
+
+async function startFakeHttpMcpServer(options: FakeHttpMcpServerOptions = {}): Promise<string> {
   const server = createServer((request, response) => {
+    options.onRequest?.({
+      method: request.method,
+      authorization: request.headers.authorization,
+    })
+
+    if (request.method === 'DELETE') {
+      response.statusCode = 200
+      response.end()
+      return
+    }
+
     let rawBody = ''
     request.setEncoding('utf8')
     request.on('data', (chunk) => {
@@ -50,7 +66,11 @@ async function startFakeHttpMcpServer(): Promise<string> {
         return
       }
 
-      response.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: 'ok' }] } }))
+      response.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: options.toolResult ?? { content: [{ type: 'text', text: 'ok' }] },
+      }))
     })
   })
 
@@ -94,6 +114,43 @@ describe('connectMcpServer', () => {
       await connection.close()
     }
   })
+
+  test('passes headers to remote HTTP MCP requests', async () => {
+    const authorizations: Array<string | undefined> = []
+    const url = await startFakeHttpMcpServer({
+      onRequest: (request) => {
+        authorizations.push(request.authorization)
+      },
+    })
+
+    const connection = await connectMcpServer('fake', url, ['keep'], {
+      authorization: 'Bearer secret',
+    })
+
+    try {
+      await connection.tools[0]!.execute('call-1', {} as any)
+    } finally {
+      await connection.close()
+    }
+
+    expect(authorizations.every((value) => value === 'Bearer secret')).toBe(true)
+  })
+
+  test('throws when remote HTTP MCP tool calls return isError', async () => {
+    const url = await startFakeHttpMcpServer({
+      toolResult: {
+        isError: true,
+        content: [{ type: 'text', text: 'boom' }],
+      },
+    })
+    const connection = await connectMcpServer('fake', url, ['keep'])
+
+    try {
+      await expect(connection.tools[0]!.execute('call-1', {} as any)).rejects.toThrow('boom')
+    } finally {
+      await connection.close()
+    }
+  })
 })
 
 describe('parseSseData', () => {
@@ -111,7 +168,7 @@ describe('parseSseData', () => {
 
   test('joins multiple data lines', () => {
     const sse = 'data: {"partial":\ndata: "value"}\n'
-    expect(parseSseData(sse)).toBe('{"partial":"value"}')
+    expect(parseSseData(sse)).toBe('{"partial":\n"value"}')
   })
 
   test('ignores non-data lines', () => {

@@ -169,8 +169,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 ### Tools & Dependencies
 
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
-- The Pi SDK packages (`@earendil-works/pi-agent-core`, `@earendil-works/pi-ai`) must be declared as `external` in both tsdown configs. `@earendil-works/pi-ai` pulls in `@google/genai` whose DTS files reference `@types/node-fetch` with relative paths that don't resolve in pnpm's virtual store. Marking them external avoids DTS bundling issues and keeps the bundle lighter.
-- `@types/node-fetch` must be installed at workspace root (declared in catalog) as a dev dep for `@google/genai`'s type declarations to resolve during TS language-server and `tsc` runs.
+- The root GitHub Action build must stay self-contained: do not externalize Pi SDK packages in the root `tsdown.config.ts`, because GitHub Actions runs the checked-in `dist/index.mjs` without installing package dependencies. The package build may still externalize SDK dependencies for npm consumers.
 
 ### Patterns & Conventions
 

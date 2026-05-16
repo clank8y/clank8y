@@ -1,9 +1,9 @@
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core'
-import { consola } from 'consola'
 import type { TSchema } from 'typebox'
 import { spawn } from 'node:child_process'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import type { McpToolInfo, ManagedMcpConnection } from './httpMcp'
+import { assertUniqueToolNames, mcpResultToPiToolContent, namespacedMcpToolName, selectMcpTools } from './helpers'
 
 interface JsonRpcResponse {
   id?: number | string
@@ -17,15 +17,6 @@ interface PendingRequest {
 }
 
 let _nextStdioRequestId = 1
-
-function mcpResultToPiToolContent(result: unknown): AgentToolResult<unknown>['content'] {
-  const content = (result as { content?: AgentToolResult<unknown>['content'] } | null | undefined)?.content
-  if (Array.isArray(content)) {
-    return content
-  }
-
-  return [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
-}
 
 function createStdioJsonRpcClient(child: ChildProcessWithoutNullStreams) {
   const pending = new Map<number | string, PendingRequest>()
@@ -163,62 +154,58 @@ export async function connectStdioMcpServer(
 
   child.stderr.resume()
 
-  const client = createStdioJsonRpcClient(child)
+  try {
+    const client = createStdioJsonRpcClient(child)
 
-  await client.request('initialize', {
-    protocolVersion: '2024-11-05',
-    capabilities: { tools: {} },
-    clientInfo: { name: 'clank8y', version: '1.0.0' },
-  })
+    await client.request('initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: { tools: {} },
+      clientInfo: { name: 'clank8y', version: '1.0.0' },
+    })
 
-  await client.notify('notifications/initialized')
+    await client.notify('notifications/initialized')
 
-  const toolsResult = await client.request('tools/list')
-  const rawTools: McpToolInfo[] = (toolsResult as { tools?: McpToolInfo[] })?.tools ?? []
-  const rawToolNames = new Set(rawTools.map((tool) => tool.name))
-  const selectedToolNames = toolNames && toolNames.length > 0 ? new Set(toolNames) : null
+    const toolsResult = await client.request('tools/list')
+    const rawTools: McpToolInfo[] = (toolsResult as { tools?: McpToolInfo[] })?.tools ?? []
+    const selectedTools = selectMcpTools(name, rawTools, toolNames)
 
-  if (selectedToolNames) {
-    for (const requestedToolName of selectedToolNames) {
-      if (!rawToolNames.has(requestedToolName)) {
-        consola.warn(`MCP '${name}' requested tool '${requestedToolName}', but the server did not list it.`)
+    const agentTools: AgentTool[] = selectedTools.map((tool) => {
+      const inputSchema = (tool.inputSchema ?? { type: 'object', properties: {} }) as unknown as TSchema
+
+      return {
+        name: namespacedMcpToolName(name, tool.name),
+        label: tool.name,
+        description: tool.description ?? '',
+        parameters: inputSchema,
+        execute: async (_toolCallId, params, signal): Promise<AgentToolResult<unknown>> => {
+          const result = await client.request(
+            'tools/call',
+            { name: tool.name, arguments: params as Record<string, unknown> },
+            signal,
+          )
+          return {
+            content: mcpResultToPiToolContent(result),
+            details: result,
+          }
+        },
       }
-    }
-  }
+    })
 
-  const selectedTools = selectedToolNames
-    ? rawTools.filter((tool) => selectedToolNames.has(tool.name))
-    : rawTools
-
-  const agentTools: AgentTool[] = selectedTools.map((tool) => {
-    const inputSchema = (tool.inputSchema ?? { type: 'object', properties: {} }) as unknown as TSchema
+    assertUniqueToolNames(agentTools.map((tool) => tool.name), `connecting MCP '${name}'`)
 
     return {
-      name: `mcp__${name}__${tool.name}`,
-      label: tool.name,
-      description: tool.description ?? '',
-      parameters: inputSchema,
-      execute: async (_toolCallId, params, signal): Promise<AgentToolResult<unknown>> => {
-        const result = await client.request(
-          'tools/call',
-          { name: tool.name, arguments: params as Record<string, unknown> },
-          signal,
-        )
-        return {
-          content: mcpResultToPiToolContent(result),
-          details: result,
+      name,
+      tools: agentTools,
+      close: async () => {
+        if (!child.killed) {
+          child.kill('SIGTERM')
         }
       },
     }
-  })
-
-  return {
-    name,
-    tools: agentTools,
-    close: async () => {
-      if (!child.killed) {
-        child.kill('SIGTERM')
-      }
-    },
+  } catch (error) {
+    if (!child.killed) {
+      child.kill('SIGTERM')
+    }
+    throw error
   }
 }

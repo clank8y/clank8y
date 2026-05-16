@@ -20,7 +20,8 @@ export interface ExternalMcpServer {
 export interface RemoteHttpMcpServer extends ExternalMcpServer {
   readonly serverType: 'http'
   readonly status: { readonly state: 'running' }
-  start: () => Promise<{ url: string, toolNames: string[] }>
+  readonly headers?: Readonly<Record<string, string>>
+  start: () => Promise<{ url: string, toolNames: string[], headers?: Record<string, string> }>
 }
 // ─── Stdio MCP server ─────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export type ExternalMcpServers = Record<string, ExternalMcpServerDefinition>
 export interface CreateRemoteHttpMcpServerOptions {
   url: string
   toolNames?: readonly string[]
+  headers?: Readonly<Record<string, string>>
 }
 
 export interface CreateStdioMcpServerOptions {
@@ -52,12 +54,14 @@ export function createRemoteHttpMcpServer(options: CreateRemoteHttpMcpServerOpti
   return {
     serverType: 'http',
     toolNames: options.toolNames,
+    headers: options.headers,
     get status() {
       return { state: 'running' as const }
     },
     start: async () => ({
       url: options.url,
       toolNames: [...(options.toolNames ?? [])],
+      headers: options.headers ? { ...options.headers } : undefined,
     }),
     stop: async () => {},
   }
@@ -93,6 +97,7 @@ export interface HttpMcpStartResult {
   type: 'http'
   url: string
   toolNames: string[]
+  headers?: Record<string, string>
 }
 
 export interface StdioMcpStartResult {
@@ -116,8 +121,8 @@ export async function startAll<T extends ExternalMcpServerMap>(servers: T): Prom
 
   for (const [name, server] of Object.entries(servers)) {
     if (server.serverType === 'http') {
-      const { url, toolNames } = await (server as RemoteHttpMcpServer).start()
-      results[name] = { type: 'http', url, toolNames }
+      const { url, toolNames, headers } = await (server as RemoteHttpMcpServer).start()
+      results[name] = { type: 'http', url, toolNames, headers }
     } else {
       const { command, args, toolNames } = await (server as StdioMcpServer).start()
       results[name] = { type: 'stdio', command, args, toolNames }
