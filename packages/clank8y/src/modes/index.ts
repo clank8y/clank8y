@@ -1,5 +1,6 @@
 import type { Clank8yMode } from '../modeSelection'
-import type { Clank8yMCPServers } from '../mcp'
+import type { ExternalMcpServers } from '../tools/external'
+import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { getIncidentFixModeRuntime } from './incidentFix'
 import { getReviewModeRuntime } from './review'
 import { getSelectModeRuntime } from './selectMode'
@@ -7,8 +8,14 @@ import { getTaskModeRuntime } from './task'
 
 export interface Clank8yModeRuntime {
   prompt: string
-  mcps: Clank8yMCPServers
+  externalMcpServers: ExternalMcpServers
+  /**
+   * Mode-local Pi SDK tools that are added alongside shared tools and MCP tools.
+   */
+  tools?: AgentTool[]
 }
+
+export type ModeDefinition = Clank8yModeRuntime
 
 export { getSelectModeRuntime }
 

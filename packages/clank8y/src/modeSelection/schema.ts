@@ -36,7 +36,7 @@ export function createClank8yModeSelectionSchema(disabledModes: Clank8yDisabledM
     mode: createClank8yModeSchema(disabledModes),
     reason: v.pipe(
       v.string(),
-      // TODO: tmcp valibot adapter take have options and fails here
+      // TODO: schema metadata currently keeps raw strings instead of trimming in-place.
       // v.trim(),
       v.minLength(1, 'Mode selection reason is required.'),
       v.description('A concise explanation for why this mode fits the current run.'),

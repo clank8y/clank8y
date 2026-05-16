@@ -13,9 +13,8 @@ import { runClank8y } from 'clank8y'
  * - PROMPT
  *   - Why: event-level instruction block appended to clank8y base prompt.
  *
- * - COPILOT_GITHUB_TOKEN
- *   - Why: Copilot SDK authentication for running the review agent.
- *   - Get from: GitHub user token with Copilot entitlement and Copilot Requests permission.
+ * - PI_AGENT_TOKEN
+ *   - Why: Pi/model provider authentication for running the agent.
  *
  * - TIMEOUT_MS
  *   - Why: maximum time in milliseconds for the entire PR review process. Optional — defaults to 1200000 (20 minutes).
@@ -27,18 +26,8 @@ import { runClank8y } from 'clank8y'
  *     - Repository: Pull requests (write)
  *     - Repository: Issues (write)
  *
- * > Single-token option:
- * > - You can use one token value for both `COPILOT_GITHUB_TOKEN` and `GH_TOKEN`/`GITHUB_TOKEN`.
- * > - That token must include: Copilot Requests + Contents (read) + Pull requests (write)
- * >   (+ Issues (write) only if needed).
- * >
- * > Split-token option:
- * > - `COPILOT_GITHUB_TOKEN`: Copilot Requests only (plus minimal read if GitHub requires selecting repo scope).
- * > - `GH_TOKEN`/`GITHUB_TOKEN`: Contents (read) + Pull requests (write)
- * >   (+ Issues (write) only if needed).
- * >
- * > Roles are still separate even if token values are identical:
- * > CopilotAgentToken (model auth) vs Clank8yBotToken (GitHub PR API auth).
+ * > Roles are separate even if token values are identical:
+ * > `PI_AGENT_TOKEN` is model auth; `GH_TOKEN`/`GITHUB_TOKEN` is GitHub API auth.
  * >
  * > Local identity note:
  * > - In local test mode, when using `GH_TOKEN`/`GITHUB_TOKEN` fallback,
@@ -52,7 +41,7 @@ function setupActionLikeEnvironment(): void {
   }
 }
 
-function parseRepositoryFromEnvironment() {
+function repositoryFromEnvironment() {
   const repository = process.env.GITHUB_REPOSITORY?.trim()
   if (!repository) {
     throw new Error('GITHUB_REPOSITORY is required for local test (format: owner/repo)')
@@ -68,7 +57,7 @@ function parseRepositoryFromEnvironment() {
 }
 
 function buildPromptContext(promptContext: string): string {
-  const repository = parseRepositoryFromEnvironment()
+  const repository = repositoryFromEnvironment()
 
   return [
     promptContext,
@@ -121,9 +110,8 @@ async function main(): Promise<void> {
     promptContext: buildPromptContext(requireEnv('PROMPT')),
     auth: {
       githubToken: resolveGithubToken(),
-      copilotToken: requireEnv('COPILOT_GITHUB_TOKEN'),
+      agentToken: requireEnv('PI_AGENT_TOKEN'),
     },
-    model: 'claude-sonnet-4.6',
     timeOutMs,
   })
 }

@@ -1,6 +1,7 @@
 import type { Clank8yModeRuntime } from '..'
 import { resetTaskContext } from './context'
-import { taskMCPs } from './mcps'
+import { taskExternalMcpServers } from './externalMcpServers'
+import { taskGitHubTools } from './tools/github'
 import { buildTaskPrompt } from './prompt'
 
 export function getTaskModeRuntime(promptContext: string): Clank8yModeRuntime {
@@ -8,6 +9,7 @@ export function getTaskModeRuntime(promptContext: string): Clank8yModeRuntime {
 
   return {
     prompt: buildTaskPrompt(promptContext),
-    mcps: taskMCPs(),
+    externalMcpServers: taskExternalMcpServers(),
+    tools: taskGitHubTools(),
   }
 }

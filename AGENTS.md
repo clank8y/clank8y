@@ -16,41 +16,49 @@ packages/
   ├── src/
   │   ├── index.ts            # Public package entrypoint for sandbox/custom runtimes
   │   ├── setup/              # Shared runtime context helpers used across modes
-  │   │   ├── context.ts      # Runtime context state
+  │   │   ├── context.ts      # Runtime context state (auth.githubToken)
   │   │   └── index.ts        # Public setup barrel
   │   ├── formatters/         # Reusable pure formatting helpers shared across MCPs
-  │   ├── modes/              # Mode-owned runtime bundles: prompt + MCP assembly per mode
+  │   ├── tools/              # Pi tool assembly from shared/mode Pi tools plus HTTP and stdio/CLI MCP adapters
+  │   │   ├── index.ts        # getSharedTools(), createPiToolBundle()
+  │   │   └── stdioMcp.ts     # Stdio/CLI MCP JSON-RPC adapter to native Pi AgentTool[]
+  │   ├── modes/              # Mode-owned runtime bundles: prompt + external MCPs + native Pi tools per mode
+  │   │   ├── index.ts        # getModeRuntime, ModeDefinition
   │   │   ├── basePrompts.ts  # Shared prompt fragments used by multiple modes
   │   │   ├── incidentFix/    # IncidentFix mode runtime for sandboxed repo investigation
   │   │   │   ├── prompt.ts   # IncidentFix investigation prompt builder
-  │   │   │   └── mcps/       # IncidentFix-specific GitHub/repository MCP servers
+  │   │   │   └── tools/      # IncidentFix-specific native Pi GitHub/repository tools
   │   │   ├── review/         # Review mode runtime
   │   │   │   ├── prompt.ts   # Review prompt builder
-  │   │   │   └── mcps/       # Review-specific MCP servers
+  │   │   │   └── tools/      # Review-specific native Pi GitHub tools
   │   │   ├── task/           # Task mode runtime for single-repository development work
   │   │   │   ├── context.ts  # Single-repo task context and push-branch binding state
   │   │   │   ├── prompt.ts   # Task workflow prompt builder
-  │   │   │   └── mcps/       # Task-specific GitHub MCP servers and tool-name constants
+  │   │   │   ├── tools/      # Task-specific native Pi GitHub tools
+  │   │   │   ├── externalMcpServers.ts # External MCP server assembly
+  │   │   │   └── constants.ts # Task tool-name constants
   │   │   └── selectMode/     # Mode-selection runtime
   │   │       ├── prompt.ts   # Mode-selection prompt builder
-  │   │       └── mcps/       # Dedicated select-mode MCP server
+  │   │       └── tool.ts     # Native Pi mode-selection tool
   │   ├── modeSelection/      # Shared mode-selection metadata and schemas
-  │   ├── agents/             # Review agent runtime and orchestration helpers
-  │   │   └── copilot/        # Shared Copilot client/bootstrap helpers plus per-mode runtime files
-  │   ├── utils/              # Shared filesystem and git helpers
+  │   ├── agents/             # Agent runtime and orchestration helpers
+  │   │   ├── index.ts        # executeClank8yAgent, Clank8yAgent, Clank8yAgentFactory
+  │   │   └── pi/             # Pi coding agent runtime
+  │   │       └── index.ts    # piAgent factory, PI_AGENT_NAME
+  │   ├── utils/              # Shared filesystem, git, and shell helpers
   │   │   ├── artifacts.ts    # .clank8y artifact paths and file helpers
-  │   │   └── git.ts          # Shared git execution and repo-local bot config helpers
-  │   │   └── repositories.ts # Shared repository parsing/path helpers for multi-repo workflows
-  │   └── mcp/                # Shared MCP interfaces, adapters, and reusable external MCPs
-  │       ├── index.ts        # Interfaces (MCPServer, LocalHTTPMCPServer, LocalStdioMCPServer), startAll/stopAll
+  │   │   ├── git.ts          # Shared git execution and repo-local bot config helpers
+  │   │   ├── repositories.ts # Shared repository parsing/path helpers for multi-repo workflows
+  │   │   └── shell.ts        # extractCommandNames (shell command blocklist helper)
+  │   └── mcp/                # Shared external MCP declarations and lifecycle helpers
+  │       ├── index.ts        # Interfaces (RemoteHttpMcpServer, StdioMcpServer), startAll/stopAll
+  │       ├── httpMcp.ts      # connectMcpServer: Flue-inspired HTTP MCP connector (connect → listTools → wrap as AgentTool[])
   │       ├── angular.ts      # Stdio MCP server (Angular CLI via npx)
-  │       ├── codex.ts        # Remote HTTP MCP for Cumulocity docs
-  │       └── adapters/
-  │           └── copilot.ts  # Translates MCPServerMap → Copilot SDK mcpServers session config
+  │       └── codex.ts        # Remote HTTP MCP for Cumulocity docs
   ├── shared/
   │   └── comment.ts          # Package-local review comment footer helper
   └── tests/
-    └── ...                 # Vitest tests, including formatter tests
+    └── ...                 # Vitest tests, including formatter and Pi agent tests
 ```
 
 ### Action Source (src/action.ts)
@@ -103,6 +111,7 @@ pnpm typecheck  # TypeScript type checking for action + package
 - Use `*.test.ts` file naming convention
 - Run `pnpm test:run` for running tests
 - Import modules from `../../src` when the test file is in a nested package test directory
+- When tests are in a folder 3 levels deep (e.g. `tests/agents/pi/`), use `../../../src` to reach source files
 
 Example test structure:
 
@@ -160,7 +169,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 ### Tools & Dependencies
 
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
-- The `@github/copilot-sdk` type declarations reference generated files (`./generated/rpc.js` etc.) that don't exist as `.d.ts`, causing spurious TS language server errors (e.g. "onPermissionRequest is required"). These are pre-existing and do not appear in `pnpm typecheck`. Do not add workarounds for them.
+- The root GitHub Action build must stay self-contained: do not externalize Pi SDK packages in the root `tsdown.config.ts`, because GitHub Actions runs the checked-in `dist/index.mjs` without installing package dependencies. The package build may still externalize SDK dependencies for npm consumers.
 
 ### Patterns & Conventions
 
@@ -169,17 +178,16 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
 - `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
 - Website webhook dispatch should inject structured GitHub event metadata plus any quoted user instruction and let clank8y select `Review` vs `Task`; do not hard-force the mode for mention-driven or assignment-driven invocations. Source-specific prompt guidance is fine when it stays advisory, such as nudging reviewer assignment toward `Review` and issue assignment toward `Task`.
-- For Copilot SDK auth in CI, pass explicit `githubToken` and set `useLoggedInUser: false` to avoid fallback to local/`gh` credentials.
-- Prefer Copilot SDK authentication via CI environment variable (`COPILOT_GITHUB_TOKEN`) and fail fast when no supported env token is present.
-- Fine-grained PATs used as `COPILOT_GITHUB_TOKEN` must include **Copilot Requests** permission, otherwise `models.list` fails with 401 unauthorized.
+- Pi agent authentication relies on provider-specific Pi environment variables such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, and `OPENROUTER_API_KEY`. Do not pass model-provider tokens through `Clank8yRuntimeContext`; the Pi provider layer reads its own environment variables.
+- Pi agent model options accept Pi's native `Model<any>` object or a simple `provider:model-id` string resolved once at the clank8y boundary with Pi's `getModel`. Do not add legacy alias maps or heuristic model-name mapping.
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
 - Keep shared runtime context helpers under `src/setup/`; place reusable git execution/config helpers under `src/utils/` rather than inside a single mode implementation.
 - Current git auth still uses env-injected extraheaders for remote operations; stricter ASKPASS-style auth remains future hardening work, not current behavior.
 - Gate mode availability at the runtime entry boundary via the top-level `disabledModes` config; derive the selectable mode array from that before building the mode-selection tool schema. The GitHub Actions runtime disables `IncidentFix` but allows `Review` and `Task` to be selected from webhook-provided context.
 - Treat each mode as the runtime ownership boundary: `src/modes/<mode>/` owns its prompt plus MCP assembly.
-- Keep shared modes agent-agnostic. Agent-specific runtime policy such as Copilot excluded tools belongs in the agent runtime layer, not in shared `src/modes/` definitions.
-- Keep mode-selection prompt text and MCP server under `src/modes/selectMode/`, while shared mode-selection metadata/schema stays in `src/modeSelection/`.
-- Prefer dedicated MCP tools over Copilot custom tools when the capability should be reusable across agent runtimes.
+- Keep shared modes agent-agnostic. Agent-specific runtime policy belongs in the agent runtime layer, not in shared `src/modes/` definitions.
+- Keep mode-selection prompt text and native Pi selection tool under `src/modes/selectMode/`, while shared mode-selection metadata/schema stays in `src/modeSelection/`.
+- Prefer dedicated MCP tools over agent-specific custom tools when the capability should be reusable across agent runtimes.
 - For IncidentFix-style multi-repo work, keep branch discovery GitHub-backed: use a read-only MCP tool for branch metadata first, then clone default branch and fetch only specific additional branches on demand.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
 - For GitHub-hosted Review/Task runs, the website token exchange should mint repository-scoped installation tokens with at least `contents: write`, `pull_requests: write`, and `issues: write`.
@@ -189,12 +197,14 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Use a starter-style `autofix.yml` (main-branch push trigger + `autofix-ci/action`) for lint auto-fixes.
 - Keep release publishing tag-driven (`on.push.tags: v*`) instead of manual version bumping inside CI.
 - Keep website deploy automation Wrangler-only (preview branch/manual), not main-branch auto-deploy.
-- MCP server interfaces: `LocalHTTPMCPServer` = HTTP (in-process, srvx), `LocalStdioMCPServer` = stdio (SDK spawns external process). Both extend `MCPServer` base with `serverType`, `allowedTools`, `status`, and `stop`. Agents should receive the mode-assembled MCP map and use `startAll(servers)` / `stopAll(servers)` as the lifecycle entry points.
-- Each MCP server declares its own `allowedTools` (exact tool name allowlist, or `['*']` for all). The per-agent adapter (`src/mcp/adapters/copilot.ts`) reads `allowedTools` and maps it to the SDK's per-server `tools` field.
-- Stdio MCP servers (e.g. Angular) are spawned by the Copilot SDK CLI process; `start()` is a state change + returns `{ command, args }` only — no spawning in clank8y code.
-- Add new agent adapters in `src/mcp/adapters/<agent>.ts`, not in `src/agents/`. MCP-to-SDK translation belongs to the MCP layer.
+- MCP server interfaces are external-only: `RemoteHttpMcpServer` = already-running HTTP endpoint, `StdioMcpServer` = stdio/CLI MCP process. They extend `ExternalMcpServer` with `serverType`, optional static `toolNames`, `status`, and `stop`. Agents should receive the mode-assembled `ExternalMcpServers` map and use `startAll(servers)` / `stopAll(servers)` as lifecycle entry points. Use `createRemoteHttpMcpServer` and `createStdioMcpServer` to define any number of additional remote HTTP or stdio/CLI MCP servers.
+- Pi tool assembly lives in `src/tools/`. `createPiToolBundle()` combines shared Pi tools, mode-local native Pi tools, remote HTTP MCP tools, and stdio/CLI MCP tools into one native Pi `AgentTool[]`.
+- Do not add permission-style MCP filtering. The active mode decides which MCP servers exist; optional `toolNames` are token-optimization selections for conversion to Pi tools, not security boundaries. Log warnings when requested tool names are not listed by the MCP server.
+- Remote MCP connections via `connectMcpServer` follow the MCP Streamable HTTP Transport spec (2025-03-26): initialize → initialized notification → tools/list → tools/call. Tool names are namespaced as `mcp__<serverName>__<toolName>`.
+- Stdio/CLI MCP connections are adapted in `src/tools/external/stdioMcp.ts` using JSON-RPC over newline-delimited stdio and are also namespaced as `mcp__<serverName>__<toolName>`.
+- Add shared Pi tools (always active regardless of mode) to `getSharedTools()` in `src/tools/index.ts`.
 - In review mode, previous PR feedback should be materialized into one stable artifact at `.clank8y/review-comments.md` during `prepare-pull-request-review`; do not shard it per review ID unless a later non-review workflow requires that.
-- Keep GitHub MCP implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
+- Keep GitHub native Pi tool implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
 - When prompts, errors, or context messages mention a mode-local MCP tool name, import the tool-name constant and interpolate it instead of hardcoding the string.
 - Task mode should be artifact-first: setup materializes PR and issue context into `.clank8y/` files, and the agent should work primarily from those files instead of custom chunking reads.
 
@@ -202,3 +212,4 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 - Avoid mixing throw-based control flow with MCP error responses inside tool handlers.
 - Avoid under-described schemas; missing descriptions reduces agent tool-call quality.
+- Avoid adding `parse*` helper functions for simple one-off input handling. Prefer inline normalization at the boundary, or a clearly named adapter (for example `modelFromInput`) only when a real API boundary needs it. Reusable parsers are fine for real domain formats used in multiple places.

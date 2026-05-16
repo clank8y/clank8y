@@ -44,20 +44,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@github/copilot-sdk": "catalog:",
-    "@tmcp/adapter-valibot": "catalog:",
-    "@tmcp/transport-http": "catalog:",
+    "@earendil-works/pi-agent-core": "catalog:",
+    "@earendil-works/pi-ai": "catalog:",
     "@toon-format/toon": "catalog:",
     "@valibot/to-json-schema": "catalog:",
     "consola": "catalog:",
     "defu": "catalog:",
     "octokit": "catalog:",
-    "srvx": "catalog:",
     "tinyexec": "catalog:",
-    "tmcp": "catalog:",
+    "typebox": "catalog:",
     "valibot": "catalog:"
   },
   "devDependencies": {
+    "@angular/cli": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
