@@ -70,7 +70,7 @@ clank8y exports the allowed typed model-string union as `PiModelString` from the
 
 ## How It Works
 
-clank8y is dispatched from GitHub webhooks and selects the best execution mode for the incoming request.
+clank8y is dispatched from a small set of GitHub webhook events and selects the best execution mode for the incoming request. The workflow is dispatched on the repository default branch; creating a branch, pushing commits, or opening a pull request does not by itself start a run.
 
 ```
 @clank8y <optional instruction>
@@ -95,23 +95,21 @@ Reports back on GitHub as clank8y
 
 ### What it does
 
-- ✅ Mention-driven runs from issue comments, PR comments, and inline PR review comments
+- ✅ Mention-driven runs from issue comments, PR comments, and inline PR review comments that include `@clank8y`
 - ✅ Reviewer-assignment runs when clank8y is requested as the PR reviewer
-- ✅ Issue-assignment runs when clank8y is assigned to the issue
+- ✅ Assignment runs when clank8y is assigned to an issue or pull request
 - ✅ AI-powered mode selection between `Review` and `Task` in the GitHub Actions runtime
 - ✅ Read-only PR reviews with structured GitHub feedback
-- ✅ Single-repository Task runs that can edit code, validate locally, push task branches, and report back on GitHub as clank8y
-
-`IncidentFix` remains available only for sandboxed/custom environments and is disabled in the GitHub Actions runtime.
+- ✅ Single-repository Task runs that can edit code, validate locally, push task branches, open same-repo pull requests for issue-driven work, and report back on GitHub as clank8y
 
 ### What it doesn't do (yet)
 
 - ❌ Cross-repository incident work in GitHub Actions
-- ❌ Automatic PR-open review without an explicit mention or assignment trigger
-- ❌ Automatic push/schedule triggers without webhook dispatch
+- ❌ Automatic branch-create, push, or schedule triggers
+- ❌ Automatic PR-open review without an explicit mention, reviewer request, or assignment trigger
 - ❌ Fully autonomous mode forcing from the website; the webhook injects context and the agent selects the mode
 
-Reviewer assignments and issue assignments use source-specific prompt guidance from the website webhook: reviewer assignment nudges toward `Review`, while issue assignment nudges toward `Task`. Those are still hints, not forced mode routing.
+Reviewer requests and issue/PR assignments use source-specific prompt guidance from the website webhook: reviewer requests nudge toward `Review`, while assignments nudge toward `Task`. Those are still hints, not forced mode routing.
 
 ### Token flow
 
