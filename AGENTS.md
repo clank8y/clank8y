@@ -141,6 +141,7 @@ When making changes to the project:
   - Build/deployment processes
   - Code organization principles
   - Tool configurations and quirks
+  - Keep this file focused on repository/project context for contributors working in this repo; do not store runtime clank8y prompt policy here
 
 - **`README.md`** — Update with user-facing documentation for end users:
   - ✅ New exported utilities or functions from the package
@@ -164,6 +165,13 @@ When working on this project:
 6. **Add tests** for new functionality in the `tests/` directory
 7. **Record learnings** — When the user corrects a mistake or provides context about how something should be done, add it to the "Project Context & Learnings" section below if it's a recurring pattern (not a one-time fix)
 8. **Notify documentation changes** — When updating `README.md` or `AGENTS.md`, explicitly call out the changes to the user at the end of your response so they can review and don't overlook them
+9. **Use available workflow tools first** — When the user asks for branch/commit/PR workflow, use the available workflow tools first. Only fall back to `gh` CLI when those tools are not available.
+10. **Use conventional naming for git workflow** — Branch names should use conventional prefixes where appropriate, such as `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `build/`, `types/`, `style/`, `perf/`, `examples/`, and `ci/`. Commit subjects and PR titles should use conventional-commit style with the most appropriate type.
+11. **Default PR behavior** — If the current branch already contains the related work, assume the PR should be opened from the current branch to `main` unless the user explicitly asks to isolate only part of the work or use a different base branch.
+12. **Always include a PR body** — PRs created for the user must include a body. If a related issue identifier is known, include the appropriate GitHub-style reference.
+13. **Prefer autofix first** — Strongly prefer running `pnpm lint:fix` before manually fixing lintable issues by hand. For automated validation, prefer this order: `pnpm -r --include-workspace-root test:run` → `pnpm lint:fix` → `pnpm typecheck`.
+14. **Ask when requirements are unclear** — If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
+15. **Prefer simple inline logic over trivial helpers** — Do not introduce tiny one-line helper/utility functions or throwaway `parse*` helpers for trivial one-off logic. Inline simple normalization or branching unless there is real reuse or a clear API boundary.
 
 ## Project Context & Learnings
 
@@ -176,6 +184,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
 - The root GitHub Action build must stay self-contained: do not externalize Pi SDK packages in the root `tsdown.config.ts`, because GitHub Actions runs the checked-in `dist/index.mjs` without installing package dependencies. The package build may still externalize SDK dependencies for npm consumers.
 - Runtime policy: keep the published JavaScript action pinned via `action.yml` `runs.using: node24`. Use `actions/setup-node` 26 for workflow build/test steps, but do not expect it to change the action runtime. Document Node 24+ as required and Node 26 as preferred for development/custom runtimes.
+- Use `pnpm -r --include-workspace-root test:run` in automated workflows. Do not use `pnpm test` there because it starts watch mode.
+- Prefer `pnpm lint:fix` before spending time on manual lint/style cleanup.
 
 ### Patterns & Conventions
 
@@ -198,8 +208,10 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - For IncidentFix-style multi-repo work, keep branch discovery GitHub-backed: use a read-only MCP tool for branch metadata first, then clone default branch and fetch only specific additional branches on demand.
 - Resolve PR API token via OIDC exchange first (audience `clank8y`), with `GH_TOKEN`/`GITHUB_TOKEN` local fallback when OIDC runtime is unavailable.
 - For GitHub-hosted Review/Task runs, the website token exchange should mint repository-scoped installation tokens with at least `contents: write`, `pull_requests: write`, and `issues: write`.
-- Require the agent to set PR context via `set-pull-request-context` before any PR MCP tool calls.
+- PR MCP tools require pull-request context to be initialized via `set-pull-request-context` before use.
 - Prefer clean, simple, reusable solutions over one-off or ad-hoc implementations.
+- Use conventional branch prefixes and conventional-commit style commit subjects / PR titles.
+- Keep trivial one-off normalization and branching inline instead of extracting tiny helper functions too early.
 - If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
 - Use a starter-style `autofix.yml` (main-branch push trigger + `autofix-ci/action`) for lint auto-fixes.
 - Keep release publishing tag-driven (`on.push.tags: v*`) instead of manual version bumping inside CI.
@@ -214,9 +226,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - In review mode, previous PR feedback should be materialized into one stable artifact at `.clank8y/review-comments.md` during `prepare-pull-request-review`; do not shard it per review ID unless a later non-review workflow requires that.
 - Keep GitHub native Pi tool implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
 - When prompts, errors, or context messages mention a mode-local MCP tool name, import the tool-name constant and interpolate it instead of hardcoding the string.
-- Task mode should be artifact-first: setup materializes PR and issue context into `.clank8y/` files, and the agent should work primarily from those files instead of custom chunking reads.
-- For issue-driven Task runs that open a PR, do not add a separate issue summary comment; the PR should reference the issue and act as the GitHub follow-up.
-- GitHub comment tools append the standard clank8y footer automatically; prompts and tool guidance should tell the agent not to add a manual signature or footer.
+- Task setup materializes PR and issue context into `.clank8y/` files as the durable local workflow context.
 
 ### Common Mistakes to Avoid
 
@@ -224,3 +234,5 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Avoid under-described schemas; missing descriptions reduces agent tool-call quality.
 - Avoid adding `parse*` helper functions for simple one-off input handling. Prefer inline handling at the boundary, or a clearly named adapter (for example `modelFromInput`) only when a real API boundary needs it. Reusable parsers are fine for real domain formats used in multiple places.
 - Avoid generic `normalize*` helper functions. For configured GitHub users/orgs/teams, compare exact values and let typos fail visibly.
+- Do not use `pnpm test` in automation.
+- Do not guess when the requested behavior or scope is unclear.
