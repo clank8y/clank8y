@@ -8,6 +8,7 @@ trustPolicyExclude:
   - cached-factory@0.1.0
   - ts-api-utils@2.2.0
   - undici-types@6.21.0
+  - '@mariozechner/clipboard@0.3.6'
 packages:
   - .
   - ./packages/clank8y
@@ -19,6 +20,7 @@ catalog:
   '@angular/cli': ^21.2.11
   '@earendil-works/pi-agent-core': ^0.75.3
   '@earendil-works/pi-ai': ^0.75.3
+  '@earendil-works/pi-coding-agent': ^0.75.3
   '@octokit/auth-app': ^8.2.0
   '@octokit/webhooks': ^14.2.0
   '@schplitt/eslint-config': ^1.5.1
@@ -49,6 +51,7 @@ onlyBuiltDependencies:
 allowBuilds:
   '@google/genai': true
   esbuild: true
+  koffi: true
   protobufjs: true
   sharp: true
   workerd: true
