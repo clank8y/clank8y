@@ -47,13 +47,11 @@ jobs:
         run: pnpm --filter clank8y publish --access public --no-git-checks --provenance
 
       - name: Deploy website with Wrangler
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4.69.0'
-          command: deploy --message "production release ${{ github.ref_name }}"
-          workingDirectory: website
+        working-directory: website
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm exec wrangler deploy --message "production release ${{ github.ref_name }}"
 
       - name: Create GitHub Release
         run: pnpm changelogithub
