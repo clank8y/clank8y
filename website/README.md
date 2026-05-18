@@ -35,6 +35,33 @@ The website token endpoint mints installation tokens scoped to the target reposi
 
 Those permissions allow the GitHub-hosted clank8y runtime to complete both read-only Review runs and single-repository Task runs.
 
+## Trigger authorization
+
+Before dispatching `.github/workflows/clank8y.yml`, the webhook server reads `clank8y.json` from the repository default branch. If the file is absent, clank8y defaults to requiring `write` repository permission from the triggering actor.
+
+Example permission-based config:
+
+```json
+{
+  "allowedTriggerPermission": "write"
+}
+```
+
+Supported permission values are `write`, `maintain`, and `admin`.
+
+Example explicit allowlist config:
+
+```json
+{
+  "allowedClank8yTriggerers": [
+    "octocat",
+    "my-org/platform-maintainers"
+  ]
+}
+```
+
+`allowedClank8yTriggerers` entries are either `<userName>` or `<orgName>/<teamSlug>`. Team entries are only valid for the organization that owns the repository. If `allowedClank8yTriggerers` is non-empty, only those users or team members may trigger clank8y.
+
 ## Development
 
 ```sh

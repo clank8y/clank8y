@@ -12,6 +12,17 @@ export function buildReportBackInstruction(actor: string): string {
     : `report_back_to: @${actor}`
 }
 
+export function buildUnauthorizedTriggerBody(params: {
+  username: string
+  reason: string
+}): string {
+  return buildClank8yCommentBody([
+    `@${params.username} clank8y did not start for this request.`,
+    '',
+    params.reason,
+  ].join('\n'))
+}
+
 export function buildWebhookSetupHintBody(params: {
   username: string
   workflowId: string
