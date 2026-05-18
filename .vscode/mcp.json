@@ -3,6 +3,10 @@
 		"cf-docs": {
 			"url": "https://docs.mcp.cloudflare.com/mcp",
 			"type": "http"
+		},
+		"cf": {
+			"url": "https://mcp.cloudflare.com/mcp",
+			"type": "http"
 		}
 	},
 	"inputs": []
