@@ -1,6 +1,6 @@
 {
   "name": "@clank8y/action",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.1.2",
