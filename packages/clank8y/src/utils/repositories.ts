@@ -182,6 +182,25 @@ export async function fetchRepositoryBranch(params: {
   }
 }
 
+export async function checkoutFetchedRepositoryBranch(params: {
+  repositoryPath: string
+  branch: string
+}): Promise<{ path: string, branch: string }> {
+  await runClank8yGit([
+    'checkout',
+    '-B',
+    params.branch,
+    `refs/remotes/origin/${params.branch}`,
+  ], {
+    cwd: params.repositoryPath,
+  })
+
+  return {
+    path: params.repositoryPath,
+    branch: params.branch,
+  }
+}
+
 export async function pushRepositoryBranch(params: {
   repository: GitHubRepositoryRef
   defaultBranch: string
