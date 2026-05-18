@@ -38,9 +38,9 @@ jobs:
 
 ## Trigger Authorization
 
-The clank8y webhook server checks whether the GitHub actor is allowed to trigger clank8y before it dispatches the workflow. Unauthorized triggers receive a short GitHub comment and no GitHub Actions run or AI model call is started.
+Before dispatching the workflow, the clank8y webhook server checks whether the GitHub actor may trigger clank8y. Unauthorized requests get a short GitHub comment and do not start a workflow run or AI model call.
 
-If no config file exists, clank8y defaults to requiring at least `write` repository permission. Add `clank8y.json` to the repository root to change that policy:
+Configuration is optional. If `clank8y.json` is missing from the repository root, clank8y uses this default:
 
 ```json
 {
@@ -48,20 +48,26 @@ If no config file exists, clank8y defaults to requiring at least `write` reposit
 }
 ```
 
-Supported permission values are `write`, `maintain`, and `admin`. The permissions are ordered from weakest to strongest, so `write` also allows `maintain` and `admin`. Use `maintain` if only maintainers/admins should be able to trigger runs.
+Full config example, shown as JSONC for documentation. The actual `clank8y.json` file must be valid JSON, so remove comments before committing it:
 
-To allow only specific users or organization teams, set `allowedClank8yTriggerers`. Entries are either GitHub usernames or teams in `<orgName>/<teamSlug>` form:
-
-```json
+```jsonc
 {
+  // Minimum repository permission required to trigger clank8y.
+  // Allowed values: "write", "maintain", "admin".
+  // "write" also allows "maintain" and "admin".
+  // Ignored when allowedClank8yTriggerers is non-empty.
+  "allowedTriggerPermission": "write",
+
+  // Optional exclusive allowlist for clank8y triggerers.
+  // Entries are exact GitHub usernames or teams in "<orgName>/<teamSlug>" form.
+  // Team entries must belong to the same organization that owns the repository.
+  // If this array is non-empty, only these users or team members may trigger clank8y.
   "allowedClank8yTriggerers": [
     "octocat",
     "my-org/platform-maintainers"
   ]
 }
 ```
-
-When `allowedClank8yTriggerers` is non-empty, only those users or team members can trigger clank8y; `allowedTriggerPermission` is ignored. Team entries must use the same organization that owns the repository.
 
 ## Model and Provider API Keys
 
