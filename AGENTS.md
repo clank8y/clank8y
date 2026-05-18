@@ -165,14 +165,13 @@ When working on this project:
 6. **Add tests** for new functionality in the `tests/` directory
 7. **Record learnings** — When the user corrects a mistake or provides context about how something should be done, add it to the "Project Context & Learnings" section below if it's a recurring pattern (not a one-time fix)
 8. **Notify documentation changes** — When updating `README.md` or `AGENTS.md`, explicitly call out the changes to the user at the end of your response so they can review and don't overlook them
-9. **Validate before commit/PR workflow** — Before creating a commit or PR, inspect the project and changed files to determine which validation commands are relevant, such as unit tests, e2e tests, linting, formatting/prettier checks, and type checking. Run the applicable checks and make sure they pass, or explicitly report any remaining failures.
-10. **Use available workflow tools first** — When the user asks for branch/commit/PR workflow, use the available workflow tools first. Only fall back to `gh` CLI when those tools are not available.
-11. **Use conventional naming for git workflow** — Branch names should use conventional prefixes where appropriate, such as `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `build/`, `types/`, `style/`, `perf/`, `examples/`, and `ci/`. Commit subjects and PR titles should use conventional-commit style with the most appropriate type.
-12. **Default PR behavior** — If the current branch already contains the related work, assume the PR should be opened from the current branch to `main` unless the user explicitly asks to isolate only part of the work or use a different base branch.
-13. **Always include a PR body** — PRs created for the user must include a body. If a related issue identifier is known, include the appropriate GitHub-style reference.
-14. **Prefer autofix first** — Strongly prefer running `pnpm lint:fix` before manually fixing lintable issues by hand. For automated validation, prefer this order: `pnpm -r --include-workspace-root test:run` → `pnpm lint:fix` → `pnpm typecheck`.
-15. **Ask when requirements are unclear** — If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
-16. **Prefer simple inline logic over trivial helpers** — Do not introduce tiny one-line helper/utility functions or throwaway `parse*` helpers for trivial one-off logic. Inline simple normalization or branching unless there is real reuse or a clear API boundary.
+9. **Use available workflow tools first** — When the user asks for branch/commit/PR workflow, use the available workflow tools first. Only fall back to `gh` CLI when those tools are not available.
+10. **Use conventional naming for git workflow** — Branch names should use conventional prefixes where appropriate, such as `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `build/`, `types/`, `style/`, `perf/`, `examples/`, and `ci/`. Commit subjects and PR titles should use conventional-commit style with the most appropriate type.
+11. **Default PR behavior** — If the current branch already contains the related work, assume the PR should be opened from the current branch to `main` unless the user explicitly asks to isolate only part of the work or use a different base branch.
+12. **Always include a PR body** — PRs created for the user must include a body. If a related issue identifier is known, include the appropriate GitHub-style reference.
+13. **Prefer autofix first** — Strongly prefer running `pnpm lint:fix` before manually fixing lintable issues by hand. For automated validation, prefer this order: `pnpm -r --include-workspace-root test:run` → `pnpm lint:fix` → `pnpm typecheck`.
+14. **Ask when requirements are unclear** — If requirements are ambiguous, ask a focused clarifying question instead of implementing a guessed solution.
+15. **Prefer simple inline logic over trivial helpers** — Do not introduce tiny one-line helper/utility functions or throwaway `parse*` helpers for trivial one-off logic. Inline simple normalization or branching unless there is real reuse or a clear API boundary.
 
 ## Project Context & Learnings
 
