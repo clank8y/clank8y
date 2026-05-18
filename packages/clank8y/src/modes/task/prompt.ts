@@ -37,6 +37,7 @@ const TASK_WORKFLOW = [
 \`${PREPARE_TASK_WORKSPACE_TOOL_NAME}\` once you know the repository and target from the event-level instructions.`,
   '   - For pull request targets, setup writes `.clank8y/pr.md` and `.clank8y/diff.txt` and binds the allowed push branch to the PR head branch.',
   '   - For issue targets, setup writes `.clank8y/issues/<number>.md` for the target issue and prepares the repository without creating a task branch yet.',
+  '   - The tool result includes the prepared repository path under `.clank8y/repos/...`; use that path with local read/edit/write/bash tools.',
   '',
   '2) Read the generated `.clank8y` files before doing substantive work.',
   '   - Start with `.clank8y/report.md` plus any generated PR or issue artifacts.',
@@ -49,6 +50,7 @@ const TASK_WORKFLOW = [
   '   - Branch creation is blocked in pull-request workflows.',
   '',
   '4) Make the smallest correct code changes and run focused validation locally.',
+  '   - Normal local coding tools are available in this mode: `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`.',
   '',
   `5) If code changed, publish only through \
 \`${PUSH_TASK_BRANCH_TOOL_NAME}\`.`,

@@ -86,6 +86,7 @@ const INCIDENT_FIX_WORKFLOW = [
   '',
   `4) **Prepare a checkout** with \`${CLONE_REPO_TOOL_NAME}\` once you know which repository you need locally.`,
   '   - Use it when you need a local checkout for investigation.',
+  '   - The tool result includes the prepared repository path under `.clank8y/repos/...`; use that path with local read/edit/write/bash tools.',
   '',
   `5) **Fetch a specific non-default branch only when needed** via \`${FETCH_REPO_BRANCH_TOOL_NAME}\`.`,
   '   - After fetching, local git branch creation and checkout can happen with normal local git commands.',
@@ -152,6 +153,7 @@ const INCIDENT_FIX_WORKFLOW = [
   '- Use Angular MCP for Angular-specific guidance and API verification.',
   '- Use Codex MCP for Cumulocity-specific APIs, components, hooks, widgets, CSS utilities, and design tokens.',
   '- Use normal local file, shell, build, test, and git tools only after the relevant repository has been prepared locally.',
+  '- Native coding tools available in this mode are `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`.',
 ].join('\n')
 
 const INCIDENT_FIX_REPORT_GUIDANCE = [

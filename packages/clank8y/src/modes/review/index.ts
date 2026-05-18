@@ -3,6 +3,7 @@ import { resetPullRequestContext } from './context'
 import { buildReviewPrompt } from './prompt'
 import { reviewExternalMcpServers } from './externalMcpServers'
 import { reviewGitHubTools } from './tools/github'
+import { reviewBuiltinTools } from '../../tools/piBuiltins'
 
 export function getReviewModeRuntime(promptContext: string): Clank8yModeRuntime {
   resetPullRequestContext()
@@ -10,6 +11,9 @@ export function getReviewModeRuntime(promptContext: string): Clank8yModeRuntime 
   return {
     prompt: buildReviewPrompt(promptContext),
     externalMcpServers: reviewExternalMcpServers(),
-    tools: reviewGitHubTools(),
+    tools: [
+      ...reviewBuiltinTools(),
+      ...reviewGitHubTools(),
+    ],
   }
 }

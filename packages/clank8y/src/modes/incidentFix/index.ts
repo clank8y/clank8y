@@ -2,6 +2,7 @@ import type { Clank8yModeRuntime } from '..'
 import { incidentFixExternalMcpServers } from './externalMcpServers'
 import { incidentFixGitHubTools } from './tools/github'
 import { buildIncidentFixPrompt } from './prompt'
+import { incidentFixBuiltinTools } from '../../tools/piBuiltins'
 
 export { incidentFixExternalMcpServers } from './externalMcpServers'
 export { buildIncidentFixPrompt } from './prompt'
@@ -10,6 +11,9 @@ export function getIncidentFixModeRuntime(promptContext: string): Clank8yModeRun
   return {
     prompt: buildIncidentFixPrompt(promptContext),
     externalMcpServers: incidentFixExternalMcpServers(),
-    tools: incidentFixGitHubTools(),
+    tools: [
+      ...incidentFixBuiltinTools(),
+      ...incidentFixGitHubTools(),
+    ],
   }
 }
