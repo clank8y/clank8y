@@ -1,13 +1,10 @@
 import { describe, expect, test } from 'vitest'
+import { ANGULAR_CLI_MCP_ARGS } from '../../src/tools/external/angular'
 import { connectStdioMcpServer } from '../../src/tools/external/stdioMcp'
 
 describe('connectStdioMcpServer', () => {
   test('converts selected Angular CLI MCP tools to Pi tools', async () => {
-    const connection = await connectStdioMcpServer('angular', 'pnpm', [
-      'exec',
-      'ng',
-      'mcp',
-    ], [
+    const connection = await connectStdioMcpServer('angular', 'npx', [...ANGULAR_CLI_MCP_ARGS], [
       'find_examples',
       'get_best_practices',
       'search_documentation',
@@ -29,14 +26,10 @@ describe('connectStdioMcpServer', () => {
     } finally {
       await connection.close()
     }
-  }, 30_000)
+  }, 60_000)
 
   test('converts only requested Angular CLI MCP tools', async () => {
-    const connection = await connectStdioMcpServer('angular', 'pnpm', [
-      'exec',
-      'ng',
-      'mcp',
-    ], [
+    const connection = await connectStdioMcpServer('angular', 'npx', [...ANGULAR_CLI_MCP_ARGS], [
       'get_best_practices',
     ])
 
@@ -47,5 +40,5 @@ describe('connectStdioMcpServer', () => {
     } finally {
       await connection.close()
     }
-  }, 30_000)
+  }, 60_000)
 })
