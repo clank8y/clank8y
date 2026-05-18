@@ -22,6 +22,7 @@ import {
 import { runClank8yGit } from '../../../utils/git'
 import {
   assertPushBranchAllowed,
+  checkoutFetchedRepositoryBranch,
   cloneRepository,
   fetchRepositoryBranch,
   getRepositoryBranches,
@@ -387,15 +388,10 @@ export function taskGitHubTools(): AgentTool[] {
               branch: pullRequest.head.ref,
               token: getClank8yRuntimeContext().auth.githubToken,
             })
-            const hasLocalBranch = await runClank8yGit(['show-ref', '--verify', '--quiet', `refs/heads/${pullRequest.head.ref}`], {
-              cwd: cloneResult.path,
-            }).then(() => true).catch(() => false)
-            await runClank8yGit(
-              hasLocalBranch
-                ? ['checkout', pullRequest.head.ref]
-                : ['checkout', '-b', pullRequest.head.ref, '--track', `origin/${pullRequest.head.ref}`],
-              { cwd: cloneResult.path },
-            )
+            await checkoutFetchedRepositoryBranch({
+              repositoryPath: cloneResult.path,
+              branch: pullRequest.head.ref,
+            })
           } else {
             await runClank8yGit(['checkout', repoData.default_branch], { cwd: cloneResult.path })
           }
@@ -466,15 +462,10 @@ export function taskGitHubTools(): AgentTool[] {
             branch: baseBranch,
             token: getClank8yRuntimeContext().auth.githubToken,
           })
-          const hasLocalBranch = await runClank8yGit(['show-ref', '--verify', '--quiet', `refs/heads/${baseBranch}`], {
-            cwd: cloneResult.path,
-          }).then(() => true).catch(() => false)
-          await runClank8yGit(
-            hasLocalBranch
-              ? ['checkout', baseBranch]
-              : ['checkout', '-b', baseBranch, '--track', `origin/${baseBranch}`],
-            { cwd: cloneResult.path },
-          )
+          await checkoutFetchedRepositoryBranch({
+            repositoryPath: cloneResult.path,
+            branch: baseBranch,
+          })
         } else {
           await runClank8yGit(['checkout', repoData.default_branch], { cwd: cloneResult.path })
         }
