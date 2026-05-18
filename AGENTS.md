@@ -215,6 +215,8 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub native Pi tool implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
 - When prompts, errors, or context messages mention a mode-local MCP tool name, import the tool-name constant and interpolate it instead of hardcoding the string.
 - Task mode should be artifact-first: setup materializes PR and issue context into `.clank8y/` files, and the agent should work primarily from those files instead of custom chunking reads.
+- For issue-driven Task runs that open a PR, do not add a separate issue summary comment; the PR should reference the issue and act as the GitHub follow-up.
+- GitHub comment tools append the standard clank8y footer automatically; prompts and tool guidance should tell the agent not to add a manual signature or footer.
 
 ### Common Mistakes to Avoid
 
