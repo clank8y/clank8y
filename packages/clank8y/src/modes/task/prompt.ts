@@ -49,6 +49,9 @@ const TASK_WORKFLOW = [
   '   - Branch creation is blocked in pull-request workflows.',
   '',
   '4) Make the smallest correct code changes and run focused validation locally.',
+  '   - Inspect the repository and changed files to determine which validations are relevant before pushing, opening a PR, or reporting completion.',
+  '   - Run the applicable checks for the work you changed, such as unit tests, e2e tests, linting, formatting or prettier checks, and type checking.',
+  '   - Do not claim success if relevant validation failed. Either fix it, or report the remaining failure clearly.',
   '   - Normal local coding tools are available in this mode: `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`.',
   '',
   `5) If code changed, publish only through \
@@ -72,7 +75,7 @@ const TASK_WORKFLOW = [
   '- Do not finish without `.clank8y/report.md`.',
   '- For existing pull-request conversations, report back in the PR or review thread when the task requires it.',
   '- If issue-driven work opened a PR, the PR reference is enough; do not add a separate issue comment just to summarize the work.',
-  '- If code changed, do not finish before validation and, when appropriate, pushing through the dedicated push tool.',
+  '- If code changed, do not finish before the relevant validation for that repository passes and, when appropriate, pushing through the dedicated push tool.',
   '- Do not resolve review threads speculatively; only resolve them when the implementation actually addressed the thread.',
 ].join('\n')
 
