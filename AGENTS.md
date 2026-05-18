@@ -81,9 +81,14 @@ packages/
 
 ## Development
 
+- Use Node 26 for repo development and CI (`mise.toml` and GitHub workflows pin 26).
+- The published JavaScript GitHub Action runs on `node24` via `action.yml`.
+- `actions/setup-node` does not change the runtime of the JavaScript action itself; it only affects later workflow steps.
+- Treat Node 24+ as required for the published action/package, with Node 26 preferred for local development and custom runtimes.
+
 ```sh
 pnpm install    # Install dependencies
-pnpm test:run   # Run package tests
+pnpm -r --include-workspace-root test:run   # Run workspace tests
 pnpm build      # Build the action and the clank8y package
 pnpm lint       # Lint with ESLint
 pnpm lint:fix   # Lint and auto-fix
@@ -109,7 +114,7 @@ pnpm typecheck  # TypeScript type checking for action + package
 
 - Write tests in the `packages/clank8y/tests/` directory
 - Use `*.test.ts` file naming convention
-- Run `pnpm test:run` for running tests
+- Run `pnpm -r --include-workspace-root test:run` for running workspace tests
 - Import modules from `../../src` when the test file is in a nested package test directory
 - When tests are in a folder 3 levels deep (e.g. `tests/agents/pi/`), use `../../../src` to reach source files
 
@@ -151,7 +156,7 @@ When making changes to the project:
 
 When working on this project:
 
-1. **Run tests** after making changes: `pnpm test:run` (runs once, no watch mode)
+1. **Run tests** after making changes: `pnpm -r --include-workspace-root test:run` (runs once, no watch mode)
 2. **Run linting** to ensure code quality: `pnpm lint`
 3. **Run type checking** before committing: `pnpm typecheck`
 4. **Update this file** when adding new modules, APIs, or changing architecture
@@ -170,6 +175,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 - MCP tool handlers should return `tool.error(...)` for user-facing tool failures instead of throwing from inside handlers.
 - The root GitHub Action build must stay self-contained: do not externalize Pi SDK packages in the root `tsdown.config.ts`, because GitHub Actions runs the checked-in `dist/index.mjs` without installing package dependencies. The package build may still externalize SDK dependencies for npm consumers.
+- Runtime policy: keep the published JavaScript action pinned via `action.yml` `runs.using: node24`. Use `actions/setup-node` 26 for workflow build/test steps, but do not expect it to change the action runtime. Document Node 24+ as required and Node 26 as preferred for development/custom runtimes.
 
 ### Patterns & Conventions
 
