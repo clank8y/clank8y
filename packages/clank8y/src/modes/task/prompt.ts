@@ -4,7 +4,6 @@ import {
 } from '../basePrompts'
 import {
   CREATE_BRANCH_TOOL_NAME,
-  CREATE_ISSUE_COMMENT_TOOL_NAME,
   CREATE_PULL_REQUEST_COMMENT_TOOL_NAME,
   CREATE_REPO_PULL_REQUEST_TOOL_NAME,
   GET_ISSUE_TOOL_NAME,
@@ -56,21 +55,23 @@ const TASK_WORKFLOW = [
 \`${PUSH_TASK_BRANCH_TOOL_NAME}\`.`,
   '   - That tool only pushes the branch currently bound by the Task context.',
   '',
-  '6) Report back on GitHub using the correct tool for the target:',
-  `   - use \`${CREATE_ISSUE_COMMENT_TOOL_NAME}\` for issue comments`,
+  '6) Report back on GitHub only where follow-up is actually needed:',
   `   - use \`${CREATE_PULL_REQUEST_COMMENT_TOOL_NAME}\` for pull request comments`,
   `   - use \`${REPLY_TO_REVIEW_COMMENT_TOOL_NAME}\` for inline review replies`,
   `   - use \`${RESOLVE_REVIEW_THREAD_TOOL_NAME}\` only when the implementation actually addressed that review thread`,
+  '   - do not post a separate issue comment just to restate work done for an issue-driven task; if a PR is opened and references the issue, that PR is the GitHub follow-up',
+  '   - do not add your own signature or footer to GitHub comment bodies; the GitHub tools append the standard clank8y footer automatically',
   '',
   `7) If you need another same-repo issue written to \
 \.clank8y/issues/<number>.md, call \`${GET_ISSUE_TOOL_NAME}\` with its number.`,
   '',
   `8) If the work becomes a new pull request, use \
-\`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` after the branch is pushed.`,
+\`${CREATE_REPO_PULL_REQUEST_TOOL_NAME}\` after the branch is pushed and make sure the PR body references the issue it addresses.`,
   '',
   '### Completion criteria',
   '- Do not finish without `.clank8y/report.md`.',
-  '- Do not finish without reporting back on GitHub to the user that requested the task when the task requires it.',
+  '- For existing pull-request conversations, report back in the PR or review thread when the task requires it.',
+  '- If issue-driven work opened a PR, the PR reference is enough; do not add a separate issue comment just to summarize the work.',
   '- If code changed, do not finish before validation and, when appropriate, pushing through the dedicated push tool.',
   '- Do not resolve review threads speculatively; only resolve them when the implementation actually addressed the thread.',
 ].join('\n')
