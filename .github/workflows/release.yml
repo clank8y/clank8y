@@ -43,15 +43,11 @@ jobs:
       - name: Test
         run: pnpm -r --include-workspace-root test:run
 
-      - name: Publish clank8y to npm
-        run: pnpm --filter clank8y publish --access public --no-git-checks --provenance
-
       - name: Deploy website with Wrangler
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4.69.0'
           command: deploy --message "production release ${{ github.ref_name }}"
           workingDirectory: website
 
@@ -59,3 +55,6 @@ jobs:
         run: pnpm changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish clank8y to npm
+        run: pnpm --filter clank8y publish --access public --no-git-checks --provenance
