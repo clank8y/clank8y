@@ -178,6 +178,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub Action input names kebab-case and map them via `core.getInput(...)`.
 - `prompt` is additive: inject event-level instruction metadata into the base prompt, never replace the entire default prompt.
 - Website webhook dispatch should inject structured GitHub event metadata plus any quoted user instruction and let clank8y select `Review` vs `Task`; do not hard-force the mode for mention-driven or assignment-driven invocations. Source-specific prompt guidance is fine when it stays advisory, such as nudging reviewer assignment toward `Review` and issue assignment toward `Task`.
+- Trigger authorization is enforced in the website webhook before workflow dispatch, not in the GitHub Action. The webhook reads `clank8y.json` from the repository default branch, defaults to `allowedTriggerPermission: write`, supports only `write`/`maintain`/`admin` for permission config, and uses explicit `allowedClank8yTriggerers` users/`<repo-owner-org>/<team-slug>` teams as an exclusive allowlist when present.
 - Pi agent authentication relies on provider-specific Pi environment variables such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, and `OPENROUTER_API_KEY`. Do not pass model-provider tokens through `Clank8yRuntimeContext`; the Pi provider layer reads its own environment variables.
 - Pi agent model options accept Pi's native `Model<any>` object or a simple `provider:model-id` string resolved once at the clank8y boundary with Pi's `getModel`. Do not add legacy alias maps or heuristic model-name mapping.
 - Keep shared prompt fragments in `src/modes/basePrompts.ts`; do not introduce a `shared/` subdirectory under `src/modes/`.
@@ -212,4 +213,5 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 
 - Avoid mixing throw-based control flow with MCP error responses inside tool handlers.
 - Avoid under-described schemas; missing descriptions reduces agent tool-call quality.
-- Avoid adding `parse*` helper functions for simple one-off input handling. Prefer inline normalization at the boundary, or a clearly named adapter (for example `modelFromInput`) only when a real API boundary needs it. Reusable parsers are fine for real domain formats used in multiple places.
+- Avoid adding `parse*` helper functions for simple one-off input handling. Prefer inline handling at the boundary, or a clearly named adapter (for example `modelFromInput`) only when a real API boundary needs it. Reusable parsers are fine for real domain formats used in multiple places.
+- Avoid generic `normalize*` helper functions. For configured GitHub users/orgs/teams, compare exact values and let typos fail visibly.

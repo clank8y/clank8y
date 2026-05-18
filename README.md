@@ -36,6 +36,39 @@ jobs:
 
 > **Note:** Do not fill in the `prompt` input manually. It is populated automatically by the clank8y webhook server with GitHub event metadata, target context, actor, and any quoted user instruction. Manually dispatching this workflow without that context will cause the agent to fail.
 
+## Trigger Authorization
+
+Before dispatching the workflow, the clank8y webhook server checks whether the GitHub actor may trigger clank8y. Unauthorized requests get a short GitHub comment and do not start a workflow run or AI model call.
+
+Configuration is optional. If `clank8y.json` is missing from the repository root, clank8y uses this default:
+
+```json
+{
+  "allowedTriggerPermission": "write"
+}
+```
+
+Full config example, shown as JSONC for documentation. The actual `clank8y.json` file must be valid JSON, so remove comments before committing it:
+
+```jsonc
+{
+  // Minimum repository permission required to trigger clank8y.
+  // Allowed values: "write", "maintain", "admin".
+  // "write" also allows "maintain" and "admin".
+  // Ignored when allowedClank8yTriggerers is non-empty.
+  "allowedTriggerPermission": "write",
+
+  // Optional exclusive allowlist for clank8y triggerers.
+  // Entries are exact GitHub usernames or teams in "<orgName>/<teamSlug>" form.
+  // Team entries must belong to the same organization that owns the repository.
+  // If this array is non-empty, only these users or team members may trigger clank8y.
+  "allowedClank8yTriggerers": [
+    "octocat",
+    "my-org/platform-maintainers"
+  ]
+}
+```
+
 ## Model and Provider API Keys
 
 clank8y needs a model string and provider credentials for Pi model access.

@@ -4,6 +4,7 @@ import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from 'octokit'
 import process from 'node:process'
 import { buildReportBackInstruction, buildWebhookSetupHintBody, isClank8ySelfActor } from '../../../utils/github'
+import { authorizeTrigger, commentUnauthorizedTrigger } from '../../../utils/triggerAuthorization'
 import { getAppId, getAppPrivateKey, getWebhookSecret } from '../../../utils/env'
 
 const WORKFLOW_ID = 'clank8y.yml'
@@ -213,6 +214,39 @@ function classifyDispatchFailure(error: unknown): DispatchFailureReason {
   return 'unknown'
 }
 
+async function ensureAuthorizedTrigger(params: {
+  owner: string
+  repo: string
+  defaultBranch: string
+  issueNumber: number
+  actor: string
+  octokit: Octokit
+}): Promise<boolean> {
+  const authorization = await authorizeTrigger({
+    owner: params.owner,
+    repo: params.repo,
+    defaultBranch: params.defaultBranch,
+    actor: params.actor,
+    octokit: params.octokit,
+  })
+
+  if (authorization.authorized) {
+    return true
+  }
+
+  await commentUnauthorizedTrigger({
+    owner: params.owner,
+    repo: params.repo,
+    issueNumber: params.issueNumber,
+    username: params.actor,
+    reason: authorization.reason,
+    octokit: params.octokit,
+  })
+
+  console.log(`[webhook] ignored unauthorized clank8y trigger repo=${params.owner}/${params.repo} issue_or_pr=#${params.issueNumber} actor=${params.actor}`)
+  return false
+}
+
 async function commentSetupHint(params: {
   owner: string
   repo: string
@@ -286,6 +320,17 @@ export default defineHandler(async (event) => {
     const installationOctokit = await createInstallationOctokit(owner, repo)
 
     try {
+      if (!await ensureAuthorizedTrigger({
+        owner,
+        repo,
+        defaultBranch: payload.repository.default_branch,
+        issueNumber: payload.issue.number,
+        actor: payload.sender.login,
+        octokit: installationOctokit,
+      })) {
+        return
+      }
+
       const target = payload.issue.pull_request
         ? {
             kind: 'pull_request' as const,
@@ -360,6 +405,17 @@ export default defineHandler(async (event) => {
     const installationOctokit = await createInstallationOctokit(owner, repo)
 
     try {
+      if (!await ensureAuthorizedTrigger({
+        owner,
+        repo,
+        defaultBranch: payload.repository.default_branch,
+        issueNumber: payload.pull_request.number,
+        actor: payload.sender.login,
+        octokit: installationOctokit,
+      })) {
+        return
+      }
+
       const pullRequestContext = await fetchPullRequestContext({
         owner,
         repo,
@@ -424,10 +480,25 @@ export default defineHandler(async (event) => {
       return
     }
 
+    const owner = payload.repository.owner.login
+    const repo = payload.repository.name
+    const installationOctokit = await createInstallationOctokit(owner, repo)
+
     try {
+      if (!await ensureAuthorizedTrigger({
+        owner,
+        repo,
+        defaultBranch: payload.repository.default_branch,
+        issueNumber: payload.pull_request.number,
+        actor: payload.sender.login,
+        octokit: installationOctokit,
+      })) {
+        return
+      }
+
       await dispatchWorkflow({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
+        owner,
+        repo,
         defaultBranch: payload.repository.default_branch,
         trigger: 'pull_request_review_requested',
         actor: payload.sender.login,
@@ -450,8 +521,8 @@ export default defineHandler(async (event) => {
       const reason = classifyDispatchFailure(error)
 
       await commentSetupHint({
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
+        owner,
+        repo,
         issueNumber: payload.pull_request.number,
         username: requestedReviewer,
         reason,
@@ -479,6 +550,17 @@ export default defineHandler(async (event) => {
     const installationOctokit = await createInstallationOctokit(owner, repo)
 
     try {
+      if (!await ensureAuthorizedTrigger({
+        owner,
+        repo,
+        defaultBranch: payload.repository.default_branch,
+        issueNumber: payload.issue.number,
+        actor: payload.sender.login,
+        octokit: installationOctokit,
+      })) {
+        return
+      }
+
       await dispatchWorkflow({
         owner,
         repo,
