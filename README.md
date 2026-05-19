@@ -134,6 +134,7 @@ Reports back on GitHub as clank8y
 - ✅ AI-powered mode selection between `Review` and `Task` in the GitHub Actions runtime
 - ✅ Read-only PR reviews with structured GitHub feedback
 - ✅ Single-repository Task runs that can edit code, validate locally, push task branches, open same-repo pull requests for issue-driven work, and report back on GitHub as clank8y
+- ✅ Automatic repository-root `AGENTS.md` loading (case-insensitive) when clank8y clones a repository, surfaced back to the agent as system repo context
 
 ### What it doesn't do (yet)
 

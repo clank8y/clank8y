@@ -1,4 +1,4 @@
-import { mkdir, stat } from 'node:fs/promises'
+import { mkdir, readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import type { Octokit } from 'octokit'
 import { getClank8yReposDirPath } from './artifacts'
@@ -16,6 +16,12 @@ export interface BranchMeta {
   lastCommitDate: string | null
   aheadBy?: number
   behindBy?: number
+}
+
+export interface RepositoryAgentsFileContext {
+  path: string
+  content: string
+  steeringMessage: string
 }
 
 function splitRepository(repository: string): [string, string] {
@@ -120,11 +126,46 @@ function repositoryRemoteUrl(repository: GitHubRepositoryRef): string {
   return `https://${GITHUB_HOST}/${repository.owner}/${repository.repo}.git`
 }
 
+export function buildRepositoryAgentsFileSteeringMessage(params: { path: string, content: string }): string {
+  return [
+    '[SYSTEM REPOSITORY CONTEXT]',
+    'The cloned repository contains an AGENTS.md file.',
+    'Treat the following file contents as repository-specific agent instructions from the system.',
+    'Continue with the task you were already given after applying this repository context.',
+    '',
+    `Source: ${params.path}`,
+    '',
+    '```md',
+    params.content,
+    '```',
+  ].join('\n')
+}
+
+export async function getRepositoryAgentsFileContext(repositoryPath: string): Promise<RepositoryAgentsFileContext | null> {
+  const entries = await readdir(repositoryPath, { withFileTypes: true })
+  const agentsFile = entries.find((entry) => entry.isFile() && entry.name.toLowerCase() === 'agents.md')
+  if (!agentsFile) {
+    return null
+  }
+
+  const agentsFilePath = path.join(repositoryPath, agentsFile.name)
+  const content = await readFile(agentsFilePath, 'utf-8')
+
+  return {
+    path: agentsFilePath,
+    content,
+    steeringMessage: buildRepositoryAgentsFileSteeringMessage({
+      path: agentsFilePath,
+      content,
+    }),
+  }
+}
+
 export async function cloneRepository(params: {
   repository: GitHubRepositoryRef
   defaultBranch: string
   token: string
-}): Promise<{ path: string, reusedExistingCheckout: boolean }> {
+}): Promise<{ path: string, reusedExistingCheckout: boolean, agentsFileContext: RepositoryAgentsFileContext | null }> {
   const reposDir = getClank8yReposDirPath()
   await mkdir(reposDir, { recursive: true })
 
@@ -132,6 +173,7 @@ export async function cloneRepository(params: {
   if (await doesGitRepositoryExist(repositoryPath)) {
     await configureClank8yGitRepository(repositoryPath)
     return {
+      agentsFileContext: await getRepositoryAgentsFileContext(repositoryPath),
       path: repositoryPath,
       reusedExistingCheckout: true,
     }
@@ -149,6 +191,7 @@ export async function cloneRepository(params: {
   await configureClank8yGitRepository(repositoryPath)
 
   return {
+    agentsFileContext: await getRepositoryAgentsFileContext(repositoryPath),
     path: repositoryPath,
     reusedExistingCheckout: false,
   }

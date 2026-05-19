@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -10,7 +10,9 @@ import {
 } from '../../src/utils/git'
 import {
   assertArtifactOwnedByAuthenticatedUser,
+  buildRepositoryAgentsFileSteeringMessage,
   assertPushBranchAllowed,
+  getRepositoryAgentsFileContext,
   parseGitHubRepository,
   resolveRepositoryPath,
   toGitHubRepositoryKey,
@@ -37,6 +39,50 @@ describe('repository helpers', () => {
 
     expect(repoPath).toContain('clank8y--repo')
     expect(repoPath).toMatch(/\.clank8y[\/\\]repos[\/\\]clank8y--repo$/)
+  })
+
+  test('reads a root AGENTS.md file case-insensitively', async () => {
+    const repositoryPath = await mkdtemp(path.join(tmpdir(), 'clank8y-agents-test-'))
+
+    try {
+      const agentsFilePath = path.join(repositoryPath, 'Agents.MD')
+      await writeFile(agentsFilePath, '# Repo instructions\nUse pnpm.\n', 'utf-8')
+
+      await expect(getRepositoryAgentsFileContext(repositoryPath)).resolves.toEqual({
+        path: agentsFilePath,
+        content: '# Repo instructions\nUse pnpm.\n',
+        steeringMessage: buildRepositoryAgentsFileSteeringMessage({
+          path: agentsFilePath,
+          content: '# Repo instructions\nUse pnpm.\n',
+        }),
+      })
+    } finally {
+      await rm(repositoryPath, { force: true, recursive: true })
+    }
+  })
+
+  test('returns null when the repository has no root AGENTS.md file', async () => {
+    const repositoryPath = await mkdtemp(path.join(tmpdir(), 'clank8y-agents-missing-test-'))
+
+    try {
+      await expect(getRepositoryAgentsFileContext(repositoryPath)).resolves.toBeNull()
+    } finally {
+      await rm(repositoryPath, { force: true, recursive: true })
+    }
+  })
+
+  test('formats AGENTS.md content as a system repository-context steering message', () => {
+    const message = buildRepositoryAgentsFileSteeringMessage({
+      path: '/tmp/repo/AGENTS.md',
+      content: '# Repo context\nAlways run tests.\n',
+    })
+
+    expect(message).toContain('[SYSTEM REPOSITORY CONTEXT]')
+    expect(message).toContain('Source: /tmp/repo/AGENTS.md')
+    expect(message).toContain('Treat the following file contents as repository-specific agent instructions from the system.')
+    expect(message).toContain('Continue with the task you were already given')
+    expect(message).toContain('```md')
+    expect(message).toContain('# Repo context\nAlways run tests.\n')
   })
 
   test('allows pushing a valid clank8y branch', () => {
