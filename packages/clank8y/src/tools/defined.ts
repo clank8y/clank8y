@@ -10,6 +10,12 @@ export interface DefinedTool {
   execute: (input: any) => Promise<any> | any
 }
 
+export interface DefinedToolResultDetails {
+  __clank8yDefinedToolResult: true
+  structuredContent: unknown
+  internal?: unknown
+}
+
 function resultText(result: { content?: unknown[] }): string {
   return (result.content ?? [])
     .filter((item: unknown): item is { type: string, text: string } =>
@@ -35,9 +41,17 @@ export function definedToolToPiTool(definedTool: DefinedTool): AgentTool {
         throw new Error(resultText(result) || `Tool ${definedTool.name} failed`)
       }
 
+      const details: DefinedToolResultDetails | unknown = result?.structuredContent !== undefined
+        ? {
+          __clank8yDefinedToolResult: true,
+          structuredContent: result.structuredContent,
+          internal: result.internal,
+        } satisfies DefinedToolResultDetails
+        : result
+
       return {
         content: Array.isArray(result?.content) ? result.content : [{ type: 'text', text: JSON.stringify(result) }],
-        details: result?.structuredContent ?? result,
+        details,
       }
     },
   }

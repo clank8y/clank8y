@@ -27,17 +27,6 @@ export const UPDATE_REPO_PULL_REQUEST_BODY_TOOL_NAME = 'update-repo-pull-request
 
 const RESOURCES_ARTIFACT_NOTE = 'This action was recorded in .clank8y/resources.md — read it to recover context.'
 
-function withRepositoryAgentsFileContext<T extends Record<string, unknown>>(structuredContent: T, agentsFileContext: { steeringMessage: string } | null) {
-  if (!agentsFileContext) {
-    return tool.structured(structuredContent)
-  }
-
-  return {
-    content: [{ type: 'text' as const, text: agentsFileContext.steeringMessage }],
-    structuredContent,
-  }
-}
-
 async function getAuthenticatedLogin() {
   const octokit = await getOctokit()
   const { data } = await octokit.rest.users.getAuthenticated()
@@ -168,13 +157,15 @@ export function incidentFixGitHubTools(): AgentTool[] {
           token: getClank8yRuntimeContext().auth.githubToken,
         })
 
-        return withRepositoryAgentsFileContext({
+        return tool.structured({
           repository: `${parsed.owner}/${parsed.repo}`,
           path: result.path,
           defaultBranch: repoData.default_branch,
           reusedExistingCheckout: result.reusedExistingCheckout,
           agentsFilePath: result.agentsFileContext?.path ?? null,
-        } as any, result.agentsFileContext)
+        } as any, {
+          repositoryAgentsFileContext: result.agentsFileContext,
+        })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         return tool.error(`Failed to clone repository: ${message}`)

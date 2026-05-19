@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -65,6 +65,19 @@ describe('repository helpers', () => {
     const repositoryPath = await mkdtemp(path.join(tmpdir(), 'clank8y-agents-missing-test-'))
 
     try {
+      await expect(getRepositoryAgentsFileContext(repositoryPath)).resolves.toBeNull()
+    } finally {
+      await rm(repositoryPath, { force: true, recursive: true })
+    }
+  })
+
+  test('ignores AGENTS.md files below the repository root', async () => {
+    const repositoryPath = await mkdtemp(path.join(tmpdir(), 'clank8y-agents-nested-test-'))
+
+    try {
+      await mkdir(path.join(repositoryPath, '.github'), { recursive: true })
+      await writeFile(path.join(repositoryPath, '.github', 'AGENTS.md'), '# Nested only\n', 'utf-8')
+
       await expect(getRepositoryAgentsFileContext(repositoryPath)).resolves.toBeNull()
     } finally {
       await rm(repositoryPath, { force: true, recursive: true })

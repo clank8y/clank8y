@@ -92,17 +92,6 @@ interface ReviewThreadQueryResult {
   } | null
 }
 
-function withRepositoryAgentsFileContext<T extends Record<string, unknown>>(structuredContent: T, agentsFileContext: { steeringMessage: string } | null) {
-  if (!agentsFileContext) {
-    return tool.structured(structuredContent)
-  }
-
-  return {
-    content: [{ type: 'text' as const, text: agentsFileContext.steeringMessage }],
-    structuredContent,
-  }
-}
-
 type ReviewThreadNode = NonNullable<NonNullable<ReviewThreadQueryResult['repository']>['pullRequest']>['reviewThreads']['nodes'][number]
 type ReviewCommentNode = ReviewThreadNode['comments']['nodes'][number]
 
@@ -440,7 +429,7 @@ export function taskGitHubTools(): AgentTool[] {
             target: { kind: 'pull_request', pullRequestNumber },
           })
 
-          return withRepositoryAgentsFileContext({
+          return tool.structured({
             repository: repositoryKey,
             target: {
               kind: 'pull_request',
@@ -463,7 +452,9 @@ export function taskGitHubTools(): AgentTool[] {
               reportPath,
             },
             agentsFilePath: cloneResult.agentsFileContext?.path ?? null,
-          } as any, cloneResult.agentsFileContext)
+          } as any, {
+            repositoryAgentsFileContext: cloneResult.agentsFileContext,
+          })
         }
 
         const issueNumber = target.issue_number
@@ -503,7 +494,7 @@ export function taskGitHubTools(): AgentTool[] {
           target: { kind: 'issue', issueNumber },
         })
 
-        return withRepositoryAgentsFileContext({
+        return tool.structured({
           repository: repositoryKey,
           target: {
             kind: 'issue',
@@ -524,7 +515,9 @@ export function taskGitHubTools(): AgentTool[] {
             reportPath,
           },
           agentsFilePath: cloneResult.agentsFileContext?.path ?? null,
-        } as any, cloneResult.agentsFileContext)
+        } as any, {
+          repositoryAgentsFileContext: cloneResult.agentsFileContext,
+        })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         return tool.error(`Failed to prepare Task workspace: ${message}`)

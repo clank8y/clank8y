@@ -16,8 +16,9 @@ export const tool = {
     isError: true,
     content: [{ type: 'text' as const, text }],
   }),
-  structured: (structuredContent: unknown) => ({
+  structured: (structuredContent: unknown, internal?: unknown) => ({
     content: [{ type: 'text' as const, text: JSON.stringify(structuredContent) }],
+    internal,
     structuredContent,
   }),
 }

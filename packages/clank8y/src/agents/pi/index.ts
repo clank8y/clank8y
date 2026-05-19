@@ -1,15 +1,49 @@
 import { Agent } from '@earendil-works/pi-agent-core'
-import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core'
+import type { AfterToolCallResult, AgentEvent, AgentTool } from '@earendil-works/pi-agent-core'
 import { consola } from 'consola'
 import { logAgentMessage, logUsageSummary } from '../../logging'
 import type { UsageTotals } from '../../logging'
 import { startAll, stopAll } from '../../tools/external'
 import { createPiToolBundle } from '../../tools'
+import type { DefinedToolResultDetails } from '../../tools/defined'
 import { doesReportArtifactExist, getReportArtifactPath } from '../../utils/artifacts'
+import type { RepositoryAgentsFileContext } from '../../utils/repositories'
 import type { Clank8yAgent, Clank8yAgentFactory, Clank8yProfile } from '..'
 import { writeFile } from 'node:fs/promises'
 
 export const PI_AGENT_NAME = 'pi'
+
+interface DefinedToolInternalMetadata {
+  repositoryAgentsFileContext?: RepositoryAgentsFileContext | null
+}
+
+function extractRepositoryAgentsFileContextFromToolDetails(details: unknown): {
+  details: unknown
+  repositoryAgentsFileContext: RepositoryAgentsFileContext | null
+} {
+  const envelope = details as DefinedToolResultDetails | undefined
+  if (envelope?.__clank8yDefinedToolResult !== true) {
+    return {
+      details,
+      repositoryAgentsFileContext: null,
+    }
+  }
+
+  const internal = envelope?.internal as DefinedToolInternalMetadata | undefined
+
+  return {
+    details: envelope.structuredContent,
+    repositoryAgentsFileContext: internal?.repositoryAgentsFileContext ?? null,
+  }
+}
+
+function appendRepositoryAgentsFileContextToSystemPrompt(systemPrompt: string, repositoryAgentsFileContext: RepositoryAgentsFileContext): string {
+  return [
+    systemPrompt,
+    '',
+    repositoryAgentsFileContext.steeringMessage,
+  ].join('\n')
+}
 
 // ─── Event subscription ──────────────────────────────────────────────────────
 
@@ -108,11 +142,35 @@ async function runPiAgent(
     cost: 0,
   }
 
+  const injectedRepositoryAgentsFiles = new Set<string>()
   const agent = new Agent({
     initialState: {
       systemPrompt,
       model: profile.model,
       tools: agentTools,
+    },
+    afterToolCall: async ({ result }): Promise<AfterToolCallResult | undefined> => {
+      const {
+        details,
+        repositoryAgentsFileContext,
+      } = extractRepositoryAgentsFileContextFromToolDetails(result.details)
+
+      if (!repositoryAgentsFileContext) {
+        return details === result.details ? undefined : { details }
+      }
+
+      if (!injectedRepositoryAgentsFiles.has(repositoryAgentsFileContext.path)) {
+        agent.state.systemPrompt = appendRepositoryAgentsFileContextToSystemPrompt(
+          agent.state.systemPrompt,
+          repositoryAgentsFileContext,
+        )
+        injectedRepositoryAgentsFiles.add(repositoryAgentsFileContext.path)
+        consola.info(`Loaded repository AGENTS.md context from ${repositoryAgentsFileContext.path}`)
+      }
+
+      return {
+        details,
+      }
     },
   })
 

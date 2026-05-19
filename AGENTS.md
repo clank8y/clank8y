@@ -227,7 +227,7 @@ This section captures project-specific knowledge, tool quirks, and lessons learn
 - Keep GitHub native Pi tool implementations mode-local when their semantics depend on that mode's workflow; do not force review-specific GitHub tools into a shared global abstraction.
 - When prompts, errors, or context messages mention a mode-local MCP tool name, import the tool-name constant and interpolate it instead of hardcoding the string.
 - Task setup materializes PR and issue context into `.clank8y/` files as the durable local workflow context.
-- Repository clone flows should check the cloned repository root for a case-insensitive `AGENTS.md` file and surface its full contents back to the agent as system-level repository context in the clone/setup tool response.
+- Repository clone flows should check only the cloned repository root for a case-insensitive `AGENTS.md` file and inject its full contents into the agent via harness-level system steering after clone/setup, not via tool-return text.
 
 ### Common Mistakes to Avoid
 
